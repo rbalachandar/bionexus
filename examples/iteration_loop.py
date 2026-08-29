@@ -35,7 +35,7 @@ from bionexus.core.workflow import HypothesisTournament, Stage, StageGraph, Tour
 
 def main() -> None:
     branch = "branch-root"
-    store = SqliteProvenanceStore()
+    store = SqliteProvenanceStore("bionexus.db")
     actor = system_actor("example")
     model = OpenAICompatProvider()  # stub mode: deterministic, offline
     registry = Registry()

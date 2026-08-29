@@ -1,11 +1,10 @@
-# BioNexus (agentic-drug-discovery)
+# BioNexus
 
 A **lean open-source framework for agentic drug discovery** — pluggable models, bio
-tools, labs, and sandboxes behind five core interfaces. Like early LangChain: small,
-typed, domain-specific. Not bloated: core deps = `pydantic` only.
+tools, labs, and sandboxes behind five core interfaces.
 
-Also home to the platform **architecture definition**: diagrams, flows, stage
-descriptions, and integration contracts that the framework implements.
+Core dependencies: `pydantic` only. Everything else (models, labs, sandboxes,
+stores) is an adapter you opt into.
 
 ## Quickstart (simulator-first, no network needed)
 

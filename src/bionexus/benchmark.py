@@ -196,30 +196,87 @@ def roc_auc(scores: list[float], labels: list[float]) -> float:
     return (rsum - n1 * (n1 + 1) / 2) / (n1 * (n - n1))
 
 
+def scaffold(smiles: str) -> str:
+    """Bemis-Murcko scaffold (requires rdkit); falls back to the SMILES itself."""
+    try:
+        from rdkit import Chem
+        from rdkit.Chem.Scaffolds import MurckoScaffold
+
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            return smiles
+        return MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=False)
+    except ImportError:
+        return smiles
+
+
+def scaffold_split(data: list[tuple[str, float]], train_frac: float = 0.8, seed: int = 0):
+    """Group by scaffold, assign whole scaffolds to train/test. Prevents
+    near-duplicate leakage between train and test molecules."""
+    groups: dict[str, list] = {}
+    for item in data:
+        groups.setdefault(scaffold(item[0]), []).append(item)
+    keys = sorted(groups, key=lambda k: (len(groups[k]), k))
+    import random as _random
+
+    _random.Random(seed).shuffle(keys)
+    cut = int(len(data) * train_frac)
+    train, test, n = [], [], 0
+    for k in keys:
+        (train if n < cut else test).extend(groups[k])
+        n += len(groups[k])
+    return train, test
+
+
 def run_benchmark(dataset: Any, policies: list[Policy], train_frac: float = 0.8,
+                  split: str = "index", seeds: tuple[int, ...] = (0,),
                   out: str | Path | None = None) -> dict[str, Any]:
+    """Evaluate policies. `split`: "index" (temporal-ish) or "scaffold" (leak-safe).
+    Multiple `seeds` -> per-policy mean±std for the primary metric."""
     data = list(dataset.load())
-    split = int(len(data) * train_frac)
-    train, test = data[:split], data[split:]
+    classification = getattr(dataset, "task", "regression") == "classification"
     results: dict[str, Any] = {
         "dataset": getattr(dataset, "name", "unknown"),
-        "task": getattr(dataset, "task", "regression"),
-        "n_train": len(train), "n_test": len(test),
+        "task": dataset.task if hasattr(dataset, "task") else "regression",
+        "split": split, "seeds": list(seeds),
+        "n_train": int(len(data) * train_frac), "n_test": len(data) - int(len(data) * train_frac),
         "timestamp": time.time(),
         "policies": {},
     }
-    truth = [y for _, y in test]
     for policy in policies:
         t0 = time.time()
-        policy.fit(train)
-        preds = [policy.predict(s) for s, _ in test]
-        entry: dict[str, Any] = {"fit_secs": round(time.time() - t0, 3)}
-        if getattr(dataset, "task", "regression") == "classification":
-            entry["roc_auc"] = round(roc_auc(preds, truth), 4)
-        else:
-            entry["spearman"] = round(spearman(preds, truth), 4)
-            entry["rmse"] = round(rmse(preds, truth), 4)
-        results["policies"][policy.name] = entry
+        primary: list[float] = []
+        last_entry: dict[str, Any] = {}
+        for seed in seeds:
+            policy_name = policy.name
+            if split == "scaffold":
+                train, test = scaffold_split(data, train_frac, seed)
+            else:
+                cut = int(len(data) * train_frac)
+                train, test = data[:cut], data[cut:]
+            policy.fit(train)
+            preds = [policy.predict(s) for s, _ in test]
+            truth = [y for _, y in test]
+            entry: dict[str, Any] = {"fit_secs": round(time.time() - t0, 3)}
+            if classification:
+                entry["roc_auc"] = round(roc_auc(preds, truth), 4)
+                primary.append(entry["roc_auc"])
+            else:
+                entry["spearman"] = round(spearman(preds, truth), 4)
+                entry["rmse"] = round(rmse(preds, truth), 4)
+                primary.append(entry["spearman"])
+            last_entry = entry
+        if len(seeds) > 1:
+            mean = sum(primary) / len(primary)
+            std = (sum((v - mean) ** 2 for v in primary) / len(primary)) ** 0.5
+            metric = "roc_auc" if classification else "spearman"
+            last_entry[metric] = f"{mean:.4f}±{std:.4f}"
+            last_entry[f"{metric}_mean"] = round(mean, 4)
+            last_entry[f"{metric}_std"] = round(std, 4)
+        results["policies"][policy_name] = last_entry
+    if out:
+        Path(out).write_text(json.dumps(results, indent=1))
+    return results
     if out:
         Path(out).write_text(json.dumps(results, indent=1))
     return results
