@@ -72,11 +72,11 @@ User code / reference agents
       model: generate → evaluate → gate → protocol → simulator → analysis *(P8)*
 
 ### Phase 3 — Trust & polish
-- [ ] T3.1 Docs: quickstart, adapter authoring guide, safety guide
-- [ ] T3.2 `bn` CLI: `bn run workflow.yml` · `bn sim` · `bn prove <id>`
+- [x] T3.1 Docs: quickstart, adapter authoring guide, safety guide
+- [x] T3.2 `bn` CLI: `bn run workflow.yml` · `bn sim` · `bn prove <id>`
 - [ ] T3.3 Recording/playback harness for hardware adapters (test vs recordings) *(P8)*
-- [ ] T3.4 CI: core-only fast job + full example job; adapter test matrix
-- [ ] T3.5 Packaging: extras (`[lab-opentrons]`, `[bio-rdkit]`, `[sandbox-agentenv]`),
+- [x] T3.4 CI: core-only fast job + full example job; adapter test matrix
+- [x] T3.5 Packaging: extras (`[models-openai]`, `[bio-rdkit]`, `[sandbox-agentenv]`, `[store-postgres]`),
       README rewrite for framework positioning
 
 ### Phase 4 — Ecosystem (post-1.0)
