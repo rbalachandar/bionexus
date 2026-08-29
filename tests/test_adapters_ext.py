@@ -128,3 +128,21 @@ def test_flywheel_pairs_from_round(tmp_path):
     assert len(loaded) == 1
     assert example["labels"][0]["value"] == result.measurements[0].value
     assert "protocol_id" in example["input"]
+
+
+def test_campaign_recording_playbacks(tmp_path):
+    """Full-flow field recording replays identically offline (P8)."""
+    rec_path = Path("examples/_campaign_recording.json")
+    if not rec_path.exists():
+        pytest.skip("run examples/full_campaign.py first")
+    pb = PlaybackLab(rec_path)
+    caps = pb.list_capabilities()
+    assert caps["assays"]
+    # replay every recorded run
+    import json as _json
+    entries = _json.loads(rec_path.read_text())
+    runs = [e["run_id"] for e in entries if e["op"] == "fetch_results"]
+    assert runs
+    for run_id in runs:
+        result = pb.fetch_results(run_id)
+        assert result.measurements

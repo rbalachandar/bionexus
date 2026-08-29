@@ -25,6 +25,17 @@ jobs:
       - run: python examples/iteration_loop.py
       - run: python -m bionexus.cli prove branch-root --db bionexus.db
 
+  full-campaign:  # P8: entire pipeline flow on the virtual lab, then playback
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pydantic pytest && pip install -e . --no-deps
+      - run: python examples/full_campaign.py
+      - run: python -m bionexus.cli prove campaign-root --db campaign.db
+      - run: python -m pytest tests/ -q   # now includes recording-playback test
+
   yaml-workflow:
     runs-on: ubuntu-latest
     steps:
