@@ -187,12 +187,13 @@ def test_dose_response_monotonic_and_ic50_present():
 def test_countscreen_flags_interferers():
     from bionexus.adapters.lab.simulator import SimulatorLab
     lab = SimulatorLab(seed=11)
-    comps = [f"X{i}" for i in range(12)]
+    comps = [f"X{i}" for i in range(24)]
     p = ProtocolSubmission(
         envelope=env(), title="cs", assay_type="counterscreen",
         steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense)],
         samples=[SampleSpec(sample_id=c, kind=SampleKind.compound, concentration="10uM") for c in comps],
     )
+    p.protocol_id = "fixed-cs-test"  # interference seeding keys off run/protocol id
     r = lab.fetch_results(lab.submit_protocol(p))
     by = {m.sample_id: m.value for m in r.measurements}
     hits = [c for c, v in by.items() if v > 20]
