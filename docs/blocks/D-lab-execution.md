@@ -3,6 +3,17 @@
 The physical-world block. Fully buildable as software via the Virtual Lab Simulator
 before any real hardware is touched.
 
+## Standards alignment
+
+- **MCP (Model Context Protocol)** — IAL tools are exposed both over the internal
+  gRPC/REST contract and as MCP servers, so general-purpose agent frameworks
+  (Claude, BioNeMo toolkit) can consume them without bespoke glue.
+- **Anthropic Model Hardware Standard** — track this emerging spec for AI agents
+  operating physical lab devices; the Safety & Constraint Engine is our enforcement
+  point for it.
+- **Isomorphic "bioresilience"** — safety posture assumes model error is inevitable;
+  constraints are layered (protocol-level, run-level, instrument-level hard stops).
+
 ## Instrument Abstraction Layer (IAL)
 
 The single contract for all lab hardware:

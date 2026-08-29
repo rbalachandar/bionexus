@@ -24,7 +24,19 @@ open-source models on a GPU box.
 ### Evaluation Harness
 - Standardized benchmark suites per candidate batch: docking scores,
   retrosynthesis feasibility, ADMET panels, novelty filters
+- **Tournament ranking** (`c.evals.rank_batch`): Elo-style pairwise ranking of
+  proposals (optionally with LLM meta-reviewer), not scalar scores — matches the
+  tournament pattern validated by Google's AI co-scientist
 - Emits ranked batches; the "unit tests" of the pipeline
+
+### Fine-tuning Flywheel
+- Consumes confirmed `AssayResult`s + provenance lineage as training examples
+  (`c.flywheel.submit_example`): wet-lab outcomes are the ground-truth labels the
+  foundation models currently lack
+- Per-customer/per-program model variants, refit each design round (Cradle's model:
+  wet-lab data → fine-tune → next round is the core compounding asset)
+- Dataloops recorded in provenance so every model version is traceable to the exact
+  experiments that trained it
 
 ## Interfaces
 - Consumes: `ToolInvocation` from A/B

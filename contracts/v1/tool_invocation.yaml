@@ -75,6 +75,9 @@ components:
         - c.kb.search_literature
         - c.registry.get_put_candidate
         - c.evals.benchmark_batch
+        - c.evals.rank_batch
+        - c.flywheel.submit_example
+        - c.flywheel.list_model_variants
         # Block D — lab
         - d.lab.list_capabilities
         - d.lab.submit_protocol

@@ -104,9 +104,24 @@ flowchart LR
 ```
 
 Each pipeline stage maps to a Stage Graph sub-DAG that runs the iteration loop
-(flow 1) until stage-exit criteria are met or a human intervenes.
+(flow 1) until stage-exit criteria are met or a human intervenes. Within each design
+round, candidate generation runs as a **hypothesis tournament** (Generate → Reflect →
+Rank → Evolve; see `docs/blocks/B-agents.md`) rather than a single pass — the pattern
+validated by Google's AI co-scientist. Confirmed wet-lab results also feed the
+**fine-tuning flywheel** in Block C, so each round's models are better than the last.
 
-## 5. Deployment View
+## 5. Hypothesis Tournament (inside one design round)
+
+```mermaid
+flowchart TB
+    G["Generate: N proposals<br/>(diverse seeds/prompts)"] --> R["Reflect: self + cross critique"]
+    R --> RK["Rank: Elo tournament<br/>(Evaluation Harness + meta-reviewer)"]
+    RK -->|"top-k survive"| E["Evolve: mutate/combine top-k"]
+    E --> G
+    RK -->|"round budget spent"| OUT["Ranked batch → next stage<br/>(assay / human gate)"]
+```
+
+## 6. Deployment View
 
 ```mermaid
 flowchart TB

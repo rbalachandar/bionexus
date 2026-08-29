@@ -56,6 +56,7 @@ flowchart TB
 | [`docs/architecture.md`](docs/architecture.md) | Architectural blocks A–F, components, responsibilities, interfaces |
 | [`docs/flows.md`](docs/flows.md) | End-to-end flows: design iteration loop, fork/branch, review gates, wet-lab round trip |
 | [`docs/blocks/`](docs/blocks/) | One deep-dive doc per block (A–F) |
+| [`docs/research-landscape.md`](docs/research-landscape.md) | Review vs. Google AI co-scientist, Anthropic, Isomorphic, Cradle, Lila, FutureHouse, Coscientist |
 | [`contracts/`](contracts/README.md) | The five shared integration contracts (StageTask, ToolInvocation, ProtocolSubmission, AssayResult, ProvenanceRecord) |
 | [`diagrams/`](diagrams/) | Standalone Mermaid diagram sources |
 
