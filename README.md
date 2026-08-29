@@ -70,6 +70,7 @@ Exposes `generate_candidates`, `run_assay` (dose-response + IC50),
 | [`docs/domain-review.md`](docs/domain-review.md) | flow fidelity review vs. the real drug-discovery cycle |
 | [`docs/benchmarks.md`](docs/benchmarks.md) | public datasets (MoleculeNet, TDC, DOCKSTRING, ProteinGym) + first benchmark results |
 | [`docs/virtual-lab.md`](docs/virtual-lab.md) | simulated devices, image-based readouts, QC and failure modes |
+| [`docs/security.md`](docs/security.md) | threat model, trust boundaries, agent capability matrix |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
 
 ### Five core interfaces (everything is one of these)

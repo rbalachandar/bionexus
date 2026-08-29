@@ -42,15 +42,23 @@ must beat them and the harness is honest.
 | char3gram-ridge (stdlib) | 0.757 |
 | **morgan2048-rf** (rdkit+sklearn) | **0.855** |
 
+**LLM ablation — Lipophilicity (n=40, glm-5.1, `run_llm_ablation.py`)**
+
+| Policy | Spearman |
+|---|---|
+| LLM zero-shot | −0.082 |
+| LLM few-shot (k=8 similar exemplars) | +0.636 |
+| **LLM + RDKit descriptor tool (k=5)** | **+0.709** |
+
 Reading the table:
 
 - **Morgan2048+RF at 0.855 AUC on HIV** matches the literature range for FP+RF
   (~0.83–0.85) — the harness reproduces known results, which is the point.
-- **The zero-shot LLM has no signal on logD** (ρ ≈ −0.14, n=40, glm-5.1). This
-  is the honest headline: LLMs should not be used as direct property oracles —
-  they belong in the *agent* loop (proposing, interpreting, planning) while
-  quantitative predictions come from trained tools (`fm_predict_property`).
-  Few-shot / tool-augmented LLM policies are the next rows to test.
+- **The tool-augmentation result is the headline**: the same LLM goes from
+  *no signal* (−0.08) to *matching the trained RF baseline* (+0.71) once it is
+  given (a) similar measured examples and (b) computed descriptors. LLMs should
+  not be property oracles; they are good at interpreting tool outputs — which is
+  exactly the agent-loop design of this framework.
 
 Reference points from literature for context: published GNN/chemprop models
 reach ~0.8–0.9 Spearman / ~0.6–0.8 RMSE on Lipophilicity — headroom remains

@@ -90,3 +90,98 @@ def llm_available() -> bool:
         return True
     except RuntimeError:
         return False
+
+
+# ------------------------------------------------- few-shot / tool-augmented
+
+def _char3gram_vec(s: str) -> dict[str, int]:
+    grams = [s[i:i + 3] for i in range(len(s) - 2)]
+    v: dict[str, int] = {}
+    for g in grams:
+        v[g] = v.get(g, 0) + 1
+    return v
+
+
+def _cosine(a: dict[str, int], b: dict[str, int]) -> float:
+    num = sum(a[g] * b.get(g, 0) for g in a)
+    den = (sum(x * x for x in a.values()) ** 0.5) * (sum(x * x for x in b.values()) ** 0.5)
+    return num / den if den else 0.0
+
+
+class FewShotLLMPolicy(AnthropicLLMPolicy):
+    """Zero-shot LLMs have no signal on logD (see docs/benchmarks.md). This policy
+    retrieves the k most structurally similar training exemplars (char-gram
+    cosine) and inlines them into the prompt."""
+
+    name = "llm-fewshot"
+
+    def __init__(self, k: int = 8, **kwargs: Any):
+        super().__init__(**kwargs)
+        self.k = k
+        self.data: list[tuple[str, float]] = []
+
+    def fit(self, data: list[tuple[str, float]]) -> None:
+        self.data = list(data)
+
+    def predict(self, smiles: str) -> float:
+        q = _char3gram_vec(smiles)
+        exemplars = sorted(self.data, key=lambda d: _cosine(q, _char3gram_vec(d[0])),
+                           reverse=True)[: self.k]
+        lines = "\n".join(f"SMILES: {s} -> value: {v:.2f}" for s, v in exemplars)
+        raw = self._complete(
+            "You are a computational chemist. Below are measured examples. "
+            "Predict the value for the query molecule, interpolating from the "
+            'examples. Reply with ONLY a JSON object: {"value": <number>}\n\n'
+            f"{lines}\n\nSMILES: {smiles}"
+        )
+        return self._parse(raw)
+
+
+class ToolAugmentedLLMPolicy(AnthropicLLMPolicy):
+    """Gives the LLM what it lacks: computed molecular descriptors (the 'tool'
+    output: MolWt, LogP, TPSA, HBD/HBA, rotatable bonds). The LLM's job shifts
+    from memorizing chemistry to interpreting measured features."""
+
+    name = "llm+descriptors"
+
+    def __init__(self, k: int = 5, **kwargs: Any):
+        super().__init__(**kwargs)
+        self.k = k
+        self.data: list[tuple[str, float]] = []
+
+    def _desc(self, smiles: str) -> dict[str, float]:
+        from rdkit import Chem
+        from rdkit.Chem import Descriptors, rdMolDescriptors as rd
+
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            return {}
+        return {
+            "MolWt": round(Descriptors.MolWt(mol), 1),
+            "LogP": round(Descriptors.MolLogP(mol), 2),
+            "TPSA": round(Descriptors.TPSA(mol), 1),
+            "HBD": rd.CalcNumHBD(mol),
+            "HBA": rd.CalcNumHBA(mol),
+            "RotBonds": rd.CalcNumRotatableBonds(mol),
+        }
+
+    def fit(self, data: list[tuple[str, float]]) -> None:
+        self.data = list(data)
+
+    def predict(self, smiles: str) -> float:
+        q = _char3gram_vec(smiles)
+        exemplars = sorted(self.data, key=lambda d: _cosine(q, _char3gram_vec(d[0])),
+                           reverse=True)[: self.k]
+        ex_lines = "\n".join(
+            f"SMILES: {s} | descriptors: {json.dumps(self._desc(s))} -> value: {v:.2f}"
+            for s, v in exemplars
+        )
+        raw = self._complete(
+            "You are a computational chemist. Descriptors were computed for each "
+            "molecule by an RDKit tool. Using the measured examples, predict the "
+            "value for the query molecule. Reply with ONLY: {\"value\": <number>}\n\n"
+            f"{ex_lines}\n\n"
+            f"Query SMILES: {smiles}\n"
+            f"Query descriptors: {json.dumps(self._desc(smiles))}"
+        )
+        return self._parse(raw)

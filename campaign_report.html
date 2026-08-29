@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BioNexus Report — campaign-root</title>
+<style>
+  :root { --bg:#f3f1ea; --grid:#e3ded2; --paper:#faf8f2; --line:#c9c2b0;
+    --ink:#2a2823; --dim:#6b6558; --green:#2f6b38; --red:#8a4034; --amber:#8a6a2c;
+    --mono:'IBM Plex Mono','SFMono-Regular',Consolas,monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px); background-size:28px 28px;
+    font-family:-apple-system,'Segoe UI',sans-serif; padding:40px 20px 80px; }
+  .wrap { max-width:980px; margin:0 auto; }
+  h1 { font-size:24px; margin:0 0 4px; letter-spacing:-0.01em; }
+  .eyebrow { font-family:var(--mono); font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--dim); margin-bottom:24px; }
+  table { width:100%; border-collapse:collapse; background:var(--paper);
+    border:1px solid var(--line); font-size:13px; }
+  th,td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  th { font-family:var(--mono); font-size:11px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--dim); }
+  td.mono, code { font-family:var(--mono); font-size:12px; }
+  .ok { color:var(--green); font-weight:600; }
+  .bad { color:var(--red); font-weight:600; }
+  .section { margin-top:32px; }
+  pre { background:var(--paper); border:1px solid var(--line); padding:14px;
+    font-family:var(--mono); font-size:12px; overflow-x:auto; }
+  .stats { display:flex; gap:14px; flex-wrap:wrap; margin-top:16px; }
+  .stat { background:var(--paper); border:1px solid var(--line); padding:12px 18px; }
+  .stat b { display:block; font-size:20px; }
+  .stat span { font-family:var(--mono); font-size:11px; color:var(--dim); }
+</style></head><body><div class="wrap">
+  <p class="eyebrow">BioNexus · Campaign Report</p>
+  <h1>Provenance — campaign-root</h1>
+  <div class="stats"><div class='stat'><b>163</b><span>records</span></div><div class='stat'><b>0</b><span>hypotheses</span></div><div class='stat'><b>0</b><span>validated</span></div><div class='stat'><b>0</b><span>invalidated</span></div><div class='stat'><b>67</b><span>gates</span></div><div class='stat'><b>0</b><span>lab runs</span></div><div class='stat'><b>intact</b><span>chain</span></div></div>
+  <div class="section"><table>
+    <tr><th>#</th><th>Event</th><th>Detail</th><th>Hash</th><th>Chain</th></tr>
+    <tr><td class='mono'>1</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>e860a21530ea…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>2</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>fca177949d0b…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>3</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>930eb99a4daa…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>4</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>1d1976ee4780…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>5</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>c612096a90bf…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>6</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>1bcc3c52a5f8…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>7</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>69da359dc122…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>8</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>1f1dfac26b8c…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>9</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>52727fb6d2a4…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>10</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>24955660168f…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>11</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>8aec44a4745f…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>12</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;clinical_plan&quot;, &quot;detail&quot;: &quot;Ph I/II/III structure with go/no-go criteria \u2192 IND&quot;}</td><td class='mono'>c3b70f4da30d…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>13</td><td>artifact_created</td><td class='mono'>trial_protocol: ind-1</td><td class='mono'>3b9d727de7b4…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>14</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>f5e2bea4171e…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>15</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>aaf9b86316c0…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>16</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>c22b01458097…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>17</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>c2703ce680ac…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>18</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>f2349c0889f2…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>19</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>b7e268d7f6c1…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>20</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>f4cba28a7326…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>21</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>901b8d91bcbe…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>22</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>2abd7580c8ed…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>23</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>91d996718e8e…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>24</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>c76cfa6b18e0…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>25</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;clinical_plan&quot;, &quot;detail&quot;: &quot;Ph I/II/III structure with go/no-go criteria \u2192 IND&quot;}</td><td class='mono'>550b417e86c6…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>26</td><td>artifact_created</td><td class='mono'>trial_protocol: ind-1</td><td class='mono'>8e9b8a20761c…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>27</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>2e1174d34678…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>28</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>5f950c98abf9…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>29</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>0e4e901b83a9…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>30</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>7bd3275a66c5…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>31</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>6eb878ef6c80…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>32</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>a4ebb955714d…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>33</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>93fc96b084bb…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>34</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>4b944607d252…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>35</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>fdc6bb6f607c…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>36</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>cbc277e66bc6…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>37</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: false, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead failed tox panel</td><td class='mono'>863cd79d4f14…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>38</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>059e93b47f86…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>39</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>95b9021b3606…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>40</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>4652509c2216…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>41</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>85e00658d88c…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>42</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>e5dffac75407…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>43</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>16b176775ffc…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>44</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>13119ac9c4fe…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>45</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>34b86a447d8f…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>46</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>c901b8c90392…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>47</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>242ac6079ba0…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>48</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: false, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead failed tox panel</td><td class='mono'>eb7f61ced28a…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>49</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>3ff1ea10430f…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>50</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>bde4cb0adb88…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>51</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>8cbe47c0373d…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>52</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>c943d32c15ec…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>53</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>6568d616a684…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>54</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>2170fc52a8ea…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>55</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>c1e11a976fd3…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>56</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>8e59261344f9…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>57</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>fb386ef5206d…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>58</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>eb65de200e19…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>59</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>44dbb06be4fe…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>60</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;clinical_plan&quot;, &quot;detail&quot;: &quot;Ph I/II/III structure with go/no-go criteria \u2192 IND&quot;}</td><td class='mono'>a5f8adb24ca5…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>61</td><td>artifact_created</td><td class='mono'>trial_protocol: ind-1</td><td class='mono'>63ba6e4edc8c…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>62</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>fff0e41f011e…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>63</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>9c6fec2664a3…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>64</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>33114337f8db…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>65</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>d562e2690998…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>66</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>8bedd9a8c64f…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>67</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>074cf6ac29a0…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>68</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>6bb6c1bfc57c…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>69</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>4f762fe6c1a6…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>70</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>a876259e7f57…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>71</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>ec7ac2049d25…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>72</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: false, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead failed tox panel</td><td class='mono'>f6beceeba93d…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>73</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff_backup&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>e5ce01828140…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>74</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;clinical_plan&quot;, &quot;detail&quot;: &quot;Ph I/II/III structure with go/no-go criteria \u2192 IND&quot;}</td><td class='mono'>e380fdb60c7b…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>75</td><td>artifact_created</td><td class='mono'>trial_protocol: ind-1</td><td class='mono'>078fde844734…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>76</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>9d7ebfcea73a…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>77</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>39def2b4a1e3…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>78</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>402ef8cb6895…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>79</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>0e187ef15969…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>80</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>e0dbbd788d4e…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>81</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>730f422f260a…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>82</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>1885532e999b…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>83</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>91f1858dea61…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>84</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>53a0ffa10fa3…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>85</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>e24a8972d222…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>86</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>a9d1b21325dc…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>87</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;clinical_plan&quot;, &quot;detail&quot;: &quot;Ph I/II/III structure with go/no-go criteria \u2192 IND&quot;}</td><td class='mono'>c30bcd797031…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>88</td><td>artifact_created</td><td class='mono'>trial_protocol: ind-1</td><td class='mono'>002f9c7e2912…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>89</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>ce0423da8ad2…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>90</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>4ffaa34b675b…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>91</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>44a8ec8e7058…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>92</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>428e9636d300…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>93</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>ce5ce04ab356…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>94</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>a93ccf11d242…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>95</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>6054821c3b9d…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>96</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>3ad363e7bdfb…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>97</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>1230ea89933e…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>98</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>1bd732fee5d6…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>99</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>48597753d745…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>100</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;clinical_plan&quot;, &quot;detail&quot;: &quot;Ph I/II/III structure with go/no-go criteria \u2192 IND&quot;}</td><td class='mono'>29fc64544102…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>101</td><td>artifact_created</td><td class='mono'>trial_protocol: ind-1</td><td class='mono'>1c54d3f32d69…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>102</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>cc938a1314ff…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>103</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>aae1834c91b3…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>104</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>93094b9347d8…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>105</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>677303cbf0a3…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>106</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>e672ac825182…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>107</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>f23b0749b294…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>108</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>12157b97760f…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>109</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>d536444d6dc7…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>110</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>8c2b21b3610b…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>111</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>db99e65cb0af…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>112</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>1b2cbd269549…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>113</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;clinical_plan&quot;, &quot;detail&quot;: &quot;Ph I/II/III structure with go/no-go criteria \u2192 IND&quot;}</td><td class='mono'>62492d77a947…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>114</td><td>artifact_created</td><td class='mono'>trial_protocol: ind-1</td><td class='mono'>199e1b4563b6…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>115</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>136d65c314a6…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>116</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>dc634becc9c0…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>117</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>eeab1baf06ba…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>118</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>7d3728c03e04…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>119</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>b1f3b0ab1916…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>120</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>b3bcf8652659…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>121</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>4c31631d41a0…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>122</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>4f598503fdaf…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>123</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>1c1e94109d86…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>124</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>1bf44eebbdae…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>125</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: false, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead failed tox panel</td><td class='mono'>956eb964a92c…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>126</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff_backup&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>2934e6f4ec5a…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>127</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;clinical_plan&quot;, &quot;detail&quot;: &quot;Ph I/II/III structure with go/no-go criteria \u2192 IND&quot;}</td><td class='mono'>79f12e472093…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>128</td><td>artifact_created</td><td class='mono'>trial_protocol: ind-1</td><td class='mono'>934261204f8f…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>129</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>8bf97570d98b…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>130</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>09494bb30c5a…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>131</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>610776505db6…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>132</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>bf1c67e1e469…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>133</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>5439e3b8ef10…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>134</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>4aa34d236bc6…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>135</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>28159846cf0a…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>136</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>c100eeb1ae0a…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>137</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>126996ad0207…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>138</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>15c9e9a976bf…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>139</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: false, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead failed tox panel</td><td class='mono'>f8f2b9368ece…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>140</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>0c75868bcb9f…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>141</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>9acb5b3f76d3…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>142</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>8bc0fd6be619…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>143</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>5472e6acf685…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>144</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>949b201dde4b…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>145</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>bffb2ec00913…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>146</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>e7bb78db4512…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>147</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>b97830e25d79…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>148</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>f29ce97409a5…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>149</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>ea443d6b2c14…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>150</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>6ffbbd02c85e…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>151</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;clinical_plan&quot;, &quot;detail&quot;: &quot;Ph I/II/III structure with go/no-go criteria \u2192 IND&quot;}</td><td class='mono'>3c2284b70757…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>152</td><td>artifact_created</td><td class='mono'>trial_protocol: ind-1</td><td class='mono'>fb540a24c97b…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>153</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;target_id&quot;, &quot;detail&quot;: &quot;disease association, target validation, druggability&quot;}</td><td class='mono'>b5dc81c8e13f…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>154</td><td>artifact_created</td><td class='mono'>target_dossier: dossier-kras</td><td class='mono'>6cd2d809f927…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>155</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;target_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;evidence + druggability&quot;</td><td class='mono'>ddba4c5ecef4…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>156</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_discovery&quot;, &quot;detail&quot;: &quot;hypothesis tournament (Generate\u2192Reflect\u2192Rank\u2192Evolve)&quot;}</td><td class='mono'>67b1f12ee80e…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>157</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_candidate_batch&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;&quot;}</td><td class='mono'>20d0c210a7a2…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>158</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;hit_validation&quot;, &quot;detail&quot;: &quot;counterscreen \u2192 primary dose\u2013response \u2192 IC50 (replicates)&quot;}</td><td class='mono'>a5e7c74a6ccc…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>159</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;hit_validation&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;need &gt;=1 confirmed hit&quot;}</td><td class='mono'>c73d111facdb…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>160</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;lead_optimization&quot;, &quot;detail&quot;: &quot;DMTA rounds: MPO (potency/selectivity/ADME/physchem) with kill criteria&quot;}</td><td class='mono'>8e626ef21ee1…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>161</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;approve_wetlab_protocol&quot;, &quot;approved&quot;: true, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead selected&quot;}</td><td class='mono'>062e2316ccba…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>162</td><td>stage_transition</td><td class='mono'>{&quot;stage&quot;: &quot;preclinical&quot;, &quot;detail&quot;: &quot;tox panel: hERG / Ames / microsomal stability (stub assays)&quot;}</td><td class='mono'>faa2e1bd13fb…</td><td class='ok'>ok</td></tr>
+<tr><td class='mono'>163</td><td>gate_decision</td><td class='mono'>{&quot;gate&quot;: &quot;preclinical_signoff&quot;, &quot;approved&quot;: false, &quot;approved_by&quot;: &quot;scripted-scientist&quot;, &quot;reason&quot;: &quot;lead failed tox panel</td><td class='mono'>52742cc84190…</td><td class='ok'>ok</td></tr>
+  </table></div>
+  <div class="section"><pre>[
+ {
+  &quot;artifact_id&quot;: &quot;dossier-kras&quot;,
+  &quot;kind&quot;: &quot;target_dossier&quot;,
+  &quot;uri&quot;: &quot;mem://campaign-root/kras&quot;,
+  &quot;sha256&quot;: null,
+  &quot;metadata&quot;: {
+   &quot;gene&quot;: &quot;KRAS_G12C&quot;,
+   &quot;evidence&quot;: 0.87
+  }
+ },
+ {
+  &quot;artifact_id&quot;: &quot;ind-1&quot;,
+  &quot;kind&quot;: &quot;trial_protocol&quot;,
+  &quot;uri&quot;: &quot;mem://campaign-root/ind&quot;,
+  &quot;sha256&quot;: null,
+  &quot;metadata&quot;: {
+   &quot;candidate&quot;: &quot;CCCCCCO&quot;,
+   &quot;mpo&quot;: 0.83,
+   &quot;phases&quot;: [
+    {
+     &quot;phase&quot;: 1,
+     &quot;n&quot;: 60,
+     &quot;objective&quot;: &quot;safety/PK&quot;,
+     &quot;go&quot;: &quot;MTD established, half-life &gt;= 6h&quot;
+    },
+    {
+     &quot;phase&quot;: 2,
+     &quot;n&quot;: 150,
+     &quot;objective&quot;: &quot;PoC&quot;,
+     &quot;go&quot;: &quot;&gt;= 30% ORR, futility boundary at 10%&quot;
+    },
+    {
+     &quot;phase&quot;: 3,
+     &quot;n&quot;: 600,
+     &quot;objective&quot;: &quot;confirmatory&quot;,
+     &quot;go&quot;: &quot;OS/PFS superiority&quot;
+    }
+   ],
+   &quot;flywheel_examples&quot;: 20
+  }
+ },
+ {
+  &quot;artifact_id&quot;: &quot;dossier-kras&quot;,
+  &quot;kind&quot;: &quot;target_dossier&quot;,
+  &quot;uri&quot;: &quot;mem://campaign-root/kras&quot;,
+  &quot;sha256&quot;: null,
+  &quot;metadata&quot;: {
+   &quot;gene&quot;: &quot;KRAS_G12C&quot;,
+   &quot;evidence&quot;: 0.87
+  }
+ },
+ {
+  &quot;artifact_id&quot;: &quot;ind-1&quot;,
+  &quot;kind&quot;: &quot;trial_protocol&quot;,
+  &quot;uri&quot;: &quot;mem://campaign-root/ind&quot;,
+  &quot;sha256&quot;: null,
+  &quot;metadata&quot;: {
+   &quot;candidate&quot;: &quot;CCCCCCO&quot;,
+   &quot;mpo&quot;: 0.9,
+   &quot;phases&quot;: [
+    {
+     &quot;phase&quot;: 1,
+     &quot;n&quot;: 60,
+     &quot;objective&quot;: &quot;safety/PK&quot;,
+     &quot;go&quot;: &quot;MTD established, half-life &gt;= 6h&quot;
+    },
+    {
+     &quot;phase&quot;: 2,
+     &quot;n&quot;: 150,
+     &quot;objective&quot;: &quot;PoC&quot;,
+     &quot;go&quot;: &quot;&gt;= 30% ORR, futility boundary at 10%&quot;
+    },
+    {
+     &quot;phase&quot;: 3,
+     &quot;n&quot;: 600,
+     &quot;objective&quot;: &quot;confirmatory&quot;,
+     &quot;go&quot;: &quot;OS/PFS superiority&quot;
+    }
+   ],
+   &quot;flywheel_examples&quot;: 46
+  }
+ },
+ {
+  &quot;artifact_id&quot;: &quot;dossier-kras&quot;,
+  &quot;kind&quot;: &quot;target_dossier&quot;,
+  &quot;uri&quot;: &quot;mem://campaign-root/kras&quot;,
+  &quot;sha256&quot;: null,
+  &quot;metadata&quot;: {
+   &quot;gene&quot;: &quot;KRAS_G12C&quot;,
+   &quot;evidence&quot;: 0.87
+  }
+ },
+ {
+  &quot;artifact_id&quot;: &quot;dossier-kras&quot;,
+  &quot;kind&quot;: &quot;target_dossier&quot;,
+  &quot;uri&quot;: &quot;mem://campaign-root/kras&quot;,
+  &quot;sha256&quot;: null,
+  &quot;metadata&quot;: {
+   &quot;gene&quot;: &quot;KRAS_G12C&quot;,
+   &quot;evidence&quot;: 0.87
+  }
+ },
+ {
+  &quot;artifact_id&quot;: &quot;dossier-kras&quot;,
+  &quot;kind&quot;: &quot;target_dossier&quot;,
+  &quot;uri&quot;: &quot;mem://campaign-root/kras&quot;,
+  &quot;sha256&quot;: null,
+  &quot;metadata&quot;: {
+   &quot;gene&quot;: &quot;KRAS_G12C&quot;,
+   &quot;evidence&quot;: 0.87
+  }
+ },
+ {
+  &quot;artifact_id&quot;: &quot;ind-1&quot;,
+  &quot;kind&quot;: &quot;trial_protocol&quot;,
+  &quot;uri&quot;: &quot;mem://campaign-root/ind&quot;,
+  &quot;sha256&quot;: null,
+  &quot;metadata&quot;: {
+   &quot;candidate&quot;: &quot;CCCCCO&quot;,
+   &quot;mpo&quot;: 0.91,
+   &quot;phases&quot;: [
+    {
+     &quot;phase&quot;: 1,
+     &quot;n&quot;: 60,
+     &quot;objective&quot;: &quot;safety/PK&quot;,
+     &quot;go&quot;: &quot;MTD established, half-life &gt;= 6h&quot;
+    },
+    {
+     &quot;phase&quot;: 2,
+     &quot;n&quot;: 150,
+     &quot;objective&quot;: &quot;PoC&quot;,
+     &quot;go&quot;: &quot;&gt;= 30% ORR, futility boundary at 10%&quot;
+    },
+    {
+     &quot;phase&quot;: 3,
+     &quot;n&quot;: 600,
+     &quot;objective&quot;: &quot;confirmatory&quot;,
+     &quot;go&quot;: &quot;OS/PFS superiority&quot;
+    }
+   ],
+   &quot;flywheel_examples&quot;: 99
+  }
+ },
+ {
+  &quot;artifact_id&quot;: &quot;dossier-kras&quot;,
+  &quot;kind&quot;: &quot;target_dossier&quot;,
+  &quot;uri&quot;: &quot;mem://campaign-root/kras&quot;,
+  &quot;sha256&quot;: null,
+  &quot;metadata&quot;: {
+   &quot;gene&quot;: &quot;KRAS_G12C&quot;,
+   &quot;evidence&quot;: 0.87
+  }
+ },
+ {
+  &quot;artifact_id&quot;: &quot;ind-1&quot;,
+  &quot;kind&quot;: &quot;trial_protocol&quot;,
+  &quot;uri&quot;: &quot;mem://campaign-root/ind&quot;,
+  &quot;sha256&quot;: null,
+  &quot;metadata&quot;: {
+   &quot;candidate&quot;: &quot;CCCCCO&quot;,
+   &quot;mpo&quot;: 0.87,
+   &quot;phases&quot;: [
+    {
+     &quot;phase&quot;: 1,
+     &quot;n&quot;: 60,
+     &quot;objective&quot;: &quot;safety/PK&quot;,
+     &quot;go&quot;: &quot;MTD established, half-life &gt;= 6h&quot;
+    },
+    {
+     &quot;phase&quot;: 2,
+     &quot;n&quot;: 150,
+     &quot;objective&quot;: &quot;PoC&quot;,
+     &quot;go&quot;: &quot;&gt;= 30% ORR, futility boundary at 10%&quot;
+    },
+    {
+     &quot;phase&quot;: 3,
+     &quot;n&quot;: 600,
+     &quot;objective&quot;: &quot;confirmatory&quot;,
+     &quot;go&quot;: &quot;OS/PFS superiority&quot;
+    }
+   ],
+   &quot;flywheel_examples&quot;: 118
+  }
+ },
+ {
+  &quot;artifact_id&quot;: &quot;dossier-kras&quot;,
+  &quot;kind&quot;: &quot;target_dossier&quot;,
+  &quot;uri&quot;: &quot;mem://campaign-root/kras&quot;,
+  &quot;sha256&quot;: null,
+  &quot;metadata&quot;: {
+   &quot;gene&quot;: &quot;KRAS_G12C&quot;,
+   &quot;evidence&quot;: 0.87
+  }
+ },
+ {
+  &quot;artifact_id&quot;: &quot;ind-1&quot;,
+  &quot;kind&quot;: &quot;trial_protocol&quot;,
+  &quot;uri&quot;: &quot;mem://campaign-root/ind&quot;,
+  &quot;sha256&quot;: null,
+  &quot;metadata&quot;: {
+   &quot;candidate&quot;: &quot;CCCCCO&quot;,
+   &quot;mpo&quot;: 0.81,
+   &quot;phases&quot;: [
+    {
+     &quot;phase&quot;: 1,
+     &quot;n&quot;: 60,
+     &quot;objective&quot;: &quot;safety/PK&quot;,
+     &quot;go&quot;: &quot;MTD established, half-life &gt;= 6h&quot;
+    },
+    {
+     &quot;phase&quot;: 2,
+     &quot;n&quot;: 150,
+     &quot;objective&quot;: &quot;PoC&quot;,
+     &quot;go&quot;: &quot;&gt;= </pre></div>
+  <p class="eyebrow" style="margin-top:32px">generated by bionexus · records are hash-chained (sha256), tamper-evident</p>
+</div></body></html>

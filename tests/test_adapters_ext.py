@@ -334,3 +334,36 @@ def test_imaging_lab_dose_response_monotonic(tmp_path):
     ic50 = true_ic50_um(9, "C1")
     responses = [hill_response(c, ic50) for c in concs]
     assert all(b >= a for a, b in zip(responses, responses[1:])), "Hill curve is monotonic"
+
+
+# ---- device sims (numpy extra) ------------------------------------------------------
+
+def test_liquid_handler_low_volume_and_carryover(tmp_path):
+    np = pytest.importorskip("numpy")
+    from bionexus.adapters.lab.devices import LiquidHandlerSim
+    from bionexus.core.contracts import ProtocolOp as PO
+
+    lh = LiquidHandlerSim(seed=3)
+    steps = [ProtocolStep(seq=1, op=PO.dispense, params={"volume_ul": 100}),
+             ProtocolStep(seq=2, op=PO.dispense, params={"volume_ul": 1})]
+    proto = ProtocolSubmission(envelope=env(), title="lh", assay_type="binding",
+                               steps=steps,
+                               samples=[SampleSpec(sample_id="C1", kind=SampleKind.compound)],
+                               reagents=[ReagentSpec(name="b", amount="1 mL", bsl_level=1)])
+    res = lh.execute(proto)
+    t1, t2 = res["transfers"]
+    assert abs(t1["error_percent"]) < 10
+    assert t2["below_spec"] and t2["error_percent"] < 0  # systematic under-delivery
+
+
+def test_sequencer_calls_planted_mutation(tmp_path):
+    pytest.importorskip("numpy")
+    from bionexus.adapters.lab.devices import SequencerSim
+
+    seq = SequencerSim(seed=2)
+    ref = "ACGT" * 15
+    out = seq.sequence("s1", ref, [(20, "T")], coverage=30)
+    calls = SequencerSim.call_variants(out["fastq"], ref)
+    assert any(c["position"] == 20 and c["alt"] == "T" and c["fraction"] > 0.8
+               for c in calls), "planted mutation must be recovered"
+    assert all(c["position"] != 5 for c in calls), "no spurious high-freq calls"
