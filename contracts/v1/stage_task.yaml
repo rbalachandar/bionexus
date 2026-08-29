@@ -1,0 +1,96 @@
+openapi: 3.1.0
+info:
+  title: StageTask / StageResult
+  version: 1.0.0
+  description: >
+    Orchestration (Block A) -> Agents (Block B). Async, idempotent, resumable.
+    Agents must tolerate redelivery; results are keyed by task_id.
+paths: {}
+components:
+  schemas:
+    StageTask:
+      type: object
+      required: [envelope, task_id, stage, attempt, input_artifacts]
+      properties:
+        envelope:
+          $ref: envelope.yaml#/components/schemas/Envelope
+        task_id:
+          type: string
+          format: uuid
+          description: Idempotency key; redelivered tasks with the same id are deduped.
+        stage:
+          $ref: "#/components/schemas/StageName"
+        attempt:
+          type: integer
+          minimum: 1
+        deadline:
+          type: string
+          format: date-time
+        sandbox_template:
+          type: string
+          description: AgentENV template id for the agent's rootfs (e.g. agent-chemist@3).
+        gate_after:
+          $ref: "#/components/schemas/GateType"
+        input_artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactRef"
+        context:
+          type: object
+          description: Stage-specific free-form context (schema fixed per stage).
+          additionalProperties: true
+
+    StageResult:
+      type: object
+      required: [envelope, task_id, status, output_artifacts]
+      properties:
+        envelope:
+          $ref: envelope.yaml#/components/schemas/Envelope
+        task_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [succeeded, failed_retryable, failed_terminal, needs_human]
+        output_artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactRef"
+        next_round_proposals:
+          type: array
+          description: Analysis-agent proposals that feed the active learning loop.
+          items:
+            type: object
+            additionalProperties: true
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            retryable: { type: boolean }
+
+    StageName:
+      type: string
+      enum: [target_id, hit_generation, lead_optimization, preclinical, trial_design]
+
+    GateType:
+      type: string
+      enum:
+        - approve_candidate_batch
+        - approve_wetlab_protocol
+        - approve_trial_protocol
+        - arbitrary_redirect
+
+    ArtifactRef:
+      type: object
+      required: [artifact_id, kind, uri, sha256]
+      properties:
+        artifact_id: { type: string }
+        kind:
+          type: string
+          enum: [target_dossier, molecule, biologic, protocol, assay_result, trial_protocol, report, other]
+        uri: { type: string }
+        sha256: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true

@@ -11,13 +11,15 @@ each block then builds independently against stubs.
 | `AssayResult` | Telemetry (D) → A/Analysis (B) | normalized results + QC + lineage |
 | `ProvenanceRecord` | everything → Provenance Store (A) | immutable lineage entry |
 
-## Status
+Draft OpenAPI 3.1 schemas live under [`v1/`](v1/) (all validate as YAML;
+`$ref` to `envelope.yaml` for the shared envelope):
 
-- [ ] `StageTask` — draft
-- [ ] `ToolInvocation` — draft
-- [ ] `ProtocolSubmission` — draft
-- [ ] `AssayResult` — draft
-- [ ] `ProvenanceRecord` — draft
+- [x] `envelope.yaml` — shared Envelope + ID conventions
+- [x] `stage_task.yaml` — `StageTask` / `StageResult`
+- [x] `tool_invocation.yaml` — `ToolInvocation` / `ToolResult` (+ tool name registry)
+- [x] `protocol_submission.yaml` — `ProtocolSubmission`
+- [x] `assay_result.yaml` — `AssayResult`
+- [x] `provenance_record.yaml` — `ProvenanceRecord`
 
 ## Conventions
 

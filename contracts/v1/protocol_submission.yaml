@@ -1,0 +1,89 @@
+openapi: 3.1.0
+info:
+  title: ProtocolSubmission
+  version: 1.0.0
+  description: >
+    Assay Planning Agent (Block B) -> Protocol Compiler (Block D). Abstract,
+    instrument-independent wet-lab protocol.
+paths: {}
+components:
+  schemas:
+    ProtocolSubmission:
+      type: object
+      required: [envelope, protocol_id, title, steps, samples]
+      properties:
+        envelope:
+          $ref: envelope.yaml#/components/schemas/Envelope
+        protocol_id:
+          type: string
+          format: uuid
+        title: { type: string }
+        assay_type:
+          type: string
+          enum: [binding, enzymatic, cytotoxicity, adme, pcr, sequencing, plate_reader, custom]
+        priority:
+          type: string
+          enum: [low, normal, high]
+        steps:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ProtocolStep"
+        samples:
+          type: array
+          items:
+            $ref: "#/components/schemas/SampleSpec"
+        reagents:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReagentSpec"
+        controls:
+          type: array
+          items: { type: string }
+          description: Required control conditions (positive, negative, reference).
+        constraints:
+          type: object
+          additionalProperties: true
+          description: BSL level, throughput limits, deadline, etc.
+
+    ProtocolStep:
+      type: object
+      required: [seq, op]
+      properties:
+        seq: { type: integer, minimum: 1 }
+        op:
+          type: string
+          enum: [dispense, mix, incubate, transfer, measure, centrifuge, heat, plate, sequence, wait]
+        params:
+          type: object
+          description: Operation-specific (volume_ul, temp_c, duration_s, source, dest...).
+          additionalProperties: true
+        depends_on:
+          type: array
+          items: { type: integer }
+          description: Step sequences that must complete first.
+
+    SampleSpec:
+      type: object
+      required: [sample_id, kind]
+      properties:
+        sample_id: { type: string }
+        kind:
+          type: string
+          enum: [compound, protein, cell_line, nucleic_acid, buffer, other]
+        candidate_artifact_id:
+          type: string
+          description: Link to the molecule/biologic ArtifactRef from Block B.
+        concentration: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+
+    ReagentSpec:
+      type: object
+      required: [name, amount]
+      properties:
+        name: { type: string }
+        amount: { type: string }
+        lot: { type: string }
+        bsl_level: { type: integer, minimum: 1, maximum: 4 }
