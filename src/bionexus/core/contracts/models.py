@@ -162,6 +162,7 @@ class AssayType(str, Enum):
     binding = "binding"
     enzymatic = "enzymatic"
     cytotoxicity = "cytotoxicity"
+    counterscreen = "counterscreen"
     adme = "adme"
     pcr = "pcr"
     sequencing = "sequencing"

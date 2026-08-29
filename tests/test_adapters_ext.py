@@ -165,3 +165,41 @@ def test_hypothesis_lifecycle_recorded(tmp_path):
     events = [r.event_type.value for r in store.branch_records(h.branch_id)]
     assert events == ["hypothesis_proposed", "hypothesis_tested",
                       "hypothesis_validated" if h.status == "validated" else "hypothesis_invalidated"]
+
+
+# ---- domain realism: dose-response, counterscreen, MPO ------------------------
+
+def test_dose_response_monotonic_and_ic50_present():
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    lab = SimulatorLab(seed=11)
+    p = ProtocolSubmission(
+        envelope=env(), title="dr", assay_type="binding",
+        steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense)],
+        samples=[SampleSpec(sample_id="C1", kind=SampleKind.compound, concentration=c)
+                 for c in ["1uM", "5uM", "25uM", "50uM"]],
+    )
+    r = lab.fetch_results(lab.submit_protocol(p))
+    vals = [m.value for m in r.measurements]
+    assert all(v2 >= v1 - 6 for v1, v2 in zip(vals, vals[1:])), "response grows with dose"
+    assert all("ic50_um" in m.derived_metrics for m in r.measurements)
+
+
+def test_countscreen_flags_interferers():
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    lab = SimulatorLab(seed=11)
+    comps = [f"X{i}" for i in range(12)]
+    p = ProtocolSubmission(
+        envelope=env(), title="cs", assay_type="counterscreen",
+        steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense)],
+        samples=[SampleSpec(sample_id=c, kind=SampleKind.compound, concentration="10uM") for c in comps],
+    )
+    r = lab.fetch_results(lab.submit_protocol(p))
+    by = {m.sample_id: m.value for m in r.measurements}
+    hits = [c for c, v in by.items() if v > 20]
+    assert hits, "seeded interference should catch some compounds"
+
+
+def test_mpo_score_bounds():
+    from examples.full_campaign import mpo_score
+    assert mpo_score(0.1, 1.0, 0.9, True) > mpo_score(25.0, 0.2, 0.3, False)
+    assert 0.0 <= mpo_score(50, 0.1, 0.1, False) <= 1.0

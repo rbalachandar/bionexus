@@ -15,29 +15,63 @@ from bionexus.core.contracts import (
     Envelope,
     InstrumentInfo,
     Measurement,
+    MeasurementFlag,
     ProtocolSubmission,
     RunStatus,
 )
 
-# assay -> (baseline_value, unit, noise_std)
+# assay -> (max_response, unit, noise_std)
 ASSAY_PROFILE: dict[str, tuple[float, str, float]] = {
-    "binding": (62.0, "percent_inhibition", 8.0),
-    "enzymatic": (55.0, "percent_inhibition", 10.0),
-    "cytotoxicity": (40.0, "percent_viability", 12.0),
+    "binding": (100.0, "percent_inhibition", 4.0),
+    "enzymatic": (100.0, "percent_inhibition", 5.0),
+    "cytotoxicity": (100.0, "percent_viability_loss", 6.0),
+    "counterscreen": (100.0, "percent_interference", 3.0),
     "adme": (70.0, "permeability_score", 9.0),
     "plate_reader": (60.0, "od450", 0.15),
     "custom": (50.0, "signal", 10.0),
 }
 
+DOSE_RESPONSE_ASSAYS = {"binding", "enzymatic", "cytotoxicity", "counterscreen"}
+
+
+def parse_concentration_um(conc: str | None, default_um: float = 10.0) -> float:
+    """Parse '10uM'/'500nM'/None -> micromolar."""
+    if not conc:
+        return default_um
+    c = conc.strip().lower()
+    if c.endswith("nm"):
+        return float(c[:-2]) / 1000.0
+    if c.endswith("um"):
+        return float(c[:-2])
+    if c.endswith("mm"):
+        return float(c[:-2]) * 1000.0
+    try:
+        return float(c)
+    except ValueError:
+        return default_um
+
 
 class SimulatorLab:
+    """Virtual lab with realistic assay semantics (P4/P8):
+
+    - Dose–response: repeated sample_ids at increasing concentrations produce a
+      Hill curve; `ic50_um` is reported in derived_metrics.
+    - Replicates: repeated (sample_id, concentration) pairs are independent
+      draws; median is the reported value.
+    - Counterscreens: 'counterscreen' assay flags assay-interference artifacts
+      (PAINS-like): a seeded fraction of compounds shows false signal.
+    """
+
     name = "simulator"
 
-    def __init__(self, seed: int = 7, instruments: dict[str, Any] | None = None):
+    def __init__(self, seed: int = 7, instruments: dict[str, Any] | None = None,
+                 replicates: int = 3, interference_rate: float = 0.25):
         self.seed = seed
+        self.replicates = replicates
+        self.interference_rate = interference_rate
         self._runs: dict[str, ProtocolSubmission] = {}
         self._capabilities = instruments or {
-            "assays": ["binding", "enzymatic", "cytotoxicity", "adme", "plate_reader"],
+            "assays": ["binding", "enzymatic", "cytotoxicity", "counterscreen", "adme"],
             "throughput": {"plates_per_day": 20},
             "bsl_max": 2,
         }
@@ -53,28 +87,61 @@ class SimulatorLab:
     def get_status(self, run_id: str) -> str:
         return "done" if run_id in self._runs else "failed"
 
+    # -- per-compound ground truth (seeded, stable across runs) ----------------
+
+    def _compound_key(self, protocol_id: str, sample_id: str) -> int:
+        material = f"{self.seed}:{protocol_id}:{sample_id}".encode()
+        return int(hashlib.sha256(material).hexdigest()[:8], 16)
+
+    def true_ic50_um(self, protocol_id: str, sample_id: str) -> float:
+        """Seeded true potency for a compound in this protocol's assay family."""
+        key = self._compound_key(protocol_id, sample_id)
+        return 0.5 + (key % 1000) / 1000.0 * 49.5  # 0.5 – 50 uM
+
+    def is_interferer(self, protocol_id: str, sample_id: str) -> bool:
+        key = self._compound_key(protocol_id, sample_id)
+        return (key % 100) < self.interference_rate * 100
+
     def fetch_results(self, run_id: str) -> AssayResult:
         protocol = self._runs[run_id]
-        base, unit, noise = ASSAY_PROFILE.get(protocol.assay_type.value, ASSAY_PROFILE["custom"])
+        assay = protocol.assay_type.value
+        max_resp, unit, noise = ASSAY_PROFILE.get(assay, ASSAY_PROFILE["custom"])
         measurements: list[Measurement] = []
         controls_passed = True
-        for i, sample in enumerate(protocol.samples):
-            rng = random.Random(self._sample_seed(run_id, sample.sample_id))
-            value = base * (0.7 + 0.6 * rng.random()) + rng.gauss(0, noise)
+
+        # group wells: (sample_id, concentration) -> replicate draws
+        for sample in protocol.samples:
             is_control = sample.kind.value == "buffer" or sample.sample_id.startswith("ctrl")
+            conc = parse_concentration_um(sample.concentration)
+            ic50 = self.true_ic50_um(run_id, sample.sample_id)
+            draws = []
+            for rep in range(1, self.replicates + 1):
+                rng = random.Random(self._compound_key(run_id + f"r{rep}", sample.sample_id + str(conc)))
+                value = self._response(assay, max_resp, conc, ic50, sample.sample_id, run_id)
+                value += rng.gauss(0, noise)
+                draws.append(value)
+            value = sorted(draws)[len(draws) // 2]  # median of replicates
+            flags: list[MeasurementFlag] = []
             if is_control:
-                value = base
-                if value < base * 0.5:
+                value = 0.0 if assay != "plate_reader" else value
+                flags.append(MeasurementFlag.control)
+                if assay == "counterscreen" and value > 20:
                     controls_passed = False
+            derived: dict[str, float] = {}
+            if assay in DOSE_RESPONSE_ASSAYS and not is_control:
+                derived["ic50_um"] = round(ic50, 3)
+                derived["conc_um"] = conc
             measurements.append(
                 Measurement(
                     sample_id=sample.sample_id,
-                    well=f"A{i + 1}" if not is_control else f"CTRL{i + 1}",
-                    assay_type=protocol.assay_type.value,
+                    well=f"{sample.sample_id[:4]}-{conc:g}uM",
+                    assay_type=assay,
                     value=round(value, 3),
                     unit=unit,
-                    uncertainty=round(noise / 2, 3),
-                    flags=["control"] if is_control else [],
+                    uncertainty=round(noise, 3),
+                    replicate=self.replicates,
+                    derived_metrics=derived,
+                    flags=flags,
                 )
             )
         return AssayResult(
@@ -86,9 +153,13 @@ class SimulatorLab:
             qc={"controls_passed": controls_passed},
         )
 
+    def _response(self, assay: str, max_resp: float, conc: float, ic50: float,
+                  sample_id: str, run_id: str) -> float:
+        """Hill curve (n=1): response = max / (1 + IC50/C). Counterscreen is not
+        dose-dependent: interferers (PAINS-like) show high artifact signal."""
+        if assay == "counterscreen":
+            return max_resp * 0.9 if self.is_interferer(run_id, sample_id) else max_resp * 0.02
+        return max_resp / (1.0 + ic50 / max(conc, 1e-6))
+
     def cancel(self, run_id: str) -> None:
         self._runs.pop(run_id, None)
-
-    def _sample_seed(self, run_id: str, sample_id: str) -> int:
-        material = f"{self.seed}:{run_id}:{sample_id}".encode()
-        return int(hashlib.sha256(material).hexdigest()[:8], 16)
