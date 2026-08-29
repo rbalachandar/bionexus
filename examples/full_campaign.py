@@ -52,6 +52,23 @@ SEED = 42
 CONCS = ["0.5uM", "2uM", "10uM", "40uM"]  # dose–response series
 
 
+def fit_ic50(points: list[tuple[float, float]]) -> float:
+    """Coarse IC50 (uM): concentration nearest 50% of max observed response."""
+    if not points:
+        return float("inf")
+    top = max(v for _, v in points)
+    if top <= 1.0:
+        return float("inf")
+    target = top / 2.0
+    pts = sorted(points)
+    for i in range(1, len(pts)):
+        (c0, v0), (c1, v1) = pts[i - 1], pts[i]
+        if v0 <= target <= v1:
+            frac = 0.0 if v1 == v0 else (target - v0) / (v1 - v0)
+            return c0 + frac * (c1 - c0)
+    return float("inf") if pts[-1][1] < target else pts[-1][0]
+
+
 def main() -> None:
     store = SqliteProvenanceStore("campaign.db")
     actor: Actor = system_actor("campaign-sim")
@@ -110,22 +127,6 @@ def main() -> None:
                 (parse_concentration_um(m.well.split("-")[-1]), m.value))
         return {"run_id": run_id, "protocol": protocol, "result": result,
                 "by_compound": by_compound}
-
-    def fit_ic50(points: list[tuple[float, float]]) -> float:
-        """Coarse IC50 (uM): concentration nearest 50% of max observed response."""
-        if not points:
-            return float("inf")
-        top = max(v for _, v in points)
-        if top <= 1.0:
-            return float("inf")
-        target = top / 2.0
-        pts = sorted(points)
-        for i in range(1, len(pts)):
-            (c0, v0), (c1, v1) = pts[i - 1], pts[i]
-            if v0 <= target <= v1:
-                frac = 0.0 if v1 == v0 else (target - v0) / (v1 - v0)
-                return c0 + frac * (c1 - c0)
-        return float("inf") if pts[-1][1] < target else pts[-1][0]
 
     # ------------------------------------------------- 0. Target ID + validation
     stage("target_id", "disease association, target validation, druggability")

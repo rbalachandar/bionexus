@@ -203,3 +203,50 @@ def test_mpo_score_bounds():
     from examples.full_campaign import mpo_score
     assert mpo_score(0.1, 1.0, 0.9, True) > mpo_score(25.0, 0.2, 0.3, False)
     assert 0.0 <= mpo_score(50, 0.1, 0.1, False) <= 1.0
+
+
+# ---- MCP server ------------------------------------------------------------------
+
+def test_mcp_session_initialize_and_tools():
+    from bionexus.mcp_server import McpSession
+
+    s = McpSession()
+    init = s.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+    assert init["result"]["serverInfo"]["name"] == "bionexus"
+    tools = s.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+    names = {t["name"] for t in tools["result"]["tools"]}
+    assert {"generate_candidates", "run_assay", "propose_hypothesis", "list_lab_capabilities"} <= names
+
+
+def test_mcp_tool_calls():
+    from bionexus.mcp_server import McpSession
+
+    s = McpSession()
+    call = lambda n, a: s.handle({"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                                  "params": {"name": n, "arguments": a}})["result"]["content"][0]["text"]
+    gen = json.loads(call("generate_candidates", {"target": "KRAS_G12C", "n": 2}))
+    assert len(gen) == 2
+    assay = json.loads(call("run_assay", {"compounds": ["CCO"], "assay": "binding"}))
+    assert assay["results"]["CCO"]["ic50_um"] is not None
+    hyp = json.loads(call("propose_hypothesis",
+                          {"statement": "CCO >= 50 binding", "candidate": "CCO",
+                           "assay_type": "binding", "predicted": ">= 50"}))
+    assert hyp["status"] == "proposed"
+    caps = json.loads(call("list_lab_capabilities", {}))
+    assert "binding" in caps["assays"]
+    err = s.handle({"jsonrpc": "2.0", "id": 4, "method": "nope"})
+    assert err["error"]["code"] == -32601
+
+
+# ---- HTML report -------------------------------------------------------------------
+
+def test_report_html(tmp_path):
+    import subprocess, sys
+    subprocess.run([sys.executable, "examples/full_campaign.py"], capture_output=True)
+    out = tmp_path / "report.html"
+    r = subprocess.run([sys.executable, "-m", "bionexus.cli", "prove", "campaign-root",
+                        "--db", "campaign.db", "--html", str(out)], capture_output=True, text=True)
+    assert out.exists()
+    html = out.read_text()
+    assert "chain intact" in r.stdout and "ok" in html
+    assert "hypothesis" in html and "BioNexus" in html

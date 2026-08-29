@@ -126,12 +126,27 @@ def cmd_prove(args: argparse.Namespace) -> int:
         print(f"no records for branch '{args.branch}' in {args.db}")
         return 1
     prev_ok = True
+    prev_hash = None
     for r in records:
-        link = "ok" if r.prev_record_hash is None or r.prev_record_hash else "BROKEN"
-        prev_ok &= link == "ok"
+        ok = r.prev_record_hash == prev_hash
+        prev_ok &= ok
+        prev_hash = r.record_hash
         print(f"{r.envelope.created_at:>14.0f}  {r.event_type.value:<18} "
-              f"hash={r.record_hash[:12]}… prev={'genesis' if not r.prev_record_hash else r.prev_record_hash[:12] + '…'} [{link}]")
+              f"hash={r.record_hash[:12]}… prev={'genesis' if not r.prev_record_hash else r.prev_record_hash[:12] + '…'} "
+              f"[{'ok' if ok else 'BROKEN'}]")
     print(f"chain intact: {prev_ok} ({len(records)} records)")
+    if args.html:
+        from bionexus.report import write_report
+
+        path = write_report(records, args.html)
+        print(f"report: {path}")
+    return 0
+
+
+def cmd_mcp(args: argparse.Namespace) -> int:
+    from bionexus.mcp_server import serve
+
+    serve()
     return 0
 
 
@@ -149,7 +164,12 @@ def main(argv: list[str] | None = None) -> int:
     prove = sub.add_parser("prove", help="print provenance chain for a branch")
     prove.add_argument("branch")
     prove.add_argument("--db", default="bionexus.db")
+    prove.add_argument("--html", metavar="PATH",
+                       help="also write a self-contained HTML report")
     prove.set_defaults(func=cmd_prove)
+
+    mcp = sub.add_parser("mcp", help="serve BioNexus tools over MCP (stdio)")
+    mcp.set_defaults(func=cmd_mcp)
 
     args = parser.parse_args(argv)
     try:

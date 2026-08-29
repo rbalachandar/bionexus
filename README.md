@@ -23,10 +23,22 @@ hash-chained provenance. See [`docs/PLAN.md`](docs/PLAN.md) for the full build p
 **CLI:**
 
 ```sh
-bn run examples/workflow.yml   # tournament + assay on the configured lab
-bn sim                         # reference round on the virtual lab
-bn prove <branch>              # tamper-evident provenance chain
+bn run examples/workflow.yml       # tournament + assay on the configured lab
+bn sim                             # reference round on the virtual lab
+bn prove <branch> --html out.html  # tamper-evident provenance + shareable report
+bn mcp                             # MCP server: drive BioNexus from Claude/Cursor
 ```
+
+**Works with Claude / Cursor / any MCP client** — add to your MCP config:
+
+```json
+{"bionexus": {"command": "bn", "args": ["mcp"]}}
+```
+
+Exposes `generate_candidates`, `run_assay` (dose-response + IC50),
+`propose_hypothesis`, and `list_lab_capabilities` as agent tools.
+
+**Tutorials:** [`notebooks/`](notebooks/) — run a campaign · write an adapter · bring your own model.
 
 | Doc | Contents |
 |---|---|
