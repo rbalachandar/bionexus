@@ -250,3 +250,25 @@ def test_report_html(tmp_path):
     html = out.read_text()
     assert "chain intact" in r.stdout and "ok" in html
     assert "hypothesis" in html and "BioNexus" in html
+
+
+# ---- benchmark harness (offline fixture) -----------------------------------------
+
+def test_benchmark_harness_offline(tmp_path):
+    from bionexus.benchmark import CharRidgePolicy, MeanPolicy, RandomPolicy, run_benchmark
+
+    class FixtureDataset:
+        name, task = "fixture", "regression"
+
+        def load(self):
+            rng = __import__("random").Random(0)
+            for _ in range(120):
+                n = rng.randint(2, 10)
+                yield "C" * n + "O", float(n) * 0.5 + rng.gauss(0, 0.05)
+
+    ds = FixtureDataset()
+    res = run_benchmark(ds, [RandomPolicy(), MeanPolicy(), CharRidgePolicy(dim=64)],
+                        out=tmp_path / "b.json")
+    assert res["policies"]["char3gram-ridge"]["spearman"] > 0.8, "linear signal must be learnable"
+    assert res["policies"]["random"]["spearman"] < 0.3, "random must be a floor"
+    assert (tmp_path / "b.json").exists()

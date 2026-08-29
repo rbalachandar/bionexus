@@ -46,6 +46,7 @@ Exposes `generate_candidates`, `run_assay` (dose-response + IC50),
 | [`docs/ADAPTERS.md`](docs/ADAPTERS.md) | authoring adapters (labs, models, tools, stores) |
 | [`docs/SAFETY.md`](docs/SAFETY.md) | safety rules, LabGateway, audit trail |
 | [`docs/domain-review.md`](docs/domain-review.md) | flow fidelity review vs. the real drug-discovery cycle |
+| [`docs/benchmarks.md`](docs/benchmarks.md) | public datasets (MoleculeNet, TDC, DOCKSTRING, ProteinGym) + first benchmark results |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
 
 ### Five core interfaces (everything is one of these)
