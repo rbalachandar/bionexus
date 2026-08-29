@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Agentic Drug Discovery — Campaign Pipeline</title>
+<style>
+  :root{
+    --bg:#0a0f14; --grid:#131b23; --paper:#0e151c; --line:#3a4d5c;
+    --ink:#dbe7ee; --dim:#7c92a0;
+    --amber:#e8b04b; --cyan:#5ecbd6; --green:#8fd694; --violet:#b295e0; --red:#e08a7a;
+    --mono:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
+    --sans:'IBM Plex Sans',-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+  body{background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px;padding:48px 24px 80px;}
+  .wrap{max-width:1180px;margin:0 auto;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:36px;}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--dim);margin:0 0 8px;}
+  h1{font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em;}
+  .rev{font-family:var(--mono);font-size:11px;color:var(--dim);text-align:right;line-height:1.6;}
+  .diagram-frame{position:relative;border:1px solid var(--line);background:var(--paper);padding:20px;}
+  .diagram-frame::before,.diagram-frame::after{content:'';position:absolute;width:14px;height:14px;border:1.5px solid var(--dim);}
+  .diagram-frame::before{top:-1px;left:-1px;border-right:none;border-bottom:none;}
+  .diagram-frame::after{bottom:-1px;right:-1px;border-left:none;border-top:none;}
+  svg{display:block;width:100%;height:auto;}
+  .legend{display:flex;gap:22px;flex-wrap:wrap;margin-top:22px;font-family:var(--mono);font-size:11.5px;color:var(--dim);}
+  .legend span{display:inline-flex;align-items:center;gap:8px;}
+  .swatch{width:10px;height:10px;display:inline-block;border-radius:2px;}
+  .caption{margin-top:28px;font-size:13px;line-height:1.7;color:var(--dim);max-width:760px;}
+  .caption b{color:var(--ink);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">Architecture Reference — Diagram 06</p>
+      <h1>Stage Pipeline — Campaign View</h1>
+    </div>
+    <div class="rev">TARGET → HIT → LEAD → PRECLINICAL → TRIAL<br>EACH STAGE = ITERATION-LOOP SUB-DAG</div>
+  </header>
+
+  <div class="diagram-frame">
+    <svg viewBox="0 0 1120 500" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#5a6f7e"/>
+        </marker>
+        <marker id="arrowR" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#e08a7a"/>
+        </marker>
+      </defs>
+
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="40" y="90" width="180" height="110" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
+        <text x="130" y="122" text-anchor="middle" font-size="14" fill="#d3f0d6" font-weight="600">Target ID</text>
+        <text x="130" y="142" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">triage · dossier</text>
+        <text x="130" y="158" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">literature + omics agents</text>
+
+        <rect x="260" y="90" width="180" height="110" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
+        <text x="350" y="122" text-anchor="middle" font-size="14" fill="#d3f0d6" font-weight="600">Hit Generation</text>
+        <text x="350" y="142" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">FM-driven design</text>
+        <text x="350" y="158" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">hypothesis tournament</text>
+
+        <rect x="480" y="90" width="180" height="110" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
+        <text x="570" y="122" text-anchor="middle" font-size="14" fill="#d3f0d6" font-weight="600">Lead Optimization</text>
+        <text x="570" y="142" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">multi-property round loop</text>
+        <text x="570" y="158" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">fork per assay hypothesis</text>
+
+        <rect x="700" y="90" width="180" height="110" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
+        <text x="790" y="122" text-anchor="middle" font-size="14" fill="#d3f0d6" font-weight="600">Preclinical</text>
+        <text x="790" y="142" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">wet-lab assays · ADMET · tox</text>
+        <text x="790" y="158" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">flywheel ground truth</text>
+
+        <rect x="920" y="90" width="160" height="110" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
+        <text x="1000" y="122" text-anchor="middle" font-size="14" fill="#d3f0d6" font-weight="600">Trial Design</text>
+        <text x="1000" y="142" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">population simulation</text>
+        <text x="1000" y="158" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">endpoint power analysis</text>
+      </g>
+
+      <line x1="220" y1="145" x2="258" y2="145" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <line x1="440" y1="145" x2="478" y2="145" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <line x1="660" y1="145" x2="698" y2="145" stroke="#5a6f7e" stroke-width="1.4" marker="url(#arrow)" marker-end="url(#arrow)"/>
+      <line x1="880" y1="145" x2="918" y2="145" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+      <!-- IND -->
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="920" y="250" width="160" height="60" rx="30" fill="#12101a" stroke="#b295e0" stroke-opacity="0.8"/>
+        <text x="1000" y="286" text-anchor="middle" font-size="14" fill="#e2d4f3" font-weight="600">IND package</text>
+      </g>
+      <line x1="1000" y1="200" x2="1000" y2="248" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+      <!-- failure loops -->
+      <path d="M570,200 L570,250 L350,250 L350,202" fill="none" stroke="#e08a7a" stroke-width="1.3" stroke-dasharray="5 3" marker-end="url(#arrowR)"/>
+      <text x="372" y="240" font-size="10" font-family="IBM Plex Mono, monospace" fill="#e08a7a">fails criteria → back to hit generation</text>
+      <path d="M790,200 L790,300 L570,300 L570,202" fill="none" stroke="#e08a7a" stroke-width="1.3" stroke-dasharray="5 3" marker-end="url(#arrowR)"/>
+      <text x="600" y="290" font-size="10" font-family="IBM Plex Mono, monospace" fill="#e08a7a">fails criteria → back to lead optimization</text>
+
+      <!-- gates under each stage -->
+      <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#a8946a">
+        <text x="130" y="240" text-anchor="middle">gate: dossier review</text>
+        <text x="350" y="240" text-anchor="middle">gate: candidate batch</text>
+        <text x="570" y="240" text-anchor="middle">gate: lead series</text>
+        <text x="790" y="240" text-anchor="middle">gate: wet-lab protocol</text>
+        <text x="1000" y="240" text-anchor="middle">gate: trial protocol</text>
+      </g>
+      <g>
+        <line x1="130" y1="200" x2="130" y2="226" stroke="#445562" stroke-width="1" stroke-dasharray="2 3"/>
+        <line x1="350" y1="200" x2="350" y2="226" stroke="#445562" stroke-width="1" stroke-dasharray="2 3"/>
+        <line x1="570" y1="200" x2="570" y2="226" stroke="#445562" stroke-width="1" stroke-dasharray="2 3"/>
+        <line x1="790" y1="200" x2="790" y2="226" stroke="#445562" stroke-width="1" stroke-dasharray="2 3"/>
+        <line x1="1000" y1="200" x2="1000" y2="226" stroke="#445562" stroke-width="1" stroke-dasharray="2 3"/>
+      </g>
+
+      <!-- iteration note -->
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="40" y="360" width="1040" height="90" fill="none" stroke="#5ecbd6" stroke-width="1.2" stroke-opacity="0.5" rx="2"/>
+        <text x="56" y="388" font-family="IBM Plex Mono, monospace" font-size="11" letter-spacing="1.5" fill="#5ecbd6">EACH STAGE MAPS TO A STAGE-GRAPH SUB-DAG</text>
+        <text x="90" y="418" font-size="13" fill="#dbe7ee">The stage runs the design-iteration loop (Diagram 02) until <tspan font-weight="600" fill="#c9edf1">stage-exit criteria</tspan> are met or a human intervenes.</text>
+        <text x="90" y="440" font-size="13" fill="#dbe7ee">Within each round, candidates compete in the hypothesis tournament (Diagram 03); results feed the flywheel.</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><i class="swatch" style="background:#8fd694"></i>Pipeline stages</span>
+    <span><i class="swatch" style="background:#e8b04b"></i>Human gates</span>
+    <span><i class="swatch" style="background:#e08a7a"></i>Failure loops</span>
+    <span><i class="swatch" style="background:#b295e0"></i>Output package</span>
+  </div>
+
+  <p class="caption">
+    A discovery <b>campaign</b>: each stage is a Stage-Graph sub-DAG running the active-learning loop until
+    exit criteria pass. <b>Human gates</b> sit after every stage (sandbox paused at each). Failure loops
+    return to earlier stages with the failing evidence attached — never a silent restart.
+  </p>
+</div>
+</body>
+</html>

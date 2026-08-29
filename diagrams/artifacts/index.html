@@ -1,35 +1,51 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agentic Drug Discovery — Diagram Artifacts</title>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Agentic Drug Discovery — Architecture Diagrams</title>
 <style>
-  * { box-sizing: border-box; }
-  body { margin:0; background:#faf9f5; color:#3d3929;
-    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-    display:flex; justify-content:center; }
-  main { width:min(980px, 96vw); padding:48px 0; }
-  h1 { font-size:26px; letter-spacing:-0.01em; margin:0 0 6px; }
-  p.sub { color:#8a7f6a; margin:0 0 36px; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
-  .card { display:flex; flex-direction:column; gap:8px; background:#fff;
-    border:1px solid #e8e2d6; border-radius:14px; padding:22px;
-    text-decoration:none; color:inherit; transition:box-shadow .15s, transform .15s; }
-  .card:hover { box-shadow:0 6px 20px rgba(60,50,30,.1); transform:translateY(-2px); }
-  .num { font-size:11px; font-weight:700; color:#a1662f; letter-spacing:.08em; }
-  .t { font-weight:600; font-size:16px; }
-  .s { font-size:13px; color:#8a7f6a; line-height:1.5; }
-</style></head>
-<body><main>
-  <h1>Agentic Drug Discovery</h1>
-  <p class="sub">Architecture diagram artifacts — 8 diagrams</p>
+  :root{
+    --bg:#0a0f14; --grid:#131b23; --paper:#0e151c; --line:#3a4d5c;
+    --ink:#dbe7ee; --dim:#7c92a0;
+    --amber:#e8b04b; --cyan:#5ecbd6; --green:#8fd694; --violet:#b295e0;
+    --mono:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
+    --sans:'IBM Plex Sans',-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+  body{background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px;padding:48px 24px 80px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:36px;}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--dim);margin:0 0 8px;}
+  h1{font-size:28px;font-weight:600;margin:0;letter-spacing:-0.01em;}
+  .sub{color:var(--dim);font-size:14px;margin:8px 0 0;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px;}
+  a.card{display:block;background:var(--paper);border:1px solid var(--line);padding:22px;text-decoration:none;color:inherit;transition:border-color .15s, transform .15s;position:relative;}
+  a.card:hover{border-color:var(--cyan);transform:translateY(-2px);}
+  a.card::before{content:'';position:absolute;top:-1px;left:-1px;width:10px;height:10px;border-top:1.5px solid var(--dim);border-left:1.5px solid var(--dim);}
+  a.card::after{content:'';position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-bottom:1.5px solid var(--dim);border-right:1.5px solid var(--dim);}
+  .num{font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:0.14em;display:block;margin-bottom:10px;}
+  .t{font-weight:600;font-size:16px;display:block;margin-bottom:8px;}
+  .s{font-size:13px;color:var(--dim);line-height:1.6;display:block;}
+  footer{margin-top:40px;font-family:var(--mono);font-size:11px;color:#445562;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Architecture Reference — Index</p>
+    <h1>Agentic Drug Discovery Platform</h1>
+    <p class="sub">Six architecture reference diagrams · source-of-truth in docs/ (Mermaid) · this set is the presentation layer</p>
+  </header>
   <nav class="grid">
-<a class="card" href="00-top-level.html"><span class="num">01</span><span class="t">Platform — Layered View</span><span class="s">L0 Human & Governance → L3 Infrastructure (AgentENV), with the five architectural blocks between.</span></a>
-<a class="card" href="01-iteration-loop.html"><span class="num">02</span><span class="t">Core Flow — Design Iteration Loop</span><span class="s">One active-learning round: target dossier → candidate design → evaluation → human gate → wet lab → analysis.</span></a>
-<a class="card" href="02-branching.html"><span class="num">03</span><span class="t">Experiment Branching — Fork / Snapshot</span><span class="s">AgentENV sandbox lifecycle mapped onto experiment trees: fork per hypothesis, snapshot at review gates, replay for audits.</span></a>
-<a class="card" href="03-wetlab.html"><span class="num">04</span><span class="t">Wet-Lab Round Trip — Hardware in the Loop</span><span class="s">Protocol submission through safety review, instrument scheduling, execution, and telemetry → provenance.</span></a>
-<a class="card" href="04-campaign.html"><span class="num">05</span><span class="t">Stage Pipeline — Campaign View</span><span class="s">Discovery campaign stages, with failure loops feeding earlier stages.</span></a>
-<a class="card" href="05-tournament.html"><span class="num">06</span><span class="t">Hypothesis Tournament — Inside One Design Round</span><span class="s">Generate → Reflect → Rank → Evolve loop (pattern validated by Google's AI co-scientist), with fine-tuning flywheel.</span></a>
-<a class="card" href="06-deployment.html"><span class="num">07</span><span class="t">Deployment View</span><span class="s">AgentENV nodes hosting agent sandboxes, wired to FM gateway, lab fabric, and shared storage.</span></a>
-<a class="card" href="07-lab-pipeline.html"><span class="num">08</span><span class="t">Block D — Lab Execution Pipeline</span><span class="s">Agents only ever see the IAL contract; a safety engine sits outside any agent's trust boundary.</span></a>
+    <a class="card" href="01-layered-view.html"><span class="num">DIAGRAM 01</span><span class="t">Layered View</span><span class="s">L0 governance → L3 infrastructure, with the five architectural blocks between.</span></a>
+    <a class="card" href="02-iteration-loop.html"><span class="num">DIAGRAM 02</span><span class="t">Design Iteration Loop</span><span class="s">One active-learning round: dossier → design → evaluation → gate → wet lab → analysis.</span></a>
+    <a class="card" href="03-tournament.html"><span class="num">DIAGRAM 03</span><span class="t">Hypothesis Tournament</span><span class="s">Generate → Reflect → Rank → Evolve, plus the fine-tuning flywheel.</span></a>
+    <a class="card" href="04-wetlab-roundtrip.html"><span class="num">DIAGRAM 04</span><span class="t">Wet-Lab Round Trip</span><span class="s">Protocol → safety boundary → IAL → instruments → telemetry → provenance.</span></a>
+    <a class="card" href="05-branching.html"><span class="num">DIAGRAM 05</span><span class="t">Fork / Snapshot Branching</span><span class="s">Sandbox lifecycle as experiment tree: fork per hypothesis, snapshot at gates, replay for audits.</span></a>
+    <a class="card" href="06-campaign.html"><span class="num">DIAGRAM 06</span><span class="t">Stage Pipeline — Campaign View</span><span class="s">Target ID → hit → lead → preclinical → trial design, with gates and failure loops.</span></a>
   </nav>
-</main></body></html>
+  <footer>AGENTIC DRUG DISCOVERY · ARCHITECTURE REFERENCE SET · EDIT MERMAID SOURCES IN docs/ — THESE PAGES ARE HAND-DRAWN SVG</footer>
+</div>
+</body>
+</html>

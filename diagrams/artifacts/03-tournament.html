@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Agentic Drug Discovery — Hypothesis Tournament</title>
+<style>
+  :root{
+    --bg:#0a0f14; --grid:#131b23; --paper:#0e151c; --line:#3a4d5c;
+    --ink:#dbe7ee; --dim:#7c92a0;
+    --amber:#e8b04b; --cyan:#5ecbd6; --green:#8fd694; --violet:#b295e0;
+    --mono:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
+    --sans:'IBM Plex Sans',-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+  body{background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px;padding:48px 24px 80px;}
+  .wrap{max-width:1180px;margin:0 auto;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:36px;}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--dim);margin:0 0 8px;}
+  h1{font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em;}
+  .rev{font-family:var(--mono);font-size:11px;color:var(--dim);text-align:right;line-height:1.6;}
+  .diagram-frame{position:relative;border:1px solid var(--line);background:var(--paper);padding:20px;}
+  .diagram-frame::before,.diagram-frame::after{content:'';position:absolute;width:14px;height:14px;border:1.5px solid var(--dim);}
+  .diagram-frame::before{top:-1px;left:-1px;border-right:none;border-bottom:none;}
+  .diagram-frame::after{bottom:-1px;right:-1px;border-left:none;border-top:none;}
+  svg{display:block;width:100%;height:auto;}
+  .legend{display:flex;gap:22px;flex-wrap:wrap;margin-top:22px;font-family:var(--mono);font-size:11.5px;color:var(--dim);}
+  .legend span{display:inline-flex;align-items:center;gap:8px;}
+  .swatch{width:10px;height:10px;display:inline-block;border-radius:2px;}
+  .caption{margin-top:28px;font-size:13px;line-height:1.7;color:var(--dim);max-width:760px;}
+  .caption b{color:var(--ink);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">Architecture Reference — Diagram 03</p>
+      <h1>Hypothesis Tournament</h1>
+    </div>
+    <div class="rev">INSIDE ONE DESIGN ROUND<br>GENERATE → REFLECT → RANK → EVOLVE</div>
+  </header>
+
+  <div class="diagram-frame">
+    <svg viewBox="0 0 1120 640" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#5a6f7e"/>
+        </marker>
+        <marker id="arrowG" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8fd694"/>
+        </marker>
+      </defs>
+
+      <!-- Generate -->
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="70" y="120" width="230" height="96" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
+        <text x="185" y="152" text-anchor="middle" font-size="14" fill="#d3f0d6" font-weight="600">1 · Generate</text>
+        <text x="185" y="172" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">N proposals per round</text>
+        <text x="185" y="188" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">diverse seeds / prompts</text>
+      </g>
+
+      <!-- Reflect -->
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="430" y="120" width="230" height="96" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
+        <text x="545" y="152" text-anchor="middle" font-size="14" fill="#d3f0d6" font-weight="600">2 · Reflect</text>
+        <text x="545" y="172" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">self + cross critique</text>
+        <text x="545" y="188" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">structured review rubric</text>
+      </g>
+
+      <!-- Rank -->
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="790" y="120" width="260" height="96" rx="3" fill="#0f1a1c" stroke="#5ecbd6" stroke-opacity="0.7"/>
+        <text x="920" y="152" text-anchor="middle" font-size="14" fill="#c9edf1" font-weight="600">3 · Rank</text>
+        <text x="920" y="172" text-anchor="middle" font-size="10" fill="#6f9da3" font-family="IBM Plex Mono, monospace">Elo tournament · c.evals.rank_batch</text>
+        <text x="920" y="188" text-anchor="middle" font-size="10" fill="#6f9da3" font-family="IBM Plex Mono, monospace">pairwise debate + meta-reviewer</text>
+      </g>
+
+      <!-- Evolve -->
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="430" y="360" width="230" height="96" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
+        <text x="545" y="392" text-anchor="middle" font-size="14" fill="#d3f0d6" font-weight="600">4 · Evolve</text>
+        <text x="545" y="412" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">mutate / combine top-k</text>
+        <text x="545" y="428" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">losers → ablation provenance</text>
+      </g>
+
+      <!-- cycle arrows -->
+      <line x1="300" y1="168" x2="428" y2="168" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <line x1="660" y1="168" x2="788" y2="168" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <path d="M920,216 L920,408 L662,408" fill="none" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <path d="M430,408 L185,408 L185,218" fill="none" stroke="#8fd694" stroke-width="1.6" marker-end="url(#arrowG)"/>
+      <text x="200" y="330" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="#8fd694">next generation wave</text>
+
+      <!-- exit: ranked batch -->
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="790" y="360" width="260" height="96" rx="3" fill="#12101a" stroke="#b295e0" stroke-opacity="0.7"/>
+        <text x="920" y="392" text-anchor="middle" font-size="14" fill="#e2d4f3" font-weight="600">Ranked Batch — exit</text>
+        <text x="920" y="412" text-anchor="middle" font-size="10" fill="#a189bd" font-family="IBM Plex Mono, monospace">→ in-silico assays / human gate</text>
+        <text x="920" y="428" text-anchor="middle" font-size="10" fill="#a189bd" font-family="IBM Plex Mono, monospace">when round budget is spent</text>
+      </g>
+      <line x1="920" y1="216" x2="920" y2="358" stroke="#445562" stroke-width="1.2" stroke-dasharray="4 3"/>
+      <text x="936" y="300" font-size="10" font-family="IBM Plex Mono, monospace" fill="#7c92a0">budget spent</text>
+
+      <!-- flywheel -->
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="280" y="530" width="560" height="76" rx="3" fill="#1a150e" stroke="#e8b04b" stroke-opacity="0.8"/>
+        <text x="560" y="560" text-anchor="middle" font-size="14" fill="#f2e2b8" font-weight="600">Fine-tuning Flywheel (Block C)</text>
+        <text x="560" y="580" text-anchor="middle" font-size="10" fill="#a8946a" font-family="IBM Plex Mono, monospace">confirmed AssayResults → c.flywheel.submit_example → per-round model variants</text>
+      </g>
+      <line x1="185" y1="500" x2="185" y2="568" stroke="#445562" stroke-width="1.2" stroke-dasharray="4 3"/>
+      <path d="M185,568 L278,568" fill="none" stroke="#445562" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+      <path d="M840,568 L920,568 L920,458" fill="none" stroke="#e8b04b" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <text x="848" y="552" font-size="10" font-family="IBM Plex Mono, monospace" fill="#e8b04b">better models → Generate</text>
+      <text x="120" y="520" font-size="10" font-family="IBM Plex Mono, monospace" fill="#7c92a0">assay ground truth</text>
+
+      <text x="70" y="80" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#445562">
+        TOURNAMENT RUNS INSIDE A FORKED SANDBOX BRANCH — EVERY PROPOSAL'S FULL LINEAGE IS SNAPSHOT-REPLAYABLE
+      </text>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><i class="swatch" style="background:#8fd694"></i>Agent stages</span>
+    <span><i class="swatch" style="background:#5ecbd6"></i>Evaluation harness</span>
+    <span><i class="swatch" style="background:#e8b04b"></i>Fine-tuning flywheel</span>
+    <span><i class="swatch" style="background:#b295e0"></i>Exit to pipeline</span>
+  </div>
+
+  <p class="caption">
+    Pattern validated by Google's <b>AI co-scientist</b>: candidate generation is a tournament, not a
+    single pass. Reflect and Rank use pairwise debates with an Elo-style meta-reviewer; survivors seed the
+    next generation. When the round budget is spent, the ranked batch exits to the next pipeline stage.
+    The <b>flywheel</b> compounds advantage: wet-lab ground truth fine-tunes the models that power the next
+    tournament (Cradle's per-round refit model).
+  </p>
+</div>
+</body>
+</html>
