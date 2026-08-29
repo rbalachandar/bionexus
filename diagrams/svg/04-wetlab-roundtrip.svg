@@ -1,82 +1,82 @@
-<svg width="1120" viewBox="0 0 1120 560" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none" stroke="#1b2733" stroke-width="1"/></pattern></defs><rect x="0" y="0" width="1120" height="560" fill="#111a23"/><rect x="0" y="0" width="1120" height="560" fill="url(#grid)"/>
+<svg width="1120" viewBox="0 0 1120 560" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none" stroke="#e3ded2" stroke-width="1"/></pattern></defs><rect x="0" y="0" width="1120" height="560" fill="#f3f1ea"/><rect x="0" y="0" width="1120" height="560" fill="url(#grid)"/>
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 z" fill="#5a6f7e"/>
+          <path d="M0,0 L10,5 L0,10 z" fill="#6b6558"/>
         </marker>
         <marker id="arrowR" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 z" fill="#e08a7a"/>
+          <path d="M0,0 L10,5 L0,10 z" fill="#b05a48"/>
         </marker>
       </defs>
 
       
       <g font-family="IBM Plex Sans, sans-serif">
-        <rect x="40" y="70" width="220" height="90" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
-        <text x="150" y="102" text-anchor="middle" font-size="14" fill="#d3f0d6" font-weight="600">Assay Planning Agent</text>
-        <text x="150" y="122" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">in sandbox (Block B)</text>
-        <text x="150" y="138" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">ProtocolSubmission</text>
+        <rect x="40" y="70" width="220" height="90" rx="3" fill="#e9f2e6" stroke="#3f8a4a" stroke-opacity="0.7"/>
+        <text x="150" y="102" text-anchor="middle" font-size="14" fill="#2f6b38" font-weight="600">Assay Planning Agent</text>
+        <text x="150" y="122" text-anchor="middle" font-size="10" fill="#4e8a58" font-family="IBM Plex Mono, monospace">in sandbox (Block B)</text>
+        <text x="150" y="138" text-anchor="middle" font-size="10" fill="#4e8a58" font-family="IBM Plex Mono, monospace">ProtocolSubmission</text>
 
-        <rect x="330" y="70" width="220" height="90" rx="3" fill="#0f1a1c" stroke="#5ecbd6" stroke-opacity="0.7"/>
-        <text x="440" y="102" text-anchor="middle" font-size="14" fill="#c9edf1" font-weight="600">Protocol Compiler</text>
-        <text x="440" y="122" text-anchor="middle" font-size="10" fill="#6f9da3" font-family="IBM Plex Mono, monospace">abstract → instrument scripts</text>
-        <text x="440" y="138" text-anchor="middle" font-size="10" fill="#6f9da3" font-family="IBM Plex Mono, monospace">capability validation</text>
+        <rect x="330" y="70" width="220" height="90" rx="3" fill="#e4f1f3" stroke="#1f7a86" stroke-opacity="0.7"/>
+        <text x="440" y="102" text-anchor="middle" font-size="14" fill="#175a64" font-weight="600">Protocol Compiler</text>
+        <text x="440" y="122" text-anchor="middle" font-size="10" fill="#3d7d87" font-family="IBM Plex Mono, monospace">abstract → instrument scripts</text>
+        <text x="440" y="138" text-anchor="middle" font-size="10" fill="#3d7d87" font-family="IBM Plex Mono, monospace">capability validation</text>
 
-        <rect x="620" y="70" width="230" height="90" rx="3" fill="#1a1210" stroke="#e08a7a" stroke-opacity="0.8"/>
-        <text x="735" y="102" text-anchor="middle" font-size="14" fill="#f4cdc4" font-weight="600">Safety &amp; Constraint Engine</text>
-        <text x="735" y="122" text-anchor="middle" font-size="10" fill="#b57a6c" font-family="IBM Plex Mono, monospace">BSL · reagent · combo policy</text>
-        <text x="735" y="138" text-anchor="middle" font-size="10" fill="#b57a6c" font-family="IBM Plex Mono, monospace">outside agent trust boundary</text>
+        <rect x="620" y="70" width="230" height="90" rx="3" fill="#f8e9e5" stroke="#b05a48" stroke-opacity="0.8"/>
+        <text x="735" y="102" text-anchor="middle" font-size="14" fill="#8a4034" font-weight="600">Safety &amp; Constraint Engine</text>
+        <text x="735" y="122" text-anchor="middle" font-size="10" fill="#a05f50" font-family="IBM Plex Mono, monospace">BSL · reagent · combo policy</text>
+        <text x="735" y="138" text-anchor="middle" font-size="10" fill="#a05f50" font-family="IBM Plex Mono, monospace">outside agent trust boundary</text>
       </g>
 
       
-      <path d="M620,115 L440,115 L440,162" fill="none" stroke="#e08a7a" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#arrowR)"/>
-      <text x="490" y="105" font-size="10" font-family="IBM Plex Mono, monospace" fill="#e08a7a">reject + reason → agent revises</text>
-      <path d="M440,196 L440,240 L150,240 L150,162" fill="none" stroke="#e08a7a" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arrowR)"/>
-
-      
-      <g font-family="IBM Plex Sans, sans-serif">
-        <rect x="620" y="260" width="230" height="90" rx="3" fill="#0f1a1c" stroke="#5ecbd6" stroke-opacity="0.7"/>
-        <text x="735" y="292" text-anchor="middle" font-size="14" fill="#c9edf1" font-weight="600">Lab State Manager</text>
-        <text x="735" y="312" text-anchor="middle" font-size="10" fill="#6f9da3" font-family="IBM Plex Mono, monospace">inventory · queue</text>
-        <text x="735" y="328" text-anchor="middle" font-size="10" fill="#6f9da3" font-family="IBM Plex Mono, monospace">chain of custody</text>
-
-        <rect x="330" y="260" width="220" height="90" rx="3" fill="#12101a" stroke="#b295e0" stroke-opacity="0.8"/>
-        <text x="440" y="292" text-anchor="middle" font-size="14" fill="#e2d4f3" font-weight="600">Instrument Abstraction Layer</text>
-        <text x="440" y="312" text-anchor="middle" font-size="10" fill="#a189bd" font-family="IBM Plex Mono, monospace">submit · status · fetch · cancel</text>
-        <text x="440" y="328" text-anchor="middle" font-size="10" fill="#a189bd" font-family="IBM Plex Mono, monospace">the only contract agents see</text>
-      </g>
-
-      <path d="M735,160 L735,258" fill="none" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
-      <text x="752" y="212" font-size="10" font-family="IBM Plex Mono, monospace" fill="#5a6f7e">approved → reserve slot</text>
-      <line x1="620" y1="305" x2="552" y2="305" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <path d="M620,115 L440,115 L440,162" fill="none" stroke="#b05a48" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#arrowR)"/>
+      <text x="490" y="105" font-size="10" font-family="IBM Plex Mono, monospace" fill="#b05a48">reject + reason → agent revises</text>
+      <path d="M440,196 L440,240 L150,240 L150,162" fill="none" stroke="#b05a48" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arrowR)"/>
 
       
       <g font-family="IBM Plex Sans, sans-serif">
-        <rect x="130" y="420" width="240" height="84" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
-        <text x="250" y="450" text-anchor="middle" font-size="13.5" fill="#d3f0d6" font-weight="600">Virtual Lab Simulator</text>
-        <text x="250" y="470" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">simulated instruments · seeded noise</text>
-        <text x="250" y="486" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">zero-change swap with real hardware</text>
+        <rect x="620" y="260" width="230" height="90" rx="3" fill="#e4f1f3" stroke="#1f7a86" stroke-opacity="0.7"/>
+        <text x="735" y="292" text-anchor="middle" font-size="14" fill="#175a64" font-weight="600">Lab State Manager</text>
+        <text x="735" y="312" text-anchor="middle" font-size="10" fill="#3d7d87" font-family="IBM Plex Mono, monospace">inventory · queue</text>
+        <text x="735" y="328" text-anchor="middle" font-size="10" fill="#3d7d87" font-family="IBM Plex Mono, monospace">chain of custody</text>
 
-        <rect x="440" y="420" width="250" height="84" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
-        <text x="565" y="450" text-anchor="middle" font-size="13.5" fill="#d3f0d6" font-weight="600">Physical Instruments</text>
-        <text x="565" y="470" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">robots · plate readers · sequencers</text>
-        <text x="565" y="486" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">cloud labs</text>
-
-        <rect x="770" y="420" width="230" height="84" rx="3" fill="#12101a" stroke="#b295e0" stroke-opacity="0.7"/>
-        <text x="885" y="450" text-anchor="middle" font-size="13.5" fill="#e2d4f3" font-weight="600">Telemetry → Provenance</text>
-        <text x="885" y="470" text-anchor="middle" font-size="10" fill="#a189bd" font-family="IBM Plex Mono, monospace">normalized AssayResult</text>
-        <text x="885" y="486" text-anchor="middle" font-size="10" fill="#a189bd" font-family="IBM Plex Mono, monospace">QC flags + run lineage</text>
+        <rect x="330" y="260" width="220" height="90" rx="3" fill="#efeaf6" stroke="#6a4fa0" stroke-opacity="0.8"/>
+        <text x="440" y="292" text-anchor="middle" font-size="14" fill="#4c3a75" font-weight="600">Instrument Abstraction Layer</text>
+        <text x="440" y="312" text-anchor="middle" font-size="10" fill="#6f5a99" font-family="IBM Plex Mono, monospace">submit · status · fetch · cancel</text>
+        <text x="440" y="328" text-anchor="middle" font-size="10" fill="#6f5a99" font-family="IBM Plex Mono, monospace">the only contract agents see</text>
       </g>
 
-      <path d="M440,350 L440,388 L250,388 L250,418" fill="none" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
-      <line x1="440" y1="350" x2="440" y2="418" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
-      <line x1="690" y1="305" x2="885" y2="305" stroke="#445562" stroke-width="1" stroke-dasharray="3 4"/>
-      <path d="M565,350 L565,388 L565,418" fill="none" stroke="#5a6f7e" stroke-width="1.4"/>
-      <path d="M885,418 L885,388" fill="none" stroke="#5a6f7e" stroke-width="0"/>
-      <path d="M690,462 L768,462" fill="none" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
-      <line x1="770" y1="440" x2="920" y2="340" stroke="#445562" stroke-width="0"/>
-      <path d="M920,418 L1000,340 L1000,320 L910,320" fill="none" stroke="#445562" stroke-width="0"/>
-      <text x="700" y="450" font-size="10" font-family="IBM Plex Mono, monospace" fill="#5a6f7e">raw output</text>
+      <path d="M735,160 L735,258" fill="none" stroke="#6b6558" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <text x="752" y="212" font-size="10" font-family="IBM Plex Mono, monospace" fill="#6b6558">approved → reserve slot</text>
+      <line x1="620" y1="305" x2="552" y2="305" stroke="#6b6558" stroke-width="1.4" marker-end="url(#arrow)"/>
 
-      <text x="40" y="540" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#445562">
+      
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="130" y="420" width="240" height="84" rx="3" fill="#e9f2e6" stroke="#3f8a4a" stroke-opacity="0.7"/>
+        <text x="250" y="450" text-anchor="middle" font-size="13.5" fill="#2f6b38" font-weight="600">Virtual Lab Simulator</text>
+        <text x="250" y="470" text-anchor="middle" font-size="10" fill="#4e8a58" font-family="IBM Plex Mono, monospace">simulated instruments · seeded noise</text>
+        <text x="250" y="486" text-anchor="middle" font-size="10" fill="#4e8a58" font-family="IBM Plex Mono, monospace">zero-change swap with real hardware</text>
+
+        <rect x="440" y="420" width="250" height="84" rx="3" fill="#e9f2e6" stroke="#3f8a4a" stroke-opacity="0.7"/>
+        <text x="565" y="450" text-anchor="middle" font-size="13.5" fill="#2f6b38" font-weight="600">Physical Instruments</text>
+        <text x="565" y="470" text-anchor="middle" font-size="10" fill="#4e8a58" font-family="IBM Plex Mono, monospace">robots · plate readers · sequencers</text>
+        <text x="565" y="486" text-anchor="middle" font-size="10" fill="#4e8a58" font-family="IBM Plex Mono, monospace">cloud labs</text>
+
+        <rect x="770" y="420" width="230" height="84" rx="3" fill="#efeaf6" stroke="#6a4fa0" stroke-opacity="0.7"/>
+        <text x="885" y="450" text-anchor="middle" font-size="13.5" fill="#4c3a75" font-weight="600">Telemetry → Provenance</text>
+        <text x="885" y="470" text-anchor="middle" font-size="10" fill="#6f5a99" font-family="IBM Plex Mono, monospace">normalized AssayResult</text>
+        <text x="885" y="486" text-anchor="middle" font-size="10" fill="#6f5a99" font-family="IBM Plex Mono, monospace">QC flags + run lineage</text>
+      </g>
+
+      <path d="M440,350 L440,388 L250,388 L250,418" fill="none" stroke="#6b6558" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <line x1="440" y1="350" x2="440" y2="418" stroke="#6b6558" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <line x1="690" y1="305" x2="885" y2="305" stroke="#8a8272" stroke-width="1" stroke-dasharray="3 4"/>
+      <path d="M565,350 L565,388 L565,418" fill="none" stroke="#6b6558" stroke-width="1.4"/>
+      <path d="M885,418 L885,388" fill="none" stroke="#6b6558" stroke-width="0"/>
+      <path d="M690,462 L768,462" fill="none" stroke="#6b6558" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <line x1="770" y1="440" x2="920" y2="340" stroke="#8a8272" stroke-width="0"/>
+      <path d="M920,418 L1000,340 L1000,320 L910,320" fill="none" stroke="#8a8272" stroke-width="0"/>
+      <text x="700" y="450" font-size="10" font-family="IBM Plex Mono, monospace" fill="#6b6558">raw output</text>
+
+      <text x="40" y="540" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#8a8272">
         RED DASHED = REJECTION PATH (AGENT REVISES) · SOLID = EXECUTION PATH · ALIGNMENT: MCP + ANTHROPIC MODEL HARDWARE STANDARD
       </text>
     </svg>

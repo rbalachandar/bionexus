@@ -1,76 +1,76 @@
-<svg width="1120" viewBox="0 0 1120 620" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none" stroke="#1b2733" stroke-width="1"/></pattern></defs><rect x="0" y="0" width="1120" height="620" fill="#111a23"/><rect x="0" y="0" width="1120" height="620" fill="url(#grid)"/>
+<svg width="1120" viewBox="0 0 1120 620" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none" stroke="#e3ded2" stroke-width="1"/></pattern></defs><rect x="0" y="0" width="1120" height="620" fill="#f3f1ea"/><rect x="0" y="0" width="1120" height="620" fill="url(#grid)"/>
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 z" fill="#5a6f7e"/>
+          <path d="M0,0 L10,5 L0,10 z" fill="#6b6558"/>
         </marker>
         <marker id="arrowA" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 z" fill="#e8b04b"/>
+          <path d="M0,0 L10,5 L0,10 z" fill="#a97a1c"/>
         </marker>
         <marker id="arrowR" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 z" fill="#e08a7a"/>
+          <path d="M0,0 L10,5 L0,10 z" fill="#b05a48"/>
         </marker>
         <marker id="arrowG" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 z" fill="#8fd694"/>
+          <path d="M0,0 L10,5 L0,10 z" fill="#3f8a4a"/>
         </marker>
       </defs>
 
       
       <g font-family="IBM Plex Sans, sans-serif">
-        <rect x="60" y="60" width="240" height="90" rx="18" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
-        <text x="180" y="98" text-anchor="middle" font-size="14" fill="#d3f0d6" font-weight="600">Design Iteration</text>
-        <text x="180" y="118" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">sandbox created per branch</text>
+        <rect x="60" y="60" width="240" height="90" rx="18" fill="#e9f2e6" stroke="#3f8a4a" stroke-opacity="0.7"/>
+        <text x="180" y="98" text-anchor="middle" font-size="14" fill="#2f6b38" font-weight="600">Design Iteration</text>
+        <text x="180" y="118" text-anchor="middle" font-size="10" fill="#4e8a58" font-family="IBM Plex Mono, monospace">sandbox created per branch</text>
       </g>
 
       
       <g font-family="IBM Plex Sans, sans-serif">
-        <rect x="440" y="60" width="240" height="90" rx="3" fill="#1a150e" stroke="#e8b04b" stroke-opacity="0.85"/>
-        <text x="560" y="98" text-anchor="middle" font-size="14" fill="#f2e2b8" font-weight="600">Review Gate</text>
-        <text x="560" y="118" text-anchor="middle" font-size="10" fill="#a8946a" font-family="IBM Plex Mono, monospace">snapshot · full agent state frozen</text>
+        <rect x="440" y="60" width="240" height="90" rx="3" fill="#f9f1dc" stroke="#a97a1c" stroke-opacity="0.85"/>
+        <text x="560" y="98" text-anchor="middle" font-size="14" fill="#5c4113" font-weight="600">Review Gate</text>
+        <text x="560" y="118" text-anchor="middle" font-size="10" fill="#8a6a2c" font-family="IBM Plex Mono, monospace">snapshot · full agent state frozen</text>
       </g>
-      <line x1="300" y1="105" x2="438" y2="105" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
-      <text x="316" y="94" font-size="10" font-family="IBM Plex Mono, monospace" fill="#5a6f7e">snapshot</text>
+      <line x1="300" y1="105" x2="438" y2="105" stroke="#6b6558" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <text x="316" y="94" font-size="10" font-family="IBM Plex Mono, monospace" fill="#6b6558">snapshot</text>
 
       
-      <path d="M440,150 L440,210 L180,210 L180,152" fill="none" stroke="#e08a7a" stroke-width="1.3" stroke-dasharray="5 3" marker-end="url(#arrowR)"/>
-      <text x="196" y="200" font-size="10" font-family="IBM Plex Mono, monospace" fill="#e08a7a">reject → restore snapshot, redirect</text>
+      <path d="M440,150 L440,210 L180,210 L180,152" fill="none" stroke="#b05a48" stroke-width="1.3" stroke-dasharray="5 3" marker-end="url(#arrowR)"/>
+      <text x="196" y="200" font-size="10" font-family="IBM Plex Mono, monospace" fill="#b05a48">reject → restore snapshot, redirect</text>
 
       
-      <path d="M680,105 L800,105" fill="none" stroke="#e8b04b" stroke-width="1.4" marker-end="url(#arrowA)"/>
-      <text x="696" y="94" font-size="10" font-family="IBM Plex Mono, monospace" fill="#e8b04b">approve</text>
+      <path d="M680,105 L800,105" fill="none" stroke="#a97a1c" stroke-width="1.4" marker-end="url(#arrowA)"/>
+      <text x="696" y="94" font-size="10" font-family="IBM Plex Mono, monospace" fill="#a97a1c">approve</text>
 
       <g font-family="IBM Plex Sans, sans-serif">
-        <rect x="800" y="24" width="270" height="52" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
-        <text x="935" y="56" text-anchor="middle" font-size="13" fill="#d3f0d6" font-weight="600">Branch A — assay variant 1</text>
-        <rect x="800" y="90" width="270" height="52" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
-        <text x="935" y="122" text-anchor="middle" font-size="13" fill="#d3f0d6" font-weight="600">Branch B — assay variant 2</text>
-        <rect x="800" y="156" width="270" height="52" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.55" stroke-dasharray="3 3"/>
-        <text x="935" y="188" text-anchor="middle" font-size="13" fill="#7fb587" font-weight="600">Branch N — parallel hypotheses</text>
+        <rect x="800" y="24" width="270" height="52" rx="3" fill="#e9f2e6" stroke="#3f8a4a" stroke-opacity="0.7"/>
+        <text x="935" y="56" text-anchor="middle" font-size="13" fill="#2f6b38" font-weight="600">Branch A — assay variant 1</text>
+        <rect x="800" y="90" width="270" height="52" rx="3" fill="#e9f2e6" stroke="#3f8a4a" stroke-opacity="0.7"/>
+        <text x="935" y="122" text-anchor="middle" font-size="13" fill="#2f6b38" font-weight="600">Branch B — assay variant 2</text>
+        <rect x="800" y="156" width="270" height="52" rx="3" fill="#e9f2e6" stroke="#3f8a4a" stroke-opacity="0.55" stroke-dasharray="3 3"/>
+        <text x="935" y="188" text-anchor="middle" font-size="13" fill="#4e8a58" font-weight="600">Branch N — parallel hypotheses</text>
       </g>
-      <path d="M800,66 C770,66 760,66 740,105" fill="none" stroke="#445562" stroke-width="1"/>
-      <path d="M935,105 L935,88" fill="none" stroke="#445562" stroke-width="1"/>
-      <path d="M935,105 L935,154" fill="none" stroke="#445562" stroke-width="1"/>
-      <text x="812" y="230" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="#7c92a0">fork per hypothesis — isolated sandboxes</text>
-
-      
-      <g font-family="IBM Plex Sans, sans-serif">
-        <rect x="440" y="300" width="240" height="76" rx="3" fill="#0e1a12" stroke="#8fd694" stroke-opacity="0.7"/>
-        <text x="560" y="332" text-anchor="middle" font-size="14" fill="#d3f0d6" font-weight="600">Assay Results</text>
-        <text x="560" y="352" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">per-branch AssayResult + lineage</text>
-      </g>
-      <path d="M935,66 L1000,66 L1000,270 L680,270 L680,316 L682,316" fill="none" stroke="#445562" stroke-width="0"/>
-      <path d="M935,78 L970,78 L970,300 L682,338" fill="none" stroke="#5a6f7e" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <path d="M935,116 L970,116 L970,300 L682,338" fill="none" stroke="#445562" stroke-width="1" stroke-dasharray="3 3"/>
-
-      
-      <path d="M440,338 L180,338 L180,152" fill="none" stroke="#8fd694" stroke-width="1.6" marker-end="url(#arrowG)"/>
-      <text x="200" y="330" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="#8fd694">analysis feeds the next iteration round</text>
+      <path d="M800,66 C770,66 760,66 740,105" fill="none" stroke="#8a8272" stroke-width="1"/>
+      <path d="M935,105 L935,88" fill="none" stroke="#8a8272" stroke-width="1"/>
+      <path d="M935,105 L935,154" fill="none" stroke="#8a8272" stroke-width="1"/>
+      <text x="812" y="230" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="#6b6558">fork per hypothesis — isolated sandboxes</text>
 
       
       <g font-family="IBM Plex Sans, sans-serif">
-        <rect x="60" y="440" width="1010" height="130" fill="none" stroke="#b295e0" stroke-width="1.2" stroke-opacity="0.55" rx="2"/>
-        <text x="76" y="466" font-family="IBM Plex Mono, monospace" font-size="11" letter-spacing="1.5" fill="#b295e0">WHY THIS IS UNIQUE</text>
-        <text x="90" y="500" font-size="13" fill="#dbe7ee">Snapshot captures the <tspan font-weight="600" fill="#e2d4f3">full agent state</tspan> — prompts, tool context, working memory — not just outputs.</text>
-        <text x="90" y="526" font-size="13" fill="#dbe7ee">Fork at hypothesis split points gives isolated, parallel experiment trees on shared infrastructure.</text>
-        <text x="90" y="552" font-size="13" fill="#dbe7ee">Every branch is <tspan font-weight="600" fill="#e2d4f3">replayable for audits</tspan> — a regulatory-grade property no published system surfaces.</text>
+        <rect x="440" y="300" width="240" height="76" rx="3" fill="#e9f2e6" stroke="#3f8a4a" stroke-opacity="0.7"/>
+        <text x="560" y="332" text-anchor="middle" font-size="14" fill="#2f6b38" font-weight="600">Assay Results</text>
+        <text x="560" y="352" text-anchor="middle" font-size="10" fill="#4e8a58" font-family="IBM Plex Mono, monospace">per-branch AssayResult + lineage</text>
+      </g>
+      <path d="M935,66 L1000,66 L1000,270 L680,270 L680,316 L682,316" fill="none" stroke="#8a8272" stroke-width="0"/>
+      <path d="M935,78 L970,78 L970,300 L682,338" fill="none" stroke="#6b6558" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M935,116 L970,116 L970,300 L682,338" fill="none" stroke="#8a8272" stroke-width="1" stroke-dasharray="3 3"/>
+
+      
+      <path d="M440,338 L180,338 L180,152" fill="none" stroke="#3f8a4a" stroke-width="1.6" marker-end="url(#arrowG)"/>
+      <text x="200" y="330" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="#3f8a4a">analysis feeds the next iteration round</text>
+
+      
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="60" y="440" width="1010" height="130" fill="none" stroke="#6a4fa0" stroke-width="1.2" stroke-opacity="0.55" rx="2"/>
+        <text x="76" y="466" font-family="IBM Plex Mono, monospace" font-size="11" letter-spacing="1.5" fill="#6a4fa0">WHY THIS IS UNIQUE</text>
+        <text x="90" y="500" font-size="13" fill="#2a2823">Snapshot captures the <tspan font-weight="600" fill="#4c3a75">full agent state</tspan> — prompts, tool context, working memory — not just outputs.</text>
+        <text x="90" y="526" font-size="13" fill="#2a2823">Fork at hypothesis split points gives isolated, parallel experiment trees on shared infrastructure.</text>
+        <text x="90" y="552" font-size="13" fill="#2a2823">Every branch is <tspan font-weight="600" fill="#4c3a75">replayable for audits</tspan> — a regulatory-grade property no published system surfaces.</text>
       </g>
     </svg>
