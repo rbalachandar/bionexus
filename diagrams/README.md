@@ -18,15 +18,10 @@ See:
 
 ## Artifact pages
 
-`artifacts/` contains styled, self-contained HTML pages (Claude-artifact style)
-rendering every diagram with Mermaid v11 from CDN — open `artifacts/index.html`
-in a browser. Regenerate after editing the diagram definitions inside
-`generate_artifacts.py`:
+`artifacts/` contains hand-drawn, self-contained SVG pages in a dark "blueprint"
+style (no external dependencies — plain HTML/SVG, works offline and on GitHub
+Pages). Open `artifacts/index.html` in a browser. These are the presentation
+layer; the Mermaid sources in `docs/` remain the source of truth. When a diagram
+changes, update both.
 
-```sh
-python3 diagrams/generate_artifacts.py
-```
-
-To serve publicly (GitHub Pages), enable Pages from the repo Settings with the
-root of a branch, then browse `diagrams/artifacts/index.html`, or run
-`npx serve diagrams/artifacts` locally.
+To serve: enable GitHub Pages, or `npx serve diagrams/artifacts` locally.
