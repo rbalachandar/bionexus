@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  core:  # P1: fast, dependency-light, no network
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pydantic pytest && pip install -e . --no-deps
+      - run: python -m pytest tests/ -q    # includes the anti-bloat import scan
+
+  example:  # P8: full round on the simulator
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pydantic pytest pyyaml && pip install -e . --no-deps
+      - run: python examples/iteration_loop.py
+      - run: python -m bionexus.cli prove branch-root --db bionexus.db
+
+  yaml-workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pydantic pyyaml && pip install -e . --no-deps
+      - run: python -m bionexus.cli run examples/workflow.yml
+      - run: python -m bionexus.cli prove demo-run

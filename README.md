@@ -20,6 +20,21 @@ The example runs: candidate generation → hypothesis tournament → human-appro
 protocol → **safety engine** → virtual wet lab → fork branch → safety rejection demo →
 hash-chained provenance. See [`docs/PLAN.md`](docs/PLAN.md) for the full build plan.
 
+**CLI:**
+
+```sh
+bn run examples/workflow.yml   # tournament + assay on the configured lab
+bn sim                         # reference round on the virtual lab
+bn prove <branch>              # tamper-evident provenance chain
+```
+
+| Doc | Contents |
+|---|---|
+| [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | install, run, workflows |
+| [`docs/ADAPTERS.md`](docs/ADAPTERS.md) | authoring adapters (labs, models, tools, stores) |
+| [`docs/SAFETY.md`](docs/SAFETY.md) | safety rules, LabGateway, audit trail |
+| [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
+
 ### Five core interfaces (everything is one of these)
 
 | Interface | Adapters (now → roadmap) |

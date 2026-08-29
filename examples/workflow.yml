@@ -1,0 +1,24 @@
+# BioNexus workflow — run with: bn run examples/workflow.yml
+branch: demo-run
+target: KRAS_G12C
+
+model:
+  name: stub-1
+  # base_url: http://localhost:11434/v1   # ollama/vLLM/any OpenAI-compatible server
+
+lab:
+  adapter: simulator
+  seed: 42
+  # adapter: my_org.labs.opentrons:OpentronsLab   # any LabAdapter via 'module:Class'
+
+store:
+  path: bionexus.db
+
+tournament:
+  population: 6
+  survivors: 3
+  waves: 2
+
+assay:
+  enabled: true
+  type: binding
