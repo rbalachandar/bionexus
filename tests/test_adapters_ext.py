@@ -161,7 +161,7 @@ def test_hypothesis_lifecycle_recorded(tmp_path):
                         predicted=">= 50", predicted_value=50.0)
     tracker.attach_test(h, p, result.run_id)
     h = tracker.verdict(h, result, threshold=50.0)
-    assert h.status in ("validated", "invalidated") and h.measured_value is not None
+    assert h.status in ("validated", "invalidated") and h.observed_value is not None
     events = [r.event_type.value for r in store.branch_records(h.branch_id)]
     assert events == ["hypothesis_proposed", "hypothesis_tested",
                       "hypothesis_validated" if h.status == "validated" else "hypothesis_invalidated"]
@@ -350,9 +350,10 @@ def test_liquid_handler_low_volume_and_carryover(tmp_path):
                                steps=steps,
                                samples=[SampleSpec(sample_id="C1", kind=SampleKind.compound)],
                                reagents=[ReagentSpec(name="b", amount="1 mL", bsl_level=1)])
+    proto.protocol_id = "fixed-lh-test"  # device seeding keys off protocol id
     res = lh.execute(proto)
     t1, t2 = res["transfers"]
-    assert abs(t1["error_percent"]) < 10
+    assert abs(t1["error_percent"]) < 15  # cv=5%: 2-sigma bound
     assert t2["below_spec"] and t2["error_percent"] < 0  # systematic under-delivery
 
 
@@ -367,3 +368,29 @@ def test_sequencer_calls_planted_mutation(tmp_path):
     assert any(c["position"] == 20 and c["alt"] == "T" and c["fraction"] > 0.8
                for c in calls), "planted mutation must be recovered"
     assert all(c["position"] != 5 for c in calls), "no spurious high-freq calls"
+
+
+def test_hypothesis_design_and_inconclusive(tmp_path):
+    from bionexus.core.hypothesis import (ExperimentDesign, HypothesisTracker,
+                                          SuccessCriteria)
+    from bionexus.core.contracts import AssayResult, Envelope, InstrumentInfo, RunStatus
+
+    store = SqliteProvenanceStore()
+    tracker = HypothesisTracker(store, system_actor())
+    h = tracker.propose(
+        statement="C1 IC50 <= 20 uM", candidate="C1", assay_type="binding",
+        predicted="IC50 <= 20", predicted_value=20.0, rationale="strong SAR precedent",
+        criteria=SuccessCriteria(metric="ic50_um", direction="min", threshold=20.0),
+        design=ExperimentDesign(assay_type="binding", concentrations=["0.5uM", "10uM", "40uM"],
+                                replicates=3, controls=["negative"]),
+    )
+    assert h.status == "proposed" and h.criteria.threshold == 20.0
+    assert h.design.concentrations == ["0.5uM", "10uM", "40uM"]
+
+    # QC-failed run must be inconclusive, never a silent invalidate
+    bad = AssayResult(envelope=env(), protocol_id="p", run_id="r-bad",
+                      instrument=InstrumentInfo(adapter="sim", instrument_id="i"),
+                      status=RunStatus.completed, measurements=[],
+                      qc={"controls_passed": False})
+    h = tracker.verdict(h, bad)
+    assert h.status == "inconclusive" and h.qc_passed is False

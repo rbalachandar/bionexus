@@ -41,7 +41,7 @@ from bionexus.core.contracts import (
     ToolInvocation,
 )
 from bionexus.core.flywheel import FlywheelLog
-from bionexus.core.hypothesis import Hypothesis, HypothesisTracker
+from bionexus.core.hypothesis import ExperimentDesign, Hypothesis, HypothesisTracker, SuccessCriteria
 from bionexus.core.interfaces import record_for, system_actor
 from bionexus.core.registry import Registry
 from bionexus.core.safety import LabGateway, MaxBslRule, MaxStepsRule, SafetyEngine
@@ -167,27 +167,21 @@ def main() -> None:
     confirmed: list[dict] = []
     for c in [h for h in hits if h not in interferers]:
         prim = run_assay(sandbox.fork().branch_id, f"confirm-{c}", "binding", [c])
-        ic50 = fit_ic50(prim["by_compound"].get(c, []))
+        # pre-register: explicit criteria + experiment design BEFORE the test
         hyp = tracker.propose(
             statement=f"{c} is a confirmed binder (IC50 <= 20 uM)",
             candidate=c, assay_type="binding", predicted="IC50 <= 20 uM",
             predicted_value=20.0, round_no=0,
+            rationale=f"tournament survivor (rank {hits.index(c) + 1}), non-interferer",
+            criteria=SuccessCriteria(metric="ic50_um", direction="min", threshold=20.0),
+            design=ExperimentDesign(assay_type="binding", concentrations=CONCS,
+                                    replicates=3, controls=["negative"]),
         )
         tracker.attach_test(hyp, prim["protocol"], prim["run_id"])
-        # verdict from the fitted IC50 vs the 20 uM cutoff
-        measured_ok = ic50 <= 20.0
-        hyp.status = "validated" if measured_ok else "invalidated"
-        hyp.measured_value = None if ic50 == float("inf") else ic50
-        hyp.evidence_run_id = prim["run_id"]
-        store.append(record_for(
-            env(hyp.branch_id),
-            EventType.hypothesis_validated if measured_ok else EventType.hypothesis_invalidated,
-            actor,
-                                    artifact=Artifact(artifact_id=hyp.hypothesis_id, kind=ArtifactKind.hypothesis,
-                                                      uri=f"mem://{hyp.branch_id}/{hyp.hypothesis_id}"),
-            decision={"ic50_um": None if ic50 == float("inf") else round(ic50, 2),
-                      "cutoff_um": 20.0, "evidence_run_id": prim["run_id"]},
-        ))
+        # assess against the pre-declared criteria (right-censored -> inconclusive)
+        tracker.verdict(hyp, prim["result"])
+        ic50 = fit_ic50(prim["by_compound"].get(c, []))
+        measured_ok = hyp.status == "validated"
         if measured_ok:
             confirmed.append({"compound": c, "ic50_um": round(ic50, 2)})
     confirmed.sort(key=lambda d: d["ic50_um"])
