@@ -19,6 +19,29 @@ The example runs: candidate generation → hypothesis tournament → human-appro
 protocol → **safety engine** → virtual wet lab → fork branch → safety rejection demo →
 hash-chained provenance. See [`docs/PLAN.md`](docs/PLAN.md) for the full build plan.
 
+### Simulated lab devices with image readouts
+
+The virtual lab goes one level deeper: a simulated **imaging plate reader**. A
+protocol run captures raw fluorescence micrographs per well (96-well plate), an
+analysis pipeline fits dose–response IC50s **from the images**, and assay QC is a
+Z' factor computed from controls. Measured IC50s recover the seeded ground truth
+within realistic noise, and the raw well images are kept as evidence that agents
+(or vision-capable LLMs) can inspect:
+
+```sh
+.venv/bin/pip install numpy                       # [lab-imaging] extra
+.venv/bin/python examples/demo_imaging.py
+# run img-c2f0183b: Z'=0.938 (controls PASS)
+#   compound    measured IC50   ground truth
+#   C2              11.98 uM      10.85 uM
+# raw evidence: 14 well images in .data/images/
+```
+
+Failure modes are simulated too: well artifacts (pipetting spikes, bubbles, edge
+effects) are flagged, weak compounds are right-censored (no IC50 — test higher
+concentrations), and runs failing Z' QC are marked unusable. See
+[`docs/virtual-lab.md`](docs/virtual-lab.md).
+
 **CLI:**
 
 ```sh
