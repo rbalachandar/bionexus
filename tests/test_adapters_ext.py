@@ -294,3 +294,43 @@ def test_llm_policy_parse_only():
     except ValueError:
         raised = True
     assert raised
+
+
+# ---- imaging virtual lab (lab-imaging extra) ---------------------------------------
+
+def test_imaging_lab_recovers_ic50_and_qc(tmp_path):
+    np = pytest.importorskip("numpy")
+    from bionexus.adapters.lab.imaging import ImagingSimulatorLab, true_ic50_um
+
+    lab = ImagingSimulatorLab(seed=5, image_dir=str(tmp_path / "imgs"))
+    p = ProtocolSubmission(
+        envelope=env(), title="img", assay_type="binding",
+        steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense)],
+        samples=[SampleSpec(sample_id=c, kind=SampleKind.compound, concentration=k)
+                 for c in ["C1", "C2"] for k in ["0.5uM", "2uM", "10uM", "40uM"]]
+        + [SampleSpec(sample_id="ctrl-neg", kind=SampleKind.buffer, concentration="10uM"),
+           SampleSpec(sample_id="ctrl-neg2", kind=SampleKind.buffer, concentration="10uM")],
+        reagents=[ReagentSpec(name="buffer", amount="1 mL", bsl_level=1)],
+    )
+    r = lab.fetch_results(lab.submit_protocol(p))
+    assert r.qc.controls_passed
+    assert r.qc.z_prime >= 0.3
+    for m in r.measurements:
+        truth = true_ic50_um(5, m.sample_id)
+        assert abs(m.value - truth) / truth < 0.5, "IC50 recovery within 50% of truth"
+    images = list((tmp_path / "imgs").glob("*.npy"))
+    assert images, "raw plate images persisted as evidence"
+    assert np.load(images[0]).shape == (24, 24)
+
+
+def test_imaging_lab_dose_response_monotonic(tmp_path):
+    pytest.importorskip("numpy")
+    from bionexus.adapters.lab.imaging import (ImagingPlateReader, true_ic50_um,
+                                               hill_response)
+    dev = ImagingPlateReader(seed=9)
+    concs = [0.5, 2.0, 10.0, 40.0]
+    spec = [(f"A{i+1}", "C1", c) for i, c in enumerate(concs)]
+    plate = dev.capture("monotonic-run", spec)
+    ic50 = true_ic50_um(9, "C1")
+    responses = [hill_response(c, ic50) for c in concs]
+    assert all(b >= a for a, b in zip(responses, responses[1:])), "Hill curve is monotonic"

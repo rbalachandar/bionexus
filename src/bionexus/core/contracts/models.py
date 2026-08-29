@@ -270,6 +270,7 @@ class InstrumentInfo(BaseModel):
 
 class QCInfo(BaseModel):
     controls_passed: bool = True
+    z_prime: float | None = None  # assay window quality (imaging/plate readouts)
     failed_wells: list[str] = Field(default_factory=list)
     notes: str | None = None
 

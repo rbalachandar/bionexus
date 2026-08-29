@@ -46,6 +46,7 @@ Exposes `generate_candidates`, `run_assay` (dose-response + IC50),
 | [`docs/SAFETY.md`](docs/SAFETY.md) | safety rules, LabGateway, audit trail |
 | [`docs/domain-review.md`](docs/domain-review.md) | flow fidelity review vs. the real drug-discovery cycle |
 | [`docs/benchmarks.md`](docs/benchmarks.md) | public datasets (MoleculeNet, TDC, DOCKSTRING, ProteinGym) + first benchmark results |
+| [`docs/virtual-lab.md`](docs/virtual-lab.md) | simulated devices, image-based readouts, QC and failure modes |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
 
 ### Five core interfaces (everything is one of these)
@@ -53,7 +54,7 @@ Exposes `generate_candidates`, `run_assay` (dose-response + IC50),
 | Interface | Adapters (now → roadmap) |
 |---|---|
 | `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub) → anthropic, gemini |
-| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator → opentrons, cloud labs |
+| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator (synthetic plate images + analysis + Z' QC) → opentrons, cloud labs |
 | `Sandbox` | local (copy-on-fork) → AgentENV (real fork/snapshot) |
 | `ProvenanceStore` | sqlite → postgres, s3-worm |
 | `BioTool` | rdkit descriptors → docking, ADMET, ESMFold |
