@@ -146,3 +146,22 @@ def test_campaign_recording_playbacks(tmp_path):
     for run_id in runs:
         result = pb.fetch_results(run_id)
         assert result.measurements
+
+
+def test_hypothesis_lifecycle_recorded(tmp_path):
+    from bionexus.core.hypothesis import HypothesisTracker
+    from bionexus.core.contracts import EventType as ET
+
+    store = SqliteProvenanceStore()
+    tracker = HypothesisTracker(store, system_actor())
+    lab = SimulatorLab(seed=5)
+    p = make_protocol()
+    result = lab.fetch_results(lab.submit_protocol(p))
+    h = tracker.propose("C1 >= 50 binding", candidate="C1", assay_type="binding",
+                        predicted=">= 50", predicted_value=50.0)
+    tracker.attach_test(h, p, result.run_id)
+    h = tracker.verdict(h, result, threshold=50.0)
+    assert h.status in ("validated", "invalidated") and h.measured_value is not None
+    events = [r.event_type.value for r in store.branch_records(h.branch_id)]
+    assert events == ["hypothesis_proposed", "hypothesis_tested",
+                      "hypothesis_validated" if h.status == "validated" else "hypothesis_invalidated"]

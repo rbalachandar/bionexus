@@ -51,6 +51,7 @@ class ArtifactKind(str, Enum):
     target_dossier = "target_dossier"
     molecule = "molecule"
     biologic = "biologic"
+    hypothesis = "hypothesis"
     protocol = "protocol"
     assay_result = "assay_result"
     trial_protocol = "trial_protocol"
@@ -294,6 +295,10 @@ class EventType(str, Enum):
     evaluation = "evaluation"
     gate_decision = "gate_decision"
     stage_transition = "stage_transition"
+    hypothesis_proposed = "hypothesis_proposed"
+    hypothesis_tested = "hypothesis_tested"
+    hypothesis_validated = "hypothesis_validated"
+    hypothesis_invalidated = "hypothesis_invalidated"
     sandbox_fork = "sandbox_fork"
     sandbox_snapshot = "sandbox_snapshot"
 

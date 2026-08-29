@@ -38,6 +38,7 @@ from bionexus.core.contracts import (
     ToolInvocation,
 )
 from bionexus.core.flywheel import FlywheelLog
+from bionexus.core.hypothesis import HypothesisTracker
 from bionexus.core.interfaces import record_for, system_actor
 from bionexus.core.registry import Registry
 from bionexus.core.safety import LabGateway, SafetyEngine
@@ -70,6 +71,7 @@ def main() -> None:
     safety = SafetyEngine(rules=[MaxBslRule(2), MaxStepsRule(50)])
     gateway = LabGateway(rec, safety, store, actor)
     flywheel = FlywheelLog("examples/_campaign_training.jsonl")
+    tracker = HypothesisTracker(store, actor)
     sandbox = LocalSandbox(BRANCH, store=store, actor=actor)
     log = lambda msg: print(msg)  # noqa: E731
 
@@ -109,16 +111,24 @@ def main() -> None:
     log(f"  survivors: {[h['smiles'] for h in hits]}")
 
     # --------------------------------------- 3. Lead Optimization (active-learning loop)
-    stage("lead_optimization", "rounds: in-silico filter → forked wet-lab branches → flywheel")
+    stage("lead_optimization", "propose hypotheses → forked wet-lab tests → validate/record → flywheel")
     best, best_score = None, -1.0
     for rnd in range(1, 3):
         log(f" round {rnd}:")
-        # fork one sandbox branch per assay hypothesis
+        # in-silico analysis proposes one falsifiable hypothesis per assay
+        predictions = {a: 55.0 + 5.0 * rnd for a in ASSAYS}
+        # fork one sandbox branch per assay hypothesis, test, and record verdicts
         scores: dict[str, list[float]] = {}
         for i, assay in enumerate(ASSAYS):
             branch = sandbox.fork().branch_id
             benv = env(branch)
             top = hits[0]["smiles"]
+            hyp = tracker.propose(
+                statement=f"{top} achieves >= {predictions[assay]:.0f} {assay} response",
+                candidate=top, assay_type=assay,
+                predicted=f">= {predictions[assay]:.0f}",
+                predicted_value=predictions[assay], round_no=rnd,
+            )
             protocol = ProtocolSubmission(
                 envelope=benv,
                 title=f"r{rnd}-{assay}",
@@ -132,12 +142,15 @@ def main() -> None:
             if rejection:
                 log(f"  [{branch}] {assay}: safety rejected — {rejection}")
                 continue
+            tracker.attach_test(hyp, protocol, run_id)
             result = gateway.results(benv, run_id)
+            h = tracker.verdict(hyp, result, threshold=predictions[assay])
             vals = {m.sample_id: m.value for m in result.measurements}
-            scores[assay] = [vals.get(h["smiles"], 0.0) for h in hits]
+            scores[assay] = [vals.get(h2["smiles"], 0.0) for h2 in hits]
             flywheel.pair_from_round(protocol, result)  # T4.4: ground truth for next models
-            log(f"  [{branch.split('/')[-1]}] {assay}: "
-                f"best={max(scores[assay]):.1f} (run {run_id})")
+            measured = vals.get(top, 0.0)
+            log(f"  [{branch.split('/')[-1]}] {assay}: {hyp.status.upper()} "
+                f"(predicted >= {predictions[assay]:.0f}, measured {measured:.1f}, run {run_id})")
         # combine assay panel into a composite score (stand-in for the Analysis Agent)
         combined = [sum(scores.get(a, [0] * len(hits))[i] for a in ASSAYS) / len(ASSAYS)
                     for i in range(len(hits))]
@@ -154,9 +167,14 @@ def main() -> None:
     stage("preclinical", "ADMET panel + tox on the lead series")
     adm_inv = ToolInvocation(envelope=env(), tool="c.fm.predict_admet", args={"smiles": best})
     admet = registry.model.predict(adm_inv, "c.fm.predict_admet", {"smiles": best})
-    tox_ok = best.count("C") < 6  # stub tox rule: keep molecules small
+    tox_ok = best.count("C") <= 6  # stub tox rule: molecules beyond 6 heavy atoms fail
     log(f"  lead: {best}  admet: {admet.status}  tox_screen: {'pass' if tox_ok else 'fail'}")
     gate("preclinical_signoff", tox_ok)
+    if not tox_ok:
+        log("\n=== CAMPAIGN HALTED === tox screen failed — no IND package (recorded)")
+        log(f"  hypotheses: {tracker.summary()}")
+        log(f"  provenance: bn prove {BRANCH} --db campaign.db")
+        return
 
     # ------------------------------------------------------------- 5. Trial Design
     stage("trial_design", "population simulation → IND package")
@@ -170,9 +188,11 @@ def main() -> None:
 
     # ----------------------------------------------------------------- Summary
     records = store.branch_records(BRANCH)
-    n_forks = len(records) + sum(len(store.branch_records(b)) for b in [])  # root only
+    hyp_summary = tracker.summary()
     log("\n=== CAMPAIGN SUMMARY ===")
     log(f"  IND package:         {ind}")
+    log(f"  hypotheses:          {hyp_summary['proposed']} proposed, "
+        f"{hyp_summary['validated']} validated, {hyp_summary['invalidated']} invalidated")
     log(f"  provenance records:  {len(records)} in {BRANCH} (hash-chained)")
     log(f"  flywheel examples:   {ind['flywheel_examples']} -> examples/_campaign_training.jsonl")
     log(f"  lab session:         examples/_campaign_recording.json (playback in CI)")
