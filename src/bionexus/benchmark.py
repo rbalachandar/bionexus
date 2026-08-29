@@ -174,6 +174,28 @@ def rmse(pred: list[float], true: list[float]) -> float:
     return math.sqrt(sum((p - t) ** 2 for p, t in zip(pred, true)) / len(pred))
 
 
+def roc_auc(scores: list[float], labels: list[float]) -> float:
+    """Mann-Whitney AUC with tie handling. Labels are 0/1."""
+    pos = [s for s, l in zip(scores, labels) if l == 1]
+    neg = [s for s, l in zip(scores, labels) if l != 1]
+    if not pos or not neg:
+        return 0.5
+    allv = sorted(scores)
+    # average ranks (1-based) over tie blocks
+    rank: dict[float, float] = {}
+    i = 0
+    while i < len(allv):
+        j = i
+        while j < len(allv) and allv[j] == allv[i]:
+            j += 1
+        avg = (i + 1 + j) / 2  # mean of 1-based positions i+1..j
+        rank[allv[i]] = avg
+        i = j
+    rsum = sum(rank[s] for s in pos)
+    n, n1 = len(scores), len(pos)
+    return (rsum - n1 * (n1 + 1) / 2) / (n1 * (n - n1))
+
+
 def run_benchmark(dataset: Any, policies: list[Policy], train_frac: float = 0.8,
                   out: str | Path | None = None) -> dict[str, Any]:
     data = list(dataset.load())
@@ -191,11 +213,13 @@ def run_benchmark(dataset: Any, policies: list[Policy], train_frac: float = 0.8,
         t0 = time.time()
         policy.fit(train)
         preds = [policy.predict(s) for s, _ in test]
-        results["policies"][policy.name] = {
-            "spearman": round(spearman(preds, truth), 4),
-            "rmse": round(rmse(preds, truth), 4),
-            "fit_secs": round(time.time() - t0, 3),
-        }
+        entry: dict[str, Any] = {"fit_secs": round(time.time() - t0, 3)}
+        if getattr(dataset, "task", "regression") == "classification":
+            entry["roc_auc"] = round(roc_auc(preds, truth), 4)
+        else:
+            entry["spearman"] = round(spearman(preds, truth), 4)
+            entry["rmse"] = round(rmse(preds, truth), 4)
+        results["policies"][policy.name] = entry
     if out:
         Path(out).write_text(json.dumps(results, indent=1))
     return results

@@ -20,6 +20,8 @@ MOLECULENET = {
              "measured log solubility in mols per litre", "smiles", "regression"),
     "bace": ("https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/bace.csv",
              "Class", "smiles", "classification"),
+    "hiv": ("https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/HIV.csv",
+            "HIV_active", "smiles", "classification"),
 }
 
 

@@ -272,3 +272,25 @@ def test_benchmark_harness_offline(tmp_path):
     assert res["policies"]["char3gram-ridge"]["spearman"] > 0.8, "linear signal must be learnable"
     assert res["policies"]["random"]["spearman"] < 0.3, "random must be a floor"
     assert (tmp_path / "b.json").exists()
+
+
+# ---- benchmark metrics + LLM policy parsing ---------------------------------------
+
+def test_roc_auc_correct_with_ties():
+    from bionexus.benchmark import roc_auc
+    assert roc_auc([0.9, 0.8, 0.7, 0.1], [1, 1, 0, 0]) == 1.0
+    assert roc_auc([0.1, 0.2, 0.7, 0.9], [1, 1, 0, 0]) == 0.0
+    assert roc_auc([0.5, 0.5, 0.5, 0.5], [1, 1, 0, 0]) == 0.5  # ties -> chance
+    assert 0.0 <= roc_auc([0.3, 0.6, 0.4, 0.7], [1, 0, 0, 1]) <= 1.0
+
+
+def test_llm_policy_parse_only():
+    from bionexus.adapters.models.llm_policy import AnthropicLLMPolicy
+    assert AnthropicLLMPolicy._parse('{"value": -1.42}') == -1.42
+    assert AnthropicLLMPolicy._parse("The answer is 3.54 (logD).") == 3.54
+    try:
+        AnthropicLLMPolicy._parse("no numbers here")
+        raised = False
+    except ValueError:
+        raised = True
+    assert raised

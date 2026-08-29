@@ -18,33 +18,43 @@ embedded fixtures (P8: CI stays offline).
 | **ProteinGym** | protein mutation effect | 217 assays | Biology Agent / protein-FM benchmark |
 | **FLIP / TAPE** | protein fitness/function | varies | protein-adapter benchmarks |
 
-## First results — `examples/run_benchmark.py`
+## First results — `examples/run_benchmark.py` / `run_benchmark_real.py`
 
-Split: first 80% train / last 20% test. Baselines are deliberately weak floors;
-the point is that real model adapters must beat them and the harness is honest.
+Split: first 80% train / last 20% test (HIV: stratified subsample, 3% actives).
+Baselines are deliberately weak floors; the point is that real model adapters
+must beat them and the harness is honest.
 
-**Lipophilicity (logD, n_test=840)**
+**Lipophilicity (logD regression, n_test=840)**
 
 | Policy | Spearman | RMSE |
 |---|---|---|
 | random | +0.044 | 1.225 |
 | predict-mean | −0.043 | 1.200 |
-| char3gram-ridge (stdlib) | **+0.545** | **0.993** |
-| rdkit-desc-ridge | +0.476 | 1.067 |
+| char3gram-ridge (stdlib) | +0.545 | 0.993 |
+| **morgan2048-rf** (rdkit+sklearn) | **+0.711** | **0.821** |
+| LLM zero-shot (glm-5.1, n=40) | −0.143 | — |
 
-**ESOL (solubility, n_test=226)**
+**HIV (NCI high-throughput screen, classification, n_test=1,600)**
 
-| Policy | Spearman | RMSE |
-|---|---|---|
-| random | +0.027 | 2.029 |
-| predict-mean | +0.040 | 2.027 |
-| char3gram-ridge (stdlib) | +0.712 | 1.398 |
-| rdkit-desc-ridge | **+0.873** | **1.051** |
+| Policy | ROC-AUC |
+|---|---|
+| random / predict-mean | 0.500 |
+| char3gram-ridge (stdlib) | 0.757 |
+| **morgan2048-rf** (rdkit+sklearn) | **0.855** |
+
+Reading the table:
+
+- **Morgan2048+RF at 0.855 AUC on HIV** matches the literature range for FP+RF
+  (~0.83–0.85) — the harness reproduces known results, which is the point.
+- **The zero-shot LLM has no signal on logD** (ρ ≈ −0.14, n=40, glm-5.1). This
+  is the honest headline: LLMs should not be used as direct property oracles —
+  they belong in the *agent* loop (proposing, interpreting, planning) while
+  quantitative predictions come from trained tools (`fm_predict_property`).
+  Few-shot / tool-augmented LLM policies are the next rows to test.
 
 Reference points from literature for context: published GNN/chemprop models
-reach ~0.8–0.9 Spearman / ~0.6–0.8 RMSE on Lipophilicity — i.e. our floors leave
-clear headroom, and an `fm_predict_property` adapter wired to a real model is
-the next row of this table.
+reach ~0.8–0.9 Spearman / ~0.6–0.8 RMSE on Lipophilicity — headroom remains
+for a real `fm_predict_property` adapter.
 
 ## How to add a benchmark row
 
@@ -60,3 +70,12 @@ results = run_benchmark(MoleculeNetDataset("lipophilicity"),
 
 Policies implement `fit(data)` / `predict(smiles)` — the same shape as
 `ModelProvider.predict`, so model adapters wrap into policies trivially.
+
+## LLM evaluation setup
+
+`AnthropicLLMPolicy` reads `BIONEXUS_LLM_BASE_URL` / `BIONEXUS_LLM_TOKEN` /
+`BIONEXUS_LLM_MODEL` (falls back to `ANTHROPIC_BASE_URL` /
+`ANTHROPIC_AUTH_TOKEN` / Anthropic model env vars). It speaks the Anthropic
+Messages protocol over stdlib urllib and works with any compatible endpoint
+(including LLM proxies). LLM calls are expensive — evaluate with `n_test`
+caps, as `run_benchmark_real.py` does.
