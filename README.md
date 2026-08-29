@@ -9,45 +9,36 @@ This repository holds the **architecture definition**: diagrams, flows, stage
 descriptions, and integration contracts. Each architectural block is designed to be
 independently workable against a small set of shared contracts.
 
-## Layered View
+## Architecture Diagrams
 
-```mermaid
-flowchart TB
-    subgraph L0["L0 · Human & Governance"]
-        UI["Scientist Reviewer UI"]
-        Gates["Approval Gates"]
-        Audit["Audit & Compliance"]
-    end
+Hand-drawn blueprint-style diagrams (SVG — rendered directly on GitHub):
 
-    subgraph L1["L1 · Orchestration"]
-        WF["Stage Graph Engine"]
-        Router["Agent Router"]
-        Prov["Provenance Store"]
-        Ledger["Experiment Ledger"]
-    end
+**1 · Layered View** — L0 governance → L3 infrastructure, with the five architectural blocks between.
 
-    subgraph L2["L2 · Agent & Service Workforce"]
-        Agents["Agent Workforce<br/>(Target · Design · Biology ·<br/>Assay · Analysis · Trial)"]
-        Models["Bio FM Gateway &<br/>Knowledge Services"]
-        Lab["Lab Execution<br/>(IAL · Safety · Simulator)"]
-        Sim["Simulation &<br/>Data Services"]
-    end
+![Layered View](diagrams/svg/01-layered-view.svg)
 
-    subgraph L3["L3 · Infrastructure (AgentENV)"]
-        SBX["Agent Sandboxes<br/>snapshot · fork · resume"]
-        CP["Gateway & Scheduler<br/>multi-node control plane"]
-        ART["Artifact & P2P Storage"]
-    end
+**2 · Design Iteration Loop** — one active-learning round, from dossier to next-round proposals.
 
-    L0 -->|approvals, context| L1
-    L1 -->|StageTask| Agents
-    L1 -->|ToolInvocation| Models
-    L1 -->|ToolInvocation| Lab
-    L1 -->|ToolInvocation| Sim
-    Agents --- SBX
-    CP --- SBX
-    ART --- SBX
-```
+![Design Iteration Loop](diagrams/svg/02-iteration-loop.svg)
+
+**3 · Hypothesis Tournament** — Generate → Reflect → Rank → Evolve, plus the fine-tuning flywheel.
+
+![Hypothesis Tournament](diagrams/svg/03-tournament.svg)
+
+**4 · Wet-Lab Round Trip** — protocol through the safety boundary, instruments, and back as provenance.
+
+![Wet-Lab Round Trip](diagrams/svg/04-wetlab-roundtrip.svg)
+
+**5 · Fork / Snapshot Branching** — sandbox lifecycle as experiment tree.
+
+![Fork / Snapshot Branching](diagrams/svg/05-branching.svg)
+
+**6 · Campaign Pipeline** — target ID through trial design with human gates and failure loops.
+
+![Campaign Pipeline](diagrams/svg/06-campaign.svg)
+
+Styled HTML versions (dark blueprint pages with legends/captions) live in
+[`diagrams/artifacts/`](diagrams/artifacts/) — open locally in a browser.
 
 ## Repository Layout
 
@@ -58,7 +49,7 @@ flowchart TB
 | [`docs/blocks/`](docs/blocks/) | One deep-dive doc per block (A–F) |
 | [`docs/research-landscape.md`](docs/research-landscape.md) | Review vs. Google AI co-scientist, Anthropic, Isomorphic, Cradle, Lila, FutureHouse, Coscientist |
 | [`contracts/`](contracts/README.md) | The five shared integration contracts (StageTask, ToolInvocation, ProtocolSubmission, AssayResult, ProvenanceRecord) |
-| [`diagrams/`](diagrams/) | Standalone Mermaid diagram sources |
+| [`diagrams/`](diagrams/) | SVG diagrams + styled HTML artifact pages |
 
 ## Architectural Blocks at a Glance
 
