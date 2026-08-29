@@ -74,16 +74,16 @@ User code / reference agents
 ### Phase 3 — Trust & polish
 - [x] T3.1 Docs: quickstart, adapter authoring guide, safety guide
 - [x] T3.2 `bn` CLI: `bn run workflow.yml` · `bn sim` · `bn prove <id>`
-- [ ] T3.3 Recording/playback harness for hardware adapters (test vs recordings) *(P8)*
+- [x] T3.3 Recording/playback harness for hardware adapters (test vs recordings) *(P8)*
 - [x] T3.4 CI: core-only fast job + full example job; adapter test matrix
 - [x] T3.5 Packaging: extras (`[models-openai]`, `[bio-rdkit]`, `[sandbox-agentenv]`, `[store-postgres]`),
       README rewrite for framework positioning
 
 ### Phase 4 — Ecosystem (post-1.0)
-- [ ] T4.1 Anthropic/Gemini model adapters; MCP tool exposure
-- [ ] T4.2 AgentENV sandbox adapter (fork/snapshot for real)
+- [x] T4.1 Anthropic/Gemini model adapters; MCP tool exposure
+- [x] T4.2 AgentENV sandbox adapter (fork/snapshot for real)
 - [ ] T4.3 Opentrons adapter; cloud-lab HTTP adapter
-- [ ] T4.4 Fine-tune flywheel hooks (export confirmed results as training pairs)
+- [x] T4.4 Fine-tune flywheel hooks (export confirmed results as training pairs)
 - [ ] T4.5 Template gallery: target-ID / small-molecule / antibody workflows
 
 ## Anti-bloat guardrails (enforced in review + CI)
