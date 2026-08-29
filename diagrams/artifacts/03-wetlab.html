@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wet-Lab Round Trip — Hardware in the Loop · Agentic Drug Discovery</title>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#f5f0e8',
+      primaryTextColor: '#3d3929',
+      primaryBorderColor: '#d9c9a8',
+      lineColor: '#8a7f6a',
+      secondaryColor: '#eef3ee',
+      tertiaryColor: '#f7f4ef',
+      fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif',
+      fontSize: '15px'
+    },
+    flowchart: { curve: 'basis', padding: 16 },
+    sequence: { actorMargin: 42, noteMargin: 12 }
+  });
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    background: #faf9f5;
+    color: #3d3929;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .artifact {
+    width: min(1200px, 96vw);
+    margin: 32px 0 48px;
+    background: #ffffff;
+    border: 1px solid #e8e2d6;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(60, 50, 30, 0.07);
+    padding: 40px 44px 32px;
+  }
+  h1 {
+    font-size: 22px; font-weight: 600; margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .subtitle {
+    font-size: 14px; color: #8a7f6a; margin: 0 0 28px;
+  }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    background: #f0ebe0; color: #6b604a;
+    border-radius: 999px; padding: 3px 10px; margin-bottom: 14px;
+  }
+  .diagram { overflow-x: auto; }
+  .footer {
+    font-size: 12px; color: #a89e8a; margin-top: 24px;
+    border-top: 1px solid #f0ece2; padding-top: 14px;
+  }
+  .footer a { color: #a1662f; text-decoration: none; }
+</style>
+</head>
+<body>
+  <main class="artifact">
+    <span class="badge">Agentic Drug Discovery · Architecture</span>
+    <h1>Wet-Lab Round Trip — Hardware in the Loop</h1>
+    <p class="subtitle">Protocol submission through safety review, instrument scheduling, execution, and telemetry → provenance.</p>
+    <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant ASN as Assay Planning Agent (sandbox)
+    participant PC as Protocol Compiler
+    participant SE as Safety Engine
+    participant LSM as Lab State Manager
+    participant IAL as IAL
+    participant INST as Instrument
+    participant TI as Telemetry Ingestor
+    participant PS as Provenance Store
+    ASN->>PC: ProtocolSubmission (abstract protocol)
+    PC->>PC: compile → instrument scripts
+    PC->>SE: validate
+    alt policy violation
+        SE-->>ASN: rejection (with reason) — agent revises
+    else approved
+        SE->>LSM: reserve reagents / instrument slot
+        LSM->>IAL: enqueue run
+        IAL->>INST: submit_protocol
+        INST-->>IAL: telemetry + raw output
+        IAL-->>TI: stream
+        TI->>PS: normalized AssayResult + lineage
+    end
+
+</pre>
+    </div>
+    <div class="footer">Interactive diagram — pan/zoom with the trackpad or open in a full
+    browser tab. Source: <a href="../../docs/flows.md">docs/flows.md</a></div>
+  </main>
+</body>
+</html>

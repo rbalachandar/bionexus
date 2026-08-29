@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agentic Drug Discovery — Diagram Artifacts</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; background:#faf9f5; color:#3d3929;
+    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    display:flex; justify-content:center; }
+  main { width:min(980px, 96vw); padding:48px 0; }
+  h1 { font-size:26px; letter-spacing:-0.01em; margin:0 0 6px; }
+  p.sub { color:#8a7f6a; margin:0 0 36px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+  .card { display:flex; flex-direction:column; gap:8px; background:#fff;
+    border:1px solid #e8e2d6; border-radius:14px; padding:22px;
+    text-decoration:none; color:inherit; transition:box-shadow .15s, transform .15s; }
+  .card:hover { box-shadow:0 6px 20px rgba(60,50,30,.1); transform:translateY(-2px); }
+  .num { font-size:11px; font-weight:700; color:#a1662f; letter-spacing:.08em; }
+  .t { font-weight:600; font-size:16px; }
+  .s { font-size:13px; color:#8a7f6a; line-height:1.5; }
+</style></head>
+<body><main>
+  <h1>Agentic Drug Discovery</h1>
+  <p class="sub">Architecture diagram artifacts — 8 diagrams</p>
+  <nav class="grid">
+<a class="card" href="00-top-level.html"><span class="num">01</span><span class="t">Platform — Layered View</span><span class="s">L0 Human & Governance → L3 Infrastructure (AgentENV), with the five architectural blocks between.</span></a>
+<a class="card" href="01-iteration-loop.html"><span class="num">02</span><span class="t">Core Flow — Design Iteration Loop</span><span class="s">One active-learning round: target dossier → candidate design → evaluation → human gate → wet lab → analysis.</span></a>
+<a class="card" href="02-branching.html"><span class="num">03</span><span class="t">Experiment Branching — Fork / Snapshot</span><span class="s">AgentENV sandbox lifecycle mapped onto experiment trees: fork per hypothesis, snapshot at review gates, replay for audits.</span></a>
+<a class="card" href="03-wetlab.html"><span class="num">04</span><span class="t">Wet-Lab Round Trip — Hardware in the Loop</span><span class="s">Protocol submission through safety review, instrument scheduling, execution, and telemetry → provenance.</span></a>
+<a class="card" href="04-campaign.html"><span class="num">05</span><span class="t">Stage Pipeline — Campaign View</span><span class="s">Discovery campaign stages, with failure loops feeding earlier stages.</span></a>
+<a class="card" href="05-tournament.html"><span class="num">06</span><span class="t">Hypothesis Tournament — Inside One Design Round</span><span class="s">Generate → Reflect → Rank → Evolve loop (pattern validated by Google's AI co-scientist), with fine-tuning flywheel.</span></a>
+<a class="card" href="06-deployment.html"><span class="num">07</span><span class="t">Deployment View</span><span class="s">AgentENV nodes hosting agent sandboxes, wired to FM gateway, lab fabric, and shared storage.</span></a>
+<a class="card" href="07-lab-pipeline.html"><span class="num">08</span><span class="t">Block D — Lab Execution Pipeline</span><span class="s">Agents only ever see the IAL contract; a safety engine sits outside any agent's trust boundary.</span></a>
+  </nav>
+</main></body></html>
