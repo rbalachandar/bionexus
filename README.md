@@ -1,13 +1,34 @@
-# Agentic Drug Discovery Platform
+# BioNexus (agentic-drug-discovery)
 
-A multi-agent platform where specialized AI agents collaborate across drug discovery
-stages — target identification, molecule design, in-silico screening, wet-lab assays,
-and trial design — interacting with physical lab equipment through a safe hardware
-abstraction layer.
+A **lean open-source framework for agentic drug discovery** — pluggable models, bio
+tools, labs, and sandboxes behind five core interfaces. Like early LangChain: small,
+typed, domain-specific. Not bloated: core deps = `pydantic` only.
 
-This repository holds the **architecture definition**: diagrams, flows, stage
-descriptions, and integration contracts. Each architectural block is designed to be
-independently workable against a small set of shared contracts.
+Also home to the platform **architecture definition**: diagrams, flows, stage
+descriptions, and integration contracts that the framework implements.
+
+## Quickstart (simulator-first, no network needed)
+
+```sh
+python -m venv .venv && .venv/bin/pip install -e . dev-dependencies...  # see pyproject
+.venv/bin/pip install -e ".[dev]"
+.venv/bin/python examples/iteration_loop.py   # full design round on the virtual lab
+.venv/bin/python -m pytest                    # 11 tests, <1s, offline
+```
+
+The example runs: candidate generation → hypothesis tournament → human-approvable
+protocol → **safety engine** → virtual wet lab → fork branch → safety rejection demo →
+hash-chained provenance. See [`docs/PLAN.md`](docs/PLAN.md) for the full build plan.
+
+### Five core interfaces (everything is one of these)
+
+| Interface | Adapters (now → roadmap) |
+|---|---|
+| `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub) → anthropic, gemini |
+| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator → opentrons, cloud labs |
+| `Sandbox` | local (copy-on-fork) → AgentENV (real fork/snapshot) |
+| `ProvenanceStore` | sqlite → postgres, s3-worm |
+| `BioTool` | rdkit descriptors → docking, ADMET, ESMFold |
 
 ## Architecture Diagrams
 

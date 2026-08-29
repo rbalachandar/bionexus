@@ -1,0 +1,129 @@
+"""Safety engine — the non-bypassable policy layer for physical actions (P6).
+
+Agents never call a LabAdapter directly; core's LabGateway checks every
+ProtocolSubmission against configured rules first. Rules are declarative and
+registered by the operator, not by agents.
+"""
+from __future__ import annotations
+
+import fnmatch
+from typing import Any, Protocol
+
+from bionexus.core.contracts import ProtocolSubmission
+
+
+class SafetyRule(Protocol):
+    """A single declarative check. Returns None if approved, else a reason."""
+
+    name: str
+
+    def check(self, protocol: ProtocolSubmission) -> str | None: ...
+
+
+class MaxBslRule:
+    """Reject protocols whose reagents exceed the allowed biosafety level."""
+
+    def __init__(self, max_bsl: int = 2):
+        self.name = f"max_bsl_{max_bsl}"
+        self.max_bsl = max_bsl
+
+    def check(self, protocol: ProtocolSubmission) -> str | None:
+        for reagent in protocol.reagents:
+            if reagent.bsl_level > self.max_bsl:
+                return (
+                    f"reagent '{reagent.name}' has BSL-{reagent.bsl_level} "
+                    f"> allowed BSL-{self.max_bsl}"
+                )
+        return None
+
+
+class ForbiddenComboRule:
+    """Reject protocols combining forbidden reagent pairs (glob patterns)."""
+
+    def __init__(self, forbidden_pairs: list[tuple[str, str]]):
+        self.name = "forbidden_combos"
+        self.pairs = [(a.lower(), b.lower()) for a, b in forbidden_pairs]
+
+    def check(self, protocol: ProtocolSubmission) -> str | None:
+        names = [r.name.lower() for r in protocol.reagents]
+        for a_pat, b_pat in self.pairs:
+            for a in names:
+                for b in names:
+                    if a == b:
+                        continue
+                    if fnmatch.fnmatch(a, a_pat) and fnmatch.fnmatch(b, b_pat):
+                        return f"forbidden reagent combination: '{a}' + '{b}'"
+        return None
+
+
+class MaxStepsRule:
+    """Guard against runaway agent-generated protocols."""
+
+    def __init__(self, max_steps: int = 100):
+        self.name = f"max_steps_{max_steps}"
+        self.max_steps = max_steps
+
+    def check(self, protocol: ProtocolSubmission) -> str | None:
+        if len(protocol.steps) > self.max_steps:
+            return f"protocol has {len(protocol.steps)} steps > max {self.max_steps}"
+        return None
+
+
+class SafetyEngine:
+    """Evaluates rules in order; first rejection wins. Operators compose rules;
+    agents can only ever receive (approved, reason)."""
+
+    def __init__(self, rules: list[Any] | None = None):
+        self.rules: list[Any] = list(rules) if rules else [
+            MaxBslRule(max_bsl=2),
+            MaxStepsRule(max_steps=100),
+        ]
+
+    def add_rule(self, rule: Any) -> None:
+        self.rules.append(rule)
+
+    def check(self, protocol: ProtocolSubmission) -> tuple[bool, str | None]:
+        for rule in self.rules:
+            reason = rule.check(protocol)
+            if reason is not None:
+                return False, f"[{rule.name}] {reason}"
+        return True, None
+
+
+class LabGateway:
+    """The ONLY path from agents to a LabAdapter. Enforces safety (P6), records
+    provenance for every run (P5). Agents see this, never the raw adapter."""
+
+    def __init__(self, lab: Any, safety: SafetyEngine, store: Any, actor: Any):
+        self.lab = lab
+        self.safety = safety
+        self.store = store
+        self.actor = actor
+
+    def submit(self, protocol: ProtocolSubmission) -> tuple[str | None, str | None]:
+        """Returns (run_id, rejection_reason). run_id is None when rejected."""
+        approved, reason = self.safety.check(protocol)
+        if not approved:
+            return None, reason
+        run_id = self.lab.submit_protocol(protocol)
+        from bionexus.core.contracts import EventType, InstrumentInfo
+        from bionexus.core.interfaces import record_for
+
+        self.store.append(
+            record_for(
+                protocol.envelope,
+                EventType.lab_run,
+                self.actor,
+                artifact=None,
+                decision={"run_id": run_id, "protocol_id": protocol.protocol_id},
+            )
+        )
+        return run_id, None
+
+    def results(self, envelope: Any, run_id: str) -> AssayResult:
+        result = self.lab.fetch_results(run_id)
+        result.envelope = envelope
+        return result
+
+    def capabilities(self) -> dict[str, Any]:
+        return self.lab.list_capabilities()
