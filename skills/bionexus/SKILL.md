@@ -20,6 +20,13 @@ analysis → verdict → confirmation**. It pairs well with the
 Opentrons protocol; BioNexus decides *whether it may run* (SafetyEngine) and
 records *what happened* (provenance).
 
+## Focused skills
+
+This is the overview skill. Focused companions (install what you need):
+`bionexus-labread` (analyze instrument exports) · `bionexus-labwatch` (notice
+device outputs autonomously) · `bionexus-campaign` (whole flow, autonomy
+levels) · `bionexus-opentrons` (robot execution via safety gateway).
+
 ## Setup
 
 ```sh

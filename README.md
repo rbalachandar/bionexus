@@ -28,9 +28,14 @@ protocols; BioNexus's SafetyEngine decides *whether they run*, and the
 provenance chain records what happened.
 
 ```sh
-cp -r skills/bionexus ~/.claude/skills/     # or .agents/skills/, Cursor plugins, ...
+cp -r skills/ ~/.claude/skills/            # or .agents/skills/, Cursor plugins, ...
 bn mcp                                       # and expose the tools over MCP
 ```
+
+Focused skills (install what you need): `bionexus` (overview) ·
+`bionexus-labread` (analyze instrument exports) · `bionexus-labwatch` (notice
+device outputs) · `bionexus-campaign` (whole flow with autonomy levels) ·
+`bionexus-opentrons` (robot execution via the safety gateway).
 
 ## For scientists: read your instrument exports automatically
 

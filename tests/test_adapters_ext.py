@@ -637,9 +637,13 @@ def test_skill_md_valid_and_plugin_json():
     fm = yaml.safe_load(m.group(1))  # must be valid YAML (agents parse it)
     assert fm["name"] == "bionexus"
     assert fm["metadata"]["version"] == "0.1.0"
+    for skill_md in Path("skills").glob("*/SKILL.md"):
+        fm2 = yaml.safe_load(_re.match(r"^---\n(.*?)\n---\n", skill_md.read_text(), _re.S).group(1))
+        assert fm2["name"] == skill_md.parent.name, f"{skill_md}: name must match dir"
+        assert "version" in fm2.get("metadata", {}), skill_md
     assert "SafetyEngine" in skill and "Never call a lab adapter directly" in skill
     plugin = _json.loads(Path("plugin.json").read_text())
-    assert plugin["skills"] == ["skills/bionexus"]
+    assert sorted(plugin["skills"]) == sorted(str(d) for d in Path("skills").iterdir() if d.is_dir())
 
 
 def test_install_skills_from_local_checkout(tmp_path):
