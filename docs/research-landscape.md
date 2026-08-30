@@ -87,3 +87,29 @@ https://help.openai.com/en/articles/20001193-gpt-rosalind-for-life-sciences-rese
 - FutureHouse Robin: https://www.futurehouse.org/research-announcements
 - Coscientist: https://www.nature.com/articles/s41586-023-06792-0
 - GPT-4b micro: https://www.technologyreview.com/2024/12/09/1108188/openai-model-for-protein-engineering-gpt-4b-micro-retro-biosciences/
+
+
+## Tools & standards: Scientific Agent Skills (K-Dense)
+
+[scientific-agent-skills](https://github.com/K-Dense-AI/scientific-agent-skills)
+(38k+ stars, MIT, Agent Skills standard) — 163 CI-validated skills giving agents
+domain knowledge: RDKit/Datamol cheminformatics, PyTDC benchmarks, DiffDock
+screening, PK/PD modeling, an Opentrons protocol-authoring skill, 78+ scientific
+database lookups (ChEMBL, PubChem, UniProt, COSMIC...), and evidence-bounded
+hypothesis generation.
+
+**Relationship to BioNexus — complementary layers:**
+
+| Layer | Provider |
+|---|---|
+| Domain knowledge & procedures (how to use RDKit, query ChEMBL, author protocols) | Scientific Agent Skills |
+| Execution, safety, provenance, autonomy, lab devices | BioNexus |
+| Bridge between them | Agent Skills standard + BioNexus MCP server |
+
+Their Opentrons skill teaches an agent *how to author protocols*; our
+`LabGateway` decides *whether they may run* (SafetyEngine first, always).
+Benchmarks note: their skills include PyTDC access — the natural bridge to our
+planned TDC benchmark adapter.
+
+Sources: https://github.com/K-Dense-AI/scientific-agent-skills ·
+https://agentskills.io/
