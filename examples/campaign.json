@@ -1,0 +1,26 @@
+{
+  "problem": {
+    "objective": "Find a confirmed sub-20uM KRAS_G12C binder for lead development",
+    "context": "Post-screen hit list; binding assay validated",
+    "constraints": [
+      {"name": "potency", "description": "IC50 <= 20 uM", "kind": "hard", "limit": 20.0, "unit": "uM"},
+      {"name": "budget", "description": "max 2 hypotheses to wet-lab", "kind": "hard"}
+    ],
+    "success_metric": "orthogonal confirmation"
+  },
+  "hypotheses": [
+    {"statement": "C-101 binds with IC50 <= 20 uM", "candidate": "C-101",
+     "assay_type": "binding", "predicted": "IC50 <= 20", "predicted_value": 20.0,
+     "rationale": "covalent warhead precedent"},
+    {"statement": "C-102 binds with IC50 <= 20 uM", "candidate": "C-102",
+     "assay_type": "binding", "predicted": "IC50 <= 20", "predicted_value": 20.0,
+     "rationale": "scaffold hop"},
+    {"statement": "C-103 binds with IC50 <= 10 uM", "candidate": "C-103",
+     "assay_type": "binding", "predicted": "IC50 <= 10", "predicted_value": 10.0,
+     "rationale": "hydrophobic analog"}
+  ],
+  "scores": {"C-101": 0.9, "C-102": 0.8, "C-103": 0.6},
+  "k": 2,
+  "autonomy": "act",
+  "seed": 42
+}

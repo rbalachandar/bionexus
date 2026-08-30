@@ -498,3 +498,48 @@ def test_problem_to_portfolio_flow(tmp_path):
     events = [r.event_type for r in store.branch_records(f"problem/{problem.problem_id}")]
     assert ET.problem_defined in events and ET.hypotheses_filtered in events
     assert len([e for e in events if e == ET.hypothesis_proposed]) == 3
+
+
+def test_autoloop_full_flow_act_and_observe(tmp_path):
+    from bionexus.autoloop import CampaignConfig, run_campaign
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.core.hypothesis import Constraint, ProblemStatement
+
+    problem = ProblemStatement(
+        objective="find binder",
+        constraints=[Constraint(name="potency", description="d", kind="hard",
+                                limit=20.0, unit="uM")])
+    specs = [{"statement": f"C{i} binds", "candidate": f"C{i}",
+              "assay_type": "binding", "predicted": "<=20", "predicted_value": 20.0}
+             for i in (1, 2, 3)]
+    scores = {"C1": 0.9, "C2": 0.7, "C3": 0.5}
+
+    # act: full autonomous loop
+    cfg = CampaignConfig(problem=problem, hypotheses=specs,
+                         score_fn=lambda h: scores[h.candidate], k=2,
+                         autonomy="act", inbox=str(tmp_path / "in"), poll_secs=0.05)
+    report = run_campaign(cfg, SimulatorLab(seed=4), SqliteProvenanceStore())
+    assert report.selected == ["C1", "C2"]
+    assert all(v == "validated" for v in report.verdicts.values())
+
+    # observe: nothing submitted
+    cfg2 = CampaignConfig(problem=problem, hypotheses=specs,
+                          score_fn=lambda h: scores[h.candidate], k=2,
+                          autonomy="observe", inbox=str(tmp_path / "in2"))
+    report2 = run_campaign(cfg2, SimulatorLab(seed=4), SqliteProvenanceStore())
+    assert report2.verdicts == {} and report2.selected == ["C1", "C2"]
+
+    # gate: without approver it errors; with approver it proceeds
+    cfg3 = CampaignConfig(problem=problem, hypotheses=specs,
+                          score_fn=lambda h: scores[h.candidate], k=1,
+                          autonomy="gate", inbox=str(tmp_path / "in3"), poll_secs=0.05)
+    try:
+        run_campaign(cfg3, SimulatorLab(seed=4), SqliteProvenanceStore())
+        raised = False
+    except ValueError:
+        raised = True
+    assert raised
+    approved = []
+    report3 = run_campaign(cfg3, SimulatorLab(seed=4), SqliteProvenanceStore(),
+                           approver=lambda title: approved.append(title) or True)
+    assert approved and report3.verdicts

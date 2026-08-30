@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 
 
 def _load_workflow(path: str) -> dict:
@@ -179,6 +180,31 @@ def cmd_watch(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_auto(args: argparse.Namespace) -> int:
+    import json
+    from bionexus.autoloop import CampaignConfig, run_campaign
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.hypothesis import Constraint, ProblemStatement
+
+    cfg_doc = json.loads(Path(args.config).read_text())
+    problem = ProblemStatement(
+        objective=cfg_doc["problem"]["objective"],
+        context=cfg_doc["problem"].get("context", ""),
+        constraints=[Constraint(**c) for c in cfg_doc["problem"].get("constraints", [])],
+        success_metric=cfg_doc["problem"].get("success_metric"))
+    cfg = CampaignConfig(
+        problem=problem, hypotheses=cfg_doc["hypotheses"],
+        score_fn=lambda h: float(cfg_doc.get("scores", {}).get(h.candidate, 0.5)),
+        k=cfg_doc.get("k", 2), autonomy=cfg_doc.get("autonomy", "act"),
+        inbox=cfg_doc.get("inbox", ".data/inbox"))
+    lab = SimulatorLab(seed=cfg_doc.get("seed", 42))
+    report = run_campaign(cfg, lab, SqliteProvenanceStore())
+    print(json.dumps({"problem": report.problem_id, "selected": report.selected,
+                      "verdicts": report.verdicts}, indent=1))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="bn", description="BioNexus CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -218,6 +244,10 @@ def main(argv: list[str] | None = None) -> int:
     watch_p.add_argument("inbox")
     watch_p.add_argument("--poll", type=float, default=1.0)
     watch_p.set_defaults(func=cmd_watch)
+
+    auto = sub.add_parser("auto", help="start the whole campaign flow from a config")
+    auto.add_argument("config")
+    auto.set_defaults(func=cmd_auto)
 
     args = parser.parse_args(argv)
     try:
