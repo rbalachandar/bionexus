@@ -92,11 +92,84 @@ effects) are flagged, weak compounds are right-censored (no IC50 — test higher
 concentrations), and runs failing Z' QC are marked unusable. See
 [`docs/virtual-lab.md`](docs/virtual-lab.md).
 
+## The whole flow, one command
+
+Everything composes into a single campaign: **problem + constraints → hypothesis
+portfolio → filter to top-k → design → safety-gated wet-lab → agent notices →
+analysis → verdict → confirmation loop.**
+
+```sh
+.venv/bin/bn auto campaign.json
+```
+
+<details><summary>campaign.json — the problem, stated like a scientist would</summary>
+
+```json
+{
+  "problem": {
+    "objective": "Find a confirmed sub-20uM KRAS_G12C binder for lead development",
+    "constraints": [
+      {"name": "potency", "description": "IC50 <= 20 uM", "kind": "hard", "limit": 20.0, "unit": "uM"},
+      {"name": "budget",  "description": "max 2 hypotheses to wet-lab", "kind": "hard"}
+    ],
+    "success_metric": "orthogonal confirmation"
+  },
+  "hypotheses": [
+    {"statement": "C-101 binds with IC50 <= 20 uM", "candidate": "C-101",
+     "assay_type": "binding", "predicted": "IC50 <= 20", "predicted_value": 20.0,
+     "rationale": "covalent warhead precedent"},
+    {"statement": "C-102 binds with IC50 <= 20 uM", "candidate": "C-102",
+     "assay_type": "binding", "predicted": "IC50 <= 20", "predicted_value": 20.0,
+     "rationale": "scaffold hop"}
+  ],
+  "scores": {"C-101": 0.9, "C-102": 0.8},
+  "k": 2,
+  "autonomy": "act"
+}
+```
+</details>
+
+Actual output:
+
+```
+[campaign] problem prob-89fd555d: 3 hypotheses -> 2 selected
+[campaign] [agent] noticed device output: sim-1403a26c.csv — reading it
+[campaign] [agent] analyzed: 1 compound(s), Z'=0.946
+[campaign] [agent] hypothesis hyp-22911313 (C-102): VALIDATED — IC50 1.833 uM vs threshold 20.0
+[campaign] [agent] recommendation: best binder so far is C-102 (IC50 1.833 uM) — next: confirm with orthogonal assay
+[campaign] [agent] loop closed: confirmation assay for C-102 auto-submitted (safety-approved) -> run sim-e67698bc
+{
+  "problem": "prob-89fd555d",
+  "selected": ["C-101", "C-102"],
+  "verdicts": {"C-101": "validated", "C-102": "validated"}
+}
+```
+
+Every step is provenance-recorded: the problem and its constraints, why each
+hypothesis made or missed the cut, which criteria each verdict used, and every
+safety-gated submission — `bn prove <problem-id> --html report.html` renders it
+as a tamper-evident audit.
+
+### You choose how much the agent does
+
+| autonomy | agent behavior |
+|---|---|
+| `observe` | reads, fits, recommends — **submits nothing** |
+| `gate` | proposes everything; **each lab submission needs operator approval** |
+| `act` | fully autonomous within the SafetyEngine (incl. confirmation assays) |
+
+The same flow also runs step-by-step by hand (see the notebooks) — the manual
+and agent paths share the same five interfaces, so you can start manual and
+hand stages to the agent as trust grows.
+
 **CLI:**
 
 ```sh
 bn run examples/workflow.yml       # tournament + assay on the configured lab
 bn sim                             # reference round on the virtual lab
+bn read results.csv                # auto-analyze an instrument export
+bn watch /path/to/outbox           # agent notices device outputs
+bn auto campaign.json              # whole flow, one command
 bn prove <branch> --html out.html  # tamper-evident provenance + shareable report
 bn mcp                             # MCP server: drive BioNexus from Claude/Cursor
 ```
@@ -172,6 +245,10 @@ Hand-drawn blueprint-style diagrams (SVG — rendered directly on GitHub):
 **6 · Campaign Pipeline** — target ID through trial design with human gates and failure loops.
 
 ![Campaign Pipeline](diagrams/svg/06-campaign.svg)
+
+**7 · Problem → Portfolio → Autonomous Loop** — state the problem, propose N hypotheses, filter to k, autonomous test-and-confirm with the provenance spine.
+
+![Problem to Autonomous Loop](diagrams/svg/07-problem-loop.svg)
 
 Styled HTML versions (dark blueprint pages with legends/captions) live in
 [`diagrams/artifacts/`](diagrams/artifacts/) — open locally in a browser.

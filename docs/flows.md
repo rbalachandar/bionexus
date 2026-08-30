@@ -152,3 +152,19 @@ flowchart TB
     IAL1 --> LAB
     S1 & S2 --> OSS
 ```
+
+
+## 7. Problem → Portfolio → Autonomous Loop (the full flow, as implemented)
+
+```mermaid
+flowchart TB
+    P["ProblemStatement: objective + constraints + success_metric"] --> HP["Portfolio: N hypotheses proposed (rationale + prediction each)"]
+    HP --> F["select_portfolio(score_fn, k): every accept/reject recorded with reason"]
+    F --> H["Per selected hypothesis: proposed -> designed -> safety-gated test"]
+    H --> LAB["lab/device performs (images on disk)"]
+    LAB --> EV["device event -> agent notices -> analyzes"]
+    EV --> V["verdict vs pre-registered criteria"]
+    V -->|validated| C["confirmation assay auto-submitted (SafetyEngine-approved)"]
+    C -->|next round| P
+    V -.->|invalidated / inconclusive| P
+```
