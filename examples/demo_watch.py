@@ -35,12 +35,17 @@ def main() -> None:
     threading.Thread(target=instrument_finishes_later, daemon=True).start()
 
     # an open hypothesis awaiting this plate's evidence
+    from bionexus.adapters.lab.simulator import SimulatorLab
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
     from bionexus.core.hypothesis import (ExperimentDesign, HypothesisTracker,
                                           SuccessCriteria)
     from bionexus.core.interfaces import system_actor
+    from bionexus.core.safety import LabGateway, SafetyEngine
 
-    tracker = HypothesisTracker(SqliteProvenanceStore(), system_actor("watch-demo"))
+    store = SqliteProvenanceStore()
+    tracker = HypothesisTracker(store, system_actor("watch-demo"))
+    gateway = LabGateway(SimulatorLab(seed=42), SafetyEngine(), store,
+                         system_actor("watch-demo"))
     tracker.propose(
         statement="C-101 IC50 <= 20 uM", candidate="C-101", assay_type="binding",
         predicted="IC50 <= 20", predicted_value=20.0,
@@ -50,8 +55,9 @@ def main() -> None:
 
     print(f"[agent] watching instrument outbox {INBOX}/ ...")
     watch(inbox=INBOX, tracker=tracker, stop_after=1, poll_secs=0.5,
-          notify=lambda msg: print(f"[agent] {msg}"))
-    print("\n[agent] done — scientist never touched a file.")
+          notify=lambda msg: print(f"[agent] {msg}"),
+          gateway=gateway, branch_id="watch-demo")
+    print("\n[agent] done — noticed, analyzed, verdict, confirmation submitted.\n[agent] the scientist never touched a file; the loop closes itself.")
 
 
 from bionexus.watch import watch  # noqa: E402

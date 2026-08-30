@@ -73,15 +73,27 @@ class AutoAnalysisAgent:
     """Reacts to lab events: reads results, updates hypotheses, records decisions.
 
     `notify` is how the scientist hears about it (console, MCP message, chat...).
+    If `gateway` is provided, recommendations with a clear next experiment are
+    AUTO-SUBMITTED through the safety gateway — closing the loop: the agent
+    designs and runs the orthogonal confirmation assay itself, still inside the
+    SafetyEngine's trust boundary.
     """
+
+    ORTHOGONAL_ASSAY = {"binding": "enzymatic", "enzymatic": "binding",
+                        "cytotoxicity": "binding"}
 
     def __init__(self, store: Any = None, tracker: Any = None,
                  notify: Callable[[str], None] | None = None,
-                 max_response: float | None = None):
+                 max_response: float | None = None,
+                 gateway: Any = None, branch_id: str = "autonomous-loop",
+                 auto_confirm: bool = True):
         self.store = store
         self.tracker = tracker
         self.notify = notify or (lambda msg: print(f"[agent] {msg}"))
         self.max_response = max_response
+        self.gateway = gateway
+        self.branch_id = branch_id
+        self.auto_confirm = auto_confirm and gateway is not None
 
     def handle(self, event: LabEvent) -> dict[str, Any] | None:
         if event.kind != "plate_ready" or event.path is None:
@@ -113,17 +125,49 @@ class AutoAnalysisAgent:
         best = sorted(((c, r["ic50_um"]) for c, r in result.analysis["compounds"].items()
                        if r["ic50_um"]), key=lambda t: t[1])
         if best:
-            self.notify(f"recommendation: best binder so far is {best[0][0]} "
-                        f"(IC50 {best[0][1]} uM) — next: confirm with orthogonal assay")
+            candidate, ic50 = best[0]
+            self.notify(f"recommendation: best binder so far is {candidate} "
+                        f"(IC50 {ic50} uM) — next: confirm with orthogonal assay")
+            if self.auto_confirm:
+                self._submit_confirmation(candidate, ic50)
         summary = {"compounds": len(result.analysis["compounds"]),
                    "z_prime": result.z_prime, "verdicts": verdicts}
         return summary
 
+    def _submit_confirmation(self, candidate: str, ic50: float) -> str | None:
+        """Close the loop: design + safety-submit the orthogonal confirmation."""
+        from bionexus.core.contracts import (
+            Envelope, ProtocolOp, ProtocolStep, ProtocolSubmission,
+            ReagentSpec, SampleKind, SampleSpec,
+        )
+
+        assay = self.ORTHOGONAL_ASSAY.get("binding", "enzymatic")
+        protocol = ProtocolSubmission(
+            envelope=Envelope(experiment_branch_id=self.branch_id),
+            title=f"auto-confirmation-{candidate}",
+            assay_type=assay,
+            steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense, params={"volume_ul": 50})],
+            samples=[SampleSpec(sample_id=candidate, kind=SampleKind.compound,
+                                concentration="10uM"),
+                     SampleSpec(sample_id="ctrl-neg", kind=SampleKind.buffer,
+                                concentration="10uM")],
+            reagents=[ReagentSpec(name="assay-buffer", amount="5 mL", bsl_level=1)],
+        )
+        run_id, rejection = self.gateway.submit(protocol)
+        if rejection:
+            self.notify(f"confirmation assay for {candidate} BLOCKED by safety: {rejection}")
+            return None
+        self.notify(f"loop closed: confirmation assay for {candidate} auto-submitted "
+                    f"(safety-approved) -> run {run_id}")
+        return run_id
+
 
 def watch(inbox: str | Path, store: Any = None, tracker: Any = None,
           stop_after: int | None = None, poll_secs: float = 1.0,
-          notify: Callable[[str], None] | None = None) -> None:
+          notify: Callable[[str], None] | None = None,
+          gateway: Any = None, branch_id: str = "autonomous-loop") -> None:
     monitor = DeviceMonitor(inbox, poll_secs=poll_secs)
-    agent = AutoAnalysisAgent(store=store, tracker=tracker, notify=notify)
+    agent = AutoAnalysisAgent(store=store, tracker=tracker, notify=notify,
+                              gateway=gateway, branch_id=branch_id)
     for event in monitor.events(stop_after=stop_after):
         agent.handle(event)

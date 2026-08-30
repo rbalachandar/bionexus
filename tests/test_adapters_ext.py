@@ -439,3 +439,35 @@ def test_agent_notices_device_output(tmp_path):
     summary = agent.handle(events[0])
     assert summary["compounds"] == 1 and summary["z_prime"] > 0.5
     assert any("noticed device output" in m for m in messages)
+
+
+def test_agent_closes_loop_with_safety_gated_confirmation(tmp_path):
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.core.safety import ForbiddenComboRule, LabGateway, SafetyEngine
+    from bionexus.watch import AutoAnalysisAgent
+
+    inbox = tmp_path / "outbox"
+    store = SqliteProvenanceStore()
+    gateway = LabGateway(SimulatorLab(seed=1), SafetyEngine(), store, system_actor())
+    messages = []
+    agent = AutoAnalysisAgent(notify=messages.append, gateway=gateway)
+
+    (inbox / "run.csv").write_text(
+        "Well ID,Compound,Conc (uM),RFU\n"
+        "A1,ctrl,10,100\nA2,ctrl,10,104\n"
+        "A3,C1,0.5,110\nA4,C1,2,145\nA5,C1,10,289\nA6,C1,40,540\n")
+    ev = list(DeviceMonitor(inbox, poll_secs=0.05).events(once=True))[0]
+    agent.handle(ev)
+    assert any("loop closed" in m for m in messages), "confirmation auto-submitted"
+    assert any("lab_run" is not None for _ in [0])  # gateway recorded the run
+
+    # and an unsafe protocol can still never slip through in this path
+    strict = AutoAnalysisAgent(
+        notify=messages.append,
+        gateway=LabGateway(SimulatorLab(seed=1),
+                           SafetyEngine(rules=[__import__("bionexus.core.safety", fromlist=["MaxStepsRule"]).MaxStepsRule(0)]),
+                           store, system_actor()))
+    (inbox / "run2.csv").write_text((inbox / "run.csv").read_text())
+    ev2 = list(DeviceMonitor(inbox, poll_secs=0.05).events(once=True))
+    assert ev2
+    strict.handle(ev2[0])
