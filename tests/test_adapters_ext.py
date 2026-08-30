@@ -694,5 +694,9 @@ def test_skill_discovery_and_role_resolution(tmp_path):
     assert guidance_for("rdkit", [tmp_path / ".agents" / "skills"]) == "body"  # body, frontmatter stripped
 
     # role resolution: recommended + installed
+    oi = ext.parent / "opentrons-integration"
+    oi.mkdir()
+    (oi / "SKILL.md").write_text(
+        '---\nname: opentrons-integration\nmetadata:\n  version: "2.0"\n---\nauthoring guidance')
     recs = recommend_for_role("assay-planning-agent", paths=[ext.parent])
-    assert recs  # opentrons-integration recommended; may or may not be installed here
+    assert [r["path"].split("/")[-1] for r in recs] == ["opentrons-integration"]
