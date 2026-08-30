@@ -172,6 +172,13 @@ def cmd_read(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_watch(args: argparse.Namespace) -> int:
+    from bionexus.watch import watch
+
+    watch(inbox=args.inbox, poll_secs=args.poll)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="bn", description="BioNexus CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -206,6 +213,11 @@ def main(argv: list[str] | None = None) -> int:
                       help="known maximal assay response (enables IC50 vs fixed max)")
     read.add_argument("--html", default=None, help="write an HTML summary")
     read.set_defaults(func=cmd_read)
+
+    watch_p = sub.add_parser("watch", help="watch an instrument outbox; agent notices results automatically")
+    watch_p.add_argument("inbox")
+    watch_p.add_argument("--poll", type=float, default=1.0)
+    watch_p.set_defaults(func=cmd_watch)
 
     args = parser.parse_args(argv)
     try:

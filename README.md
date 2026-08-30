@@ -35,6 +35,27 @@ control wells (`ctrl/control/blank/vehicle/DMSO/...`), plate-grid layouts
 (rows A–P × numbered columns), and BioNexus imaging evidence (`.npy` well
 images). Right-censored and single-dose cases are reported honestly.
 
+### You don't even point at the file — the agent notices it
+
+Watch an instrument outbox and the agent reacts on its own: reads the export,
+updates open hypotheses, and tells you what to do next:
+
+```sh
+.venv/bin/bn watch /path/to/instrument_outbox
+```
+
+```
+[instrument] run 0042 complete -> synergy_run0042.csv exported
+[agent] noticed device output: synergy_run0042.csv — reading it
+[agent] analyzed: 1 compound(s), Z'=0.96
+[agent] hypothesis hyp-45357756 (C-101): VALIDATED — IC50 8.944 uM vs threshold 20.0
+[agent] recommendation: best binder so far is C-101 (IC50 8.944 uM) — next: confirm with orthogonal assay
+```
+
+The same event interface maps to real push sources (instrument webhooks, lab
+queue callbacks) — inbox watching is the lowest-common-denominator that works
+with every instrument that exports a file.
+
 ## Quickstart (simulator-first, no network needed)
 
 ```sh

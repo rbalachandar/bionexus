@@ -416,3 +416,26 @@ def test_new_adapter_scaffold_tool(tmp_path):
     target = scaffold("tool", "my_docking", tmp_path, cap="e.sim.docking")
     src = (target / "my_docking_adapter.py").read_text()
     assert 'ToolName("e.sim.docking")' in src
+
+
+def test_agent_notices_device_output(tmp_path):
+    import time as _time
+    from bionexus.watch import AutoAnalysisAgent, DeviceMonitor
+
+    inbox = tmp_path / "outbox"
+    messages = []
+    agent = AutoAnalysisAgent(notify=messages.append)
+
+    monitor = DeviceMonitor(inbox, poll_secs=0.05)
+    assert list(monitor.events(once=True)) == []  # nothing yet
+
+    (inbox / "run0007.csv").write_text(
+        "Well ID,Compound,Conc (uM),RFU\n"
+        "A1,ctrl,10,100\nA2,ctrl,10,104\n"
+        "A3,C1,0.5,110\nA4,C1,2,145\nA5,C1,10,289\nA6,C1,40,540\n")
+    events = list(monitor.events(once=True))
+    assert len(events) == 1 and events[0].kind == "plate_ready"
+
+    summary = agent.handle(events[0])
+    assert summary["compounds"] == 1 and summary["z_prime"] > 0.5
+    assert any("noticed device output" in m for m in messages)
