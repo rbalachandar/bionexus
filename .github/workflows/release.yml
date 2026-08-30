@@ -2,7 +2,7 @@ name: release
 
 # Publishes to PyPI via Trusted Publishing (no token in repo).
 # One-time setup on pypi.org: add a pending publisher
-#   project: bio-nexus · owner: rbalachandar · repo: bionexus
+#   project: bionexuslab · owner: rbalachandar · repo: bionexus
 #   workflow: release.yml · environment: pypi
 on:
   push:
@@ -38,4 +38,4 @@ jobs:
     steps:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install bio-nexus==${GITHUB_REF_NAME#v} && bn new-adapter lab smoke --dir /tmp && ls /tmp/smoke_adapter
+      - run: pip install bionexuslab==${GITHUB_REF_NAME#v} && bn new-adapter lab smoke --dir /tmp && ls /tmp/smoke_adapter
