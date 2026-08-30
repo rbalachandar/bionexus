@@ -154,9 +154,10 @@ class HypothesisTracker:
                 round_no=0,
                 criteria=spec.get("criteria"),
                 design=spec.get("design"),
-                problem_id=problem.problem_id,
-                portfolio_rank=i,
             )
+            h.problem_id = problem.problem_id
+            h.portfolio_rank = i
+            self.hypotheses[h.hypothesis_id] = h
             proposed.append(h)
         return proposed
 
