@@ -630,11 +630,11 @@ def test_plate_reader_share_parses_auto_export(tmp_path):
 def test_skill_md_valid_and_plugin_json():
     import json as _json
     import re as _re
-    import yaml
+    from bionexus.skills import _parse_frontmatter
     skill = Path("skills/bionexus/SKILL.md").read_text()
     m = _re.match(r"^---\n(.*?)\n---\n", skill, _re.S)
     assert m, "SKILL.md needs frontmatter"
-    fm = yaml.safe_load(m.group(1))  # must be valid YAML (agents parse it)
+    fm = _parse_frontmatter(m.group(1))  # yaml-or-fallback, like agents do
     assert fm["name"] == "bionexus"
     assert fm["metadata"]["version"] == "0.1.0"
     for skill_md in Path("skills").glob("*/SKILL.md"):
