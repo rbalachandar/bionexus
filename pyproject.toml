@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "bionexus"
+name = "bio-nexus"
 version = "0.1.0"
 description = "Lean open-source framework for agentic drug discovery — pluggable models, bio tools, labs, and sandboxes behind five core interfaces."
 readme = "README.md"
