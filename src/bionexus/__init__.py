@@ -1,4 +1,4 @@
-"""bionexus — lean framework for agentic drug discovery.
+"""bionexus — framework for agentic drug discovery.
 
 Core is dependency-light (pydantic only). All integrations are adapters.
 """

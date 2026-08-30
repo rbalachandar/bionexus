@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "bionexuslab"
 version = "0.1.0"
-description = "Lean open-source framework for agentic drug discovery — pluggable models, bio tools, labs, and sandboxes behind five core interfaces."
+description = "Framework for agentic drug discovery — pluggable models, bio tools, labs, and sandboxes behind five core interfaces."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

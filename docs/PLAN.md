@@ -1,6 +1,6 @@
 # BioNexus — Build Plan
 
-Open-source framework for agentic drug discovery: lean core, adapter/plugins for
+Open-source framework for agentic drug discovery: minimal core, adapter/plugins for
 models, bio libraries, labs, sandboxes, and storage. Like early LangChain: small,
 typed, domain-specific — not bloated.
 
@@ -8,7 +8,7 @@ typed, domain-specific — not bloated.
 
 | # | Principle | Rule of thumb |
 |---|---|---|
-| P1 | Lean core | `core/` deps = `pydantic` only. CI must install+test core in <5s, no network |
+| P1 | Minimal core | `core/` deps = `pydantic` only. CI must install+test core in <5s, no network |
 | P2 | Interfaces not implementations | `core/` contains zero concrete integrations; everything real lives in `adapters/` |
 | P3 | Model-agnostic | Any OpenAI-compatible endpoint works by default; others are plugins |
 | P4 | Wet lab is an adapter | Simulator and hardware implement one `LabAdapter` protocol; CI runs simulator only |

@@ -1,6 +1,17 @@
 # BioNexus
 
-A **lean open-source framework for agentic drug discovery** — pluggable models, bio
+[![ci](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml/badge.svg)](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/bionexuslab)](https://pypi.org/project/bionexuslab/)
+[![Python](https://img.shields.io/pypi/pyversions/bionexuslab)](https://pypi.org/project/bionexuslab/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
+**Agents that run the scientific method:** state the problem, propose a
+portfolio of hypotheses, filter to the ones worth testing, design and run the
+experiments (simulated or real), notice the results, deliver verdicts against
+pre-registered criteria — all inside a safety boundary, all recorded in
+tamper-evident provenance.
+
+An **open-source framework for agentic drug discovery** — pluggable models, bio
 tools, labs, and sandboxes behind five core interfaces.
 
 Core dependencies: `pydantic` only. Everything else (models, labs, sandboxes,
