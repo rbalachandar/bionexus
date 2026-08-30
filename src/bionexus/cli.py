@@ -157,6 +157,21 @@ def cmd_new_adapter(args: argparse.Namespace) -> int:
                          + (["--cap", args.cap] if args.cap else []))
 
 
+def cmd_read(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from bionexus.labread import read_plate
+
+    result = read_plate(args.path, max_response=args.max_response)
+    print(result)
+    if args.html:
+        Path(args.html).write_text(
+            "<!DOCTYPE html><meta charset='utf-8'><title>BioNexus read</title>"
+            f"<h1>{result.source}</h1><pre>{result}</pre>")
+        print(f"report: {args.html}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="bn", description="BioNexus CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -184,6 +199,13 @@ def main(argv: list[str] | None = None) -> int:
     new_adapter.add_argument("--dir", default="adapters-contrib")
     new_adapter.add_argument("--cap", default=None)
     new_adapter.set_defaults(func=cmd_new_adapter)
+
+    read = sub.add_parser("read", help="auto-read an instrument/lab result file")
+    read.add_argument("path")
+    read.add_argument("--max-response", type=float, default=None,
+                      help="known maximal assay response (enables IC50 vs fixed max)")
+    read.add_argument("--html", default=None, help="write an HTML summary")
+    read.set_defaults(func=cmd_read)
 
     args = parser.parse_args(argv)
     try:

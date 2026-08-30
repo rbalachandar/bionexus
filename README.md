@@ -6,6 +6,35 @@ tools, labs, and sandboxes behind five core interfaces.
 Core dependencies: `pydantic` only. Everything else (models, labs, sandboxes,
 stores) is an adapter you opt into.
 
+## For scientists: read your instrument exports automatically
+
+The point of the library: **devices and labs produce files; BioNexus reads
+them.** Point it at a plate-reader export (CSV/TSV/XLSX, any column order, any
+vendor header block) — it auto-detects the format, finds your controls, fits
+dose–response IC50s, and computes assay QC:
+
+```sh
+.venv/bin/bn read synergy_export.csv
+# plate: synergy_export.csv [long] | wells: 10 | controls: 2 | Z': 0.956
+# compound        IC50 (uM)  points  note
+# C-101                8.94       4  observed-max
+# C-102                9.17       4  observed-max
+```
+
+Or in Python:
+
+```python
+from bionexus.labread import read_plate
+r = read_plate("my_results.csv")   # auto-detect: long/grid/xlsx/imaging evidence
+print(r)                           # IC50 table + Z' — no configuration
+```
+
+Recognized automatically: header synonyms (`Well/Position`, `Compound/Sample`,
+`Conc/Dose`, `RFU/OD/Value/...`), vendor metadata header lines (skipped),
+control wells (`ctrl/control/blank/vehicle/DMSO/...`), plate-grid layouts
+(rows A–P × numbered columns), and BioNexus imaging evidence (`.npy` well
+images). Right-censored and single-dose cases are reported honestly.
+
 ## Quickstart (simulator-first, no network needed)
 
 ```sh
