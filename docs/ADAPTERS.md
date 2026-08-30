@@ -89,3 +89,22 @@ my-robot = "my_org.labs:MyRobotLab"
 
 `Registry().load_entry_points()` picks these up; missing optional deps skip
 silently, never fatally.
+
+## Real device adapters (reference implementations)
+
+Two production-shaped adapters ship in-tree:
+
+- **`adapters/lab/opentrons.py`** — Opentrons OT-2/Flex over the robot HTTP API
+  (port 31950). The **Make** step of DMTA: compiles `ProtocolSubmission` into an
+  Opentrons Python protocol, uploads, plays the run, polls status. Results are
+  execution evidence (succeeded commands), not assay values — read the plate
+  afterwards with a reader adapter or `bn read`.
+- **`adapters/lab/plate_reader_share.py`** — for readers configured to
+  **auto-export completed reads to a network share** (Biotek Gen5, SoftMax Pro,
+  SpectraMax...). Submit registers the expected run; `fetch_results` waits for
+  the newest export and parses it with `labread` (autodetect, controls, IC50,
+  Z' QC).
+
+Both follow the P8 pattern: **CI runs against injected/recorded transports and
+generated export files** — no hardware needed to develop or test. When you
+connect hardware, only the transport changes.

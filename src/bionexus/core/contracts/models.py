@@ -260,6 +260,7 @@ class Measurement(BaseModel):
     replicate: int = Field(default=1, ge=1)
     derived_metrics: dict[str, float] = Field(default_factory=dict)
     flags: list[MeasurementFlag] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)  # adapter-specific evidence
 
 
 class InstrumentInfo(BaseModel):

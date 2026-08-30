@@ -224,7 +224,7 @@ surfaces with additive-evolution guarantees.
 | Interface | Adapters (now → roadmap) |
 |---|---|
 | `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub) → anthropic, gemini |
-| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator (synthetic plate images + analysis + Z' QC) → opentrons, cloud labs |
+| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator, **Opentrons OT-2/Flex** (HTTP), **PlateReaderShare** (Gen5/SoftMax auto-export shares) → cloud labs |
 | `Sandbox` | local (copy-on-fork) → AgentENV (real fork/snapshot) |
 | `ProvenanceStore` | sqlite → postgres, s3-worm |
 | `BioTool` | rdkit descriptors → docking, ADMET, ESMFold |
