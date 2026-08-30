@@ -630,13 +630,13 @@ def test_plate_reader_share_parses_auto_export(tmp_path):
 def test_skill_md_valid_and_plugin_json():
     import json as _json
     import re as _re
-    skill = pathlib.Path("skills/bionexus/SKILL.md").read_text()
+    skill = Path("skills/bionexus/SKILL.md").read_text()
     m = _re.match(r"^---\n(.*?)\n---\n", skill, _re.S)
     assert m, "SKILL.md needs frontmatter"
     fm = m.group(1)
     assert 'name: bionexus' in fm and 'version: "0.1.0"' in fm
     assert "SafetyEngine" in skill and "Never call a lab adapter directly" in skill
-    plugin = _json.loads(pathlib.Path("plugin.json").read_text())
+    plugin = _json.loads(Path("plugin.json").read_text())
     assert plugin["skills"] == ["skills/bionexus"]
 
 
