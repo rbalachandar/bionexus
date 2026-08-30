@@ -1,8 +1,8 @@
 ---
 name: bionexus
-description: Run agentic drug-discovery campaigns with BioNexus — state a problem with constraints, propose and filter hypotheses, design dose-response experiments, submit them through a safety-gated lab gateway (simulated devices, Opentrons, auto-export plate readers), notice device outputs, deliver pre-registered verdicts, and read the hash-chained provenance. Use for experiment orchestration, assay analysis, lab safety gating, and audit trails.
+description: "Run agentic drug-discovery campaigns with BioNexus: state a problem with constraints, propose and filter hypotheses, design dose-response experiments, submit them through a safety-gated lab gateway (simulated devices, Opentrons, auto-export plate readers), notice device outputs, deliver pre-registered verdicts, and read the hash-chained provenance. Use for experiment orchestration, assay analysis, lab safety gating, and audit trails."
 license: Apache-2.0
-compatibility: Python 3.10+. Requires `pip install bionexuslab` (core deps: pydantic). Optional extras: lab-imaging (numpy), bio-rdkit (rdkit). Hardware adapters need network access to the robot (port 31950).
+compatibility: "Python 3.10+. Requires pip install bionexuslab (core deps: pydantic). Optional extras: lab-imaging (numpy), bio-rdkit (rdkit). Hardware adapters need network access to the robot (port 31950)."
 allowed-tools: Read Write Edit Bash
 metadata:
   version: "0.1.0"
