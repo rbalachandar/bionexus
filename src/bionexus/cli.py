@@ -150,6 +150,13 @@ def cmd_mcp(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_new_adapter(args: argparse.Namespace) -> int:
+    from bionexus.scaffold import main as scaffold_main
+
+    return scaffold_main([args.kind, args.name, "--dir", args.dir]
+                         + (["--cap", args.cap] if args.cap else []))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="bn", description="BioNexus CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -170,6 +177,13 @@ def main(argv: list[str] | None = None) -> int:
 
     mcp = sub.add_parser("mcp", help="serve BioNexus tools over MCP (stdio)")
     mcp.set_defaults(func=cmd_mcp)
+
+    new_adapter = sub.add_parser("new-adapter", help="scaffold a tested adapter")
+    new_adapter.add_argument("kind", choices=["lab", "tool"])
+    new_adapter.add_argument("name")
+    new_adapter.add_argument("--dir", default="adapters-contrib")
+    new_adapter.add_argument("--cap", default=None)
+    new_adapter.set_defaults(func=cmd_new_adapter)
 
     args = parser.parse_args(argv)
     try:

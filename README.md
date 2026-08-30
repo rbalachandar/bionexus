@@ -62,6 +62,17 @@ Exposes `generate_candidates`, `run_assay` (dose-response + IC50),
 
 **Tutorials:** [`notebooks/`](notebooks/) — run a campaign · write an adapter · bring your own model.
 
+**Extend it:**
+
+```sh
+bn new-adapter lab my_robot      # scaffold a tested LabAdapter in seconds
+bn new-adapter tool my_docking --cap e.sim.docking
+```
+
+See [`docs/ADAPTERS.md`](docs/ADAPTERS.md) and the
+[stability policy](docs/stability.md) — the five core interfaces are stable
+surfaces with additive-evolution guarantees.
+
 | Doc | Contents |
 |---|---|
 | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | install, run, workflows |
@@ -71,6 +82,7 @@ Exposes `generate_candidates`, `run_assay` (dose-response + IC50),
 | [`docs/benchmarks.md`](docs/benchmarks.md) | public datasets (MoleculeNet, TDC, DOCKSTRING, ProteinGym) + first benchmark results |
 | [`docs/virtual-lab.md`](docs/virtual-lab.md) | simulated devices, image-based readouts, QC and failure modes |
 | [`docs/security.md`](docs/security.md) | threat model, trust boundaries, agent capability matrix |
+| [`docs/stability.md`](docs/stability.md) | versioning, stability tiers, deprecation policy |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
 
 ### Five core interfaces (everything is one of these)

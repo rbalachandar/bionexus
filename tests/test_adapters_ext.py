@@ -395,3 +395,24 @@ def test_hypothesis_design_and_inconclusive(tmp_path):
                       qc={"controls_passed": False})
     h = tracker.verdict(h, bad)
     assert h.status == "inconclusive" and h.qc_passed is False
+
+
+# ---- scaffold + release readiness ---------------------------------------------------
+
+def test_new_adapter_scaffold_lab(tmp_path):
+    from bionexus.scaffold import scaffold
+
+    target = scaffold("lab", "my_robot", tmp_path)
+    mod = target / "my_robot_adapter.py"
+    test = target / "test_my_robot_adapter.py"
+    assert mod.exists() and test.exists()
+    src = mod.read_text()
+    assert "class MyRobot" in src and "def submit_protocol" in src
+
+
+def test_new_adapter_scaffold_tool(tmp_path):
+    from bionexus.scaffold import scaffold
+
+    target = scaffold("tool", "my_docking", tmp_path, cap="e.sim.docking")
+    src = (target / "my_docking_adapter.py").read_text()
+    assert 'ToolName("e.sim.docking")' in src
