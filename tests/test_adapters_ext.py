@@ -471,3 +471,30 @@ def test_agent_closes_loop_with_safety_gated_confirmation(tmp_path):
     assert ev2
     strict.handle(ev2[0])
     assert any("BLOCKED by safety" in m for m in strict_msgs), "safety gate stays sovereign"
+
+
+def test_problem_to_portfolio_flow(tmp_path):
+    from bionexus.core.contracts import EventType as ET
+    from bionexus.core.hypothesis import (Constraint, HypothesisTracker,
+                                          ProblemStatement)
+
+    store = SqliteProvenanceStore()
+    tracker = HypothesisTracker(store, system_actor())
+    problem = tracker.define_problem(ProblemStatement(
+        objective="find a binder", context="ctx",
+        constraints=[Constraint(name="potency", description="IC50 <= 20 uM",
+                                kind="hard", limit=20.0, unit="uM")],
+        success_metric="orthogonal confirmation"))
+    batch = tracker.propose_portfolio(problem, [
+        {"statement": "A binds", "candidate": "A", "rationale": "r1"},
+        {"statement": "B binds", "candidate": "B", "rationale": "r2"},
+        {"statement": "C binds", "candidate": "C", "rationale": "r3"},
+    ])
+    assert len(batch) == 3 and all(h.problem_id == problem.problem_id for h in batch)
+    selected = tracker.select_portfolio(problem, batch,
+                                        score_fn=lambda h: {"A": 3, "B": 1, "C": 2}[h.candidate],
+                                        k=2)
+    assert [h.candidate for h in selected] == ["A", "C"]
+    events = [r.event_type for r in store.branch_records(f"problem/{problem.problem_id}")]
+    assert ET.problem_defined in events and ET.hypotheses_filtered in events
+    assert len([e for e in events if e == ET.hypothesis_proposed]) == 3

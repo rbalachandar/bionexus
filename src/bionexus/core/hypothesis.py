@@ -7,7 +7,8 @@ auditable end to end.
 """
 from __future__ import annotations
 
-from typing import Any
+import uuid
+from typing import Any, Callable
 
 from pydantic import BaseModel, Field
 
@@ -24,6 +25,12 @@ from bionexus.core.contracts import (
 from bionexus.core.interfaces import ProvenanceStore, record_for
 
 
+__all__ = [
+    "Constraint", "ExperimentDesign", "Hypothesis", "HypothesisTracker",
+    "PortfolioDecision", "ProblemStatement", "SuccessCriteria",
+]
+
+
 class SuccessCriteria(BaseModel):
     """Declared BEFORE the experiment runs (pre-registration semantics)."""
     metric: str                          # e.g. "ic50_um", "percent_inhibition"
@@ -34,6 +41,36 @@ class SuccessCriteria(BaseModel):
 
     def met(self, value: float) -> bool:
         return value <= self.threshold if self.direction == "min" else value >= self.threshold
+
+
+class Constraint(BaseModel):
+    """A hard or soft constraint on the solution space, declared with the problem."""
+    name: str
+    description: str = ""
+    kind: str = "hard"                   # "hard" | "soft" | "preference"
+    limit: float | None = None           # numeric bound where applicable
+    unit: str | None = None
+
+
+class ProblemStatement(BaseModel):
+    """Stage 0: what are we trying to achieve, and within what constraints?
+
+    Everything downstream (hypotheses, experiments, verdicts) traces back here.
+    """
+    problem_id: str = Field(default_factory=lambda: f"prob-{uuid.uuid4().hex[:8]}")
+    objective: str                       # the scientific question / goal
+    context: str = ""                    # background, prior evidence
+    constraints: list[Constraint] = Field(default_factory=list)
+    success_metric: str | None = None    # what "solved" means
+    proposed_by: str = "scientist"
+
+
+class PortfolioDecision(BaseModel):
+    """Why a hypothesis made / did not make the cut."""
+    hypothesis_id: str
+    selected: bool
+    score: float = 0.0
+    reason: str = ""
 
 
 class ExperimentDesign(BaseModel):
@@ -63,16 +100,92 @@ class Hypothesis(BaseModel):
     observed_value: float | None = None
     qc_passed: bool | None = None
     evidence_run_id: str | None = None
+    problem_id: str | None = None        # root problem this hypothesis addresses
+    portfolio_rank: int | None = None    # order in the proposed portfolio
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class HypothesisTracker:
-    """Records the full hypothesis lifecycle into the provenance store."""
+    """Records the full hypothesis lifecycle into the provenance store.
+
+    Stage 0: define_problem -> propose_portfolio -> select_portfolio
+    Then each selected hypothesis enters the flow: propose/designed -> tested
+    -> validated | invalidated | inconclusive.
+    """
 
     def __init__(self, store: ProvenanceStore, actor: Actor):
         self.store = store
         self.actor = actor
         self.hypotheses: dict[str, Hypothesis] = {}
+
+    # ------------------------------------------- stage 0: problem & portfolio
+
+    def define_problem(self, problem: ProblemStatement) -> ProblemStatement:
+        """Record the problem + constraints. Root of the provenance tree."""
+        self.store.append(self._record(
+            Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
+            EventType.problem_defined, None,
+            decision={
+                "problem_id": problem.problem_id,
+                "objective": problem.objective,
+                "constraints": [c.model_dump() for c in problem.constraints],
+                "success_metric": problem.success_metric,
+            },
+        ))
+        return problem
+
+    def propose_portfolio(
+        self,
+        problem: ProblemStatement,
+        hypotheses: list[dict[str, Any]],
+    ) -> list[Hypothesis]:
+        """Register a batch of candidate hypotheses addressing the problem.
+        Each dict: statement, candidate, assay_type, predicted, rationale,
+        predicted_value, optional criteria/design. All recorded; selection next."""
+        proposed: list[Hypothesis] = []
+        for i, spec in enumerate(hypotheses, start=1):
+            h = self.propose(
+                statement=spec["statement"],
+                candidate=spec["candidate"],
+                assay_type=spec.get("assay_type", "binding"),
+                predicted=spec.get("predicted", spec["statement"]),
+                predicted_value=spec.get("predicted_value"),
+                rationale=spec.get("rationale", ""),
+                round_no=0,
+                criteria=spec.get("criteria"),
+                design=spec.get("design"),
+                problem_id=problem.problem_id,
+                portfolio_rank=i,
+            )
+            proposed.append(h)
+        return proposed
+
+    def select_portfolio(self, problem: ProblemStatement,
+                         proposed: list[Hypothesis],
+                         score_fn: Callable[[Hypothesis], float],
+                         k: int = 2) -> list[Hypothesis]:
+        """Analyze + filter the portfolio to the k hypotheses worth testing.
+        Every accept/reject decision is provenance-recorded with its reason."""
+        scored = sorted(proposed, key=score_fn, reverse=True)
+        selected, decisions = [], []
+        for h in scored:
+            sel = len(selected) < k
+            if sel:
+                selected.append(h)
+            decisions.append(PortfolioDecision(
+                hypothesis_id=h.hypothesis_id, selected=sel,
+                score=round(score_fn(h), 4),
+                reason="top-k by score" if sel else "below cut"))
+        self.store.append(self._record(
+            Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
+            EventType.hypotheses_filtered, None,
+            decision={
+                "problem_id": problem.problem_id,
+                "k": k,
+                "decisions": [d.model_dump() for d in decisions],
+            },
+        ))
+        return selected
 
     def propose(self, statement: str, candidate: str, assay_type: str,
                 predicted: str, predicted_value: float | None = None,
@@ -180,10 +293,10 @@ class HypothesisTracker:
                       "statement": h.statement},
         )
 
-    def _record(self, env: Envelope, event: EventType, h: Hypothesis,
+    def _record(self, env: Envelope, event: EventType, h: Any,
                 decision: dict) -> ProvenanceRecord:
-        return record_for(env, event, self.actor,
-                          artifact=self._artifact(h), decision=decision)
+        artifact = self._artifact(h) if isinstance(h, Hypothesis) else None
+        return record_for(env, event, self.actor, artifact=artifact, decision=decision)
 
     def summary(self) -> dict[str, int]:
         counts = {"proposed": len(self.hypotheses), "validated": 0,
