@@ -11,6 +11,7 @@ Division of labor: skills teach the agent *how*; BioNexus core decides
 """
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -100,11 +101,42 @@ def _parse_frontmatter(text: str) -> dict[str, Any]:
     end = text.find("---", 3)
     if end == -1:
         return {}
+    block = text[3:end]
     try:
         import yaml
-        return yaml.safe_load(text[3:end]) or {}
+        return yaml.safe_load(block) or {}
+    except ImportError:
+        return _naive_yaml(block)
     except Exception:
         return {}
+
+
+def _naive_yaml(block: str) -> dict[str, Any]:
+    """Minimal frontmatter parser (flat keys + one nested block), for hosts
+    without PyYAML. Not a general YAML parser."""
+    out: dict[str, Any] = {}
+    nested: dict[str, Any] | None = None
+    for line in block.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indented = line.startswith((" ", "\t"))
+        if indented and nested is not None:
+            m2 = re.match(r"^([-\w]+):\s*(.*)$", stripped)
+            if m2:
+                nested[m2.group(1)] = m2.group(2).strip().strip('"').strip("'")
+            continue
+        m = re.match(r"^([-\w]+):\s*(.*)$", stripped)
+        if not m:
+            continue
+        key, value = m.group(1), m.group(2).strip().strip('"').strip("'")
+        if value == "":
+            nested = {}
+            out[key] = nested
+        else:
+            nested = None
+            out[key] = value
+    return out
 
 
 def discover_skills(paths: list[str | Path] | None = None,
