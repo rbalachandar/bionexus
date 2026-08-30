@@ -145,6 +145,7 @@ class HypothesisTracker:
         proposed: list[Hypothesis] = []
         for i, spec in enumerate(hypotheses, start=1):
             h = self.propose(
+                branch_id=f"problem/{problem.problem_id}",
                 statement=spec["statement"],
                 candidate=spec["candidate"],
                 assay_type=spec.get("assay_type", "binding"),
@@ -157,6 +158,7 @@ class HypothesisTracker:
             )
             h.problem_id = problem.problem_id
             h.portfolio_rank = i
+            h.branch_id = f"problem/{problem.problem_id}"
             self.hypotheses[h.hypothesis_id] = h
             proposed.append(h)
         return proposed
@@ -192,8 +194,9 @@ class HypothesisTracker:
                 predicted: str, predicted_value: float | None = None,
                 rationale: str = "", round_no: int = 1,
                 criteria: SuccessCriteria | None = None,
-                design: ExperimentDesign | None = None, **meta: Any) -> Hypothesis:
-        env = Envelope(experiment_branch_id=f"hyp/{round_no}")
+                design: ExperimentDesign | None = None,
+                branch_id: str | None = None, **meta: Any) -> Hypothesis:
+        env = Envelope(experiment_branch_id=branch_id or f"hyp/{round_no}")
         if criteria is None:
             # derive explicit criteria from the point prediction (min-direction:
             # IC50-style assays). Callers should override for max-direction.
