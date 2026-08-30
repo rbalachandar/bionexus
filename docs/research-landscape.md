@@ -17,6 +17,44 @@ our architecture compares. Last reviewed: 2026-08.
 | **Coscientist** (CMU, Nature 2023) | GPT-4 planner + code exec + robot API docs (Opentrons, Chemify) | Real Suzuki/Sonogashira syntheses, chemist-approved | Canonical LLM+robot-lab demo |
 | **OpenAI + Retro GPT-4b micro** (Dec 2024) | Fine-tuned GPT-4 variant for protein design | Retro wet lab | Designs beating human-made Yamanaka-factor variants >50× in some assays |
 | **Chai Discovery** | chai-1/chai-2 structure + antibody design FMs; CAD-suite, not agentic | Partner validation | Novartis, Pfizer, Lilly deals |
+| **OpenAI Rosalind Workbench** (Aug 2026) | GPT-Rosalind (dedicated life-sciences model) + Workbench: in-chat molecular/structure viewers, sequence alignment, plan-first NGS Analysis Workbench; Explore vs. gated Research modes; built into ChatGPT and Codex | Wet-lab *assistance* and tool orchestration; no owned lab fleet | Enterprise-first (verified orgs); "every scientist to be their own research team" |
+
+## Rosalind: what it changes, and where BioNexus stands
+
+OpenAI's Rosalind (model April 2026, Workbench Aug 28 2026) validates the
+category this project works in: LLM agents + domain tools + reviewable plans
+for life-science R&D. Reading the announcement carefully against our design:
+
+**What Rosalind is:** a closed, vertical product — one frontier model + a
+curated tool suite (structure viewers, NGS workbench) inside ChatGPT/Codex,
+with access gated by organization and OpenAI deciding which workflows exist.
+
+**What it is not:** open infrastructure. You cannot run Rosalind's brain on
+your data on your terms, add your own lab adapters, extend the workflow
+grammar, or audit its decision path — and it has no wet-lab execution layer,
+no provenance chain, and no sandbox fork/snapshot semantics.
+
+**BioNexus positioning against it:**
+
+| Dimension | Rosalind Workbench | BioNexus |
+|---|---|---|
+| Model | Locked (GPT-Rosalind) | Any provider (P3) — including GPT-Rosalind itself via adapter |
+| Workflows | Curated by OpenAI | User-defined stage graphs + tournaments |
+| Wet lab | Assistance only | IAL + SafetyEngine + device sims, real adapters (P4/P6) |
+| Provenance | Reviewable outputs (UI-level) | Hash-chained, tamper-evident, WORM (P5) |
+| Experiment semantics | Plan-first UI | Pre-registered hypotheses w/ criteria, design, QC-aware verdicts |
+| Access | Enterprise research preview | Open source, Apache-2.0 |
+| Is it a competitor? | Competitor for *scientist attention*; **potential upstream**: GPT-Rosalind is a plausible `ModelProvider` inside BioNexus |
+
+**Strategic take:** don't compete with Rosalind on model quality — impossible
+and unnecessary. Compete on the layers OpenAI won't open: the lab-in-the-loop
+abstraction, the safety/provenance substrate, and freedom of model/workflow
+choice. The MCP server (`bn mcp`) is the bridge: any agent stack, including
+OpenAI's, can drive BioNexus labs.
+
+Sources: https://openai.com/gpt-rosalind/ ·
+https://developers.openai.com/blog/rosalind-workbench ·
+https://help.openai.com/en/articles/20001193-gpt-rosalind-for-life-sciences-research
 
 ## What our architecture already gets right
 
