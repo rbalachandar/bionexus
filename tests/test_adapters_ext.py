@@ -691,7 +691,7 @@ def test_skill_discovery_and_role_resolution(tmp_path):
         '---\nname: rdkit\ndescription: "RDKit guidance"\nmetadata:\n  version: "1.0"\n---\nbody')
     found = discover_skills([tmp_path / ".agents" / "skills"])
     assert "rdkit" in found and found["rdkit"]["description"] == "RDKit guidance"
-    assert "RDKit guidance" in guidance_for("rdkit", [tmp_path / ".agents" / "skills"])
+    assert guidance_for("rdkit", [tmp_path / ".agents" / "skills"]) == "body"  # body, frontmatter stripped
 
     # role resolution: recommended + installed
     recs = recommend_for_role("assay-planning-agent", paths=[ext.parent])
