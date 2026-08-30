@@ -673,3 +673,26 @@ def test_agent_loads_skill_guidance_into_protocol_authoring(tmp_path):
                        capture_output=True, text=True)
     assert r.returncode == 0
     assert "BLOCKED by SafetyEngine" in r.stdout
+
+
+def test_skill_discovery_and_role_resolution(tmp_path):
+    import pathlib as _pl
+    from bionexus.skills import discover_skills, guidance_for, recommend_for_role
+
+    # discover bundled bionexus skills
+    found = discover_skills()
+    assert "bionexus" in found and "bionexus-labread" in found
+    assert found["bionexus-labread"]["source"] in ("bionexus", "skills")
+
+    # discover installed external skills (standard ~/.agents/skills convention)
+    ext = tmp_path / ".agents" / "skills" / "rdkit"
+    ext.mkdir(parents=True)
+    (ext / "SKILL.md").write_text(
+        '---\nname: rdkit\ndescription: "RDKit guidance"\nmetadata:\n  version: "1.0"\n---\nbody')
+    found = discover_skills([tmp_path / ".agents" / "skills"])
+    assert "rdkit" in found and found["rdkit"]["description"] == "RDKit guidance"
+    assert "RDKit guidance" in guidance_for("rdkit", [tmp_path / ".agents" / "skills"])
+
+    # role resolution: recommended + installed
+    recs = recommend_for_role("assay-planning-agent", paths=[ext.parent])
+    assert recs  # opentrons-integration recommended; may or may not be installed here

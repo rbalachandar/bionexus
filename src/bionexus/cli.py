@@ -158,6 +158,32 @@ def cmd_new_adapter(args: argparse.Namespace) -> int:
                          + (["--cap", args.cap] if args.cap else []))
 
 
+def cmd_skills(args: argparse.Namespace) -> int:
+    from bionexus.skills import discover_skills, install_skills, recommend_for_role
+
+    if args.command == "list":
+        found = discover_skills()
+        if not found:
+            print("no skills discovered")
+            return 0
+        for name, info in sorted(found.items()):
+            desc = (info["description"] or "-")[:80]
+            print(f"{name:28} v{info['version'] or '-':<6} [{info['source']}] {desc}")
+        return 0
+    if args.command == "role":
+        recs = recommend_for_role(args.role, auto_install=args.install)
+        print(f"role '{args.role}': {len(recs)} skill(s) available")
+        for r in recs:
+            print(f"  {r['path']}  v{r['version'] or '-'}")
+        return 0
+    if args.command == "install":
+        installed = install_skills(args.names, args.dest)
+        for pth in installed:
+            print(f"installed: {pth}")
+        return 0
+    return 2
+
+
 def cmd_read(args: argparse.Namespace) -> int:
     from pathlib import Path
 
@@ -248,6 +274,20 @@ def main(argv: list[str] | None = None) -> int:
     auto = sub.add_parser("auto", help="start the whole campaign flow from a config")
     auto.add_argument("config")
     auto.set_defaults(func=cmd_auto)
+
+    sk = sub.add_parser("skills", help="discover/install scientific agent skills")
+    sksub = sk.add_subparsers(dest="command", required=True)
+    sksub.add_parser("list", help="list discovered skills")
+    role = sksub.add_parser("role", help="skills recommended for an agent role")
+    role.add_argument("role", choices=["design-agent", "target-agent",
+                                       "assay-planning-agent", "analysis-agent",
+                                       "trial-agent"])
+    role.add_argument("--install", action="store_true",
+                      help="auto-install missing recommended skills")
+    inst = sksub.add_parser("install", help="install skills from scientific-agent-skills")
+    inst.add_argument("names", nargs="+")
+    inst.add_argument("--dest", default=".agents/skills")
+    sk.set_defaults(func=cmd_skills)
 
     args = parser.parse_args(argv)
     try:

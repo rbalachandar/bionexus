@@ -82,3 +82,89 @@ def load_skill_instructions(skill_dir: str | Path) -> str:
         if end != -1:
             return text[end + 3:].strip()
     return text.strip()
+
+
+# ------------------------------------------------------------- discovery
+
+DEFAULT_SKILL_PATHS = [
+    "~/.agents/skills",      # `npx skills add` convention (user-level)
+    ".agents/skills",        # project-level
+    "~/.claude/skills",      # Claude Code
+    "skills",                # this repo / sandbox rootfs
+]
+
+
+def _parse_frontmatter(text: str) -> dict[str, Any]:
+    if not text.startswith("---"):
+        return {}
+    end = text.find("---", 3)
+    if end == -1:
+        return {}
+    try:
+        import yaml
+        return yaml.safe_load(text[3:end]) or {}
+    except Exception:
+        return {}
+
+
+def discover_skills(paths: list[str | Path] | None = None,
+                    include_repo: str = REPO) -> dict[str, dict[str, Any]]:
+    """Discover installed Agent Skills across standard directories.
+
+    Returns {name: {path, description, version, source}} — the index an agent
+    (or the sandbox builder) consults to load guidance. BioNexus's own skills
+    are always included; K-Dense scientific skills appear once installed via
+    `npx skills add`, `gh skill install`, or `install_skills()`.
+    """
+    import os
+
+    if paths is None:
+        paths = DEFAULT_SKILL_PATHS
+    index: dict[str, dict[str, Any]] = {}
+    for base in paths:
+        base = Path(os.path.expanduser(str(base)))
+        if not base.is_dir():
+            continue
+        for skill_md in base.glob("*/SKILL.md"):
+            fm = _parse_frontmatter(skill_md.read_text(errors="replace"))
+            name = fm.get("name") or skill_md.parent.name
+            index[name] = {
+                "path": str(skill_md.parent),
+                "description": fm.get("description", ""),
+                "version": (fm.get("metadata") or {}).get("version", ""),
+                "source": str(base),
+            }
+    # skills bundled with this package/repo
+    own = Path(__file__).resolve().parent.parent / "skills"
+    if own.is_dir():
+        for skill_md in own.glob("*/SKILL.md"):
+            fm = _parse_frontmatter(skill_md.read_text(errors="replace"))
+            index.setdefault(fm.get("name") or skill_md.parent.name, {
+                "path": str(skill_md.parent),
+                "description": fm.get("description", ""),
+                "version": (fm.get("metadata") or {}).get("version", ""),
+                "source": "bionexus",
+            })
+    return index
+
+
+def guidance_for(skill_name: str, paths: list[str | Path] | None = None) -> str:
+    """Convenience: discovered skill -> instruction text for a prompt."""
+    found = discover_skills(paths)
+    if skill_name not in found:
+        raise KeyError(f"skill '{skill_name}' not installed; "
+                       f"available: {sorted(found)}")
+    return load_skill_instructions(found[skill_name]["path"])
+
+
+def recommend_for_role(role: str, paths: list[str | Path] | None = None,
+                       auto_install: bool = False, dest: str | Path = ".agents/skills") -> list[dict[str, Any]]:
+    """Skills RECOMMENDED_SKILLS says this role needs, that are actually
+    discoverable. With auto_install, missing ones are pulled from the repo."""
+    wanted = RECOMMENDED_SKILLS.get(role, [])
+    if auto_install:
+        missing = [w for w in wanted if w not in discover_skills(paths)]
+        if missing:
+            install_skills(missing, dest)
+    found = discover_skills(paths)
+    return [found[w] for w in wanted if w in found]
