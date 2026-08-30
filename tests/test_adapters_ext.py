@@ -623,3 +623,47 @@ def test_plate_reader_share_parses_auto_export(tmp_path):
     r = lab.fetch_results(run_id)
     assert r.qc.controls_passed and r.measurements
     assert r.measurements[0].unit == "uM"
+
+
+# ---- agent skills integration --------------------------------------------------------
+
+def test_skill_md_valid_and_plugin_json():
+    import json as _json
+    import re as _re
+    skill = pathlib.Path("skills/bionexus/SKILL.md").read_text()
+    m = _re.match(r"^---\n(.*?)\n---\n", skill, _re.S)
+    assert m, "SKILL.md needs frontmatter"
+    fm = m.group(1)
+    assert 'name: bionexus' in fm and 'version: "0.1.0"' in fm
+    assert "SafetyEngine" in skill and "Never call a lab adapter directly" in skill
+    plugin = _json.loads(pathlib.Path("plugin.json").read_text())
+    assert plugin["skills"] == ["skills/bionexus"]
+
+
+def test_install_skills_from_local_checkout(tmp_path):
+    from bionexus.skills import install_skills, load_skill_instructions
+    # fake a local checkout of the skills repo
+    repo = tmp_path / "repo"
+    (repo / "skills" / "rdkit").mkdir(parents=True)
+    (repo / "skills" / "rdkit" / "SKILL.md").write_text(
+        '---\nname: rdkit\nmetadata:\n  version: "1.0"\n---\n# RDKit guidance')
+    dest = tmp_path / "agent" / "skills"
+    installed = install_skills(["rdkit", "not-a-real-skill"], dest, repo_path=repo)
+    assert len(installed) == 1 and installed[0].name == "rdkit"
+    body = load_skill_instructions(dest / "rdkit")
+    assert "RDKit guidance" in body and not body.startswith("---")
+
+
+def test_agent_loads_skill_guidance_into_protocol_authoring(tmp_path):
+    """The item-3 story: skill guidance -> LLM authors protocol -> safety gate."""
+    import pathlib
+    from bionexus.skills import load_skill_instructions
+    guidance_path = pathlib.Path("skills/bionexus/SKILL.md")
+    guidance = load_skill_instructions(guidance_path)
+    assert "Never call a lab adapter directly" in guidance
+    # the demo exercises the full loop offline
+    import subprocess, sys
+    r = subprocess.run([sys.executable, "examples/demo_skill_protocol.py"],
+                       capture_output=True, text=True)
+    assert r.returncode == 0
+    assert "BLOCKED by SafetyEngine" in r.stdout

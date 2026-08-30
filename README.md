@@ -17,6 +17,21 @@ tools, labs, and sandboxes behind five core interfaces.
 Core dependencies: `pydantic` only. Everything else (models, labs, sandboxes,
 stores) is an adapter you opt into.
 
+## Agent Skills: install BioNexus into your agent
+
+BioNexus ships as an [Agent Skills](https://agentskills.io/) package — copy
+`skills/bionexus/` into your agent's skills directory (or use `plugin.json`
+with plugin-capable hosts) and your agent can run safety-gated discovery
+campaigns. It composes with [Scientific Agent Skills](https://github.com/K-Dense-AI/scientific-agent-skills):
+their `opentrons-integration`/`rdkit` skills teach the agent *how* to author
+protocols; BioNexus's SafetyEngine decides *whether they run*, and the
+provenance chain records what happened.
+
+```sh
+cp -r skills/bionexus ~/.claude/skills/     # or .agents/skills/, Cursor plugins, ...
+bn mcp                                       # and expose the tools over MCP
+```
+
 ## For scientists: read your instrument exports automatically
 
 The point of the library: **devices and labs produce files; BioNexus reads
