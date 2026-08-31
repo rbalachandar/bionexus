@@ -262,6 +262,7 @@ surfaces with additive-evolution guarantees.
 | [`docs/benchmarks.md`](docs/benchmarks.md) | public datasets (MoleculeNet, TDC, DOCKSTRING, ProteinGym) + first benchmark results |
 | [`docs/virtual-lab.md`](docs/virtual-lab.md) | simulated devices, image-based readouts, QC and failure modes |
 | [`docs/security.md`](docs/security.md) | threat model, trust boundaries, agent capability matrix |
+| [`docs/critical-review.md`](docs/critical-review.md) | unsympathetic independent review: what works, what fails, adoption forecast |
 | [`docs/stability.md`](docs/stability.md) | versioning, stability tiers, deprecation policy |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
 
