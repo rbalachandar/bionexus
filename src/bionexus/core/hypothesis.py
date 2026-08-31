@@ -102,6 +102,7 @@ class Hypothesis(BaseModel):
     evidence_run_id: str | None = None
     problem_id: str | None = None        # root problem this hypothesis addresses
     portfolio_rank: int | None = None    # order in the proposed portfolio
+    family: str | None = None            # mechanistic family (same claim, many variants)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -163,22 +164,80 @@ class HypothesisTracker:
             proposed.append(h)
         return proposed
 
+    def propose_families(
+        self,
+        problem: ProblemStatement,
+        families: list[dict[str, Any]],
+    ) -> list[Hypothesis]:
+        """Register mechanistically DISTINCT hypothesis families, each with
+        variant hypotheses (same claim, different parameterizations — e.g.
+        analogs of one warhead). Each family dict:
+          {family, parent_statement, kind, rationale,
+           variants: [variant-spec dicts as in propose_portfolio]}
+        Returns flat variant list, each tagged with its family; the family
+        parent claim itself is provenance-recorded."""
+        all_variants: list[Hypothesis] = []
+        for fam in families:
+            fid = fam.get("family") or f"fam-{abs(hash(fam['parent_statement'])) % 10**8}"
+            self.store.append(self._record(
+                Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
+                EventType.hypothesis_proposed, None,
+                decision={
+                    "family_id": fid,
+                    "parent_statement": fam["parent_statement"],
+                    "kind": fam.get("kind", "mechanistic"),
+                    "rationale": fam.get("rationale", ""),
+                    "n_variants": len(fam.get("variants", [])),
+                }))
+            for spec in fam.get("variants", []):
+                spec = dict(spec)
+                spec.setdefault("rationale", fam.get("rationale", ""))
+                h = self.propose(
+                    branch_id=f"problem/{problem.problem_id}",
+                    statement=spec["statement"],
+                    candidate=spec["candidate"],
+                    assay_type=spec.get("assay_type", "binding"),
+                    predicted=spec.get("predicted", spec["statement"]),
+                    predicted_value=spec.get("predicted_value"),
+                    rationale=spec.get("rationale", ""),
+                    round_no=0,
+                    criteria=spec.get("criteria"),
+                    design=spec.get("design"),
+                )
+                h.problem_id = problem.problem_id
+                h.family = fid
+                self.hypotheses[h.hypothesis_id] = h
+                all_variants.append(h)
+        return all_variants
+
     def select_portfolio(self, problem: ProblemStatement,
                          proposed: list[Hypothesis],
                          score_fn: Callable[[Hypothesis], float],
-                         k: int = 2) -> list[Hypothesis]:
+                         k: int = 2,
+                         max_per_family: int | None = None) -> list[Hypothesis]:
         """Analyze + filter the portfolio to the k hypotheses worth testing.
-        Every accept/reject decision is provenance-recorded with its reason."""
+        With max_per_family, selection enforces DIVERSITY: at most N variants
+        of the same mechanistic family are taken (a sweep of one idea cannot
+        crowd out different ideas). Every accept/reject decision is
+        provenance-recorded with its reason."""
         scored = sorted(proposed, key=score_fn, reverse=True)
         selected, decisions = [], []
+        family_counts: dict[str, int] = {}
         for h in scored:
             sel = len(selected) < k
+            reason = "top-k by score"
+            if sel and max_per_family is not None and h.family:
+                if family_counts.get(h.family, 0) >= max_per_family:
+                    sel = False
+                    reason = (f"family '{h.family}' already has "
+                              f"{max_per_family} selected (diversity cap)")
             if sel:
                 selected.append(h)
+                if h.family:
+                    family_counts[h.family] = family_counts.get(h.family, 0) + 1
             decisions.append(PortfolioDecision(
                 hypothesis_id=h.hypothesis_id, selected=sel,
-                score=round(score_fn(h), 4),
-                reason="top-k by score" if sel else "below cut"))
+                score=round(score_fn(h), 4), reason=reason))
         self.store.append(self._record(
             Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
             EventType.hypotheses_filtered, None,

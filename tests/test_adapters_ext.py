@@ -728,3 +728,37 @@ def test_vision_response_parsing():
     # robustness: thinking-model responses may wrap the list in prose
     m2 = re.search(r"\[[^\]]*\]", 'Let me see... {"values": [5, 15]} done', re.S)
     assert [float(x) for x in re.findall(r"-?\d+(?:\.\d+)?", m2.group(0))] == [5.0, 15.0]
+
+
+def test_hypothesis_families_and_diversity_cap(tmp_path):
+    from bionexus.core.contracts import EventType as ET
+    from bionexus.core.hypothesis import (Constraint, HypothesisTracker,
+                                          ProblemStatement)
+
+    store = SqliteProvenanceStore()
+    tracker = HypothesisTracker(store, system_actor())
+    problem = tracker.define_problem(ProblemStatement(objective="find binder"))
+
+    families = [
+        {"family": "mech-A",
+         "parent_statement": "mechanism A works",
+         "variants": [{"statement": "A1 binds", "candidate": "A1"},
+                      {"statement": "A2 binds", "candidate": "A2"}]},
+        {"family": "mech-B",
+         "parent_statement": "mechanism B works",
+         "variants": [{"statement": "B1 binds", "candidate": "B1"}]},
+    ]
+    variants = tracker.propose_families(problem, families)
+    assert len(variants) == 3
+    assert {v.family for v in variants} == {"mech-A", "mech-B"}
+    # scores: A2 (0.9) > A1 (0.8) > B1 (0.7) — without the cap, both slots
+    # would go to family A; with it, each family gets one
+    selected = tracker.select_portfolio(problem, variants,
+                                        score_fn=lambda h: {"A1": 0.8, "A2": 0.9,
+                                                            "B1": 0.7}[h.candidate],
+                                        k=2, max_per_family=1)
+    assert sorted(h.candidate for h in selected) == ["A2", "B1"]
+    fam_events = [r for r in store.branch_records(f"problem/{problem.problem_id}")
+                  if r.event_type == ET.hypothesis_proposed and r.decision
+                  and "family_id" in r.decision]
+    assert len(fam_events) == 2, "family parent claims provenance-recorded"

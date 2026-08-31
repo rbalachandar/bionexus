@@ -75,16 +75,33 @@ def main() -> None:
          "assay_type": "counterscreen", "predicted": "interference detected",
          "rationale": "aggregator-like, fluorescent"},
     ]
-    portfolio = tracker.propose_portfolio(problem, portfolio_specs)
-    print(f"[flow] {len(portfolio)} hypotheses proposed (portfolio)")
+    # 1b. structure: mechanistic FAMILIES with variant sweeps
+    families = [
+        {"family": "covalent-warhead",
+         "parent_statement": "A covalent warhead targeting Cys12 of KRAS_G12C inhibits binding",
+         "kind": "mechanistic", "rationale": "switch-II pocket precedent",
+         "variants": [portfolio_specs[0], portfolio_specs[2]]},
+        {"family": "noncovalent-scaffold-hop",
+         "parent_statement": "A non-covalent scaffold can achieve sub-20uM binding",
+         "kind": "mechanistic", "rationale": "developability over potency",
+         "variants": [portfolio_specs[1]]},
+        {"family": "artifact-hypothesis",
+         "parent_statement": "C-104 signal is assay interference, not binding",
+         "kind": "artifact-explanation", "rationale": "fluorescent aggregator-like",
+         "variants": [portfolio_specs[3]]},
+    ]
+    portfolio = tracker.propose_families(problem, families)
+    print(f"[flow] {len(families)} families, {len(portfolio)} variant hypotheses proposed")
 
     # ------------------------------------------- 2. analyze + filter to few
     def score(h) -> float:
         # stand-in for the analysis step: feasibility x novelty
-        base = {"C-101": 0.9, "C-102": 0.8, "C-103": 0.75, "C-104": 0.6}
+        base = {"C-101": 0.9, "C-102": 0.8, "C-103": 0.85, "C-104": 0.6}
         return base.get(h.candidate, 0.5)
 
-    selected = tracker.select_portfolio(problem, portfolio, score_fn=score, k=2)
+    # diversity cap: a sweep of one family cannot crowd out different ideas
+    selected = tracker.select_portfolio(problem, portfolio, score_fn=score, k=2,
+                                        max_per_family=1)
     print(f"[flow] selected for testing: "
           f"{[(h.candidate, h.statement[:40] + '...') for h in selected]}")
 
