@@ -36,8 +36,13 @@ Autonomy = str  # "act" | "gate" | "observe"
 @dataclass
 class CampaignConfig:
     problem: ProblemStatement
-    hypotheses: list[dict[str, Any]]          # portfolio specs (see propose_portfolio)
-    score_fn: Callable[[Any], float]          # portfolio filter scoring
+    hypotheses: list[dict[str, Any]] | None = None   # config-defined portfolio...
+    hypothesis_source: str = "config"         # ...or "agent": the model decides
+    model: Any = None                         # required when hypothesis_source == "agent"
+    candidates: list[dict[str, Any]] | None = None   # library shown to the agent
+    max_families: int = 3
+    max_variants_per_family: int = 3
+    score_fn: Callable[[Any], float] | None = None   # portfolio filter scoring
     k: int = 2                                # hypotheses taken to wet-lab
     concentrations: tuple[str, ...] = ("0.5uM", "2uM", "10uM", "40uM")
     inbox: str | Path = ".data/inbox"
@@ -73,8 +78,21 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
 
     # 0. problem + portfolio + filter
     problem = tracker.define_problem(cfg.problem)
-    portfolio = tracker.propose_portfolio(problem, cfg.hypotheses)
-    selected = tracker.select_portfolio(problem, portfolio, cfg.score_fn, k=cfg.k)
+    family_scores: dict[str, float] = {}
+    if cfg.hypothesis_source == "agent":
+        from bionexus.hypothesis_agent import propose_families_with_agent
+        portfolio, family_scores = propose_families_with_agent(
+            tracker, cfg.problem, cfg.model, candidates=cfg.candidates,
+            max_families=cfg.max_families,
+            max_variants_per_family=cfg.max_variants_per_family,
+            notify=say)
+        say(f"agent proposed {len(portfolio)} variant hypotheses")
+        score_fn = cfg.score_fn or (lambda h: family_scores.get(h.family or "", 0.5))
+    else:
+        portfolio = tracker.propose_portfolio(problem, cfg.hypotheses or [])
+        score_fn = cfg.score_fn or (lambda h: 0.5)
+    selected = tracker.select_portfolio(problem, portfolio, score_fn, k=cfg.k,
+                                        max_per_family=1)
     say(f"problem {problem.problem_id}: {len(portfolio)} hypotheses -> {len(selected)} selected")
 
     # 1. design + submit for each selected hypothesis

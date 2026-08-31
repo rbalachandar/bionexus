@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import urllib.request
 from typing import Any
 
@@ -16,10 +17,19 @@ from bionexus.core.contracts import ToolInvocation, ToolName, ToolResult
 class AnthropicProvider:
     name = "anthropic"
 
-    def __init__(self, model: str = "stub-claude", api_key: str | None = None):
-        self.model = model
-        self.model_version = model
-        self.api_key = api_key
+    def __init__(self, model: str | None = None, api_key: str | None = None,
+                 base_url: str | None = None):
+        self.model = (model or os.environ.get("BIONEXUS_LLM_MODEL")
+                      or os.environ.get("ANTHROPIC_DEFAULT_SONNET_MODEL")
+                      or os.environ.get("ANTHROPIC_DEFAULT_HAIKU_MODEL")
+                      or "stub-claude")
+        self.model_version = self.model
+        self.api_key = api_key or os.environ.get("ANTHROPIC_AUTH_TOKEN")
+        self.base_url = (base_url or os.environ.get("BIONEXUS_LLM_BASE_URL")
+                         or os.environ.get("ANTHROPIC_BASE_URL")
+                         or "https://api.anthropic.com").rstrip("/")
+        # real-API mode only when a key is present; otherwise offline stub
+        self.api_key = self.api_key if self.api_key else None
 
     def generate(self, invocation: ToolInvocation, prompt: str, system: str | None = None, **kwargs: Any) -> ToolResult:
         if self.api_key is None:
@@ -52,7 +62,7 @@ class AnthropicProvider:
         if system:
             body["system"] = system
         req = urllib.request.Request(
-            "https://api.anthropic.com/v1/messages",
+            f"{self.base_url}/v1/messages",
             data=json.dumps(body).encode(),
             headers={
                 "Content-Type": "application/json",

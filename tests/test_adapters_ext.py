@@ -72,8 +72,11 @@ def test_playback_rejects_unrecorded_protocol(tmp_path):
 
 # ---- T4.1 anthropic provider (P3) ---------------------------------------------
 
-def test_anthropic_stub_deterministic():
-    provider = AnthropicProvider()  # no api key -> stub
+def test_anthropic_stub_deterministic(monkeypatch):
+    for var in ("BIONEXUS_LLM_MODEL", "BIONEXUS_LLM_TOKEN", "BIONEXUS_LLM_BASE_URL",
+                "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY"):
+        monkeypatch.delenv(var, raising=False)
+    provider = AnthropicProvider(model="stub-claude")  # forced offline stub
     inv = ToolInvocation(envelope=env(), tool="c.fm.generate_molecules")
     r1 = provider.generate(inv, "prompt", n=2)
     r2 = provider.generate(inv, "prompt", n=2)
