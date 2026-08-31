@@ -630,15 +630,17 @@ def test_plate_reader_share_parses_auto_export(tmp_path):
 def test_skill_md_valid_and_plugin_json():
     import json as _json
     import re as _re
+    import bionexus.skills as _sk
+    print("SKILLS MODULE:", _sk.__file__)
     from bionexus.skills import _parse_frontmatter
     skill = Path("skills/bionexus/SKILL.md").read_text()
-    m = _re.match(r"^---\n(.*?)\n---\n", skill, _re.S)
-    assert m, "SKILL.md needs frontmatter"
-    fm = _parse_frontmatter(m.group(1))  # yaml-or-fallback, like agents do
+    assert skill.startswith("---"), "SKILL.md needs frontmatter"
+    fm = _parse_frontmatter(skill)  # yaml-or-fallback, like agents do
+    print("FM:", fm)
     assert fm["name"] == "bionexus"
     assert fm["metadata"]["version"] == "0.1.0"
     for skill_md in Path("skills").glob("*/SKILL.md"):
-        fm2 = yaml.safe_load(_re.match(r"^---\n(.*?)\n---\n", skill_md.read_text(), _re.S).group(1))
+        fm2 = _parse_frontmatter(skill_md.read_text())
         assert fm2["name"] == skill_md.parent.name, f"{skill_md}: name must match dir"
         assert "version" in fm2.get("metadata", {}), skill_md
     assert "SafetyEngine" in skill and "Never call a lab adapter directly" in skill
