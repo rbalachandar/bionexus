@@ -123,6 +123,24 @@ effects) are flagged, weak compounds are right-censored (no IC50 — test higher
 concentrations), and runs failing Z' QC are marked unusable. See
 [`docs/virtual-lab.md`](docs/virtual-lab.md).
 
+### Vision-LLM readout: an agent that *looks at* the plate
+
+The raw well images are real evidence — so a multimodal model can read them
+directly. The demo shows the model the dose series (pixels only, no numbers),
+asks for intensity estimates, fits an IC50 from its answers, and compares all
+three: ground truth, analysis pipeline, vision-LLM.
+
+```sh
+.venv/bin/python examples/demo_vision_readout.py
+# ground truth IC50 : 10.55 uM
+# pipeline IC50     : 10.94 uM
+# vision-LLM IC50   : 8.0 uM  (glm-5.1, reading raw pixels)
+```
+
+Same order of magnitude from pixels alone — quantitatively biased, honestly
+reported, and a benchmark for multimodal assay analysis that improves as
+vision models do.
+
 ## The whole flow, one command
 
 Everything composes into a single campaign: **problem + constraints → hypothesis

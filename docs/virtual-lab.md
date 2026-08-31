@@ -39,3 +39,13 @@ are right-censored (no IC50 reported), as in real screens.
 
 `true_ic50_um(seed, sample_id)` exposes the seeded truth so benchmarks can score
 how well agents *measure* — never wire it into agent-facing tools.
+
+## Vision-LLM readout (evaluation harness)
+
+`bionexus/vision.py` + `examples/demo_vision_readout.py`: well micrographs are
+encoded as PNGs (jointly normalized to preserve relative brightness across the
+dose series) and shown to a multimodal model, which estimates fluorescence; its
+estimates are fit with the same curve model as the pipeline. Comparing
+ground truth / pipeline / vision-LLM IC50s yields a standing benchmark for
+multimodal assay analysis. Ground truth stays out of the model's context —
+it is used only to score.

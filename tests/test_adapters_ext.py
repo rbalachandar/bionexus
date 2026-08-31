@@ -702,3 +702,29 @@ def test_skill_discovery_and_role_resolution(tmp_path):
         '---\nname: opentrons-integration\nmetadata:\n  version: "2.0"\n---\nauthoring guidance')
     recs = recommend_for_role("assay-planning-agent", paths=[ext.parent])
     assert [r["path"].split("/")[-1] for r in recs] == ["opentrons-integration"]
+
+
+# ---- vision readout (offline parts: PNG encoding, estimate parsing) -----------------
+
+def test_gray_png_valid(tmp_path):
+    pytest.importorskip("numpy")
+    import struct
+    from bionexus.vision import gray_png
+    import numpy as np
+    a = np.random.default_rng(0).integers(0, 255, (24, 24), dtype=np.uint8)
+    png = gray_png(a)
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"
+    w, h = struct.unpack(">II", png[16:24])
+    assert (w, h) == (24, 24)
+
+
+def test_vision_response_parsing():
+    import re
+    from bionexus.vision import VisionWellReader
+    text = '{"values": [15, 40, 65, 90]}'
+    m = re.search(r"\[[^\]]*\]", text, re.S)
+    values = [float(x) for x in re.findall(r"-?\d+(?:\.\d+)?", m.group(0))]
+    assert values == [15.0, 40.0, 65.0, 90.0]
+    # robustness: thinking-model responses may wrap the list in prose
+    m2 = re.search(r"\[[^\]]*\]", 'Let me see... {"values": [5, 15]} done', re.S)
+    assert [float(x) for x in re.findall(r"-?\d+(?:\.\d+)?", m2.group(0))] == [5.0, 15.0]
