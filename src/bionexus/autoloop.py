@@ -26,11 +26,29 @@ from bionexus.core.hypothesis import (
     Constraint, ExperimentDesign, HypothesisTracker, PortfolioDecision,
     ProblemStatement, SuccessCriteria,
 )
-from bionexus.core.interfaces import ProvenanceStore, system_actor
+from bionexus.core.interfaces import ProvenanceStore, record_for, system_actor
 from bionexus.core.safety import LabGateway, SafetyEngine
 from bionexus.watch import AutoAnalysisAgent, DeviceMonitor
 
 Autonomy = str  # "act" | "gate" | "observe"
+
+
+@dataclass
+class ResourceBudget:
+    """Hard caps on what a campaign may consume. Enforced at submission time
+    (no new lab runs past the limit) and at generation time (no hypothesis
+    explosion). Exhaustion is provenance-recorded, never silent."""
+    max_total_runs: int = 50             # lab runs (incl. confirmations)
+    max_hypotheses_total: int = 30       # across all rounds
+    max_confirmations: int = 10
+    wall_clock_secs: float | None = None
+
+    def lab_runs_used(self, store: ProvenanceStore, problem_id: str) -> int:
+        try:
+            recs = store.branch_records(f"problem/{problem_id}")
+        except Exception:
+            return 0
+        return sum(1 for r in recs if r.event_type.value == "lab_run")
 
 
 @dataclass
@@ -40,10 +58,13 @@ class CampaignConfig:
     hypothesis_source: str = "config"         # ...or "agent": the model decides
     model: Any = None                         # required when hypothesis_source == "agent"
     candidates: list[dict[str, Any]] | None = None   # library shown to the agent
+    skill_guidance: str | None = None         # Agent Skills text injected into
+                                              # the hypothesis prompt (P: skills)
     max_families: int = 3
     max_variants_per_family: int = 3
     score_fn: Callable[[Any], float] | None = None   # portfolio filter scoring
     k: int = 2                                # hypotheses taken to wet-lab
+    budget: ResourceBudget | None = None      # None = uncapped ( discouraged)
     concentrations: tuple[str, ...] = ("0.5uM", "2uM", "10uM", "40uM")
     inbox: str | Path = ".data/inbox"
     autonomy: Autonomy = "gate"
@@ -81,11 +102,19 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     family_scores: dict[str, float] = {}
     if cfg.hypothesis_source == "agent":
         from bionexus.hypothesis_agent import propose_families_with_agent
+        budget = cfg.budget or ResourceBudget()
+        used = budget.lab_runs_used(store, cfg.problem.problem_id or "")
+        remaining_runs = max(0, budget.max_total_runs - used)
         portfolio, family_scores = propose_families_with_agent(
             tracker, cfg.problem, cfg.model, candidates=cfg.candidates,
             max_families=cfg.max_families,
             max_variants_per_family=cfg.max_variants_per_family,
+            max_total_hypotheses=max(0, budget.max_hypotheses_total
+                                     - len(tracker.hypotheses)),
+            existing_keys={(h.candidate, h.statement) for h in tracker.hypotheses.values()},
+            skill_guidance=cfg.skill_guidance,
             notify=say)
+        say(f"resource budget: {remaining_runs}/{budget.max_total_runs} lab runs remaining")
         say(f"agent proposed {len(portfolio)} variant hypotheses")
         score_fn = cfg.score_fn or (lambda h: family_scores.get(h.family or "", 0.5))
     else:
@@ -96,6 +125,25 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     say(f"problem {problem.problem_id}: {len(portfolio)} hypotheses -> {len(selected)} selected")
 
     # 1. design + submit for each selected hypothesis
+    _submit = gateway.submit
+
+    def gateway_submit(protocol):  # budget-enforced submission
+        if cfg.budget is not None:
+            used = cfg.budget.lab_runs_used(store, cfg.problem.problem_id or "")
+            if used >= cfg.budget.max_total_runs:
+                say(f"BUDGET EXHAUSTED: {used}/{cfg.budget.max_total_runs} lab runs "
+                    "used — submission refused (recorded)")
+                store.append(record_for(
+                    Envelope(experiment_branch_id=f"problem/{cfg.problem.problem_id}"),
+                    EventType.tool_invocation, actor,
+                    decision={"kind": "budget_exhausted",
+                              "lab_runs": used,
+                              "cap": cfg.budget.max_total_runs}))
+                return None, f"budget exhausted ({used} runs >= cap)"
+        return _submit(protocol)
+
+    gateway.submit = gateway_submit  # confirmations flow through the same gate
+
     inbox = Path(cfg.inbox)
     inbox.mkdir(parents=True, exist_ok=True)
     for h in selected:

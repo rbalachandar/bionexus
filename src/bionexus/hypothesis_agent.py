@@ -73,10 +73,19 @@ def propose_families_with_agent(
     candidates: list[dict[str, Any]] | None = None,
     max_families: int = 3,
     max_variants_per_family: int = 3,
+    max_total_hypotheses: int | None = None,
+    existing_keys: set[tuple[str, str]] | None = None,
+    skill_guidance: str | None = None,
     branch_id: str | None = None,
     score_fn: Callable[[dict[str, Any]], float] | None = None,
     notify: Callable[[str], None] | None = None,
 ) -> tuple[list[Hypothesis], dict[str, float]]:
+    """max_total_hypotheses: hard cap on hypotheses this generation may add.
+    existing_keys: (candidate, statement) pairs already tried — duplicates the
+    agent re-proposes are dropped (no re-running the same experiment).
+    skill_guidance: Agent Skills text (e.g. the bionexus/opentrons skill)
+    injected into the prompt so domain procedure shapes the generation."""
+
     """The agent designs the hypothesis portfolio; returns (variants, scores).
 
     Enforces operator limits post-hoc (truncates), records the raw generation
@@ -90,6 +99,11 @@ def propose_families_with_agent(
     actor = tracker.actor
     say = notify or (lambda m: None)
 
+    if skill_guidance:
+        guidance_block = ("PROCEDURAL GUIDANCE (Agent Skills — follow while "
+                          "designing):\n" + skill_guidance[:3000])
+    else:
+        guidance_block = ""
     prompt = PROMPT.format(
         objective=problem.objective,
         context=problem.context or "-",
@@ -98,7 +112,7 @@ def propose_families_with_agent(
         candidates=json.dumps(candidates or [], indent=1)[:4000],
         max_families=max_families,
         max_variants_per_family=max_variants_per_family,
-    )
+    ) + ("\n\n" + guidance_block if guidance_block else "")
     inv = ToolInvocation(envelope=env.model_copy(), tool="c.fm.generate_molecules")
     raw = model.generate(inv, prompt).output["text"]
     # record the raw generation (agent reasoning is provenance too)
@@ -129,6 +143,24 @@ def propose_families_with_agent(
             }
             specs.append({"family": fid, "parent_statement":
                           fam.get("parent_statement", ""), **spec})
+
+    # dedup against already-tried hypotheses + global total cap
+    existing = existing_keys or set()
+    seen: set[tuple[str, str]] = set()
+    kept_specs: list[dict[str, Any]] = []
+    for s_ in specs:
+        key = (s_["candidate"], s_["statement"])
+        if key in existing or key in seen:
+            say(f"dropped duplicate hypothesis: {s_['candidate']} — "
+                "already proposed/tried")
+            continue
+        if max_total_hypotheses is not None and len(kept_specs) >= max_total_hypotheses:
+            say(f"hypothesis budget reached ({max_total_hypotheses}) — "
+                "truncating portfolio (recorded)")
+            break
+        seen.add(key)
+        kept_specs.append(s_)
+    specs = kept_specs
 
     variants = tracker.propose_families(problem, [
         {**{k: f[k] for k in ("family", "parent_statement", "kind", "rationale")

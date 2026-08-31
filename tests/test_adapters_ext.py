@@ -765,3 +765,78 @@ def test_hypothesis_families_and_diversity_cap(tmp_path):
                   if r.event_type == ET.hypothesis_proposed and r.decision
                   and "family_id" in r.decision]
     assert len(fam_events) == 2, "family parent claims provenance-recorded"
+
+
+def test_resource_budget_caps_runs_and_records_exhaustion(tmp_path):
+    from bionexus.autoloop import CampaignConfig, ResourceBudget, run_campaign
+    from bionexus.core.contracts import EventType as ET
+    from bionexus.core.hypothesis import Constraint, ProblemStatement
+
+    problem = ProblemStatement(
+        objective="find binder",
+        constraints=[Constraint(name="potency", description="d", kind="hard",
+                                limit=20.0, unit="uM")])
+    specs = [{"statement": f"C{i} binds", "candidate": f"C{i}",
+              "assay_type": "binding", "predicted": "<=20", "predicted_value": 20.0}
+             for i in (1, 2)]
+    # budget of exactly 1 run: first submission approved, second refused
+    budget = ResourceBudget(max_total_runs=1, max_hypotheses_total=10)
+    cfg = CampaignConfig(problem=problem, hypotheses=specs,
+                         score_fn=lambda h: 0.5, k=2,
+                         autonomy="act", inbox=str(tmp_path / "in"), poll_secs=0.05,
+                         budget=budget)
+    store = SqliteProvenanceStore()
+    report = run_campaign(cfg, SimulatorLab(seed=4), store)
+    runs = [r for r in store.branch_records(f"problem/{problem.problem_id}")
+            if r.event_type == ET.lab_run]
+    assert len(runs) == 1, "budget capped submissions at 1"
+    exhaustion = [r for r in store.branch_records(f"problem/{problem.problem_id}")
+                  if r.decision and r.decision.get("kind") == "budget_exhausted"]
+    assert exhaustion, "budget exhaustion provenance-recorded"
+
+
+def test_hypothesis_agent_dedup_and_total_cap(tmp_path):
+    from bionexus.adapters.models.openai_compat import OpenAICompatProvider
+    from bionexus.core.hypothesis import HypothesisTracker, ProblemStatement
+    from bionexus.hypothesis_agent import propose_families_with_agent
+
+    class Scripted:
+        name, model_version = "scripted", "s1"
+        def generate(self, inv, prompt, **kw):
+            from bionexus.core.contracts import ToolResult
+            text = json.dumps({"families": [{"family": "A",
+                "parent_statement": "A works", "kind": "mechanistic",
+                "confidence": 0.9, "variants": [
+                    {"statement": "A1 binds", "candidate": "A1",
+                     "assay_type": "binding", "predicted": "<=20",
+                     "predicted_value": 20.0, "rationale": "r",
+                     "variables": {"warhead": "acrylamide"}}]}]})
+            return ToolResult(envelope=inv.envelope.model_copy(),
+                              invocation_id=inv.invocation_id, status="succeeded",
+                              output={"text": text}, model_version=self.model_version)
+        def predict(self, inv, kind, payload):
+            raise NotImplementedError
+
+    store = SqliteProvenanceStore()
+    tracker = HypothesisTracker(store, system_actor())
+    problem = ProblemStatement(objective="find binder")
+    model = Scripted()
+    # round 1: accepted
+    v1, _ = propose_families_with_agent(tracker, problem, model, max_total_hypotheses=5)
+    assert len(v1) == 1
+    # round 2: same hypothesis re-proposed -> deduped to nothing
+    v2, _ = propose_families_with_agent(tracker, problem, model,
+                                        existing_keys={("A1", "A1 binds")},
+                                        max_total_hypotheses=5)
+    assert v2 == []
+    # skill guidance flows into the prompt
+    seen = {}
+    class Probe(Scripted):
+        def generate(self, inv, prompt, **kw):
+            seen["prompt"] = prompt
+            return Scripted.generate(self, inv, prompt, **kw)
+    propose_families_with_agent(tracker, problem, Probe(),
+                                skill_guidance="Always include controls.",
+                                max_total_hypotheses=1,
+                                existing_keys={("A1", "A1 binds")})
+    assert "Always include controls." in seen["prompt"]
