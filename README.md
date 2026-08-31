@@ -263,6 +263,7 @@ surfaces with additive-evolution guarantees.
 | [`docs/virtual-lab.md`](docs/virtual-lab.md) | simulated devices, image-based readouts, QC and failure modes |
 | [`docs/security.md`](docs/security.md) | threat model, trust boundaries, agent capability matrix |
 | [`docs/critical-review.md`](docs/critical-review.md) | unsympathetic independent review: what works, what fails, adoption forecast |
+| [`case-studies/`](case-studies/01-egfr-blind-reproduction/) | **Case study 01: blind reproduction of a published EGFR paper — PASSED** |
 | [`docs/stability.md`](docs/stability.md) | versioning, stability tiers, deprecation policy |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
 

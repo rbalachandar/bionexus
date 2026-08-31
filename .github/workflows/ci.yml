@@ -45,3 +45,14 @@ jobs:
       - run: pip install pydantic pyyaml && pip install -e . --no-deps
       - run: python -m bionexus.cli run examples/workflow.yml
       - run: python -m bionexus.cli prove demo-run
+
+  case-study:  # blind reproduction of a published paper (real ChEMBL data)
+    runs-on: ubuntu-latest
+    environment: pypi-env
+    if: false  # requires LLM env; run manually or on schedule
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pydantic pytest scikit-learn rdkit && pip install -e . --no-deps
+      - run: python case-studies/01-egfr-blind-reproduction/run.py

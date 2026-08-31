@@ -64,3 +64,5 @@ is trained on the **other 125 papers'** measurements (~19.5k values). Then:
 - **Doesn't:** claim the agent outperforms trained QSAR models (it doesn't —
   ρ +0.58 vs +0.70); claim wet-lab validation; claim this generalizes beyond
   one EGFR paper. More papers = more reproduction tests.
+
+Run: `../../.venv/bin/python run.py` from this directory (requires network for ChEMBL on first fetch, and BIONEXUS_LLM_*/ANTHROPIC_* env for the agent).

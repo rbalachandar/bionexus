@@ -28,7 +28,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-sys.path.insert(0, "src")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from bionexus.adapters.data.chembl import fetch_target_activities
 from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF
@@ -58,7 +58,7 @@ def load_all() -> dict[str, list[dict]]:
 
 
 def main() -> None:
-    store_p = Path("case_study.db")
+    store_p = Path(__file__).parent / "case_study.db"
     store_p.unlink(missing_ok=True)
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
     store = SqliteProvenanceStore(store_p)
