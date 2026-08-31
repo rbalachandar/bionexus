@@ -211,6 +211,14 @@ The same flow also runs step-by-step by hand (see the notebooks) — the manual
 and agent paths share the same five interfaces, so you can start manual and
 hand stages to the agent as trust grows.
 
+**Resource governance:** campaigns carry a `ResourceBudget` (max lab runs,
+max hypotheses, max confirmations, wall clock) enforced at submission and
+generation time — the agent can propose freely, but cannot exceed the caps;
+exhaustion is provenance-recorded. Hypothesis generation also accepts
+Agent-Skills guidance (the `bionexus` skill's rules are injected into the
+agent's prompt), and re-proposed duplicates of already-tried hypotheses are
+dropped automatically.
+
 **CLI:**
 
 ```sh
