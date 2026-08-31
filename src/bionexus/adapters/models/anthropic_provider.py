@@ -55,7 +55,7 @@ class AnthropicProvider:
     def _messages(self, prompt: str, system: str | None, **kwargs: Any) -> str:
         body: dict[str, Any] = {
             "model": self.model,
-            "max_tokens": kwargs.pop("max_tokens", 1024),
+            "max_tokens": kwargs.pop("max_tokens", 4000),
             "messages": [{"role": "user", "content": prompt}],
             **kwargs,
         }
@@ -73,7 +73,12 @@ class AnthropicProvider:
         )
         with urllib.request.urlopen(req, timeout=120) as resp:
             data = json.loads(resp.read())
-        return data["content"][0]["text"]
+        text = "".join(c.get("text", "") for c in data.get("content", [])
+                       if c.get("type") == "text")
+        if not text:
+            raise ValueError("model returned no text content "
+                             "(reasoning may have exhausted max_tokens)")
+        return text
 
     def _stub_generate(self, prompt: str, n: int = 3, **kwargs: Any) -> str:
         h = hashlib.sha256(("anthropic:" + prompt).encode()).hexdigest()
