@@ -12,7 +12,7 @@ consistent with the published measurements.
 
 | Question | Result |
 |---|---|
-| Q1 — Does the agent, from structures alone, identify the paper's compound class and binding hypothesis? | **PASS** — named "tyrphostin, arylidene-dicyanomalononitrile" (confidence 0.78) |
+| Q1 — Does the agent, from structures alone, identify the paper's compound class and binding hypothesis? | **PASS, contaminated** — named "tyrphostin" correctly, but a probe confirms the model has memorized this paper (see Contamination); recognition, not rediscovery |
 | Q2 — Are blinded potency scores consistent with the published IC50s? | **PASS** — agent ranking ρ = +0.42…+0.58; trained model ρ = +0.70 (MAE 0.67 pIC50) |
 
 ## The held-out paper
@@ -58,7 +58,7 @@ shown**, addressing the circularity critique of simulation-based demos:
 
 ## Results
 
-### Q1 — Hypothesis reproduction: PASS
+### Q1 — Hypothesis reproduction: PASS, but contaminated (see Contamination below)
 
 The agent's top hypothesis (confidence 0.78), from structures alone:
 
@@ -103,6 +103,14 @@ Artifacts: `case_study.db` (hash-chained provenance — inspect with
 
 ## Limitations & next steps
 
+- **Contamination makes Q1 uninterpretable as "rediscovery".** The clean
+  follow-up (case study 02) uses **counterfactual ground truth**: real
+  compound structures paired with outcomes from a *hidden seeded function*
+  (the virtual lab) that no model could have memorized. Recall cannot help;
+  only genuine inference-from-series counts. This trades contamination for
+  the (already-documented) realism trade-off.
+- Alternatively: hold out only papers published **after the model's training
+  cutoff**, where memorization is impossible by construction.
 - Extend to multiple held-out papers across different targets and modalities
   (multi-paper reproduction study).
 - Add a baseline: untrained LLM without series context, to isolate the value
