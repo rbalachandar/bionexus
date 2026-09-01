@@ -219,6 +219,31 @@ Agent-Skills guidance (the `bionexus` skill's rules are injected into the
 agent's prompt), and re-proposed duplicates of already-tried hypotheses are
 dropped automatically.
 
+### What BioNexus contributes (vs. what the models contribute)
+
+The case studies are honest about the split: **the intelligence comes from the
+models** (the LLM derived the SAR hypothesis; sklearn's RF made the calibrated
+predictions). **BioNexus is the layer that made those results executable,
+measurable, and auditable** — and that layer is what the case studies actually
+tested:
+
+| Case-study step | What the model did | What BioNexus did |
+|---|---|---|
+| Problem setup | — | Stated the problem + constraints; recorded it as the provenance root |
+| Contamination control | — | Ran and recorded post-cutoff probes; proved the no-knowledge claim is part of the audit trail (case study 02) |
+| Hypothesis generation | LLM proposed families + tuned variables | Constrained, validated, deduped, and provenance-recorded them; injected skill guidance |
+| Portfolio filter | LLM scored confidence | Enforced diversity caps and recorded every accept/reject reason |
+| Experiment execution | — | Safety-gated the submission; the virtual lab performed it and produced raw evidence |
+| Result awareness | — | Device monitor noticed the output automatically; no human shuttled files |
+| Verdicts | LLM interpreted | Scored against **pre-registered criteria**; QC failure → inconclusive, never silently invalidated |
+| Accountability | — | Hash-chained provenance over every step; `bn prove` renders the tamper-evident audit |
+
+The measured finding (agent reasoning transfers across assay shifts better than
+a trained model, while the trained model stays better calibrated) was **surfaced
+by this harness** — and it holds regardless of which model you plug in. BioNexus
+does not do the thinking; it makes thinking *executable, bounded, and provable*
+in a lab context.
+
 **CLI:**
 
 ```sh

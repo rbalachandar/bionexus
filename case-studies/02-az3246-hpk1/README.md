@@ -74,15 +74,16 @@ The agent's top hypothesis (confidence 0.8):
 | Agent's blinded scores | **+0.42** | 2 of 21 |
 | Trained RF (25.6k HPK1 values) | +0.08 | 1 of 21 |
 
-**The agent outperformed the trained model on this paper.** The RF's poor
-transfer reflects a real phenomenon: the paper's assay (cellular
-autophosphorylation readout) differs from the training assays (biochemical),
-so the model's potency calibration does not transfer. The agent's
-structure-based comparative reasoning was more robust across the assay shift.
-This mirrors the case study 01 finding (agent ρ +0.42…0.58 zero-shot) and
-suggests complementary strengths: trained models for calibrated potency,
-agents for transferable structural reasoning — exactly the pairing BioNexus
-orchestrates.
+**The LLM agent's transferable reasoning outperformed the trained model's
+calibrated predictions on this paper** — a measured finding the BioNexus
+harness surfaced. The RF's poor transfer reflects a real phenomenon: the
+paper's assay (cellular autophosphorylation readout) differs from the training
+assays (biochemical), so its potency calibration does not transfer, while the
+agent's structure-based comparative reasoning was more robust across the
+assay shift. Case study 01 showed the complementary regime (calibrated model
+ρ +0.70 vs agent +0.42…0.58). Neither intelligence dominates; the campaign
+harness runs both, scores them against pre-registered criteria, and lets the
+data decide — which is precisely the role BioNexus claims.
 
 ## Honest caveats
 
