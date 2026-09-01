@@ -18,7 +18,7 @@ step, always announced in the changelog).
 
 | Tier | Surfaces | Guarantees |
 |---|---|---|
-| **Stable** | The five core interfaces (`ModelProvider`, `BioTool`, `LabAdapter`, `Sandbox`, `ProvenanceStore`) and their contracts (`bionexus.core.contracts`) | Additive evolution only. No renames, removals, or semantic changes within a MAJOR. Old serialized contracts keep loading. |
+| **Stable** | The five core interfaces (`ModelProvider`, `BioTool`, `LabAdapter`, `Sandbox`, `ProvenanceStore`) and the contract models (`bionexus.core.contracts`) | Additive evolution only. No renames, removals, or semantic changes within a MAJOR. Old serialized contracts keep loading. |
 | **Stable** | `SafetyEngine` rule API and `LabGateway` behavior | Safety semantics never silently change: any change to enforcement behavior is a MAJOR bump |
 | **Experimental** | `bionexus.workflow` (StageGraph, tournament), `bionexus.benchmark`, `bionexus.report` | May change in MINOR releases; flagged in docstrings |
 | **Unstable** | `bionexus.cli`, `bionexus.mcp_server` tool list | New tools/flags appear freely; existing tools keep working where possible |

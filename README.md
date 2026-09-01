@@ -346,7 +346,7 @@ Styled HTML versions (dark blueprint pages with legends/captions) live in
 | [`docs/flows.md`](docs/flows.md) | End-to-end flows: design iteration loop, fork/branch, review gates, wet-lab round trip |
 | [`docs/blocks/`](docs/blocks/) | One deep-dive doc per block (A–F) |
 | [`docs/research-landscape.md`](docs/research-landscape.md) | Review vs. Google AI co-scientist, Anthropic, Isomorphic, Cradle, Lila, FutureHouse, Coscientist, OpenAI Rosalind |
-| [`contracts/`](contracts/README.md) | The five shared integration contracts (StageTask, ToolInvocation, ProtocolSubmission, AssayResult, ProvenanceRecord) |
+| [`contracts/`](contracts/README.md) | Normative contract: the pydantic models in `bionexus.core.contracts` (archived pre-implementation OpenAPI drafts kept for reference) |
 | [`diagrams/`](diagrams/) | SVG diagrams + styled HTML artifact pages |
 
 ## Architectural Blocks at a Glance

@@ -9,3 +9,7 @@ examples/_campaign_training.jsonl
 examples/_campaign_recording.json
 examples/report_example.html
 .data/
+dist/
+*.db
+campaign_report.html
+.DS_Store
