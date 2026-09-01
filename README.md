@@ -22,9 +22,54 @@ demonstrations:
   results, and verdicts are recorded in a hash-chained, tamper-evident
   provenance store that renders as a shareable report.
 
-## How a campaign works
+## Using BioNexus
 
-A campaign is started with a single command and a problem statement:
+BioNexus supports two working styles, backed by the same engine and the same
+five interfaces. A scientist can use it manually, step by step, as a daily
+analysis tool — and hand stages of the loop to an agent as trust grows.
+
+### As a daily analysis tool — read your instrument exports
+
+Point `bn read` at a plate-reader export (CSV/TSV/XLSX, any column order, any
+vendor header block). Format detection, control-well discovery, dose–response
+IC50 fits, and Z'-factor QC are all automatic:
+
+```sh
+bn read synergy_export.csv
+# plate: synergy_export.csv [long] | wells: 10 | controls: 2 | Z': 0.956
+# compound        IC50 (uM)  points  note
+# C-101                8.94       4  observed-max
+# C-102                9.17       4  observed-max
+```
+
+```python
+from bionexus.labread import read_plate
+r = read_plate("my_results.csv")   # long/grid/xlsx/imaging evidence
+print(r)                           # IC50 table + Z' — no configuration
+```
+
+Right-censored and single-dose cases are reported honestly — no invented values.
+
+### Hands-on — run a design round yourself
+
+```sh
+bn sim                                    # reference round on the virtual lab
+python examples/iteration_loop.py         # the same, step by step (see notebooks/)
+```
+
+A round runs: hypothesis tournament → safety-gated protocol → virtual wet lab →
+analysis → provenance. Every stage can also be driven from Python with the five
+core interfaces (see the [notebooks](notebooks/)).
+
+### Autonomous — hand the loop to the agent
+
+When you are ready for the full flow, one command starts it:
+
+```sh
+bn auto campaign.json
+```
+
+<details><summary>campaign.json — the problem, stated like a scientist would</summary>
 
 ```json
 {
@@ -44,16 +89,7 @@ A campaign is started with a single command and a problem statement:
   "autonomy": "act"
 }
 ```
-
-```sh
-bn auto campaign.json
-```
-
-The campaign then runs: the hypothesis portfolio is filtered to the top-k by
-score with a diversity cap (one idea cannot crowd out others); each selected
-hypothesis is designed and submitted through the safety gateway; the lab
-performs it; the agent notices the device output, fits the results, and delivers
-verdicts; confirmation assays are submitted to close the loop.
+</details>
 
 ```
 [campaign] problem prob-89fd555d: 3 hypotheses -> 2 selected
@@ -67,13 +103,14 @@ verdicts; confirmation assays are submitted to close the loop.
 }
 ```
 
-What the models contribute and what BioNexus contributes are kept explicit: the
-LLM derives the SAR hypothesis, the QSAR model makes the calibrated prediction —
-BioNexus is the layer that makes those results *executable, bounded, measurable,
-and auditable*. Case studies 01 and 02 below were surfaced, scored, and recorded
-by this harness.
+### Device-aware — the agent notices results on its own
 
-### Autonomy is operator-set
+With `bn watch` monitoring an instrument outbox, there are no files to shuttle:
+when a reader exports a result, the agent reads it, updates open hypotheses
+against their pre-registered criteria, and recommends the next step. The same
+event interface maps to instrument webhooks and lab queue callbacks.
+
+### You choose how much the agent does
 
 | autonomy | agent behavior |
 |---|---|
@@ -82,8 +119,28 @@ by this harness.
 | `act` | autonomous within the SafetyEngine, including confirmation assays |
 
 A `ResourceBudget` (max lab runs, hypotheses, confirmations, wall clock) is
-enforced at submission and generation time; exhaustion is provenance-recorded.
-Re-proposed duplicates of already-tried hypotheses are dropped automatically.
+enforced at submission and generation time. Every step — problem, hypotheses,
+decisions, submissions, verdicts — lands in the hash-chained provenance store;
+`bn prove <problem-id> --html report.html` renders it as a shareable audit.
+
+### What BioNexus contributes (vs. what the models contribute)
+
+The intelligence comes from the models: the LLM derives the SAR hypothesis, the
+QSAR model makes the calibrated prediction. BioNexus is the layer that makes
+those results executable, bounded, measurable, and auditable — and the case
+studies below test exactly that layer:
+
+| Campaign step | What the model does | What BioNexus does |
+|---|---|---|
+| Problem setup | — | Records problem + constraints as the provenance root |
+| Contamination control | — | Runs and records post-cutoff probes; the no-knowledge claim is part of the audit trail |
+| Hypothesis generation | LLM proposes families + tuned variables | Constrains, validates, dedupes, records; injects skill guidance |
+| Portfolio filter | LLM scores confidence | Enforces diversity caps; records every accept/reject reason |
+| Experiment execution | — | Safety-gates the submission; the lab produces raw evidence |
+| Result awareness | — | Device monitor notices the output automatically |
+| Verdicts | LLM interprets | Scores against pre-registered criteria; QC failure → inconclusive |
+| Accountability | — | Hash-chained provenance; `bn prove` renders the audit |
+
 
 ## Evidence: blind reproduction of published papers
 
@@ -98,31 +155,6 @@ reproduce it.
 
 Case study 02's clean design trades the realism of case study 01 for freedom
 from memorization; both READMEs document their limitations explicitly.
-
-## For scientists
-
-**Read your instrument exports automatically.** Point `bn read` at a
-plate-reader export (CSV/TSV/XLSX, any column order, any vendor header block):
-
-```sh
-bn read synergy_export.csv
-# plate: synergy_export.csv [long] | wells: 10 | controls: 2 | Z': 0.956
-# compound        IC50 (uM)  points  note
-# C-101                8.94       4  observed-max
-# C-102                9.17       4  observed-max
-```
-
-Format, header synonyms, control wells, plate-grid layouts, and dose–response
-IC50 fits are all automatic; right-censored and single-dose cases are reported
-honestly.
-
-**Don't point at files at all — the agent notices them.** `bn watch` monitors
-an instrument outbox; when a reader exports a result, the agent reads it,
-updates open hypotheses, and recommends the next step.
-
-**Inspect the audit.** `bn prove <problem-id> --html report.html` renders the
-hash-chained provenance of a campaign — hypotheses, criteria, decisions,
-submissions — as a tamper-evident, shareable report.
 
 ## The virtual lab
 
