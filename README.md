@@ -5,188 +5,61 @@
 [![Python](https://img.shields.io/pypi/pyversions/bionexuslab)](https://pypi.org/project/bionexuslab/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-**Agents that run the scientific method:** state the problem, propose a
-portfolio of hypotheses, filter to the ones worth testing, design and run the
-experiments (simulated or real), notice the results, deliver verdicts against
-pre-registered criteria — all inside a safety boundary, all recorded in
-tamper-evident provenance.
+BioNexus is an open-source framework in which AI agents run the scientific
+method end to end: given a research problem and its constraints, agents propose
+a portfolio of hypotheses, select the ones worth testing, design experiments,
+execute them on simulated or real laboratory equipment, observe the results as
+they arrive, and deliver verdicts against criteria that were registered before
+the experiment ran.
 
-An **open-source framework for agentic drug discovery** — pluggable models, bio
-tools, labs, and sandboxes behind five core interfaces.
+Two properties make it suitable for real laboratory work rather than
+demonstrations:
 
-Core dependencies: `pydantic` only. Everything else (models, labs, sandboxes,
-stores) is an adapter you opt into.
+- **Safety is structural.** Agents never address instruments directly. Every
+  physical action passes through a policy engine that sits outside the agent's
+  trust boundary, and a resource budget caps what a campaign may consume.
+- **Every step is auditable.** Problem, hypotheses, decisions, submissions,
+  results, and verdicts are recorded in a hash-chained, tamper-evident
+  provenance store that renders as a shareable report.
 
-## Agent Skills: install BioNexus into your agent
+## How a campaign works
 
-BioNexus ships as an [Agent Skills](https://agentskills.io/) package — copy
-`skills/bionexus/` into your agent's skills directory (or use `plugin.json`
-with plugin-capable hosts) and your agent can run safety-gated discovery
-campaigns. It composes with [Scientific Agent Skills](https://github.com/K-Dense-AI/scientific-agent-skills):
-their `opentrons-integration`/`rdkit` skills teach the agent *how* to author
-protocols; BioNexus's SafetyEngine decides *whether they run*, and the
-provenance chain records what happened.
-
-```sh
-cp -r skills/ ~/.claude/skills/            # or .agents/skills/, Cursor plugins, ...
-bn mcp                                       # and expose the tools over MCP
-```
-
-Focused skills (install what you need): `bionexus` (overview) ·
-`bionexus-labread` (analyze instrument exports) · `bionexus-labwatch` (notice
-device outputs) · `bionexus-campaign` (whole flow with autonomy levels) ·
-`bionexus-opentrons` (robot execution via the safety gateway).
-
-## For scientists: read your instrument exports automatically
-
-The point of the library: **devices and labs produce files; BioNexus reads
-them.** Point it at a plate-reader export (CSV/TSV/XLSX, any column order, any
-vendor header block) — it auto-detects the format, finds your controls, fits
-dose–response IC50s, and computes assay QC:
-
-```sh
-.venv/bin/bn read synergy_export.csv
-# plate: synergy_export.csv [long] | wells: 10 | controls: 2 | Z': 0.956
-# compound        IC50 (uM)  points  note
-# C-101                8.94       4  observed-max
-# C-102                9.17       4  observed-max
-```
-
-Or in Python:
-
-```python
-from bionexus.labread import read_plate
-r = read_plate("my_results.csv")   # auto-detect: long/grid/xlsx/imaging evidence
-print(r)                           # IC50 table + Z' — no configuration
-```
-
-Recognized automatically: header synonyms (`Well/Position`, `Compound/Sample`,
-`Conc/Dose`, `RFU/OD/Value/...`), vendor metadata header lines (skipped),
-control wells (`ctrl/control/blank/vehicle/DMSO/...`), plate-grid layouts
-(rows A–P × numbered columns), and BioNexus imaging evidence (`.npy` well
-images). Right-censored and single-dose cases are reported honestly.
-
-### You don't even point at the file — the agent notices it
-
-Watch an instrument outbox and the agent reacts on its own: reads the export,
-updates open hypotheses, and tells you what to do next:
-
-```sh
-.venv/bin/bn watch /path/to/instrument_outbox
-```
-
-```
-[instrument] run 0042 complete -> synergy_run0042.csv exported
-[agent] noticed device output: synergy_run0042.csv — reading it
-[agent] analyzed: 1 compound(s), Z'=0.96
-[agent] hypothesis hyp-45357756 (C-101): VALIDATED — IC50 8.944 uM vs threshold 20.0
-[agent] recommendation: best binder so far is C-101 (IC50 8.944 uM) — next: confirm with orthogonal assay
-```
-
-The same event interface maps to real push sources (instrument webhooks, lab
-queue callbacks) — inbox watching is the lowest-common-denominator that works
-with every instrument that exports a file.
-
-## Quickstart (simulator-first, no network needed)
-
-```sh
-python -m venv .venv && .venv/bin/pip install -e . dev-dependencies...  # see pyproject
-.venv/bin/pip install -e ".[dev]"
-.venv/bin/python examples/iteration_loop.py   # full design round on the virtual lab
-.venv/bin/python -m pytest                    # 11 tests, <1s, offline
-```
-
-The example runs: candidate generation → hypothesis tournament → human-approvable
-protocol → **safety engine** → virtual wet lab → fork branch → safety rejection demo →
-hash-chained provenance. See [`docs/PLAN.md`](docs/PLAN.md) for the full build plan.
-
-### Simulated lab devices with image readouts
-
-The virtual lab goes one level deeper: a simulated **imaging plate reader**. A
-protocol run captures raw fluorescence micrographs per well (96-well plate), an
-analysis pipeline fits dose–response IC50s **from the images**, and assay QC is a
-Z' factor computed from controls. Measured IC50s recover the seeded ground truth
-within realistic noise, and the raw well images are kept as evidence that agents
-(or vision-capable LLMs) can inspect:
-
-```sh
-.venv/bin/pip install numpy                       # [lab-imaging] extra
-.venv/bin/python examples/demo_imaging.py
-# run img-c2f0183b: Z'=0.938 (controls PASS)
-#   compound    measured IC50   ground truth
-#   C2              11.98 uM      10.85 uM
-# raw evidence: 14 well images in .data/images/
-```
-
-Failure modes are simulated too: well artifacts (pipetting spikes, bubbles, edge
-effects) are flagged, weak compounds are right-censored (no IC50 — test higher
-concentrations), and runs failing Z' QC are marked unusable. See
-[`docs/virtual-lab.md`](docs/virtual-lab.md).
-
-### Vision-LLM readout: an agent that *looks at* the plate
-
-The raw well images are real evidence — so a multimodal model can read them
-directly. The demo shows the model the dose series (pixels only, no numbers),
-asks for intensity estimates, fits an IC50 from its answers, and compares all
-three: ground truth, analysis pipeline, vision-LLM.
-
-```sh
-.venv/bin/python examples/demo_vision_readout.py
-# ground truth IC50 : 10.55 uM
-# pipeline IC50     : 10.94 uM
-# vision-LLM IC50   : 8.0 uM  (glm-5.1, reading raw pixels)
-```
-
-Same order of magnitude from pixels alone — quantitatively biased, honestly
-reported, and a benchmark for multimodal assay analysis that improves as
-vision models do.
-
-## The whole flow, one command
-
-Everything composes into a single campaign: **problem + constraints → hypothesis
-portfolio → filter to top-k → design → safety-gated wet-lab → agent notices →
-analysis → verdict → confirmation loop.**
-
-```sh
-.venv/bin/bn auto campaign.json
-```
-
-<details><summary>campaign.json — the problem, stated like a scientist would</summary>
+A campaign is started with a single command and a problem statement:
 
 ```json
 {
   "problem": {
-    "objective": "Find a confirmed sub-20uM KRAS_G12C binder for lead development",
+    "objective": "Find a confirmed sub-20uM KRAS_G12C binder",
     "constraints": [
-      {"name": "potency", "description": "IC50 <= 20 uM", "kind": "hard", "limit": 20.0, "unit": "uM"},
-      {"name": "budget",  "description": "max 2 hypotheses to wet-lab", "kind": "hard"}
+      {"name": "potency", "description": "IC50 <= 20 uM", "kind": "hard",
+       "limit": 20.0, "unit": "uM"}
     ],
     "success_metric": "orthogonal confirmation"
   },
   "hypotheses": [
     {"statement": "C-101 binds with IC50 <= 20 uM", "candidate": "C-101",
-     "assay_type": "binding", "predicted": "IC50 <= 20", "predicted_value": 20.0,
-     "rationale": "covalent warhead precedent"},
-    {"statement": "C-102 binds with IC50 <= 20 uM", "candidate": "C-102",
-     "assay_type": "binding", "predicted": "IC50 <= 20", "predicted_value": 20.0,
-     "rationale": "scaffold hop"}
+     "assay_type": "binding", "predicted": "IC50 <= 20",
+     "predicted_value": 20.0, "rationale": "covalent warhead precedent"}
   ],
-  "scores": {"C-101": 0.9, "C-102": 0.8},
-  "k": 2,
   "autonomy": "act"
 }
 ```
-</details>
 
-Actual output:
+```sh
+bn auto campaign.json
+```
+
+The campaign then runs: the hypothesis portfolio is filtered to the top-k by
+score with a diversity cap (one idea cannot crowd out others); each selected
+hypothesis is designed and submitted through the safety gateway; the lab
+performs it; the agent notices the device output, fits the results, and delivers
+verdicts; confirmation assays are submitted to close the loop.
 
 ```
 [campaign] problem prob-89fd555d: 3 hypotheses -> 2 selected
 [campaign] [agent] noticed device output: sim-1403a26c.csv — reading it
-[campaign] [agent] analyzed: 1 compound(s), Z'=0.946
 [campaign] [agent] hypothesis hyp-22911313 (C-102): VALIDATED — IC50 1.833 uM vs threshold 20.0
-[campaign] [agent] recommendation: best binder so far is C-102 (IC50 1.833 uM) — next: confirm with orthogonal assay
-[campaign] [agent] loop closed: confirmation assay for C-102 auto-submitted (safety-approved) -> run sim-e67698bc
+[campaign] [agent] loop closed: confirmation assay for C-102 auto-submitted (safety-approved)
 {
   "problem": "prob-89fd555d",
   "selected": ["C-101", "C-102"],
@@ -194,57 +67,92 @@ Actual output:
 }
 ```
 
-Every step is provenance-recorded: the problem and its constraints, why each
-hypothesis made or missed the cut, which criteria each verdict used, and every
-safety-gated submission — `bn prove <problem-id> --html report.html` renders it
-as a tamper-evident audit.
+What the models contribute and what BioNexus contributes are kept explicit: the
+LLM derives the SAR hypothesis, the QSAR model makes the calibrated prediction —
+BioNexus is the layer that makes those results *executable, bounded, measurable,
+and auditable*. Case studies 01 and 02 below were surfaced, scored, and recorded
+by this harness.
 
-### You choose how much the agent does
+### Autonomy is operator-set
 
 | autonomy | agent behavior |
 |---|---|
-| `observe` | reads, fits, recommends — **submits nothing** |
-| `gate` | proposes everything; **each lab submission needs operator approval** |
-| `act` | fully autonomous within the SafetyEngine (incl. confirmation assays) |
+| `observe` | reads, fits, recommends — submits nothing |
+| `gate` | proposes everything; each lab submission requires operator approval |
+| `act` | autonomous within the SafetyEngine, including confirmation assays |
 
-The same flow also runs step-by-step by hand (see the notebooks) — the manual
-and agent paths share the same five interfaces, so you can start manual and
-hand stages to the agent as trust grows.
+A `ResourceBudget` (max lab runs, hypotheses, confirmations, wall clock) is
+enforced at submission and generation time; exhaustion is provenance-recorded.
+Re-proposed duplicates of already-tried hypotheses are dropped automatically.
 
-**Resource governance:** campaigns carry a `ResourceBudget` (max lab runs,
-max hypotheses, max confirmations, wall clock) enforced at submission and
-generation time — the agent can propose freely, but cannot exceed the caps;
-exhaustion is provenance-recorded. Hypothesis generation also accepts
-Agent-Skills guidance (the `bionexus` skill's rules are injected into the
-agent's prompt), and re-proposed duplicates of already-tried hypotheses are
-dropped automatically.
+## Evidence: blind reproduction of published papers
 
-### What BioNexus contributes (vs. what the models contribute)
+The strongest test of the flow: hold out an entire published paper — values
+excluded from training and hidden from the agent — and ask the system to
+reproduce it.
 
-The case studies are honest about the split: **the intelligence comes from the
-models** (the LLM derived the SAR hypothesis; sklearn's RF made the calibrated
-predictions). **BioNexus is the layer that made those results executable,
-measurable, and auditable** — and that layer is what the case studies actually
-tested:
-
-| Case-study step | What the model did | What BioNexus did |
+| Study | Paper | Result |
 |---|---|---|
-| Problem setup | — | Stated the problem + constraints; recorded it as the provenance root |
-| Contamination control | — | Ran and recorded post-cutoff probes; proved the no-knowledge claim is part of the audit trail (case study 02) |
-| Hypothesis generation | LLM proposed families + tuned variables | Constrained, validated, deduped, and provenance-recorded them; injected skill guidance |
-| Portfolio filter | LLM scored confidence | Enforced diversity caps and recorded every accept/reject reason |
-| Experiment execution | — | Safety-gated the submission; the virtual lab performed it and produced raw evidence |
-| Result awareness | — | Device monitor noticed the output automatically; no human shuttled files |
-| Verdicts | LLM interpreted | Scored against **pre-registered criteria**; QC failure → inconclusive, never silently invalidated |
-| Accountability | — | Hash-chained provenance over every step; `bn prove` renders the tamper-evident audit |
+| [Case study 01](case-studies/01-egfr-blind-reproduction/) | Gazit et al., *J. Med. Chem.* 1989 — the original tyrphostins paper | Q1 hypothesis identified, **qualified**: a probe confirmed the model has prior exposure to this literature (recognition, not derivation). Q2 ranking vs published IC50s passed. |
+| [Case study 02](case-studies/02-az3246-hpk1/) | AZ3246 HPK1 inhibitor, *J. Med. Chem.* 2025 — post-training-cutoff | **Contamination-free.** Both checks passed: agent derived the pyrazine-carboxamide hypothesis from structures alone, and its blinded ranking (ρ = +0.42) outperformed a Random Forest trained on 25,600 other HPK1 measurements (ρ = +0.08) |
 
-The measured finding (agent reasoning transfers across assay shifts better than
-a trained model, while the trained model stays better calibrated) was **surfaced
-by this harness** — and it holds regardless of which model you plug in. BioNexus
-does not do the thinking; it makes thinking *executable, bounded, and provable*
-in a lab context.
+Case study 02's clean design trades the realism of case study 01 for freedom
+from memorization; both READMEs document their limitations explicitly.
 
-**CLI:**
+## For scientists
+
+**Read your instrument exports automatically.** Point `bn read` at a
+plate-reader export (CSV/TSV/XLSX, any column order, any vendor header block):
+
+```sh
+bn read synergy_export.csv
+# plate: synergy_export.csv [long] | wells: 10 | controls: 2 | Z': 0.956
+# compound        IC50 (uM)  points  note
+# C-101                8.94       4  observed-max
+# C-102                9.17       4  observed-max
+```
+
+Format, header synonyms, control wells, plate-grid layouts, and dose–response
+IC50 fits are all automatic; right-censored and single-dose cases are reported
+honestly.
+
+**Don't point at files at all — the agent notices them.** `bn watch` monitors
+an instrument outbox; when a reader exports a result, the agent reads it,
+updates open hypotheses, and recommends the next step.
+
+**Inspect the audit.** `bn prove <problem-id> --html report.html` renders the
+hash-chained provenance of a campaign — hypotheses, criteria, decisions,
+submissions — as a tamper-evident, shareable report.
+
+## The virtual lab
+
+BioNexus ships simulated devices so the entire loop runs offline, and so agent
+behavior is testable before hardware is involved:
+
+- **SimulatorLab** — seeded dose–response ground truth, replicates,
+  counterscreen interference (PAINS-like artifacts), controls
+- **ImagingSimulatorLab** — a 96-well imaging plate reader: raw fluorescence
+  micrographs per well, an analysis pipeline that fits IC50s from the images,
+  Z'-factor QC, and per-well artifacts (pipetting spikes, bubbles, edge effects)
+- **Recording/playback** — real hardware sessions are recorded once and replay
+  identically in CI
+
+With a multimodal model, the agent can even read the plate visually:
+`demo_vision_readout.py` shows a vision-LLM estimating fluorescence from pixels
+alone and recovering the IC50 to the same order of magnitude as the analysis
+pipeline. See [`docs/virtual-lab.md`](docs/virtual-lab.md).
+
+## Installation
+
+```sh
+pip install bionexuslab                 # core (pydantic only) + CLI
+pip install "bionexuslab[dev]"          # + development dependencies
+```
+
+Optional extras: `[models-openai]`, `[bio-rdkit]`, `[lab-imaging]`,
+`[sandbox-agentenv]`, `[store-postgres]`.
+
+## CLI
 
 ```sh
 bn run examples/workflow.yml       # tournament + assay on the configured lab
@@ -254,54 +162,56 @@ bn watch /path/to/outbox           # agent notices device outputs
 bn auto campaign.json              # whole flow, one command
 bn prove <branch> --html out.html  # tamper-evident provenance + shareable report
 bn mcp                             # MCP server: drive BioNexus from Claude/Cursor
+bn new-adapter lab my_robot        # scaffold a tested LabAdapter
 ```
 
-**Works with Claude / Cursor / any MCP client** — add to your MCP config:
+## Agent Skills and MCP
+
+BioNexus ships as an [Agent Skills](https://agentskills.io/) package
+(`skills/`, `plugin.json`) and exposes its tools over MCP:
 
 ```json
 {"bionexus": {"command": "bn", "args": ["mcp"]}}
 ```
 
-Exposes `generate_candidates`, `run_assay` (dose-response + IC50),
-`propose_hypothesis`, and `list_lab_capabilities` as agent tools.
+It composes with [Scientific Agent Skills](https://github.com/K-Dense-AI/scientific-agent-skills):
+those skills teach an agent *how* to author protocols and query databases;
+BioNexus decides *whether they run*, and records what happened. Focused skills:
+`bionexus` (overview) · `bionexus-labread` · `bionexus-labwatch` ·
+`bionexus-campaign` · `bionexus-opentrons`.
 
-**Tutorials:** [`notebooks/`](notebooks/) — run a campaign · write an adapter · bring your own model.
+Tutorials: [`notebooks/`](notebooks/) — run a campaign · write an adapter ·
+bring your own model.
 
-**Extend it:**
+## Five core interfaces
 
-```sh
-bn new-adapter lab my_robot      # scaffold a tested LabAdapter in seconds
-bn new-adapter tool my_docking --cap e.sim.docking
-```
+Everything in BioNexus implements one of five interfaces; adapters are opt-in
+and interchangeable.
 
-See [`docs/ADAPTERS.md`](docs/ADAPTERS.md) and the
-[stability policy](docs/stability.md) — the five core interfaces are stable
-surfaces with additive-evolution guarantees.
+| Interface | Adapters (now → roadmap) |
+|---|---|
+| `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub), anthropic → gemini |
+| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator, Opentrons OT-2/Flex (HTTP), PlateReaderShare → cloud labs |
+| `Sandbox` | local (copy-on-fork) → AgentENV (real fork/snapshot) |
+| `ProvenanceStore` | sqlite → postgres, s3-worm |
+| `BioTool` | rdkit descriptors → docking, ADMET, ESMFold |
+
+## Documentation
 
 | Doc | Contents |
 |---|---|
 | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | install, run, workflows |
 | [`docs/ADAPTERS.md`](docs/ADAPTERS.md) | authoring adapters (labs, models, tools, stores) |
 | [`docs/SAFETY.md`](docs/SAFETY.md) | safety rules, LabGateway, audit trail |
-| [`docs/domain-review.md`](docs/domain-review.md) | flow fidelity review vs. the real drug-discovery cycle |
-| [`docs/benchmarks.md`](docs/benchmarks.md) | public datasets (MoleculeNet, TDC, DOCKSTRING, ProteinGym) + first benchmark results |
-| [`docs/virtual-lab.md`](docs/virtual-lab.md) | simulated devices, image-based readouts, QC and failure modes |
 | [`docs/security.md`](docs/security.md) | threat model, trust boundaries, agent capability matrix |
-| [`docs/critical-review.md`](docs/critical-review.md) | unsympathetic independent review: what works, what fails, adoption forecast |
-| [`case-studies/01`](case-studies/01-egfr-blind-reproduction/) | **Blind reproduction of Gazit et al. 1989 (the original tyrphostins paper) — PASSED both checks** |
-| [`case-studies/02`](case-studies/02-az3246-hpk1/) | **Blind prospective reproduction of AZ3246 (HPK1, JMC 2025) — PASSED, contamination-free; agent outperformed trained model** |
+| [`docs/virtual-lab.md`](docs/virtual-lab.md) | simulated devices, image-based readouts, QC and failure modes |
+| [`docs/benchmarks.md`](docs/benchmarks.md) | public datasets and benchmark results |
+| [`docs/domain-review.md`](docs/domain-review.md) | flow fidelity review vs. the real drug-discovery cycle |
 | [`docs/stability.md`](docs/stability.md) | versioning, stability tiers, deprecation policy |
+| [`docs/research-landscape.md`](docs/research-landscape.md) | review vs. Google, Anthropic, Isomorphic, Cradle, Lila, FutureHouse, OpenAI Rosalind |
+| [`docs/critical-review.md`](docs/critical-review.md) | unsympathetic independent review: what works, what fails |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
-
-### Five core interfaces (everything is one of these)
-
-| Interface | Adapters (now → roadmap) |
-|---|---|
-| `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub) → anthropic, gemini |
-| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator, **Opentrons OT-2/Flex** (HTTP), **PlateReaderShare** (Gen5/SoftMax auto-export shares) → cloud labs |
-| `Sandbox` | local (copy-on-fork) → AgentENV (real fork/snapshot) |
-| `ProvenanceStore` | sqlite → postgres, s3-worm |
-| `BioTool` | rdkit descriptors → docking, ADMET, ESMFold |
+| [`case-studies/`](case-studies/) | blind reproduction studies on real published data |
 
 ## Architecture Diagrams
 
