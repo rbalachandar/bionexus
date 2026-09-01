@@ -8,11 +8,15 @@ its measurements**. The agent independently identified the same compound class,
 named it with the same term the authors coined, and produced potency rankings
 consistent with the published measurements.
 
-**Verdict: both pre-registered reproduction checks PASSED.**
+**Verdict:** the quantitative reproduction check passed. The hypothesis check
+passed on accuracy but is qualified by a confirmed pretraining-contamination
+finding: the underlying model has prior knowledge of this specific literature,
+so the correct attribution of Q1 is *recognition of a known compound class*
+rather than *independent derivation*. See Contamination Analysis.
 
 | Question | Result |
 |---|---|
-| Q1 — Does the agent, from structures alone, identify the paper's compound class and binding hypothesis? | **PASS, contaminated** — named "tyrphostin" correctly, but a probe confirms the model has memorized this paper (see Contamination); recognition, not rediscovery |
+| Q1 — Does the agent, from structures alone, identify the paper's compound class and binding hypothesis? | **Identified correctly; qualified.** The agent named the compound class and pharmacophore accurately, but contamination analysis (below) confirmed prior model exposure to this literature; the result is therefore attributed to recognition rather than independent derivation |
 | Q2 — Are blinded potency scores consistent with the published IC50s? | **PASS** — agent ranking ρ = +0.42…+0.58; trained model ρ = +0.70 (MAE 0.67 pIC50) |
 
 ## The held-out paper
@@ -58,7 +62,7 @@ shown**, addressing the circularity critique of simulation-based demos:
 
 ## Results
 
-### Q1 — Hypothesis reproduction: PASS, but contaminated (see Contamination below)
+### Q1 — Hypothesis identification: accurate, subject to a contamination qualification
 
 The agent's top hypothesis (confidence 0.78), from structures alone:
 
@@ -70,7 +74,7 @@ additionally proposed sub-hypotheses matching the paper's content: a
 cyanoacrylate/thioamide subseries and a catechol-SAR pattern
 (3,4-diOH optimal potency).
 
-### Q2 — Result reproduction: PASS
+### Q2 — Result reproduction: passed
 
 | Ranking source | Spearman ρ vs published pIC50 | Rank of the paper's most potent compound |
 |---|---|---|
