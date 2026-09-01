@@ -264,6 +264,7 @@ surfaces with additive-evolution guarantees.
 | [`docs/security.md`](docs/security.md) | threat model, trust boundaries, agent capability matrix |
 | [`docs/critical-review.md`](docs/critical-review.md) | unsympathetic independent review: what works, what fails, adoption forecast |
 | [`case-studies/01`](case-studies/01-egfr-blind-reproduction/) | **Blind reproduction of Gazit et al. 1989 (the original tyrphostins paper) — PASSED both checks** |
+| [`case-studies/02`](case-studies/02-az3246-hpk1/) | **Blind prospective reproduction of AZ3246 (HPK1, JMC 2025) — PASSED, contamination-free; agent outperformed trained model** |
 | [`docs/stability.md`](docs/stability.md) | versioning, stability tiers, deprecation policy |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
 
