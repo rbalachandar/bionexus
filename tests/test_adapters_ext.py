@@ -840,3 +840,70 @@ def test_hypothesis_agent_dedup_and_total_cap(tmp_path):
                                 max_total_hypotheses=1,
                                 existing_keys={("A1", "A1 binds")})
     assert "Always include controls." in seen["prompt"]
+
+
+def test_agentenv_adapter_against_mock_http_server(tmp_path):
+    """Integration test: the adapter over a real local HTTP server implementing
+    the AgentENV endpoints — the network path is exercised, not bypassed."""
+    import json as _json
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    state = {"n": 0, "calls": []}
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def _send(self, code, payload):
+            body = _json.dumps(payload).encode()
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            state["calls"].append(("GET", self.path))
+            self._send(200, {"data": {"status": "succeeded", "commands": []}})
+
+        def do_POST(self):
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length) if length else b""
+            state["calls"].append(("POST", self.path, body.decode()))
+            if self.path == "/sandboxes":
+                state["n"] += 1
+                self._send(200, {"sandboxID": f"sbx-{state['n']}"})
+            else:
+                self._send(200, {})
+
+        def do_DELETE(self):
+            state["calls"].append(("DELETE", self.path))
+            self._send(200, {})
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        from bionexus.adapters.sandbox.agentenv import (AgentEnvClient,
+                                                        AgentEnvSandbox)
+        from bionexus.core.interfaces import system_actor
+        from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+
+        client = AgentEnvClient(f"http://127.0.0.1:{server.server_port}")
+        store = SqliteProvenanceStore()
+        sbx = AgentEnvSandbox(client, "root", store=store, actor=system_actor())
+        assert sbx.sandbox_id == "sbx-1"
+        snap = sbx.snapshot()                      # POST pause
+        child = sbx.fork(snap)                     # POST resume on same sandbox
+        assert child.branch_id.startswith("root/")
+        assert any(m == "POST" and p == "/sandboxes/sbx-1/pause"
+                   for m, p, *_ in state["calls"])
+        assert any(m == "POST" and p == "/sandboxes/sbx-1/resume"
+                   for m, p, *_ in state["calls"])
+        assert any(m == "POST" and p == "/sandboxes" for m, p, *_ in state["calls"])
+        child.destroy()                            # DELETE
+        assert any(m == "DELETE" and "/sandboxes/" in p
+                   for m, p, *_ in state["calls"])
+    finally:
+        server.shutdown()

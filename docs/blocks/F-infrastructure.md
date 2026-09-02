@@ -32,3 +32,14 @@ Exists today (see the AgentENV repo); this block is integration work only.
 - [ ] Sandbox-level RBAC / per-tenant auth for multi-team use
 - [ ] Cost accounting hooks (CPU/GPU-seconds per sandbox) feeding the Experiment Ledger
 - [ ] Long-running sandbox watchdog policy (max runtime per stage)
+
+## Integration status (honest)
+
+The AgentENV **adapter is implemented** (`adapters/sandbox/agentenv.py`:
+create / pause / resume / delete, fork-and-snapshot mapping, provenance on
+every transition) and is **integration-tested against a mock AgentENV HTTP
+server** — the real network path, request shapes, and error handling are
+exercised in CI. It has **not yet been executed against a live AgentENV
+server**: AgentENV requires a Linux host with `/dev/kvm`, and no such
+environment is attached to this project yet. Treat the adapter as
+code-complete, hardware-unverified.
