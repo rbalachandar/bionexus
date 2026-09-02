@@ -907,3 +907,42 @@ def test_agentenv_adapter_against_mock_http_server(tmp_path):
                    for m, p, *_ in state["calls"])
     finally:
         server.shutdown()
+
+
+# ---- docker sandbox adapter (mock runner) --------------------------------------------
+
+class _FakeDocker:
+    def __init__(self):
+        self.calls: list[list[str]] = []
+        self._n = 0
+    def run(self, *args, input=None):
+        self.calls.append(list(args))
+        if args[0] == "run":
+            self._n += 1
+            return f"cont-{self._n}"
+        if args[0] == "commit":
+            return "bionexus/branch:snap-1"
+        return ""
+    def ok(self, *args):
+        return True
+
+
+def test_docker_sandbox_snapshot_fork_destroy():
+    from bionexus.adapters.sandbox.docker import DockerRunner, DockerSandbox
+    store = SqliteProvenanceStore()
+    runner = _FakeDocker()
+    sbx = DockerSandbox(image="python:3.12-slim", branch_id="root",
+                        store=store, actor=system_actor(), runner=runner)
+    assert sbx.container_id == "cont-1"
+    tag = sbx.snapshot()
+    assert tag.startswith("bionexus/root:")
+    assert runner.calls[-1][:2] == ["commit", "cont-1"]
+    child = sbx.fork(tag)
+    assert child.image == tag and child.parent_branch_id == "root"
+    child.exec("ls /data")
+    assert runner.calls[-1][:3] == ["exec", child.container_id, "sh"]
+    child.destroy()
+    events = [r.event_type.value for r in store.branch_records("root")]
+    assert "sandbox_snapshot" in events
+    rm_calls = [c for c in runner.calls if c[0] == "rm"]
+    assert rm_calls, "container removed on destroy"
