@@ -46,7 +46,7 @@ the agent.
 | Scope creep | Agent orders 100 extra assay steps | MaxStepsRule; throughput caps in Lab State Manager | ✅ enforced |
 | Provenance tampering | Agent rewrites history to hide a failure | Hash chain (sha256, prev-link); `bn prove` detects breaks; store is append-only | ✅ enforced |
 | Gate bypass | Agent marks its own candidate approved | Gates are core-side events requiring an approver actor outside the agent | ✅ enforced |
-| Prompt-injected exfiltration | Malicious dataset content steers agent to send data out | Sandboxes have no network unless granted; lab adapters are local/operator-configured | ⚠️ sandbox policy is adapter-dependent |
+| Prompt-injected exfiltration | Malicious dataset content steers agent to send data out | Sandboxes have no network unless granted; lab adapters are local/operator-configured. The **OpenSandbox adapter** supports per-sandbox egress controls and a credential vault (secrets never enter the workload) — the recommended isolation tier for untrusted agent code | ✅ with OpenSandbox/AgentENV; ⚠️ Local/Docker are operator-trust |
 | Data poisoning | Adversarial "results" enter the flywheel | Flywheel examples only from gateway-approved runs; provenance links every label to a run id | ✅ structural |
 | Ground-truth leakage | Agent reads simulator truth to fake performance | `true_ic50_um` excluded from agent-facing tools; evaluation-only API | ✅ convention — enforced by review |
 | Malicious adapter | Third-party adapter exfiltrates data | Out of scope of core; adapters are operator-installed trusted code — vet like any dependency | ⚠️ operator responsibility |

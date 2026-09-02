@@ -224,7 +224,7 @@ and interchangeable.
 |---|---|
 | `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub), anthropic → gemini |
 | `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator, Opentrons OT-2/Flex (HTTP), PlateReaderShare → cloud labs |
-| `Sandbox` | local (copy-on-fork), docker (container-isolated, commit-based snapshots) → AgentENV (Firecracker microVM) |
+| `Sandbox` | local (copy-on-fork), docker (commit-based snapshots), OpenSandbox (gVisor/Kata/Firecracker runtimes, K8s scale, egress controls) → AgentENV |
 | `ProvenanceStore` | sqlite → postgres, s3-worm |
 | `BioTool` | rdkit descriptors → docking, ADMET, ESMFold |
 

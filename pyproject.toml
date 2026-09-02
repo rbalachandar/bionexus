@@ -14,6 +14,7 @@ dependencies = ["pydantic>=2.5"]
 [project.optional-dependencies]
 store-postgres = ["psycopg[binary]>=3"]
 sandbox-agentenv = []  # adapter uses stdlib urllib; extra kept as a marker
+sandbox-opensandbox = ["opensandbox>=0.1"]
 models-openai = ["httpx>=0.27"]
 bio-rdkit = ["rdkit>=2023.9"]
 lab-imaging = ["numpy>=1.24"]

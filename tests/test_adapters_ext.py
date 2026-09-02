@@ -946,3 +946,59 @@ def test_docker_sandbox_snapshot_fork_destroy():
     assert "sandbox_snapshot" in events
     rm_calls = [c for c in runner.calls if c[0] == "rm"]
     assert rm_calls, "container removed on destroy"
+
+
+# ---- opensandbox adapter (fake SDK client) --------------------------------------------
+
+class _FakeFiles:
+    def __init__(self):
+        self.written = {}
+    def write_files(self, entries):
+        for path, data in entries:
+            self.written[path] = data
+    def read_file(self, path):
+        return self.written.get(path, "")
+
+
+class _FakeOpenSandboxClient:
+    def __init__(self):
+        self.files = _FakeFiles()
+        self.killed = False
+        self.id = "osb-1"
+    def create(self, image, timeout_secs):
+        return self
+
+
+def test_opensandbox_adapter_lifecycle(tmp_path):
+    from bionexus.adapters.sandbox.opensandbox import OpenSandboxSandbox
+    from bionexus.core.contracts import EventType as ET
+
+    class _Client(_FakeOpenSandboxClient):
+        def __init__(self):
+            super().__init__()
+            self.killed = False
+            self.commands = self
+        def run(self, command):
+            r = type("R", (), {})()
+            r.logs = type("L", (), {})()
+            r.logs.stdout = [type("T", (), {"text": f"ran: {command}"})()]
+            return r
+        def kill(self):
+            self.killed = True
+
+    client = _Client()
+    store = SqliteProvenanceStore()
+    sbx = OpenSandboxSandbox(client, branch_id="root", store=store,
+                             actor=system_actor())
+    assert sbx.sandbox_id == "osb-1"
+    out = sbx.exec("echo hi")
+    assert out == "ran: echo hi"
+    snap = sbx.snapshot()
+    child = sbx.fork(snap)
+    assert child.branch_id.startswith("root/")
+    child.write_file("/tmp/x", "data")
+    assert child.read_file("/tmp/x") == "data"
+    child.destroy()
+    assert client.killed
+    events = {r.event_type.value for r in store.branch_records(child.branch_id)}
+    assert "sandbox_fork" in events
