@@ -1041,3 +1041,62 @@ def test_campaign_templates_fill_and_build(tmp_path):
     except FileNotFoundError:
         raised = True
     assert raised
+
+
+# ---- approval inbox + cockpit (F3) ----------------------------------------------------
+
+def test_approval_inbox_roundtrip(tmp_path):
+    from bionexus.approvals import ApprovalInbox
+
+    box = ApprovalInbox(tmp_path / "approvals.jsonl")
+    aid = box.request("dose-response assay C1")
+    assert box.pending()[0]["title"] == "dose-response assay C1"
+    box.decide(aid, True)
+    assert box.status_of(aid) == "approved"
+    assert box.pending() == []
+
+
+def test_web_approver_waits_for_decision(tmp_path):
+    import threading
+    from bionexus.approvals import ApprovalInbox, web_approver
+
+    box = ApprovalInbox(tmp_path / "a.jsonl")
+    approved = []
+    approver = web_approver(box, poll_secs=0.05)
+    t = threading.Thread(target=lambda: approved.append(approver("run X")))
+    t.start()
+    for _ in range(100):  # wait for the request to land
+        pend = box.pending()
+        if pend:
+            break
+        threading.Event().wait(0.02)
+    box.decide(pend[0]["id"], approve=False)
+    t.join(5)
+    assert approved == [False]
+
+
+def test_cockpit_server_endpoints(tmp_path):
+    import urllib.request
+    from bionexus.serve import serve_in_thread
+
+    httpd, _ = serve_in_thread(port=0, inbox=str(tmp_path / "a.jsonl"))
+    port = httpd.server_address[1]
+    try:
+        assert urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz").read() == b"ok"
+        html = urllib.request.urlopen(f"http://127.0.0.1:{port}/").read().decode()
+        assert "Awaiting your decision" in html
+        # request an approval via the inbox, see it on the dashboard, decide via POST
+        from bionexus.approvals import ApprovalInbox
+        box = ApprovalInbox(str(tmp_path / "a.jsonl"))
+        aid = box.request("assay C1")
+        html = urllib.request.urlopen(f"http://127.0.0.1:{port}/").read().decode()
+        assert aid in html and "assay C1" in html
+        req = urllib.request.Request(f"http://127.0.0.1:{port}/decide",
+                                     data=f"id={aid}&action=approve".encode())
+        urllib.request.urlopen(req)  # 303 redirect
+        assert box.status_of(aid) == "approved"
+        pend = json.loads(urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/pending").read())
+        assert pend == []
+    finally:
+        httpd.shutdown()

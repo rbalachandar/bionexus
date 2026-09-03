@@ -245,8 +245,13 @@ def cmd_auto(args: argparse.Namespace) -> int:
     if args.autonomy:
         cfg_doc["autonomy"] = args.autonomy
     cfg = _campaign_from_doc(cfg_doc)
+    approver = None
+    if cfg.autonomy == "gate":
+        from bionexus.approvals import web_approver
+        approver = web_approver(inbox=args.inbox or ".data/approvals.jsonl",
+                                notify=lambda m: print(f"[campaign] {m}"))
     lab = SimulatorLab(seed=cfg_doc.get("seed", 42))
-    report = run_campaign(cfg, lab, SqliteProvenanceStore())
+    report = run_campaign(cfg, lab, SqliteProvenanceStore(args.db), approver=approver)
     print(json.dumps({"problem": report.problem_id, "selected": report.selected,
                       "verdicts": report.verdicts}, indent=1))
     return 0
@@ -261,6 +266,13 @@ def cmd_templates(args: argparse.Namespace) -> int:
         return 0
     for t in list_templates():
         print(f"{t['name']:26} {t['description']}")
+    return 0
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    from bionexus.serve import serve
+
+    serve(port=args.port, inbox=args.inbox, db_path=args.db)
     return 0
 
 
@@ -299,6 +311,12 @@ def main(argv: list[str] | None = None) -> int:
     read.add_argument("--html", default=None, help="write an HTML summary")
     read.set_defaults(func=cmd_read)
 
+    srv = sub.add_parser("serve", help="scientist cockpit: approval inbox + campaign dashboard")
+    srv.add_argument("--port", type=int, default=8080)
+    srv.add_argument("--inbox", default=".data/approvals.jsonl")
+    srv.add_argument("--db", default=None, help="provenance DB to show recent events from")
+    srv.set_defaults(func=cmd_serve)
+
     watch_p = sub.add_parser("watch", help="watch an instrument outbox; agent notices results automatically")
     watch_p.add_argument("inbox")
     watch_p.add_argument("--poll", type=float, default=1.0)
@@ -312,6 +330,10 @@ def main(argv: list[str] | None = None) -> int:
     auto.add_argument("--autonomy", choices=["observe", "gate", "act"], default=None)
     auto.add_argument("--yes", action="store_true",
                       help="never prompt for template fields; fail instead")
+    auto.add_argument("--db", default="bionexus.db",
+                      help="provenance DB (shown by bn serve)")
+    auto.add_argument("--inbox", default=None,
+                      help="approval inbox file for gate mode (default .data/approvals.jsonl)")
     auto.set_defaults(func=cmd_auto)
 
     templates = sub.add_parser("templates", help="list campaign templates")

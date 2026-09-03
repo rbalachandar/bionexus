@@ -57,6 +57,18 @@ class SqliteProvenanceStore:
         ).fetchall()
         return [ProvenanceRecord.model_validate_json(r[0]) for r in rows]
 
+    def branches(self) -> list[str]:
+        rows = self._conn.execute(
+            "SELECT DISTINCT branch_id FROM provenance ORDER BY branch_id").fetchall()
+        return [r[0] for r in rows]
+
+    def recent_records(self, limit: int = 15) -> list[ProvenanceRecord]:
+        rows = self._conn.execute(
+            "SELECT payload FROM provenance ORDER BY created_at DESC, rowid DESC LIMIT ?",
+            (limit,)).fetchall()
+        recs = [ProvenanceRecord.model_validate_json(r[0]) for r in rows]
+        return list(reversed(recs))
+
     def branch_records(self, branch_id: str) -> list[ProvenanceRecord]:
         rows = self._conn.execute(
             "SELECT payload FROM provenance WHERE branch_id=? ORDER BY created_at, rowid",
