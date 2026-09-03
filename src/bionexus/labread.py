@@ -255,6 +255,16 @@ class PlateResult:
     def _record_value(self, r: dict) -> float:
         return r["value"]
 
+    def curve_svg(self, sample: str, width: int = 560, height: int = 340) -> str:
+        """Dose-response SVG for one compound (from this plate's records)."""
+        from bionexus.plots import dose_response_svg
+
+        pts = [(r["conc_um"], r["value"]) for r in self.records
+               if r["sample"] == sample and r.get("conc_um") is not None]
+        ic50 = self.analysis["compounds"].get(sample, {}).get("ic50_um")
+        return dose_response_svg(pts, ic50=ic50, title=f"{sample} — {self.source}",
+                                 width=width, height=height)
+
     def __str__(self) -> str:
         head = (f"plate: {self.source} [{self.format}] | "
                 f"wells: {len(self.records)} | controls: {self.analysis['controls_detected']} | "

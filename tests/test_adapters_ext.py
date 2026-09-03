@@ -1002,3 +1002,22 @@ def test_opensandbox_adapter_lifecycle(tmp_path):
     assert client.killed
     events = {r.event_type.value for r in store.branch_records(child.branch_id)}
     assert "sandbox_fork" in events
+
+
+def test_dose_response_svg_plot(tmp_path):
+    from bionexus.labread import read_plate
+    from bionexus.plots import dose_response_svg
+
+    f = tmp_path / "p.csv"
+    f.write_text("Well ID,Compound,Conc (uM),RFU\n"
+                 "A1,ctrl,10,100\nA2,ctrl,10,104\n"
+                 "A3,C1,0.5,110\nA4,C1,2,145\nA5,C1,10,289\nA6,C1,40,540\n")
+    r = read_plate(f, max_response=600)
+    svg = r.curve_svg("C1")
+    assert "<polyline" in svg and "IC50" in svg
+    # escaping: title cannot inject markup
+    assert "<script" not in dose_response_svg([(1, 1)], title="<script>x</script>")
+
+    # also from the plotter directly
+    svg2 = dose_response_svg([(0.5, 10), (2, 30), (10, 55), (40, 80)], ic50=5.0)
+    assert svg2.count("<circle") == 4
