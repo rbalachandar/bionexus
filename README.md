@@ -22,10 +22,26 @@ demonstrations:
   results, and verdicts are recorded in a hash-chained, tamper-evident
   provenance store that renders as a shareable report.
 
+## Installation
+
 ```sh
-pip install bionexuslab
-bn read my_plate_reader_export.csv      # ← your first result, 60 seconds
+pip install bionexuslab                 # core (pydantic only) + CLI
+pip install "bionexuslab[dev]"          # + development dependencies
 ```
+
+## CLI
+
+```sh
+bn run examples/workflow.yml       # tournament + assay on the configured lab
+bn sim                             # reference round on the virtual lab
+bn read results.csv                # auto-analyze an instrument export
+bn watch /path/to/outbox           # agent notices device outputs
+bn auto campaign.json              # whole flow, one command
+bn prove <branch> --html out.html  # tamper-evident provenance + shareable report
+bn mcp                             # MCP server: drive BioNexus from Claude/Cursor
+bn new-adapter lab my_robot        # scaffold a tested LabAdapter
+```
+
 
 ## BioNexus case studies on published papers
 
@@ -48,7 +64,7 @@ BioNexus supports two working styles, backed by the same engine and the same
 five interfaces. A scientist can use it manually, step by step, as a daily
 analysis tool — and hand stages of the loop to an agent as trust grows.
 
-### As a daily analysis tool — read your instrument exports
+### As a daily analysis tool — reading lab instrument exports
 
 Point `bn read` at a plate-reader export (CSV/TSV/XLSX, any column order, any
 vendor header block). Format detection, control-well discovery, dose–response
@@ -68,9 +84,7 @@ r = read_plate("my_results.csv")   # long/grid/xlsx/imaging evidence
 print(r)                           # IC50 table + Z' — no configuration
 ```
 
-Right-censored and single-dose cases are reported honestly — no invented values.
-
-What you get back — a fitted dose–response curve like this one (auto-generated
+Response is a fitted dose–response curve like this one (auto-generated
 from a virtual-lab run):
 
 ![Dose–response curve](docs/images/dose-response.svg)
@@ -185,28 +199,6 @@ With a multimodal model, the agent can even read the plate visually:
 alone and recovering the IC50 to the same order of magnitude as the analysis
 pipeline. See [`docs/virtual-lab.md`](docs/virtual-lab.md).
 
-## Installation
-
-```sh
-pip install bionexuslab                 # core (pydantic only) + CLI
-pip install "bionexuslab[dev]"          # + development dependencies
-```
-
-Optional extras: `[models-openai]`, `[bio-rdkit]`, `[lab-imaging]`,
-`[sandbox-agentenv]`, `[store-postgres]`.
-
-## CLI
-
-```sh
-bn run examples/workflow.yml       # tournament + assay on the configured lab
-bn sim                             # reference round on the virtual lab
-bn read results.csv                # auto-analyze an instrument export
-bn watch /path/to/outbox           # agent notices device outputs
-bn auto campaign.json              # whole flow, one command
-bn prove <branch> --html out.html  # tamper-evident provenance + shareable report
-bn mcp                             # MCP server: drive BioNexus from Claude/Cursor
-bn new-adapter lab my_robot        # scaffold a tested LabAdapter
-```
 
 ## Agent Skills and MCP
 
