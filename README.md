@@ -1,5 +1,28 @@
 # BioNexus
 
+Open-source infrastructure for **AI-agent-run drug discovery** — agents that
+state a research problem, propose hypotheses, run experiments on simulated or
+real lab equipment, and report results with verifiable audit trails.
+
+```sh
+pip install bionexuslab
+bn read my_plate_reader_export.csv      # ← your first result, 60 seconds
+```
+
+```
+plate: my_plate_reader_export.csv [long] | wells: 10 | controls: 2 | Z': 0.956
+compound        IC50 (uM)  points  note
+C-101                8.94       4  observed-max
+C-102                9.17       4  observed-max
+```
+
+**That is the daily-tool layer.** The layer above it is autonomous: agents
+propose hypotheses, design and run experiments on simulated or real lab
+equipment, notice the results, and deliver verdicts — inside a safety boundary
+you control, with every step in a tamper-evident audit trail.
+
+Core dependencies: `pydantic` only. Everything else is an adapter you opt into.
+
 [![ci](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml/badge.svg)](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/bionexuslab)](https://pypi.org/project/bionexuslab/)
 [![Python](https://img.shields.io/pypi/pyversions/bionexuslab)](https://pypi.org/project/bionexuslab/)
@@ -21,6 +44,23 @@ demonstrations:
 - **Every step is auditable.** Problem, hypotheses, decisions, submissions,
   results, and verdicts are recorded in a hash-chained, tamper-evident
   provenance store that renders as a shareable report.
+
+
+## Proven on real published data
+
+
+The strongest test of the flow: hold out an entire published paper — values
+excluded from training and hidden from the agent — and ask the system to
+reproduce it.
+
+| Study | Paper | Result |
+|---|---|---|
+| [Case study 01](case-studies/01-egfr-blind-reproduction/) | Gazit et al., *J. Med. Chem.* 1989 — the original tyrphostins paper | Q1 hypothesis identified, **qualified**: a probe confirmed the model has prior exposure to this literature (recognition, not derivation). Q2 ranking vs published IC50s passed. |
+| [Case study 02](case-studies/02-az3246-hpk1/) | AZ3246 HPK1 inhibitor, *J. Med. Chem.* 2025 — post-training-cutoff | **Contamination-free.** Both checks passed: agent derived the pyrazine-carboxamide hypothesis from structures alone, and its blinded ranking (ρ = +0.42) outperformed a Random Forest trained on 25,600 other HPK1 measurements (ρ = +0.08) |
+
+Case study 02's clean design trades the realism of case study 01 for freedom
+from memorization; both READMEs document their limitations explicitly.
+
 
 ## Using BioNexus
 
@@ -49,6 +89,11 @@ print(r)                           # IC50 table + Z' — no configuration
 ```
 
 Right-censored and single-dose cases are reported honestly — no invented values.
+
+What you get back — a fitted dose–response curve like this one (auto-generated
+from a virtual-lab run):
+
+![Dose–response curve](docs/images/dose-response.svg)
 
 ### Hands-on — run a design round yourself
 
@@ -141,20 +186,6 @@ studies below test exactly that layer:
 | Verdicts | LLM interprets | Scores against pre-registered criteria; QC failure → inconclusive |
 | Accountability | — | Hash-chained provenance; `bn prove` renders the audit |
 
-
-## Evidence: blind reproduction of published papers
-
-The strongest test of the flow: hold out an entire published paper — values
-excluded from training and hidden from the agent — and ask the system to
-reproduce it.
-
-| Study | Paper | Result |
-|---|---|---|
-| [Case study 01](case-studies/01-egfr-blind-reproduction/) | Gazit et al., *J. Med. Chem.* 1989 — the original tyrphostins paper | Q1 hypothesis identified, **qualified**: a probe confirmed the model has prior exposure to this literature (recognition, not derivation). Q2 ranking vs published IC50s passed. |
-| [Case study 02](case-studies/02-az3246-hpk1/) | AZ3246 HPK1 inhibitor, *J. Med. Chem.* 2025 — post-training-cutoff | **Contamination-free.** Both checks passed: agent derived the pyrazine-carboxamide hypothesis from structures alone, and its blinded ranking (ρ = +0.42) outperformed a Random Forest trained on 25,600 other HPK1 measurements (ρ = +0.08) |
-
-Case study 02's clean design trades the realism of case study 01 for freedom
-from memorization; both READMEs document their limitations explicitly.
 
 ## The virtual lab
 
