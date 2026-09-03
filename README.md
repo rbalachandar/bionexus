@@ -22,11 +22,42 @@ demonstrations:
   results, and verdicts are recorded in a hash-chained, tamper-evident
   provenance store that renders as a shareable report.
 
+**Contents:** [Installation](#installation) · [CLI](#cli) ·
+[Case studies](#bionexus-case-studies-on-published-papers) ·
+[Using BioNexus](#using-bionexus) · [The virtual lab](#the-virtual-lab) ·
+[Five core interfaces](#five-core-interfaces) · [Agent Skills and MCP](#agent-skills-and-mcp) ·
+[Architecture](#architecture) · [Documentation](#documentation) ·
+[Design principles](#design-principles) · [References](#references--sources)
+
 ## Installation
 
 ```sh
 pip install bionexuslab                 # core (pydantic only) + CLI
 pip install "bionexuslab[dev]"          # + development dependencies
+```
+
+Optional extras: `[models-openai]` · `[bio-rdkit]` · `[lab-imaging]` ·
+`[sandbox-agentenv]` · `[sandbox-opensandbox]` · `[store-postgres]`.
+
+## CLI
+
+Every capability is a `bn` command; the same functionality is available as a
+Python API (see [Using BioNexus](#using-bionexus)).
+
+```sh
+bn read results.csv --csv out.csv      # auto-analyze an instrument export
+bn connect scan <share>                # detect instruments writing into a folder
+bn watch <outbox>                      # agent notices device outputs as they land
+bn templates                           # campaign presets — no JSON needed
+bn auto --template dose-response-screen --field compounds=C1,C2,C3
+bn serve                               # cockpit: approval inbox + campaign status
+bn diary <branch>                      # campaign as a lab-notebook narrative
+bn prove <branch> --html out.html      # tamper-evident provenance + shareable report
+bn sim                                 # reference design round on the virtual lab
+bn run examples/workflow.yml           # tournament + assay on the configured lab
+bn mcp                                 # MCP server: drive BioNexus from Claude/Cursor
+bn new-adapter lab my_robot            # scaffold a tested LabAdapter
+bn skills list                         # discovered Agent Skills (theirs and ours)
 ```
 
 ## BioNexus case studies on published papers
@@ -43,25 +74,11 @@ reproduce it.
 Case study 02's clean design trades the realism of case study 01 for freedom
 from memorization; both READMEs document their limitations explicitly.
 
-
 ## Using BioNexus
 
 BioNexus supports two working styles, backed by the same engine and the same
 five interfaces. A scientist can use it manually, step by step, as a daily
 analysis tool — and hand stages of the loop to an agent as trust grows.
-
-## CLI
-
-```sh
-bn run examples/workflow.yml       # tournament + assay on the configured lab
-bn sim                             # reference round on the virtual lab
-bn read results.csv                # auto-analyze an instrument export
-bn watch /path/to/outbox           # agent notices device outputs
-bn auto campaign.json              # whole flow, one command
-bn prove <branch> --html out.html  # tamper-evident provenance + shareable report
-bn mcp                             # MCP server: drive BioNexus from Claude/Cursor
-bn new-adapter lab my_robot        # scaffold a tested LabAdapter
-```
 
 ### As a daily analysis tool — reading lab instrument exports
 
@@ -81,6 +98,7 @@ bn read synergy_export.csv
 from bionexus.labread import read_plate
 r = read_plate("my_results.csv")   # long/grid/xlsx/imaging evidence
 print(r)                           # IC50 table + Z' — no configuration
+svg = r.curve_svg("C-101")         # fitted dose–response curve
 ```
 
 Response is a fitted dose–response curve like this one (auto-generated
@@ -156,6 +174,15 @@ when a reader exports a result, the agent reads it, updates open hypotheses
 against their pre-registered criteria, and recommends the next step. The same
 event interface maps to instrument webhooks and lab queue callbacks.
 
+To find out which instrument writes into a given folder:
+
+```sh
+bn connect scan /path/to/reader_share
+# scanned 2 files in /path/to/reader_share
+#   long   x1   e.g. synergy_export.csv
+#   → device: plate reader (auto-exporting to this share)
+```
+
 ### Choosing the level of agent automation
 
 | autonomy | agent behavior |
@@ -164,26 +191,27 @@ event interface maps to instrument webhooks and lab queue callbacks.
 | `gate` | proposes everything; each lab submission waits for your click in `bn serve` |
 | `act` | autonomous within the SafetyEngine, including confirmation assays |
 
-**Find your instruments.** `bn connect scan /path/to/reader_share` detects what
-writes into a folder and tells you how to hook it up — no adapter vocabulary
-required. **Re-read your campaign.** `bn diary <branch>` renders the provenance
-chain as a lab-notebook narrative: hypotheses, tests, verdicts, decisions.
-
-**The cockpit (`bn serve`).** A local web page where gate-mode campaigns wait
-for you: pending experiments with Approve/Deny buttons, live status, and the
-recent provenance trail. No accounts, no cloud — data never leaves your
-machine.
-
 A `ResourceBudget` (max lab runs, hypotheses, confirmations, wall clock) is
 enforced at submission and generation time. Every step — problem, hypotheses,
 decisions, submissions, verdicts — lands in the hash-chained provenance store;
 `bn prove <problem-id> --html report.html` renders it as a shareable audit.
 
+### The scientist's cockpit, diary, and inbox
+
+- **`bn serve`** — a local web page where gate-mode campaigns wait for you:
+  pending experiments with Approve/Deny buttons, live status, and the recent
+  provenance trail. No accounts, no cloud — data never leaves your machine.
+- **`bn diary <branch>`** — the hash-chained record rendered as a
+  lab-notebook narrative: hypotheses with rationale, tests with evidence runs,
+  verdicts with predicted-vs-observed, gate decisions.
+- **`bn read --csv out.csv`** — standardized results ready for Excel/GraphPad.
+
 ### What BioNexus helps with
 
 The intelligence comes from the models: the LLM derives the SAR hypothesis, the
-QSAR model makes the calibrated prediction. 
-BioNexus is the layer that makes those results executable, bounded, measurable, and auditable — and the case studies below test exactly that layer:
+QSAR model makes the calibrated prediction.
+BioNexus is the layer that makes those results executable, bounded, measurable,
+and auditable — and the case studies above test exactly that layer:
 
 | Campaign step | What the model does | What BioNexus does |
 |---|---|---|
@@ -195,7 +223,6 @@ BioNexus is the layer that makes those results executable, bounded, measurable, 
 | Result awareness | — | Device monitor notices the output automatically |
 | Verdicts | LLM interprets | Scores against pre-registered criteria; QC failure → inconclusive |
 | Accountability | — | Hash-chained provenance; `bn prove` renders the audit |
-
 
 ## The virtual lab
 
@@ -215,6 +242,18 @@ With a multimodal model, the agent can even read the plate visually:
 alone and recovering the IC50 to the same order of magnitude as the analysis
 pipeline. See [`docs/virtual-lab.md`](docs/virtual-lab.md).
 
+## Five core interfaces
+
+Everything in BioNexus implements one of five interfaces; adapters are opt-in
+and interchangeable.
+
+| Interface | Adapters (now → roadmap) |
+|---|---|
+| `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub), anthropic → gemini |
+| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator, Opentrons OT-2/Flex (HTTP), PlateReaderShare → cloud labs |
+| `Sandbox` | local (copy-on-fork), docker (commit-based snapshots), OpenSandbox (gVisor/Kata/Firecracker runtimes, K8s scale, egress controls) → AgentENV |
+| `ProvenanceStore` | sqlite → postgres, s3-worm |
+| `BioTool` | rdkit descriptors → docking, ADMET, ESMFold |
 
 ## Agent Skills and MCP
 
@@ -233,36 +272,6 @@ BioNexus decides *whether they run*, and records what happened. Focused skills:
 
 Tutorials: [`notebooks/`](notebooks/) — run a campaign · write an adapter ·
 bring your own model.
-
-## Five core interfaces
-
-Everything in BioNexus implements one of five interfaces; adapters are opt-in
-and interchangeable.
-
-| Interface | Adapters (now → roadmap) |
-|---|---|
-| `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub), anthropic → gemini |
-| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator, Opentrons OT-2/Flex (HTTP), PlateReaderShare → cloud labs |
-| `Sandbox` | local (copy-on-fork), docker (commit-based snapshots), OpenSandbox (gVisor/Kata/Firecracker runtimes, K8s scale, egress controls) → AgentENV |
-| `ProvenanceStore` | sqlite → postgres, s3-worm |
-| `BioTool` | rdkit descriptors → docking, ADMET, ESMFold |
-
-## Documentation
-
-| Doc | Contents |
-|---|---|
-| [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | install, run, workflows |
-| [`docs/ADAPTERS.md`](docs/ADAPTERS.md) | authoring adapters (labs, models, tools, stores) |
-| [`docs/SAFETY.md`](docs/SAFETY.md) | safety rules, LabGateway, audit trail |
-| [`docs/security.md`](docs/security.md) | threat model, trust boundaries, agent capability matrix |
-| [`docs/virtual-lab.md`](docs/virtual-lab.md) | simulated devices, image-based readouts, QC and failure modes |
-| [`docs/benchmarks.md`](docs/benchmarks.md) | public datasets and benchmark results |
-| [`docs/domain-review.md`](docs/domain-review.md) | flow fidelity review vs. the real drug-discovery cycle |
-| [`docs/stability.md`](docs/stability.md) | versioning, stability tiers, deprecation policy |
-| [`docs/research-landscape.md`](docs/research-landscape.md) | review vs. Google, Anthropic, Isomorphic, Cradle, Lila, FutureHouse, OpenAI Rosalind |
-| [`docs/critical-review.md`](docs/critical-review.md) | unsympathetic independent review: what works, what fails |
-| [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
-| [`case-studies/`](case-studies/) | blind reproduction studies on real published data |
 
 ## Architecture
 
@@ -296,30 +305,30 @@ Hand-drawn blueprint-style diagrams (SVG — rendered directly on GitHub):
 
 ![Problem to Autonomous Loop](diagrams/svg/07-problem-loop.svg)
 
-Styled HTML versions (dark blueprint pages with legends/captions) live in
+Styled HTML versions (light blueprint pages with legends/captions) live in
 [`diagrams/artifacts/`](diagrams/artifacts/) — open locally in a browser.
+Deeper design docs: [`docs/architecture.md`](docs/architecture.md) (blocks A–F),
+[`docs/flows.md`](docs/flows.md) (end-to-end flows), [`docs/blocks/`](docs/blocks/).
 
-## Repository Layout
+## Documentation
 
-| Path | Contents |
+| Doc | Contents |
 |---|---|
-| [`docs/architecture.md`](docs/architecture.md) | Architectural blocks A–F, components, responsibilities, interfaces |
-| [`docs/flows.md`](docs/flows.md) | End-to-end flows: design iteration loop, fork/branch, review gates, wet-lab round trip |
-| [`docs/blocks/`](docs/blocks/) | One deep-dive doc per block (A–F) |
-| [`docs/research-landscape.md`](docs/research-landscape.md) | Review vs. Google AI co-scientist, Anthropic, Isomorphic, Cradle, Lila, FutureHouse, Coscientist, OpenAI Rosalind |
-| [`contracts/`](contracts/README.md) | Normative contract: the pydantic models in `bionexus.core.contracts` (archived pre-implementation OpenAPI drafts kept for reference) |
+| [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | install, scientist path, workflows |
+| [`docs/ADAPTERS.md`](docs/ADAPTERS.md) | authoring adapters (labs, models, tools, stores) |
+| [`docs/SAFETY.md`](docs/SAFETY.md) | safety rules, LabGateway, audit trail |
+| [`docs/security.md`](docs/security.md) | threat model, trust boundaries, agent capability matrix |
+| [`docs/virtual-lab.md`](docs/virtual-lab.md) | simulated devices, image-based readouts, QC and failure modes |
+| [`docs/benchmarks.md`](docs/benchmarks.md) | public datasets and benchmark results |
+| [`docs/domain-review.md`](docs/domain-review.md) | flow fidelity review vs. the real drug-discovery cycle |
+| [`docs/stability.md`](docs/stability.md) | versioning, stability tiers, deprecation policy |
+| [`docs/research-landscape.md`](docs/research-landscape.md) | review vs. Google, Anthropic, Isomorphic, Cradle, Lila, FutureHouse, OpenAI Rosalind |
+| [`docs/critical-review.md`](docs/critical-review.md) | unsympathetic independent review: what works, what fails |
+| [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
+| [`docs/architecture.md`](docs/architecture.md) · [`docs/flows.md`](docs/flows.md) · [`docs/blocks/`](docs/blocks/) | architectural blocks A–F, components, interfaces, end-to-end flows |
+| [`contracts/`](contracts/README.md) | normative contracts: the pydantic models in `bionexus.core.contracts` (archived OpenAPI drafts for reference) |
+| [`case-studies/`](case-studies/) | blind reproduction studies on real published data |
 | [`diagrams/`](diagrams/) | SVG diagrams + styled HTML artifact pages |
-
-## Architectural Blocks at a Glance
-
-| Block | Name | Layer | Can start with |
-|---|---|---|---|
-| [A](docs/blocks/A-orchestration.md) | Workflow & Orchestration | L1 | stub tool endpoints |
-| [B](docs/blocks/B-agents.md) | Agent Workforce | L2 | virtual lab + mocked models |
-| [C](docs/blocks/C-models-knowledge.md) | Model & Knowledge Services | L2 | open-source FMs on a GPU box |
-| [D](docs/blocks/D-lab-execution.md) | Lab Execution | L2/L3 | full virtual lab simulator |
-| [E](docs/blocks/E-simulation-data.md) | Simulation & Data Services | L2 | existing MD/docking tools |
-| [F](docs/blocks/F-infrastructure.md) | Infrastructure (AgentENV) | L3 | exists — integrate |
 
 ## Design Principles
 
@@ -333,6 +342,13 @@ Styled HTML versions (dark blueprint pages with legends/captions) live in
    versions, prompts, instrument run IDs) in WORM storage.
 5. **Safety is non-bypassable** — a policy engine sits in the physical-action path,
    outside any agent's trust boundary.
+
+## Contributing
+
+Start with [`docs/ADAPTERS.md`](docs/ADAPTERS.md) and
+`bn new-adapter` — every adapter scaffold is born with a passing test.
+Interface changes go through an ADR; see
+[`docs/stability.md`](docs/stability.md). Apache-2.0.
 
 ## References & Sources
 
@@ -351,5 +367,6 @@ folded into this design — is in [`docs/research-landscape.md`](docs/research-l
 - Coscientist (CMU) — [Autonomous chemical research with LLMs + robotics, Nature 2023](https://www.nature.com/articles/s41586-023-06792-0)
 - OpenAI + Retro Biosciences — [GPT-4b micro protein engineering, MIT Tech Review](https://www.technologyreview.com/2024/12/09/1108188/openai-model-for-protein-engineering-gpt-4b-micro-retro-biosciences/)
 - Chai Discovery — [chai-1/chai-2 structure & antibody models](https://www.chaidiscovery.com/)
+- OpenSandbox — [production sandbox runtime](https://github.com/opensandbox-group/OpenSandbox) — supported Sandbox adapter target (gVisor/Kata/Firecracker, egress control, K8s)
 - Scientific Agent Skills (K-Dense) — [163 validated scientific agent skills](https://github.com/K-Dense-AI/scientific-agent-skills) — complementary knowledge layer; BioNexus tools are exposed via MCP and the Agent Skills standard
 - OpenAI — [GPT-Rosalind & Rosalind Workbench](https://openai.com/gpt-rosalind/) ([announcement](https://developers.openai.com/blog/rosalind-workbench)) — closed vertical competitor; see [positioning analysis](docs/research-landscape.md#rosalind-what-it-changes-and-where-bionexus-stands)
