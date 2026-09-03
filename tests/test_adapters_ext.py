@@ -19,7 +19,7 @@ from bionexus.core.contracts import (
     ToolInvocation,
 )
 from bionexus.core.flywheel import FlywheelLog
-from bionexus.core.interfaces import system_actor
+from bionexus.core.interfaces import record_for, system_actor
 from bionexus.core.safety import SafetyEngine, LabGateway
 
 BRANCH = "b-ext"
@@ -887,7 +887,7 @@ def test_agentenv_adapter_against_mock_http_server(tmp_path):
     try:
         from bionexus.adapters.sandbox.agentenv import (AgentEnvClient,
                                                         AgentEnvSandbox)
-        from bionexus.core.interfaces import system_actor
+        from bionexus.core.interfaces import record_for, system_actor
         from bionexus.adapters.store.sqlite import SqliteProvenanceStore
 
         client = AgentEnvClient(f"http://127.0.0.1:{server.server_port}")
@@ -1100,3 +1100,58 @@ def test_cockpit_server_endpoints(tmp_path):
         assert pend == []
     finally:
         httpd.shutdown()
+
+
+def test_plate_result_csv_export(tmp_path):
+    from bionexus.labread import read_plate
+    f = tmp_path / "p.csv"
+    f.write_text("Well ID,Compound,Conc (uM),RFU\n"
+                 "A1,ctrl,10,100\nA2,ctrl,10,104\n"
+                 "A3,C1,0.5,110\nA4,C1,2,145\nA5,C1,10,289\nA6,C1,40,540\n")
+    r = read_plate(f, max_response=600)
+    out = r.to_csv(tmp_path / "export.csv")
+    text = out.read_text()
+    assert "well,sample,conc_um,value,control,ic50_um" in text
+    assert "C1" in text
+
+
+def test_diary_renders_narrative(tmp_path):
+    from bionexus.core.hypothesis import (HypothesisTracker, ProblemStatement,
+                                          SuccessCriteria)
+    from bionexus.core.contracts import (Envelope, EventType, ProtocolOp,
+                                         ProtocolStep, ProtocolSubmission,
+                                         ReagentSpec, SampleKind, SampleSpec)
+    from bionexus.diary import write_diary
+    from bionexus.adapters.lab.simulator import SimulatorLab
+
+    store = SqliteProvenanceStore()
+    tracker = HypothesisTracker(store, system_actor())
+    problem = tracker.define_problem(ProblemStatement(objective="find a binder"))
+    lab = SimulatorLab(seed=5)
+    p = ProtocolSubmission(
+        envelope=Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
+        title="t", assay_type="binding",
+        steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense)],
+        samples=[SampleSpec(sample_id="C1", kind=SampleKind.compound,
+                            concentration="10uM")],
+        reagents=[ReagentSpec(name="b", amount="1 mL", bsl_level=1)])
+    h = tracker.propose(statement="C1 IC50 <= 20", candidate="C1",
+                        assay_type="binding", predicted="IC50 <= 20",
+                        predicted_value=20.0, rationale="precedent",
+                        criteria=SuccessCriteria(metric="ic50_um", threshold=20.0),
+                        branch_id=f"problem/{problem.problem_id}")
+    run_id = lab.submit_protocol(p)
+    tracker.attach_test(h, p, run_id)
+    tracker.verdict(h, lab.fetch_results(run_id))
+    store.append(record_for(Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
+                            EventType.gate_decision, system_actor(),
+                            decision={"gate": "approve", "approved": True,
+                                      "approved_by": "scientist"}))
+    out = tmp_path / "diary.html"
+    write_diary(store.branch_records(f"problem/{problem.problem_id}"),
+                f"problem/{problem.problem_id}", out)
+    html = out.read_text()
+    assert "find a binder" in html
+    assert "C1 IC50" in html  # "<=" is HTML-escaped
+    assert "VALIDATED" in html or "INVALIDATED" in html
+    assert "review gate" in html

@@ -191,6 +191,8 @@ def cmd_read(args: argparse.Namespace) -> int:
 
     result = read_plate(args.path, max_response=args.max_response)
     print(result)
+    if args.csv:
+        print(f"csv: {result.to_csv(args.csv)}")
     if args.html:
         Path(args.html).write_text(
             "<!DOCTYPE html><meta charset='utf-8'><title>BioNexus read</title>"
@@ -269,6 +271,20 @@ def cmd_templates(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_diary(args: argparse.Namespace) -> int:
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.diary import write_diary
+
+    store = SqliteProvenanceStore(args.db)
+    records = store.branch_records(args.branch)
+    if not records:
+        print(f"no records for branch '{args.branch}' in {args.db}")
+        return 1
+    path = write_diary(records, args.branch, args.html)
+    print(f"diary: {path}")
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     from bionexus.serve import serve
 
@@ -309,7 +325,14 @@ def main(argv: list[str] | None = None) -> int:
     read.add_argument("--max-response", type=float, default=None,
                       help="known maximal assay response (enables IC50 vs fixed max)")
     read.add_argument("--html", default=None, help="write an HTML summary")
+    read.add_argument("--csv", default=None, help="export standardized records to CSV")
     read.set_defaults(func=cmd_read)
+
+    diary = sub.add_parser("diary", help="render provenance as a lab-notebook narrative")
+    diary.add_argument("branch")
+    diary.add_argument("--db", default="bionexus.db")
+    diary.add_argument("--html", default="diary.html")
+    diary.set_defaults(func=cmd_diary)
 
     srv = sub.add_parser("serve", help="scientist cockpit: approval inbox + campaign dashboard")
     srv.add_argument("--port", type=int, default=8080)

@@ -255,6 +255,21 @@ class PlateResult:
     def _record_value(self, r: dict) -> float:
         return r["value"]
 
+    def to_csv(self, path: str | Path) -> Path:
+        """Export the standardized records + fitted IC50s for Excel/GraphPad."""
+        import csv as _csv
+        from pathlib import Path as _P
+
+        out = _P(path)
+        with out.open("w", newline="") as f:
+            w = _csv.writer(f)
+            w.writerow(["well", "sample", "conc_um", "value", "control", "ic50_um"])
+            for r in self.records:
+                ic50 = self.analysis["compounds"].get(r["sample"], {}).get("ic50_um", "")
+                w.writerow([r["well"], r["sample"], r["conc_um"], r["value"],
+                            r["control"], ic50])
+        return out
+
     def curve_svg(self, sample: str, width: int = 560, height: int = 340) -> str:
         """Dose-response SVG for one compound (from this plate's records)."""
         from bionexus.plots import dose_response_svg
