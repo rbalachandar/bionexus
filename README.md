@@ -164,6 +164,11 @@ event interface maps to instrument webhooks and lab queue callbacks.
 | `gate` | proposes everything; each lab submission waits for your click in `bn serve` |
 | `act` | autonomous within the SafetyEngine, including confirmation assays |
 
+**Find your instruments.** `bn connect scan /path/to/reader_share` detects what
+writes into a folder and tells you how to hook it up — no adapter vocabulary
+required. **Re-read your campaign.** `bn diary <branch>` renders the provenance
+chain as a lab-notebook narrative: hypotheses, tests, verdicts, decisions.
+
 **The cockpit (`bn serve`).** A local web page where gate-mode campaigns wait
 for you: pending experiments with Approve/Deny buttons, live status, and the
 recent provenance trail. No accounts, no cloud — data never leaves your
