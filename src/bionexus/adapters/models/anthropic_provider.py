@@ -71,14 +71,29 @@ class AnthropicProvider:
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            data = json.loads(resp.read())
+        data = self._post(req)
         text = "".join(c.get("text", "") for c in data.get("content", [])
                        if c.get("type") == "text")
         if not text:
             raise ValueError("model returned no text content "
                              "(reasoning may have exhausted max_tokens)")
         return text
+
+    def _post(self, req, tries: int = 6):
+        import time
+        import urllib.error
+        for i in range(tries):
+            try:
+                with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310
+                    return json.loads(resp.read())
+            except urllib.error.HTTPError as exc:
+                if exc.code not in (429, 500, 502, 503) or i == tries - 1:
+                    raise
+                time.sleep(10 * (i + 1))
+            except Exception:
+                if i == tries - 1:
+                    raise
+                time.sleep(10 * (i + 1))
 
     def _stub_generate(self, prompt: str, n: int = 3, **kwargs: Any) -> str:
         h = hashlib.sha256(("anthropic:" + prompt).encode()).hexdigest()

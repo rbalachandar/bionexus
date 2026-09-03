@@ -66,14 +66,21 @@ def chembl(path: str, tries: int = 8, soft: bool = False):
             time.sleep(5 * (i + 1))
 
 
+def _cache_valid(rows: list[dict]) -> bool:
+    return len(rows) > 0
+
+
 def fetch_doc_activities(doc_id: str) -> list[dict]:
     CACHE.mkdir(exist_ok=True)
     f = CACHE / f"doc_{doc_id}.json"
     if f.exists():
-        return json.loads(f.read_text())
+        cached = json.loads(f.read_text())
+        if _cache_valid(cached):
+            return cached
+        f.unlink()  # poisoned by a soft-failure earlier — refetch
     out, cursor = [], ""
     while True:
-        p = f"/activity.json?document_chembl_id={doc_id}&assay_type=B&limit=1000"
+        p = f"/activity.json?document_chembl_id={doc_id}&limit=1000"
         if cursor:
             p += f"&cursor={cursor}"
         d = chembl(p)
@@ -89,12 +96,12 @@ def fetch_doc_activities(doc_id: str) -> list[dict]:
 def fetch_target_pool(target_id: str, exclude_doc: str, cap: int = 20000) -> list[tuple[str, float]]:
     CACHE.mkdir(exist_ok=True)
     f = CACHE / f"pool_{target_id}.json"
-    if f.exists():
+    if f.exists() and _cache_valid(json.loads(f.read_text())):
         rows = json.loads(f.read_text())
     else:
         rows, cursor = [], ""
         while len(rows) < cap:
-            p = f"/activity.json?target_chembl_id={target_id}&assay_type=B&limit=1000"
+            p = f"/activity.json?target_chembl_id={target_id}&limit=1000"
             if cursor:
                 p += f"&cursor={cursor}"
             d = chembl(p, soft=True)
@@ -233,6 +240,9 @@ def main() -> None:
             model.fit(pool)
             preds = [model.predict(s) for s, _ in paper]
             truth = [p for _, p in paper]
+            pool_mean = sum(p for _, p in pool) / len(pool)
+            row["baseline_rmse"] = round(math.sqrt(sum((pool_mean - t) ** 2
+                                                        for t in truth) / len(truth)), 3)
             row["rf_spearman"] = round(spearman(preds, truth), 3)
             row["rf_rmse"] = round(math.sqrt(sum((a - b) ** 2 for a, b in zip(preds, truth))
                                              / len(truth)), 3)

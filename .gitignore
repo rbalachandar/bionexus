@@ -9,6 +9,9 @@ examples/_campaign_training.jsonl
 examples/_campaign_recording.json
 examples/report_example.html
 .data/
+case-studies/*/.cache/
+case-studies/*/results.json
+case-studies/*/flow_results.json
 dist/
 *.db
 campaign_report.html

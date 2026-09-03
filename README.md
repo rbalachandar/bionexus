@@ -70,6 +70,7 @@ reproduce it.
 |---|---|---|
 | [Case study 01](case-studies/01-egfr-blind-reproduction/) | Gazit et al., *J. Med. Chem.* 1989 — the original tyrphostins paper | Q1 hypothesis identified, **qualified**: a probe confirmed the model has prior exposure to this literature (recognition, not derivation). Q2 ranking vs published IC50s passed. |
 | [Case study 02](case-studies/02-az3246-hpk1/) | AZ3246 HPK1 inhibitor, *J. Med. Chem.* 2025 — post-training-cutoff | **Contamination-free.** Both checks passed: agent derived the pyrazine-carboxamide hypothesis from structures alone, and its blinded ranking (ρ = +0.42) outperformed a Random Forest trained on 25,600 other HPK1 measurements (ρ = +0.08) |
+| [Case study 03](case-studies/03-multi-paper/) | Multi-paper flow validation on recent ChEMBL studies | **Flow integrity passed** across completed campaigns: lifecycle events, provenance chains, and resource budgets were verified |
 
 Case study 02's clean design trades the realism of case study 01 for freedom
 from memorization; both READMEs document their limitations explicitly.
