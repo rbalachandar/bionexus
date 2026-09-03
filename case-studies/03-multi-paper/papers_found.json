@@ -1,0 +1,242 @@
+[
+ {
+  "doc": "CHEMBL6074677",
+  "target": "CHEMBL1889",
+  "n_compounds": 34,
+  "pool": 7719,
+  "title": "Development of dual V1a/V2 antagonists containing triazolobenzazepine scaffold.",
+  "doi": "10.1016/j.ejmech.2024.117069"
+ },
+ {
+  "doc": "CHEMBL6074679",
+  "target": "CHEMBL614247",
+  "n_compounds": 21,
+  "pool": 5583,
+  "title": "Diastereoselective synthesis and biological evaluation of new fluorine-containing \u03b1-aminop",
+  "doi": "10.1016/j.ejmech.2024.117116"
+ },
+ {
+  "doc": "CHEMBL6074684",
+  "target": "CHEMBL384",
+  "n_compounds": 25,
+  "pool": 84211,
+  "title": "Structure-activity relationship study of novel evodiamine amino acid conjugates with poten",
+  "doi": "10.1016/j.ejmech.2024.117132"
+ },
+ {
+  "doc": "CHEMBL6074686",
+  "target": "CHEMBL614925",
+  "n_compounds": 37,
+  "pool": 54414,
+  "title": "Design, synthesis, and antitumor evaluation of quinazoline-4-tetrahydroquinoline chemotype",
+  "doi": "10.1016/j.ejmech.2024.117139"
+ },
+ {
+  "doc": "CHEMBL6074687",
+  "target": "CHEMBL2094139",
+  "n_compounds": 35,
+  "pool": 2278,
+  "title": "Discovery, synthesis, and antibacterial activity of novel myrtucommulone analogs as inhibi",
+  "doi": "10.1016/j.ejmech.2024.117138"
+ },
+ {
+  "doc": "CHEMBL6074714",
+  "target": "CHEMBL2889",
+  "n_compounds": 26,
+  "pool": 1318,
+  "title": "Structure-activity relationship studies and design of a PTPN22 inhibitor with enhanced iso",
+  "doi": "10.1016/j.ejmech.2024.117129"
+ },
+ {
+  "doc": "CHEMBL6074715",
+  "target": "CHEMBL612545",
+  "n_compounds": 38,
+  "pool": 2317536,
+  "title": "Discovery of pyridine-based derivatives as FLT3 inhibitors for the treatment of acute myel",
+  "doi": "10.1016/j.ejmech.2024.117173"
+ },
+ {
+  "doc": "CHEMBL6074717",
+  "target": "CHEMBL612545",
+  "n_compounds": 47,
+  "pool": 2317536,
+  "title": "Advancing mitochondrial therapeutics: Synthesis and pharmacological evaluation of pyrazole",
+  "doi": "10.1016/j.ejmech.2024.117150"
+ },
+ {
+  "doc": "CHEMBL6074720",
+  "target": "CHEMBL202",
+  "n_compounds": 22,
+  "pool": 3783,
+  "title": "Dihydrofolate reductase inhibitory potential of 1H-indole-based-meldrum linked 1H-1,2,3-tr",
+  "doi": "10.1016/j.ejmech.2024.117174"
+ },
+ {
+  "doc": "CHEMBL6078657",
+  "target": "CHEMBL392",
+  "n_compounds": 54,
+  "pool": 139460,
+  "title": "Thiazolidinedione-based structure modification of ergosterol peroxide provides thiazolidin",
+  "doi": "10.1016/j.bmc.2024.118007"
+ },
+ {
+  "doc": "CHEMBL6078662",
+  "target": "CHEMBL392",
+  "n_compounds": 22,
+  "pool": 139460,
+  "title": "Discovery of 3-(2-aminobenzo[d]thiazol-5-yl) benzamide derivatives as potent anticancer ag",
+  "doi": "10.1016/j.bmc.2024.118011"
+ },
+ {
+  "doc": "CHEMBL6078669",
+  "target": "CHEMBL253",
+  "n_compounds": 29,
+  "pool": 22523,
+  "title": "Stereoisomers of cannabidiols and their pharmacological activities - A potentially novel d",
+  "doi": "10.1016/j.bmc.2024.118019"
+ },
+ {
+  "doc": "CHEMBL6078695",
+  "target": "CHEMBL218",
+  "n_compounds": 31,
+  "pool": 25853,
+  "title": "Design, synthesis, and biological evaluations of 5-aryl-pyrazole-3-carboxamide derivatives",
+  "doi": "10.1016/j.ejmech.2024.117117"
+ },
+ {
+  "doc": "CHEMBL6078712",
+  "target": "CHEMBL382",
+  "n_compounds": 29,
+  "pool": 66131,
+  "title": "Triterpenoid phthalimides as selective anti-cancer agents targeting mitochondrial apoptosi",
+  "doi": "10.1016/j.ejmech.2024.117126"
+ },
+ {
+  "doc": "CHEMBL6078725",
+  "target": "CHEMBL394",
+  "n_compounds": 36,
+  "pool": 102723,
+  "title": "Discovery of novel xanthohumol C derivatives regulating XRCC2 transcription and expression",
+  "doi": "10.1016/j.bmc.2024.118048"
+ },
+ {
+  "doc": "CHEMBL6078727",
+  "target": "CHEMBL612545",
+  "n_compounds": 24,
+  "pool": 2317536,
+  "title": "Unsymmetric hydroxylamine and hydrazine BAM15 derivatives as potent mitochondrial uncouple",
+  "doi": "10.1016/j.bmc.2024.118045"
+ },
+ {
+  "doc": "CHEMBL6078728",
+  "target": "CHEMBL612545",
+  "n_compounds": 34,
+  "pool": 2317536,
+  "title": "Discovery of 2-(6-{[(1R,2R)-2-hydroxycyclohexyl]amino}-4,5-dimethylpyridazin-3-yl)-5-(trif",
+  "doi": "10.1016/j.bmc.2024.118042"
+ },
+ {
+  "doc": "CHEMBL6087392",
+  "target": "CHEMBL612545",
+  "n_compounds": 43,
+  "pool": 2317536,
+  "title": "Discovery of ZG-2305, an Orally Bioavailable Factor Inhibiting HIF Inhibitor for the Treat",
+  "doi": "10.1021/acs.jmedchem.4c01698"
+ },
+ {
+  "doc": "CHEMBL6087398",
+  "target": "CHEMBL5763",
+  "n_compounds": 30,
+  "pool": 9970,
+  "title": "Natural phenol carbamates: Selective BuChE/FAAH dual inhibitors show neuroprotection in an",
+  "doi": "10.1016/j.ejmech.2024.117003"
+ },
+ {
+  "doc": "CHEMBL6087401",
+  "target": "CHEMBL1795116",
+  "n_compounds": 32,
+  "pool": 3670,
+  "title": "One stone two birds: Introducing piperazine into a series of nucleoside derivatives as pot",
+  "doi": "10.1016/j.ejmech.2024.116970"
+ },
+ {
+  "doc": "CHEMBL6087402",
+  "target": "CHEMBL392",
+  "n_compounds": 42,
+  "pool": 139460,
+  "title": "Design, synthesis, and in vitro and in vivo biological evaluation of dihydroartemisinin de",
+  "doi": "10.1016/j.ejmech.2024.117018"
+ },
+ {
+  "doc": "CHEMBL6087403",
+  "target": "CHEMBL3833502",
+  "n_compounds": 24,
+  "pool": 1084,
+  "title": "Synthesis, highly potent \u03b1-glucosidase inhibition, antioxidant and molecular docking of va",
+  "doi": "10.1016/j.bmcl.2024.130016"
+ },
+ {
+  "doc": "CHEMBL6087407",
+  "target": "CHEMBL4508",
+  "n_compounds": 67,
+  "pool": 2193,
+  "title": "Design, synthesis, and evaluation of 4-(4-methyl-4H-1,2,4-triazol-3-yl)piperidine derivati",
+  "doi": "10.1016/j.ejmech.2024.117019"
+ },
+ {
+  "doc": "CHEMBL6087410",
+  "target": "CHEMBL2163183",
+  "n_compounds": 26,
+  "pool": 1373,
+  "title": "Mechanism-based inactivators of sirtuin 5: A focused structure-activity relationship study",
+  "doi": "10.1016/j.bmcl.2024.130017"
+ },
+ {
+  "doc": "CHEMBL6087412",
+  "target": "CHEMBL613859",
+  "n_compounds": 22,
+  "pool": 10357,
+  "title": "Discovery of cloxiquine derivatives as potent HDAC inhibitors for the treatment of melanom",
+  "doi": "10.1016/j.ejmech.2024.117029"
+ },
+ {
+  "doc": "CHEMBL6087413",
+  "target": "CHEMBL614388",
+  "n_compounds": 31,
+  "pool": 46585,
+  "title": "Design, synthesis, and cytotoxicity screening of novel pyrazolopyrimidines over renal cell",
+  "doi": "10.1016/j.ejmech.2024.117005"
+ },
+ {
+  "doc": "CHEMBL6087414",
+  "target": "CHEMBL392",
+  "n_compounds": 45,
+  "pool": 139460,
+  "title": "Discovery of 4-(4-(3-(1-(2-(piperidin-1-yl)ethyl)-1H-benzo[d]imidazole-2-yl)isoxazol-5-yl)",
+  "doi": "10.1016/j.ejmech.2024.117023"
+ },
+ {
+  "doc": "CHEMBL6087416",
+  "target": "CHEMBL378",
+  "n_compounds": 40,
+  "pool": 77280,
+  "title": "Discovery of novel fused-heterocycle-bearing diarypyrimidine derivatives as HIV-1 potent N",
+  "doi": "10.1016/j.ejmech.2024.117033"
+ },
+ {
+  "doc": "CHEMBL6087417",
+  "target": "CHEMBL614245",
+  "n_compounds": 53,
+  "pool": 13168,
+  "title": "The synthesis and antileukemic activity of 5-substituted thiazolyl urea derivatives.",
+  "doi": "10.1016/j.bmcl.2024.130018"
+ },
+ {
+  "doc": "CHEMBL6087418",
+  "target": "CHEMBL3864",
+  "n_compounds": 25,
+  "pool": 11634,
+  "title": "Discovery of novel phenyl urea SHP2 inhibitors with anti-colon cancer and potential immuno",
+  "doi": "10.1016/j.ejmech.2024.117036"
+ }
+]

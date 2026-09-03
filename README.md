@@ -198,9 +198,11 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
 
 ### The scientist's cockpit, diary, and inbox
 
-- **`bn serve`** — a local web page where gate-mode campaigns wait for you:
-  pending experiments with Approve/Deny buttons, live status, and the recent
-  provenance trail. No accounts, no cloud — data never leaves your machine.
+- **`bn serve`** — the scientist workbench, all in one local web page:
+  pending approvals with Approve/Deny buttons, start campaigns from templates
+  via a form, analyze instrument exports with fitted curves and CSV download,
+  and read campaign diaries and audits. No accounts, no cloud — data never
+  leaves your machine.
 - **`bn diary <branch>`** — the hash-chained record rendered as a
   lab-notebook narrative: hypotheses with rationale, tests with evidence runs,
   verdicts with predicted-vs-observed, gate decisions.
