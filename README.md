@@ -88,7 +88,7 @@ from a virtual-lab run):
 
 ![Dose–response curve](docs/images/dose-response.svg)
 
-### Solving an problem
+### Solving a problem
 
 ```sh
 bn sim                                    # reference round on the virtual lab
@@ -101,7 +101,15 @@ core interfaces (see the [notebooks](notebooks/)).
 
 ### Autonomous — hand the loop to the agent
 
-To start full flow, 
+To start the full flow without writing JSON, use a preset template:
+
+```sh
+bn templates                                    # list presets
+bn auto --template dose-response-screen \
+      --field compounds=C1,C2,C3                # fills in the problem for you
+```
+
+Or with your own config:
 
 ```sh
 bn auto campaign.json
@@ -153,8 +161,13 @@ event interface maps to instrument webhooks and lab queue callbacks.
 | autonomy | agent behavior |
 |---|---|
 | `observe` | reads, fits, recommends — submits nothing |
-| `gate` | proposes everything; each lab submission requires operator approval |
+| `gate` | proposes everything; each lab submission waits for your click in `bn serve` |
 | `act` | autonomous within the SafetyEngine, including confirmation assays |
+
+**The cockpit (`bn serve`).** A local web page where gate-mode campaigns wait
+for you: pending experiments with Approve/Deny buttons, live status, and the
+recent provenance trail. No accounts, no cloud — data never leaves your
+machine.
 
 A `ResourceBudget` (max lab runs, hypotheses, confirmations, wall clock) is
 enforced at submission and generation time. Every step — problem, hypotheses,
