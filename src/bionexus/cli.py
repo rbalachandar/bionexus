@@ -271,6 +271,23 @@ def cmd_templates(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_connect(args: argparse.Namespace) -> int:
+    from bionexus.connect import format_scan, probe_robot, scan_share
+
+    if args.command == "scan":
+        print(format_scan(scan_share(args.path)))
+        return 0
+    if args.command == "robot":
+        info = probe_robot(args.ip)
+        if info.get("reachable"):
+            print(f"robot found: {info['name']} (API {info['api_version']})")
+            print(f"  setup: {info['usage']}")
+        else:
+            print(f"no robot at {info['base_url']}: {info.get('error')}")
+        return 0 if info.get("reachable") else 1
+    return 2
+
+
 def cmd_diary(args: argparse.Namespace) -> int:
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
     from bionexus.diary import write_diary
@@ -327,6 +344,14 @@ def main(argv: list[str] | None = None) -> int:
     read.add_argument("--html", default=None, help="write an HTML summary")
     read.add_argument("--csv", default=None, help="export standardized records to CSV")
     read.set_defaults(func=cmd_read)
+
+    conn = sub.add_parser("connect", help="find your instruments: scan a share or probe a robot")
+    conns = conn.add_subparsers(dest="command", required=True)
+    cscan = conns.add_parser("scan", help="detect instruments writing files into a folder")
+    cscan.add_argument("path")
+    crob = conns.add_parser("robot", help="probe an Opentrons robot (IP or URL)")
+    crob.add_argument("ip")
+    conn.set_defaults(func=cmd_connect)
 
     diary = sub.add_parser("diary", help="render provenance as a lab-notebook narrative")
     diary.add_argument("branch")

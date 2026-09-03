@@ -1155,3 +1155,17 @@ def test_diary_renders_narrative(tmp_path):
     assert "C1 IC50" in html  # "<=" is HTML-escaped
     assert "VALIDATED" in html or "INVALIDATED" in html
     assert "review gate" in html
+
+
+def test_connect_scan_detects_instruments(tmp_path):
+    from bionexus.connect import scan_share
+    (tmp_path / "read1.csv").write_text(
+        "Well ID,Compound,Conc (uM),RFU\nA1,ctrl,10,100\nA2,C1,10,250\n")
+    (tmp_path / "notes.txt").write_text("not an export")
+    res = scan_share(tmp_path)
+    assert "long" in res["formats"]
+    assert any("PlateReaderShare" in s["adapter"] for s in res["suggestions"])
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    res2 = scan_share(empty)
+    assert "SimulatorLab" in res2["suggestions"][0]["adapter"]

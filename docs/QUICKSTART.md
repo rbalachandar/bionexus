@@ -15,6 +15,18 @@ pip install -e ".[bio-rdkit]"         # RDKit bio tools
 pip install -e ".[sandbox-agentenv]"  # AgentENV fork/snapshot sandboxes
 ```
 
+## The scientist path (no code)
+
+```sh
+bn connect scan /path/to/reader_share   # what instrument is this?
+bn read results.csv --csv out.csv --html report.html   # analyze an export
+bn serve                                # cockpit: approvals + provenance
+bn templates                            # campaign presets
+bn auto --template dose-response-screen --field compounds=C1,C2,C3 \
+        --autonomy gate                 # pause at each submission for your click
+bn diary <branch> --html diary.html     # the campaign as a lab notebook
+```
+
 ## Run the reference round (no network, no model server)
 
 ```sh
