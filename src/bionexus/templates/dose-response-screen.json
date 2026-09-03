@@ -1,0 +1,39 @@
+{
+  "template": "dose-response-screen",
+  "description": "Screen a compound list through a dose-response assay and rank by potency",
+  "problem": {
+    "objective": "Rank compounds by binding potency and identify those with IC50 <= {threshold} uM",
+    "constraints": [
+      {
+        "name": "potency",
+        "description": "IC50 <= 20 uM",
+        "kind": "hard",
+        "limit": 20.0,
+        "unit": "uM"
+      }
+    ],
+    "success_metric": "IC50 ranking consistent across replicates"
+  },
+  "hypotheses": [],
+  "hypothesis_source": "agent",
+  "autonomy": "gate",
+  "assay": {
+    "type": "binding",
+    "concentrations": [
+      "0.5uM",
+      "2uM",
+      "10uM",
+      "40uM"
+    ]
+  },
+  "fields": {
+    "compounds": {
+      "prompt": "Compound IDs to screen (comma-separated)",
+      "required": true
+    },
+    "threshold": {
+      "prompt": "Potency threshold (uM)",
+      "default": 20
+    }
+  }
+}

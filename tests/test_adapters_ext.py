@@ -1021,3 +1021,23 @@ def test_dose_response_svg_plot(tmp_path):
     # also from the plotter directly
     svg2 = dose_response_svg([(0.5, 10), (2, 30), (10, 55), (40, 80)], ic50=5.0)
     assert svg2.count("<circle") >= 4  # markers + IC50 point
+
+
+def test_campaign_templates_fill_and_build(tmp_path):
+    from bionexus.templates import build_campaign, fill, list_templates, load_template
+
+    names = {t["name"] for t in list_templates()}
+    assert {"dose-response-screen", "confirmatory-followup", "sar-exploration"} <= names
+    rendered = fill(load_template("dose-response-screen"),
+                    {"compounds": "C1, C2", "threshold": "15"}, prompt_missing=False)
+    cfg = build_campaign(rendered)
+    assert "15" in cfg["problem"]["objective"]
+    assert [h["candidate"] for h in cfg["hypotheses"]] == ["C1", "C2"]
+    assert all(h["predicted_value"] == 15.0 for h in cfg["hypotheses"])
+    assert cfg["autonomy"] == "gate"  # safe default from the template
+    try:
+        load_template("nope")
+        raised = False
+    except FileNotFoundError:
+        raised = True
+    assert raised

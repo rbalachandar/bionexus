@@ -1,0 +1,38 @@
+{
+  "template": "sar-exploration",
+  "description": "Explore SAR across a chemotype: dose-response + selectivity panel",
+  "problem": {
+    "objective": "Map the SAR of the {chemotype} chemotype against {target}",
+    "constraints": [
+      {
+        "name": "diversity",
+        "description": "at least 2 mechanistic families explored",
+        "kind": "hard"
+      }
+    ],
+    "success_metric": "SAR trend established (monotonic potency vs substitution)"
+  },
+  "hypotheses": [],
+  "hypothesis_source": "agent",
+  "autonomy": "observe",
+  "assay": {
+    "type": "binding",
+    "concentrations": [
+      "0.1uM",
+      "1uM",
+      "10uM",
+      "50uM"
+    ],
+    "selectivity_panel": true
+  },
+  "fields": {
+    "chemotype": {
+      "prompt": "Chemotype name",
+      "required": true
+    },
+    "target": {
+      "prompt": "Target (e.g. EGFR, HPK1)",
+      "required": true
+    }
+  }
+}

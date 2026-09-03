@@ -206,28 +206,61 @@ def cmd_watch(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_auto(args: argparse.Namespace) -> int:
-    import json
-    from bionexus.autoloop import CampaignConfig, run_campaign
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+def _campaign_from_doc(cfg_doc: dict) -> "CampaignConfig":
+    from bionexus.autoloop import CampaignConfig
     from bionexus.core.hypothesis import Constraint, ProblemStatement
 
-    cfg_doc = json.loads(Path(args.config).read_text())
     problem = ProblemStatement(
         objective=cfg_doc["problem"]["objective"],
         context=cfg_doc["problem"].get("context", ""),
         constraints=[Constraint(**c) for c in cfg_doc["problem"].get("constraints", [])],
         success_metric=cfg_doc["problem"].get("success_metric"))
-    cfg = CampaignConfig(
-        problem=problem, hypotheses=cfg_doc["hypotheses"],
-        score_fn=lambda h: float(cfg_doc.get("scores", {}).get(h.candidate, 0.5)),
+    return CampaignConfig(
+        problem=problem, hypotheses=cfg_doc.get("hypotheses") or None,
+        hypothesis_source=cfg_doc.get("hypothesis_source", "config"),
         k=cfg_doc.get("k", 2), autonomy=cfg_doc.get("autonomy", "act"),
-        inbox=cfg_doc.get("inbox", ".data/inbox"))
+        inbox=cfg_doc.get("inbox", ".data/inbox"),
+        concentrations=tuple(cfg_doc.get("concentrations",
+                                         ["0.5uM", "2uM", "10uM", "40uM"])),
+        max_families=cfg_doc.get("max_families", 3),
+        max_variants_per_family=cfg_doc.get("max_variants_per_family", 3))
+
+
+def cmd_auto(args: argparse.Namespace) -> int:
+    import json
+    from bionexus.autoloop import run_campaign
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+
+    if args.template:
+        from bionexus.templates import build_campaign, fill, load_template
+        fields = dict(f.split("=", 1) for f in (args.field or []))
+        cfg_doc = build_campaign(fill(load_template(args.template), fields,
+                                      prompt_missing=not getattr(args, "yes", False)))
+    elif args.config:
+        cfg_doc = json.loads(Path(args.config).read_text())
+    else:
+        print("bn auto: pass a config file or --template NAME", file=sys.stderr)
+        return 2
+    if args.autonomy:
+        cfg_doc["autonomy"] = args.autonomy
+    cfg = _campaign_from_doc(cfg_doc)
     lab = SimulatorLab(seed=cfg_doc.get("seed", 42))
     report = run_campaign(cfg, lab, SqliteProvenanceStore())
     print(json.dumps({"problem": report.problem_id, "selected": report.selected,
                       "verdicts": report.verdicts}, indent=1))
+    return 0
+
+
+def cmd_templates(args: argparse.Namespace) -> int:
+    from bionexus.templates import list_templates, load_template
+
+    if args.name:
+        doc = load_template(args.name)
+        print(json.dumps(doc, indent=2) if False else json.dumps(doc, indent=2))
+        return 0
+    for t in list_templates():
+        print(f"{t['name']:26} {t['description']}")
     return 0
 
 
@@ -271,9 +304,19 @@ def main(argv: list[str] | None = None) -> int:
     watch_p.add_argument("--poll", type=float, default=1.0)
     watch_p.set_defaults(func=cmd_watch)
 
-    auto = sub.add_parser("auto", help="start the whole campaign flow from a config")
-    auto.add_argument("config")
+    auto = sub.add_parser("auto", help="start the whole campaign flow (config or --template)")
+    auto.add_argument("config", nargs="?", default=None)
+    auto.add_argument("--template", default=None, help="preset template name (see: bn templates)")
+    auto.add_argument("--field", action="append", metavar="KEY=VALUE",
+                      help="template field, e.g. --field compounds=C1,C2")
+    auto.add_argument("--autonomy", choices=["observe", "gate", "act"], default=None)
+    auto.add_argument("--yes", action="store_true",
+                      help="never prompt for template fields; fail instead")
     auto.set_defaults(func=cmd_auto)
+
+    templates = sub.add_parser("templates", help="list campaign templates")
+    templates.add_argument("name", nargs="?", default=None)
+    templates.set_defaults(func=cmd_templates)
 
     sk = sub.add_parser("skills", help="discover/install scientific agent skills")
     sksub = sk.add_subparsers(dest="command", required=True)

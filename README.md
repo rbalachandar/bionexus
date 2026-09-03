@@ -29,20 +29,6 @@ pip install bionexuslab                 # core (pydantic only) + CLI
 pip install "bionexuslab[dev]"          # + development dependencies
 ```
 
-## CLI
-
-```sh
-bn run examples/workflow.yml       # tournament + assay on the configured lab
-bn sim                             # reference round on the virtual lab
-bn read results.csv                # auto-analyze an instrument export
-bn watch /path/to/outbox           # agent notices device outputs
-bn auto campaign.json              # whole flow, one command
-bn prove <branch> --html out.html  # tamper-evident provenance + shareable report
-bn mcp                             # MCP server: drive BioNexus from Claude/Cursor
-bn new-adapter lab my_robot        # scaffold a tested LabAdapter
-```
-
-
 ## BioNexus case studies on published papers
 
 The strongest test of the flow: hold out an entire published paper — values
@@ -63,6 +49,19 @@ from memorization; both READMEs document their limitations explicitly.
 BioNexus supports two working styles, backed by the same engine and the same
 five interfaces. A scientist can use it manually, step by step, as a daily
 analysis tool — and hand stages of the loop to an agent as trust grows.
+
+## CLI
+
+```sh
+bn run examples/workflow.yml       # tournament + assay on the configured lab
+bn sim                             # reference round on the virtual lab
+bn read results.csv                # auto-analyze an instrument export
+bn watch /path/to/outbox           # agent notices device outputs
+bn auto campaign.json              # whole flow, one command
+bn prove <branch> --html out.html  # tamper-evident provenance + shareable report
+bn mcp                             # MCP server: drive BioNexus from Claude/Cursor
+bn new-adapter lab my_robot        # scaffold a tested LabAdapter
+```
 
 ### As a daily analysis tool — reading lab instrument exports
 
@@ -89,7 +88,7 @@ from a virtual-lab run):
 
 ![Dose–response curve](docs/images/dose-response.svg)
 
-### Hands-on — run a design round yourself
+### Solving an problem
 
 ```sh
 bn sim                                    # reference round on the virtual lab
@@ -102,7 +101,7 @@ core interfaces (see the [notebooks](notebooks/)).
 
 ### Autonomous — hand the loop to the agent
 
-When you are ready for the full flow, one command starts it:
+To start full flow, 
 
 ```sh
 bn auto campaign.json
@@ -149,7 +148,7 @@ when a reader exports a result, the agent reads it, updates open hypotheses
 against their pre-registered criteria, and recommends the next step. The same
 event interface maps to instrument webhooks and lab queue callbacks.
 
-### You choose how much the agent does
+### Choosing the level of agent automation
 
 | autonomy | agent behavior |
 |---|---|
@@ -162,12 +161,11 @@ enforced at submission and generation time. Every step — problem, hypotheses,
 decisions, submissions, verdicts — lands in the hash-chained provenance store;
 `bn prove <problem-id> --html report.html` renders it as a shareable audit.
 
-### What BioNexus contributes (vs. what the models contribute)
+### What BioNexus helps with
 
 The intelligence comes from the models: the LLM derives the SAR hypothesis, the
-QSAR model makes the calibrated prediction. BioNexus is the layer that makes
-those results executable, bounded, measurable, and auditable — and the case
-studies below test exactly that layer:
+QSAR model makes the calibrated prediction. 
+BioNexus is the layer that makes those results executable, bounded, measurable, and auditable — and the case studies below test exactly that layer:
 
 | Campaign step | What the model does | What BioNexus does |
 |---|---|---|
@@ -248,7 +246,7 @@ and interchangeable.
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
 | [`case-studies/`](case-studies/) | blind reproduction studies on real published data |
 
-## Architecture Diagrams
+## Architecture
 
 Hand-drawn blueprint-style diagrams (SVG — rendered directly on GitHub):
 

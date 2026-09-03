@@ -1,0 +1,34 @@
+{
+  "template": "confirmatory-followup",
+  "description": "Confirm a lead with an orthogonal assay, then a counterscreen",
+  "problem": {
+    "objective": "Confirm {lead} activity in an orthogonal assay and rule out assay interference",
+    "constraints": [
+      {
+        "name": "confirmation",
+        "description": "activity confirmed in >= 1 orthogonal assay",
+        "kind": "hard"
+      }
+    ],
+    "success_metric": "confirmed lead with clean counterscreen"
+  },
+  "hypotheses": [],
+  "hypothesis_source": "agent",
+  "autonomy": "gate",
+  "assay": {
+    "type": "enzymatic",
+    "concentrations": [
+      "0.5uM",
+      "2uM",
+      "10uM",
+      "40uM"
+    ],
+    "counterscreen": true
+  },
+  "fields": {
+    "lead": {
+      "prompt": "Lead compound ID",
+      "required": true
+    }
+  }
+}
