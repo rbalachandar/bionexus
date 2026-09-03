@@ -1,28 +1,5 @@
 # BioNexus
 
-Open-source infrastructure for **AI-agent-run drug discovery** — agents that
-state a research problem, propose hypotheses, run experiments on simulated or
-real lab equipment, and report results with verifiable audit trails.
-
-```sh
-pip install bionexuslab
-bn read my_plate_reader_export.csv      # ← your first result, 60 seconds
-```
-
-```
-plate: my_plate_reader_export.csv [long] | wells: 10 | controls: 2 | Z': 0.956
-compound        IC50 (uM)  points  note
-C-101                8.94       4  observed-max
-C-102                9.17       4  observed-max
-```
-
-**That is the daily-tool layer.** The layer above it is autonomous: agents
-propose hypotheses, design and run experiments on simulated or real lab
-equipment, notice the results, and deliver verdicts — inside a safety boundary
-you control, with every step in a tamper-evident audit trail.
-
-Core dependencies: `pydantic` only. Everything else is an adapter you opt into.
-
 [![ci](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml/badge.svg)](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/bionexuslab)](https://pypi.org/project/bionexuslab/)
 [![Python](https://img.shields.io/pypi/pyversions/bionexuslab)](https://pypi.org/project/bionexuslab/)
@@ -45,9 +22,12 @@ demonstrations:
   results, and verdicts are recorded in a hash-chained, tamper-evident
   provenance store that renders as a shareable report.
 
+```sh
+pip install bionexuslab
+bn read my_plate_reader_export.csv      # ← your first result, 60 seconds
+```
 
-## Proven on real published data
-
+## BioNexus case studies on published papers
 
 The strongest test of the flow: hold out an entire published paper — values
 excluded from training and hidden from the agent — and ask the system to
