@@ -42,6 +42,7 @@ from bionexus.core.safety import LabGateway, MaxStepsRule, SafetyEngine
 ACTIVE_PIC50 = 6.5
 BUDGET = 30          # experiments per campaign
 DOCS = ["CHEMBL6087407", "CHEMBL6087417", "CHEMBL6078657"]
+MANIFEST = Path(__file__).parent / "reference_manifest.json"
 
 
 class PaperLab:
@@ -88,7 +89,8 @@ def paper_data(doc: str) -> dict[str, float]:
     return vals
 
 
-def run_campaign(doc: str, label: str, strategy: str, use_llm: bool) -> dict:
+def run_campaign(doc: str, label: str, strategy: str, use_llm: bool,
+                 reference: dict | None = None) -> dict:
     values = paper_data(doc)
     if len(values) < 10:
         return {"paper": label, "skipped": "insufficient published values"}
@@ -105,7 +107,8 @@ def run_campaign(doc: str, label: str, strategy: str, use_llm: bool) -> dict:
     gw = LabGateway(lab, safety, store, actor)
 
     problem = tracker.define_problem(ProblemStatement(
-        objective=f"Identify the active compounds of {label}",
+        objective=(reference or {}).get("problem") or
+                  f"Identify the active compounds of {label}",
         constraints=[Constraint(name="budget", description=f"{BUDGET} experiments",
                                 kind="hard", limit=BUDGET)],
         success_metric=f"recover published actives (pIC50 >= {ACTIVE_PIC50})"))
@@ -113,7 +116,45 @@ def run_campaign(doc: str, label: str, strategy: str, use_llm: bool) -> dict:
     env = Envelope(experiment_branch_id=branch)
 
     # guided scorer: random baseline vs model vs (optionally) LLM
-    if strategy == "rf":
+    hypothesis_match = None
+    agent_core = None
+    contamination = None
+    if strategy == "agent" and use_llm:
+        from bionexus.adapters.models.anthropic_provider import AnthropicProvider
+        from bionexus.core.contracts import ToolInvocation
+        agent = AnthropicProvider()
+        sample = list(values.items())[::max(1, len(values) // 45)][:45]
+        structures = "\n".join(f"{i + 1}. {s}" for i, (s, _) in enumerate(sample))
+        raw = agent.generate(
+            ToolInvocation(envelope=env, tool="c.fm.generate_molecules"),
+            "You are reviewing a compound series for a drug-discovery program. "
+            "Measurements are hidden. State the core structural hypothesis, the "
+            "SAR direction, and score each structure 0-100 for activity. Reply "
+            'ONLY JSON: {"core":"...", "scores":[{"index":1,"score":50}]}\n\n'
+            + structures).output["text"]
+        import re
+        obj = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
+        agent_core = obj.get("core", "")
+        markers = (reference or {}).get("expected_markers", [])
+        hypothesis_match = any(m.lower() in agent_core.lower() for m in markers)
+        # The specific-paper probe is recorded, but not used to silently change
+        # the result: it is a qualification for the scientist to review.
+        title = (reference or {}).get("title", label)
+        probe = agent.generate(
+            ToolInvocation(envelope=env, tool="c.kb.search_literature"),
+            f"Do you know the specific paper titled '{title}'? Answer yes/no.").output["text"]
+        contamination = "yes" if probe.strip().lower().startswith("yes") else "no"
+        store.append(record_for(env, EventType.hypothesis_proposed, actor,
+                                decision={"agent_core": agent_core,
+                                          "expected_markers": markers,
+                                          "hypothesis_match": hypothesis_match,
+                                          "contamination_probe": contamination,
+                                          "structures_shown": len(sample)}))
+        score_map = {int(x["index"]): float(x["score"])
+                     for x in obj.get("scores", []) if "index" in x}
+        score = lambda c: score_map.get(next((i + 1 for i, (s, _) in enumerate(sample)
+                                              if s == c), 0), 50.0)  # noqa: E731
+    elif strategy == "rf":
         from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF
         from run import fetch_target_pool
         acts = fetch_doc_activities(doc)
@@ -199,27 +240,34 @@ def run_campaign(doc: str, label: str, strategy: str, use_llm: bool) -> dict:
             "n_true_actives": len(truth_actives), "tested": len(tested),
             "rounds": rounds, "recall_of_actives": round(recall, 3),
             "best_compound_rank": best_rank, "chain_intact": chain_ok,
-            "flow_stages_recorded": sorted(kinds), "flow_ok": flow_ok}
+            "flow_stages_recorded": sorted(kinds), "flow_ok": flow_ok,
+            "hypothesis_match": hypothesis_match,
+            "agent_core": agent_core,
+            "contamination": contamination}
 
 
 def main() -> None:
     use_llm = "--llm" in sys.argv
     docs = DOCS
+    manifest = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {}
     if "--docs" in sys.argv:
         docs = sys.argv[sys.argv.index("--docs") + 1].split(",")
     results = []
     for doc in docs:
         label = PAPERS.get(doc, doc) if isinstance(PAPERS, dict) else doc
-        for strategy in (["random", "rf"] + (["llm"] if use_llm else [])):
+        for strategy in (["random", "rf"] + (["agent"] if use_llm else [])):
             print(f"  {doc} / {strategy} ...", flush=True)
-            r = run_campaign(doc, label, strategy, use_llm)
+            r = run_campaign(doc, label, strategy, use_llm,
+                             reference=manifest.get(doc))
             results.append(r)
             if "skipped" in r:
                 print(f"    skipped: {r['skipped']}")
             else:
                 print(f"    flow_ok={r['flow_ok']} chain={r['chain_intact']} "
                       f"recall={r['recall_of_actives']} best_rank={r['best_compound_rank']} "
-                      f"(tested {r['tested']}/{r['n_compounds']}, true actives {r['n_true_actives']})")
+                      f"(tested {r['tested']}/{r['n_compounds']}, true actives {r['n_true_actives']})"
+                      + (f" hypothesis_match={r['hypothesis_match']}"
+                         if strategy == "agent" else ""))
     out = Path(__file__).parent / "flow_results.json"
     out.write_text(json.dumps(results, indent=1))
     print(f"\nresults: {out}")

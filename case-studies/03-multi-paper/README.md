@@ -71,6 +71,17 @@ The differing recall values are secondary: the strategy can improve or degrade
 compound selection, but **the lifecycle remains valid independently of the
 strategy**. This is the property BioNexus is intended to provide.
 
+## Hypothesis reproduction status
+
+The next pass uses `--llm` to repeat the Case Study 02 test for each paper:
+the agent sees structures and the problem statement, but not measurements or
+the reference conclusion. Its proposed core is compared with the
+independently reviewed markers in [`reference_manifest.json`](reference_manifest.json),
+and the agent's compound-selection path is run through the same `PaperLab`
+flow. The API endpoint used for the agent pass was rate-limited during this
+run (`HTTP 429`), so no hypothesis-match result is reported here. This is an
+explicit pending experiment, not a failed or inferred result.
+
 ## What this demonstrates
 
 - A published-value adapter can be substituted for a physical lab while
@@ -101,4 +112,9 @@ python flow_check.py --docs CHEMBL6087407,CHEMBL6087417,CHEMBL6078657
 ```
 
 The runner writes `flow_results.json` and uses no LLM. Add `--llm` only when
-you specifically want to compare an agent's compound-selection strategy.
+you specifically want to compare an agent's compound-selection strategy and
+hypothesis against the reference manifest:
+
+```sh
+python flow_check.py --llm --docs CHEMBL6087407,CHEMBL6087417,CHEMBL6078657
+```

@@ -1,0 +1,23 @@
+{
+  "CHEMBL6087407": {
+    "title": "Design and evaluation of 4-(4-methyl-4H-1,2,4-triazol-3-yl)piperidine derivatives",
+    "doi": "10.1016/j.ejmech.2024.117019",
+    "problem": "Identify the structural features that drive activity in this inhibitor series and select compounds for confirmation.",
+    "expected_markers": ["triazole", "piperidine"],
+    "conclusion": "The 4-methyl-1,2,4-triazol-3-yl piperidine chemotype and its substitution pattern are central to activity."
+  },
+  "CHEMBL6087417": {
+    "title": "The synthesis and antileukemic activity of 5-substituted thiazolyl urea derivatives",
+    "doi": "10.1016/j.bmcl.2024.130018",
+    "problem": "Identify the structural features that drive antileukemic activity in this thiazolyl-urea series.",
+    "expected_markers": ["thiazole", "urea"],
+    "conclusion": "The thiazolyl urea core and its substitution pattern drive the observed antileukemic activity."
+  },
+  "CHEMBL6078657": {
+    "title": "Thiazolidinedione-based structure modification of ergosterol peroxide",
+    "doi": "10.1016/j.bmc.2024.118007",
+    "problem": "Identify whether thiazolidinedione modification of the ergosterol-peroxide scaffold preserves or improves activity.",
+    "expected_markers": ["thiazolidinedione", "ergosterol", "steroid"],
+    "conclusion": "Activity is governed by the thiazolidinedione-modified steroidal scaffold and its substituent pattern."
+  }
+}
