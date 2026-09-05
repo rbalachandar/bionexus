@@ -44,7 +44,7 @@ User code / reference agents
 - [x] T1.1 Write this plan; map each task to principles
 - [x] T1.2 Scaffold package: `pyproject.toml`, layout, dev venv *(P1)*
 - [x] T1.3 `core/contracts/` — the 5 schemas as pydantic v2 models, shared Envelope,
-      enums matching OpenAPI drafts in `contracts/v1/` *(P1, P5)*
+      previously drafted in OpenAPI, now normative in code *(P1, P5)*
 - [x] T1.4 `core/interfaces.py` — Protocols: `ModelProvider`, `BioTool`,
       `LabAdapter`, `Sandbox`, `ProvenanceStore`, plus `ToolInvocation` result
       types *(P2)*

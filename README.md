@@ -318,7 +318,7 @@ pipeline. See [`docs/virtual-lab.md`](docs/virtual-lab.md).
 ## Five core interfaces
 
 Everything in BioNexus implements one of five interfaces; adapters are opt-in
-and interchangeable.
+and interchangeable. The contracts are the pydantic models in `bionexus.core.contracts`.
 
 | Interface | Adapters (now → roadmap) |
 |---|---|
@@ -403,7 +403,6 @@ Deeper design docs: [`docs/architecture.md`](docs/architecture.md) (blocks A–F
 | [`docs/critical-review.md`](docs/critical-review.md) | unsympathetic independent review: what works, what fails |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
 | [`docs/architecture.md`](docs/architecture.md) · [`docs/flows.md`](docs/flows.md) · [`docs/blocks/`](docs/blocks/) | architectural blocks A–F, components, interfaces, end-to-end flows |
-| [`contracts/`](contracts/README.md) | normative contracts: the pydantic models in `bionexus.core.contracts` (archived OpenAPI drafts for reference) |
 | [`case-studies/`](case-studies/) | blind reproduction studies on real published data |
 | [`diagrams/`](diagrams/) | SVG diagrams + styled HTML artifact pages |
 
