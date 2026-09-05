@@ -1345,3 +1345,96 @@ def test_agent_personas():
     # all roles are valid strings
     for role in AgentRole:
         assert get_persona(role).role == role
+
+
+# ---- agentic loop ----------------------------------------------------------------------
+
+def test_agentic_loop_converges():
+    from bionexus.agentic import AgenticLoop, LoopConfig
+
+    tools = [
+        {"name": "check_synthesis", "description": "Check synthesis feasibility",
+         "input_schema": {"type": "object", "properties": {"smiles": {"type": "string"}},
+                          "required": ["smiles"]}},
+        {"name": "predict_admet", "description": "Predict ADMET properties",
+         "input_schema": {"type": "object", "properties": {"smiles": {"type": "string"}},
+                          "required": ["smiles"]}},
+    ]
+    calls = []
+    def check_synthesis(smiles):
+        calls.append("check_synthesis")
+        return {"feasible": True, "steps": 3}
+    def predict_admet(smiles):
+        calls.append("predict_admet")
+        return {"MW": 150, "LogP": 2.1}
+
+    class _ToolUsingModel:
+        """Scripted model that calls tools then finishes."""
+        name, model_version = "scripted", "s1"
+        def __init__(self):
+            self._step = 0
+        def generate(self, inv, prompt, **kw): ...
+        def call_with_tools(self, messages, tools, system=""):
+            self._step += 1
+            if self._step == 1:
+                tc = [{"name": "check_synthesis",
+                       "arguments": {"smiles": "CCO"}}]
+            elif self._step == 2:
+                tc = [{"name": "predict_admet",
+                       "arguments": {"smiles": "CCO"}}]
+            else:
+                return {"text": "DONE: Analysis complete",
+                        "tool_calls": [], "stop_reason": "end_turn"}
+            return {"text": "", "tool_calls": tc, "stop_reason": "tool_use"}
+
+    loop = AgenticLoop(
+        provider=_ToolUsingModel(), tools_schema=tools,
+        tool_executor={"check_synthesis": check_synthesis,
+                        "predict_admet": predict_admet},
+        config=LoopConfig(max_turns=5),
+    )
+    result = loop.run("Evaluate CCO")
+    assert result.completed and result.reason == "done"
+    assert result.tool_calls == 2
+    assert calls == ["check_synthesis", "predict_admet"]
+
+
+def test_agentic_loop_max_turns():
+    from bionexus.agentic import AgenticLoop, LoopConfig
+
+    class _AlwaysCalls:
+        name, model_version = "x", "x"
+        def call_with_tools(self, messages, tools, system=""):
+            return {"text": "", "stop_reason": "tool_use",
+                    "tool_calls": [{"name": "noop", "arguments": {}}]}
+
+    def noop(**kw): return {}
+    loop = AgenticLoop(
+        provider=_AlwaysCalls(),
+        tools_schema=[{"name": "noop", "input_schema": {}}],
+        tool_executor={"noop": noop},
+        config=LoopConfig(max_turns=3),
+    )
+    result = loop.run("task")
+    assert not result.completed and result.reason == "max_turns"
+    assert result.turns == 3
+
+
+def test_agentic_loop_error_circuit_breaker():
+    from bionexus.agentic import AgenticLoop, LoopConfig
+
+    def bad_tool(**kw): raise RuntimeError("lab exploded")
+    class _BadModel:
+        name, model_version = "x", "x"
+        def call_with_tools(self, messages, tools, system=""):
+            return {"text": "", "stop_reason": "tool_use",
+                    "tool_calls": [{"name": "bad_tool", "arguments": {}}]}
+
+    loop = AgenticLoop(
+        provider=_BadModel(),
+        tools_schema=[],
+        tool_executor={"bad_tool": bad_tool},
+        config=LoopConfig(max_turns=10, max_consecutive_errors=3),
+    )
+    result = loop.run("task")
+    assert result.reason == "errors"

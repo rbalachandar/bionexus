@@ -95,6 +95,48 @@ class AnthropicProvider:
                     raise
                 time.sleep(10 * (i + 1))
 
+    def call_with_tools(self, messages: list[dict], tools: list[dict],
+                        system: str = "") -> dict:
+        """Send a conversation with tool definitions; returns parsed response
+        with tool_calls extracted. Used by the agentic loop."""
+        body: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": 8000,
+            "messages": messages,
+            "tools": tools,
+        }
+        if system:
+            body["system"] = system
+        req = urllib.request.Request(
+            f"{self.base_url}/v1/messages",
+            data=json.dumps(body).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": self.api_key or "",
+                "anthropic-version": "2023-06-01",
+            },
+            method="POST",
+        )
+        data = self._post(req)
+        # Parse content blocks
+        text_parts = []
+        tool_calls = []
+        for block in data.get("content", []):
+            if block.get("type") == "text":
+                text_parts.append(block.get("text", ""))
+            elif block.get("type") == "tool_use":
+                tool_calls.append({
+                    "name": block.get("name", ""),
+                    "arguments": block.get("input", {}),
+                })
+        stop = data.get("stop_reason", "")
+        return {
+            "text": "".join(text_parts),
+            "tool_calls": tool_calls if stop == "tool_use" else [],
+            "raw": json.dumps(data.get("content", []), default=str)[:4000],
+            "stop_reason": stop,
+        }
+
     def _stub_generate(self, prompt: str, n: int = 3, **kwargs: Any) -> str:
         h = hashlib.sha256(("anthropic:" + prompt).encode()).hexdigest()
         proposals = [
