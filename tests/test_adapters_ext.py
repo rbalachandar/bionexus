@@ -1267,3 +1267,81 @@ def test_experiment_definition_provenance(tmp_path):
              + [r.event_type.value for r in store.branch_records(f"problem/{problem.problem_id}")]
     assert "experiment_defined" in events
     assert "experiment_readiness_reviewed" in events
+
+
+# ---- TPP ----------------------------------------------------------------------------
+
+def test_tpp_evaluation_phases():
+    from bionexus.tpp import (Criterion, CriterionCategory, CriterionPhase,
+                              TPP)
+    tpp = TPP(program_name="test", objective="find inhibitor",
+              target_name="X", criteria=[
+        Criterion(name="IC50_nM", category=CriterionCategory.potency,
+                  phase=CriterionPhase.hit, threshold=1000, direction="min", unit="nM"),
+        Criterion(name="IC50_nM_lead", category=CriterionCategory.potency,
+                  phase=CriterionPhase.lead, threshold=10, direction="min", unit="nM",
+                  required=True),
+        Criterion(name="LogP_nice", category=CriterionCategory.physicochemical,
+                  phase=CriterionPhase.lead, threshold=5, direction="min",
+                  required=False),
+    ])
+    # hit phase: only IC50 < 1000
+    ev = tpp.evaluate({"IC50_nM": 500}, CriterionPhase.hit)
+    assert ev.all_required_passed
+    # lead phase: needs IC50 < 10 (we don't have it yet)
+    ev2 = tpp.evaluate({"IC50_nM": 500, "IC50_nM_lead": 500,
+                        "LogP_nice": 3}, CriterionPhase.lead)
+    assert not ev2.all_required_passed
+    assert len(ev2.failures) == 1
+    # now pass
+    ev3 = tpp.evaluate({"IC50_nM": 5, "IC50_nM_lead": 5, "LogP_nice": 3},
+                       CriterionPhase.lead)
+    assert ev3.all_required_passed
+
+
+# ---- ADMET panel ----------------------------------------------------------------------
+
+def test_admet_rule_based():
+    from bionexus.adapters.admet import RuleBasedADMET
+    predictor = RuleBasedADMET()
+    r = predictor.predict("CCOc1ccccc1NC(=N)c1ccc(N)cc1")  # some real-ish molecule
+    assert r.mw_da > 0
+    assert isinstance(r.pains_alerts, list)
+
+
+def test_admet_rdkit_if_available():
+    try:
+        from rdkit import Chem
+    except ImportError:
+        pytest.skip("rdkit not installed")
+    from bionexus.adapters.admet import RDKitADMET
+    predictor = RDKitADMET()
+    r = predictor.predict("CC(=O)Oc1ccccc1C(=O)O")  # aspirin
+    assert r.mw_da is not None and 150 < r.mw_da < 200
+    assert r.logp is not None
+    assert not r.has_pains
+
+
+# ---- retrosynthesis -----------------------------------------------------------------
+
+def test_retrosynthesis_simulated():
+    from bionexus.adapters.retrosynthesis import SimulatedRetrosynthesis
+    r = SimulatedRetrosynthesis()
+    simple = r.plan("CCO")  # ethanol — simple
+    hard = r.plan("c1ccc2c(c1)[nH]c1ccccc12" + "C(=O)N[C@@H](C)C(=O)N[C@@H](CS)C(=O)N")
+    assert simple.overall_score >= hard.overall_score, "simpler molecule should score higher"
+
+
+# ---- agent personas -------------------------------------------------------------------
+
+def test_agent_personas():
+    from bionexus.agents import AgentRole, get_persona, all_personas
+    assert len(all_personas()) == 6
+    p = get_persona("medicinal_chemist")
+    assert "rdkit" in [t.lower() for t in p.preferred_tools]
+    assert p.system_mandate  # non-empty mandate
+    ctx = p.to_prompt_context()
+    assert "Medicinal Chemist" in ctx
+    # all roles are valid strings
+    for role in AgentRole:
+        assert get_persona(role).role == role

@@ -164,6 +164,23 @@ def review_experiment(defn: ExperimentDefinition) -> ExperimentReadinessReview:
     else:
         add("readout_capability", True, True, "readout capabilities adequate")
 
+    # 9. synthesis feasibility (if the intervention produces a compound)
+    meta = defn.metadata or {}
+    if meta.get("synthesis_check") and meta.get("synthesis_route"):
+        route = meta["synthesis_route"]
+        if not route.get("feasible", True):
+            add("synthesis_feasibility", False, False,
+                f"no viable synthesis route: {route.get('notes', '')}")
+        elif route.get("num_steps", 0) > 12:
+            add("synthesis_feasibility", True, True,
+                f"long route ({route['num_steps']} steps) — consider simplification")
+        else:
+            add("synthesis_feasibility", True, True,
+                f"viable route ({route.get('num_steps', '?')} steps)")
+    else:
+        add("synthesis_feasibility", True, True,
+            "not assessed (no synthesis route provided)")
+
     blockers = [f for f in findings if f.severity == "blocker"]
     if blockers:
         verdict = ReviewVerdict.blocked
