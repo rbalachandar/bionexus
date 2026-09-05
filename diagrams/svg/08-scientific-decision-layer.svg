@@ -1,0 +1,83 @@
+<svg width="1120" viewBox="0 0 1120 720" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none" stroke="#e3ded2" stroke-width="1"/></pattern></defs><rect width="1120" height="720" fill="#f3f1ea"/><rect width="1120" height="720" fill="url(#grid)"/>
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#6b6558"/>
+        </marker>
+        <marker id="arrowG" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#3f8a4a"/>
+        </marker>
+      </defs>
+      <text x="40" y="40" font-family="IBM Plex Sans, sans-serif" font-size="16" font-weight="600" fill="#2a2823">Scientific Decision Layer — Experiment Definition and Readiness Review</text>
+      <text x="40" y="58" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#6b6558">DECIDES WHETHER AN EXPERIMENT, IF SUCCESSFUL, WOULD PRODUCE AN INTERPRETABLE RESULT</text>
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="40" y="100" width="220" height="90" rx="3" fill="#e9f2e6" stroke="#3f8a4a" stroke-opacity="0.7"/>
+        <text x="150" y="130" text-anchor="middle" font-size="14" fill="#2f6b38" font-weight="600">Hypothesis</text>
+        <text x="150" y="150" text-anchor="middle" font-size="10" fill="#4e8a58" font-family="IBM Plex Mono, monospace">pre-registered claim</text>
+        <text x="150" y="165" text-anchor="middle" font-size="10" fill="#4e8a58" font-family="IBM Plex Mono, monospace">+ criteria + rationale</text>
+      </g>
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="340" y="80" width="340" height="180" rx="3" fill="#e4f1f3" stroke="#1f7a86" stroke-opacity="0.8"/>
+        <text x="510" y="108" text-anchor="middle" font-size="15" fill="#175a64" font-weight="600">ExperimentDefinition</text>
+        <line x1="360" y1="118" x2="660" y2="118" stroke="#a8bdd4" stroke-width="0.8"/>
+        <text x="510" y="136" text-anchor="middle" font-size="10.5" fill="#3d7d87" font-family="IBM Plex Mono, monospace">scientific_question / claim_type</text>
+        <text x="510" y="152" text-anchor="middle" font-size="10.5" fill="#3d7d87" font-family="IBM Plex Mono, monospace">intervention: target / site / construct</text>
+        <text x="510" y="168" text-anchor="middle" font-size="10.5" fill="#3d7d87" font-family="IBM Plex Mono, monospace">system: organism / cell_line / half_life</text>
+        <text x="510" y="184" text-anchor="middle" font-size="10.5" fill="#3d7d87" font-family="IBM Plex Mono, monospace">delivery: method / conc / per_cell</text>
+        <text x="510" y="200" text-anchor="middle" font-size="10.5" fill="#3d7d87" font-family="IBM Plex Mono, monospace">readout: capabilities / edited_fraction</text>
+        <text x="510" y="216" text-anchor="middle" font-size="10.5" fill="#3d7d87" font-family="IBM Plex Mono, monospace">controls / denominators / intermediates</text>
+        <text x="510" y="244" text-anchor="middle" font-size="10" fill="#a189bd" font-family="IBM Plex Mono, monospace">THE MANIFEST — NOT THE PROTOCOL</text>
+      </g>
+      <line x1="260" y1="145" x2="338" y2="145" stroke="#6b6558" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <text x="276" y="134" font-size="10" font-family="IBM Plex Mono, monospace" fill="#6b6558">defines</text>
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="760" y="80" width="320" height="180" rx="3" fill="#f0ebe0" stroke="#a97a1c" stroke-opacity="0.8"/>
+        <text x="920" y="108" text-anchor="middle" font-size="15" fill="#5c4113" font-weight="600">Readiness Review</text>
+        <line x1="780" y1="118" x2="1060" y2="118" stroke="#d4c9a8" stroke-width="0.8"/>
+        <text x="920" y="136" text-anchor="middle" font-size="10.5" fill="#8a6a2c" font-family="IBM Plex Mono, monospace">blockers / warnings / passes</text>
+        <text x="920" y="156" text-anchor="middle" font-size="10.5" fill="#5c4113" font-weight="600">&#10003; edited-fraction denominator</text>
+        <text x="920" y="172" text-anchor="middle" font-size="10.5" fill="#5c4113" font-weight="600">&#10003; authentic modification</text>
+        <text x="920" y="188" text-anchor="middle" font-size="10.5" fill="#5c4113" font-weight="600">&#10003; delivery variance measured</text>
+        <text x="920" y="204" text-anchor="middle" font-size="10.5" fill="#5c4113" font-weight="600">&#10003; synthesis feasibility</text>
+        <text x="920" y="220" text-anchor="middle" font-size="10.5" fill="#5c4113" font-weight="600">&#10003; controls + denominators</text>
+        <text x="920" y="240" text-anchor="middle" font-size="10" fill="#a8946a" font-family="IBM Plex Mono, monospace">runs BEFORE the safety gate</text>
+      </g>
+      <line x1="680" y1="145" x2="758" y2="145" stroke="#6b6558" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <text x="694" y="134" font-size="10" font-family="IBM Plex Mono, monospace" fill="#6b6558">reviews</text>
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="240" y="310" width="180" height="56" rx="3" fill="#e9f2e6" stroke="#3f8a4a" stroke-opacity="0.7"/>
+        <text x="330" y="334" text-anchor="middle" font-size="13" fill="#2f6b38" font-weight="600">READY</text>
+        <text x="330" y="352" text-anchor="middle" font-size="10" fill="#7fb587" font-family="IBM Plex Mono, monospace">proceed to safety gate</text>
+        <rect x="470" y="310" width="180" height="56" rx="3" fill="#f9f1dc" stroke="#a97a1c" stroke-opacity="0.7"/>
+        <text x="560" y="334" text-anchor="middle" font-size="13" fill="#5c4113" font-weight="600">READY WITH WARNINGS</text>
+        <text x="560" y="352" text-anchor="middle" font-size="10" fill="#a8946a" font-family="IBM Plex Mono, monospace">proceed, caveats recorded</text>
+        <rect x="700" y="310" width="180" height="56" rx="3" fill="#f8e9e5" stroke="#b05a48" stroke-opacity="0.8"/>
+        <text x="790" y="334" text-anchor="middle" font-size="13" fill="#8a4034" font-weight="600">BLOCKED</text>
+        <text x="790" y="352" text-anchor="middle" font-size="10" fill="#b57a6c" font-family="IBM Plex Mono, monospace">redesign, do not run</text>
+      </g>
+      <line x1="510" y1="260" x2="510" y2="290" stroke="#6b6558" stroke-width="1.4"/>
+      <line x1="330" y1="290" x2="790" y2="290" stroke="#6b6558" stroke-width="1.4"/>
+      <line x1="330" y1="290" x2="330" y2="308" stroke="#6b6558" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <line x1="560" y1="290" x2="560" y2="308" stroke="#6b6558" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <line x1="790" y1="290" x2="790" y2="308" stroke="#6b6558" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="240" y="410" width="620" height="50" rx="3" fill="#f7e8e4" stroke="#b05a48" stroke-opacity="0.7"/>
+        <text x="550" y="440" text-anchor="middle" font-size="13" fill="#8a4034" font-weight="600">SafetyEngine — decides whether the action is ALLOWED</text>
+      </g>
+      <line x1="550" y1="366" x2="550" y2="408" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <text x="566" y="394" font-size="10" font-family="IBM Plex Mono, monospace" fill="#6b6558">only READY/WARNINGS reach here</text>
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="240" y="490" width="620" height="50" rx="3" fill="#e9f2e6" stroke="#3f8a4a" stroke-opacity="0.7"/>
+        <text x="550" y="520" text-anchor="middle" font-size="13" fill="#2f6b38" font-weight="600">Lab Execution — PaperLab / SimulatorLab / ImagingLab / Opentrons / PlateReaderShare</text>
+      </g>
+      <line x1="550" y1="460" x2="550" y2="488" stroke="#5a6f7e" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <text x="566" y="480" font-size="10" font-family="IBM Plex Mono, monospace" fill="#6b6558">safety-approved / lab runs / raw evidence</text>
+      <path d="M860,515 L1060,515 L1060,130 L1082,130" fill="none" stroke="#3f8a4a" stroke-width="1.6" stroke-dasharray="6 3" marker-end="url(#arrowG)"/>
+      <text x="900" y="500" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="#3f8a4a">results / verdict / next-round definition (active learning)</text>
+      <g font-family="IBM Plex Sans, sans-serif">
+        <rect x="40" y="580" width="1040" height="90" rx="3" fill="#efeaf6" stroke="#6a4fa0" stroke-opacity="0.6"/>
+        <text x="56" y="608" font-family="IBM Plex Mono, monospace" font-size="11" letter-spacing="1.5" fill="#6a4fa0">PROVENANCE SPINE</text>
+        <text x="76" y="634" font-size="12.5" fill="#2a2823">experiment_defined / experiment_readiness_reviewed / lab_run / hypothesis_validated-invalidated</text>
+        <text x="76" y="654" font-size="12.5" fill="#2a2823">bn prove andlt;branchandgt; --html → tamper-evident audit of every definition, review, and verdict</text>
+      </g>
+      <text x="40" y="700" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#8a8272">THE READINESS REVIEW DECIDES WHETHER AN EXPERIMENT IS WORTH RUNNING. THE SAFETY ENGINE DECIDES WHETHER IT IS ALLOWED.</text>
+    </svg>

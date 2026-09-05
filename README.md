@@ -378,6 +378,10 @@ Hand-drawn blueprint-style diagrams (SVG — rendered directly on GitHub):
 
 ![Problem to Autonomous Loop](diagrams/svg/07-problem-loop.svg)
 
+**8 · Scientific Decision Layer** — Experiment Definition and Readiness Review, between hypothesis and safety gate.
+
+![Scientific Decision Layer](diagrams/svg/08-scientific-decision-layer.svg)
+
 Styled HTML versions (light blueprint pages with legends/captions) live in
 [`diagrams/artifacts/`](diagrams/artifacts/) — open locally in a browser.
 Deeper design docs: [`docs/architecture.md`](docs/architecture.md) (blocks A–F),
