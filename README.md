@@ -209,6 +209,51 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
   verdicts with predicted-vs-observed, gate decisions.
 - **`bn read --csv out.csv`** — standardized results ready for Excel/GraphPad.
 
+### The DMTA cycle — scientific decision layer
+
+BioNexus structures the Design-Make-Test-Analyze cycle as first-class objects:
+
+- **Target Product Profile (TPP)** — phased criteria (hit → lead → candidate →
+  clinical) that persist across rounds and are evaluated after every experiment
+- **Experiment Definition** — the full scientific manifest: intervention,
+  biological system, delivery conditions, readout capabilities, denominators,
+  and expected intermediates (not just protocol steps)
+- **Readiness Review** — runs *before* the safety gate: checks that the
+  experiment, if successful, would produce an interpretable result (denominators
+  present, authentic modification distinguishable, delivery variance controlled,
+  synthesis feasible)
+- **Agent Personas** — named roles (Strategist, Biologist, Medicinal Chemist,
+  ADMET Predictor, Synthesis Chemist, Analyst) mapped to ModelProvider configs
+  and tool preferences
+
+```python
+from bionexus.tpp import standard_small_molecule_tpp, CriterionPhase
+from bionexus.experiment import (ExperimentDefinition, ClaimType,
+                                 Intervention, ReadoutSpec)
+from bionexus.readiness import review_experiment
+
+tpp = standard_small_molecule_tpp("Program-X", "MAP4K1")
+exp = ExperimentDefinition(
+    scientific_question="Does S62 phosphorylation cause degradation?",
+    claim_type=ClaimType.causal_modification,
+    intervention=Intervention(kind="protein_edit", target="c-Myc", site="S62"),
+    readout=ReadoutSpec(assay="ratiometric MS", measures_edited_fraction=True),
+    ...)
+review = review_experiment(exp)
+print(review.verdict)   # ready / ready_with_warnings / blocked
+```
+
+The readiness review can **block** an experiment before it runs — not because
+it's unsafe, but because its result wouldn't be interpretable (missing
+denominator, mimetic vs authentic modification, delivery variance unmeasured).
+
+**External database adapters:** ChEMBL (dataset download), Open Targets
+(GraphQL), PubMed (NCBI E-utilities) — for live database queries during
+hypothesis generation and target validation.
+
+**Benchmark datasets:** MoleculeNet (Lipophilicity, ESOL, BACE), TDC, DOCKSTRING
+— see [`docs/benchmarks.md`](docs/benchmarks.md).
+
 ### What BioNexus helps with
 
 The intelligence comes from the models: the LLM derives the SAR hypothesis, the
