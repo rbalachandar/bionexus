@@ -254,6 +254,31 @@ hypothesis generation and target validation.
 **Benchmark datasets:** MoleculeNet (Lipophilicity, ESOL, BACE), TDC, DOCKSTRING
 — see [`docs/benchmarks.md`](docs/benchmarks.md).
 
+### Under the hood — how skills, tools, agents, and gates compose
+
+When you run `bn auto`, here is what actually happens to one compound, step by
+step, and which BioNexus layer is responsible at each point:
+
+| Step | Who acts | What happens | What BioNexus enforces |
+|---|---|---|---|
+| 1. Problem setup | **Strategist** persona | Decomposes the objective into constraints | Records problem + constraints as provenance root |
+| 2. Hypothesis proposal | **Medicinal Chemist** using the `rdkit` **skill** | Generates analogs with SAR rationale | Validates schema, dedupes, records rationale |
+| 3. Portfolio filter | **Strategist** | Scores + ranks, applies diversity cap | Records every accept/reject with reason |
+| 4. Readiness review | **ExperimentDefinition** | Checks: is the readout capable? denominator present? synthesis feasible? | **Blocks** if result would be uninterpretable |
+| 5. Safety gate | **SafetyEngine** | Checks reagent compatibility, BSL, step count | **Refuses** unsafe protocols with a machine-readable reason |
+| 6. Lab execution | **LabAdapter** (simulator, Opentrons, PlateReaderShare) | Runs the assay, produces raw evidence | Records run ID, parameters, and raw output |
+| 7. Device event | **DeviceMonitor** | Notices the export appeared | Triggers agent analysis automatically |
+| 8. Analysis | **Analyst** persona + `labread` | Fits IC50s, checks QC, flags artifacts | Records measurements + QC flags as provenance |
+| 9. Verdict | **Analysis** against pre-registered criteria | VALIDATED / INVALIDATED / INCONCLUSIVE | Records the verdict with evidence and criteria |
+| 10. Audit | **ProvenanceStore** | Renders the full chain | `bn prove` verifies the hash chain |
+
+The skills teach the agent *how* (domain knowledge from Scientific Agent Skills
+or the `bionexus` skill). The tools let the agent *act* (`run_assay`,
+`propose_hypothesis`, via MCP or direct Python). The gates decide *whether*
+(SafetyEngine + readiness review). The provenance records *what happened*.
+Each layer is independently swappable — but they only produce trustworthy
+science when composed through the BioNexus flow.
+
 ### What BioNexus helps with
 
 The intelligence comes from the models: the LLM derives the SAR hypothesis, the
