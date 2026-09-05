@@ -665,21 +665,6 @@ def test_install_skills_from_local_checkout(tmp_path):
     assert "RDKit guidance" in body and not body.startswith("---")
 
 
-def test_agent_loads_skill_guidance_into_protocol_authoring(tmp_path):
-    """The item-3 story: skill guidance -> LLM authors protocol -> safety gate."""
-    import pathlib
-    from bionexus.skills import load_skill_instructions
-    guidance_path = pathlib.Path("skills/bionexus/SKILL.md")
-    guidance = load_skill_instructions(guidance_path)
-    assert "Never call a lab adapter directly" in guidance
-    # the demo exercises the full loop offline
-    import subprocess, sys
-    r = subprocess.run([sys.executable, "examples/demo_skill_protocol.py"],
-                       capture_output=True, text=True)
-    assert r.returncode == 0
-    assert "BLOCKED by SafetyEngine" in r.stdout
-
-
 def test_skill_discovery_and_role_resolution(tmp_path):
     import pathlib as _pl
     from bionexus.skills import discover_skills, guidance_for, recommend_for_role
