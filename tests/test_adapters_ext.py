@@ -1438,3 +1438,44 @@ def test_agentic_loop_error_circuit_breaker():
     )
     result = loop.run("task")
     assert result.reason == "errors"
+
+
+def test_agent_toolkit_tool_execution(tmp_path):
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.core.safety import LabGateway, SafetyEngine
+    from bionexus.toolkit import AgentToolkit
+
+    store = SqliteProvenanceStore()
+    gateway = LabGateway(SimulatorLab(seed=1), SafetyEngine(), store, system_actor())
+    tk = AgentToolkit(gateway, store, system_actor(), branch_id="tk-test")
+    executors = tk.executors()
+
+    # ADMET
+    r = executors["predict_admet"](smiles="CCO")
+    assert r["mw_da"] is not None
+    # synthesis
+    r = executors["check_synthesis"](smiles="CCO")
+    assert r["feasible"] is not None
+    # hypothesis
+    r = executors["propose_hypothesis"](
+        statement="CCO binds", candidate="CCO",
+        assay_type="binding", predicted="yes")
+    assert r["status"] == "recorded"
+    # TPP
+    r = executors["query_tpp"](phase="hit")
+    assert isinstance(r, (list, dict))
+
+
+def test_agent_toolkit_submit_and_results(tmp_path):
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.core.safety import LabGateway, SafetyEngine
+    from bionexus.toolkit import AgentToolkit
+
+    store = SqliteProvenanceStore()
+    gateway = LabGateway(SimulatorLab(seed=1), SafetyEngine(), store, system_actor())
+    tk = AgentToolkit(gateway, store, system_actor(), branch_id="tk-lab")
+    r = tk._tool_submit(compounds=["CCO"], assay_type="binding",
+                        concentrations=["10uM"])
+    assert r["status"] == "submitted" and "run_id" in r
+    results = tk._tool_results(r["run_id"])
+    assert results["measurements"]

@@ -76,6 +76,42 @@ class OpenAICompatProvider:
             data = json.loads(resp.read())
         return data["choices"][0]["message"]["content"]
 
+    def call_with_tools(self, messages: list[dict], tools: list[dict],
+                        system: str = "") -> dict:
+        """Send a conversation with tool definitions. Stub mode returns
+        a scripted tool call (check synthesis) so the loop works offline."""
+        if self.base_url is None:
+            # stub: check synthesis for first compound, then done
+            self._stub_step = getattr(self, "_stub_step", 0) + 1
+            if self._stub_step == 1:
+                smi = messages[-1].get("content", "")[-20:]
+                return {
+                    "text": "", "stop_reason": "tool_use",
+                    "tool_calls": [{"name": "check_synthesis",
+                                    "arguments": {"smiles": smi}}],
+                }
+            return {"text": "DONE: stub analysis complete",
+                    "tool_calls": [], "stop_reason": "end_turn"}
+        # real API
+        body = {
+            "model": self.model, "messages": messages,
+            "tools": [{"type": "function", "function": t} for t in tools],
+        }
+        req = urllib.request.Request(
+            f"{self.base_url.rstrip('/')}/chat/completions",
+            data=json.dumps(body).encode(),
+            headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            data = json.loads(resp.read())
+        msg = data["choices"][0]["message"]
+        tool_calls = [
+            {"name": tc["function"]["name"],
+             "arguments": json.loads(tc["function"]["arguments"])}
+            for tc in msg.get("tool_calls", [])
+        ]
+        return {"text": msg.get("content", ""), "tool_calls": tool_calls,
+                "stop_reason": data["choices"][0].get("finish_reason", "")}
+
     def _stub_generate(self, prompt: str, n: int = 3, **kwargs: Any) -> str:
         """Deterministic offline generation so CI never needs a model server."""
         h = hashlib.sha256(prompt.encode()).hexdigest()
