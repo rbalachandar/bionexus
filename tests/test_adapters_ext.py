@@ -1169,3 +1169,101 @@ def test_connect_scan_detects_instruments(tmp_path):
     empty.mkdir()
     res2 = scan_share(empty)
     assert "SimulatorLab" in res2["suggestions"][0]["adapter"]
+
+
+# ---- ExperimentDefinition + ExperimentReadinessReview ---------------------------------
+
+def _strong_definition():
+    from bionexus.experiment import (BiologicalSystem, ClaimType,
+                                     DeliveryConditions, ExperimentDefinition,
+                                     Intervention, ReadoutCapability,
+                                     ReadoutSpec)
+    return ExperimentDefinition(
+        experiment_id="exp-strong",
+        scientific_question="Does S62 phosphorylation cause degradation?",
+        claim_type=ClaimType.causal_modification,
+        intervention=Intervention(
+            kind="protein_edit", target="c-Myc", site="S62",
+            modification="phosphoserine", requires_prior_genome_edit=True),
+        system=BiologicalSystem(cell_line="HEK293T", target_half_life_min=120),
+        delivery=DeliveryConditions(method="electroporation",
+                                    per_cell_loading_measured=True),
+        readout=ReadoutSpec(
+            assay="ratiometric MS", measures_edited_fraction=True,
+            distinguishes_modified_from_mimetic=True,
+            capabilities=[ReadoutCapability.edited_vs_unedited,
+                          ReadoutCapability.quantified_fraction]),
+        controls=["dead donor", "no-donor"],
+        denominators=["edited/total"],
+    )
+
+
+def _weak_definition(base):
+    weak = base.model_copy(deep=True)
+    weak.experiment_id = "exp-weak"
+    weak.readout = weak.readout.model_copy(deep=True)
+    weak.readout.measures_edited_fraction = False
+    weak.readout.distinguishes_modified_from_mimetic = False
+    weak.readout.capabilities = []
+    weak.controls = []
+    weak.denominators = []
+    weak.system.target_half_life_min = 20
+    return weak
+
+
+def test_experiment_readiness_strong_passes():
+    from bionexus.readiness import ReviewVerdict, review_experiment
+    review = review_experiment(_strong_definition())
+    assert review.verdict == ReviewVerdict.ready
+    assert review.blockers == []
+
+
+def test_experiment_readiness_weak_blocked():
+    from bionexus.core.contracts import Envelope
+    from bionexus.readiness import ReviewVerdict, review_experiment
+    weak = _weak_definition(_strong_definition())
+    weak.readout.measures_edited_fraction = False
+    review = review_experiment(weak)
+    assert review.verdict == ReviewVerdict.blocked
+    assert any("denominator" in b.message for b in review.blockers)
+
+
+def test_experiment_readiness_interpretable_negative():
+    defn = _strong_definition()
+    assert defn.interpretable_negative_result()
+    defn.readout.measures_edited_fraction = False
+    defn.denominators = []
+    assert not defn.interpretable_negative_result()
+
+
+def test_experiment_definition_provenance(tmp_path):
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.hypothesis import (HypothesisTracker, ProblemStatement)
+    from bionexus.core.interfaces import system_actor
+    from bionexus.experiment import (BiologicalSystem, ClaimType,
+                                     DeliveryConditions, ExperimentDefinition,
+                                     Intervention, ReadoutSpec)
+    from bionexus.readiness import review_and_record
+
+    store = SqliteProvenanceStore()
+    tracker = HypothesisTracker(store, system_actor())
+    problem = tracker.define_problem(ProblemStatement(objective="test"))
+    exp = ExperimentDefinition(
+        experiment_id="exp-1",
+        scientific_question="test question",
+        claim_type=ClaimType.causal_modification,
+        intervention=Intervention(kind="protein_edit", target="c-Myc"),
+        system=BiologicalSystem(cell_line="HEK293T"),
+        delivery=DeliveryConditions(method="electroporation",
+                                    per_cell_loading_measured=True),
+        readout=ReadoutSpec(assay="MS", measures_edited_fraction=True,
+                            distinguishes_modified_from_mimetic=True),
+        controls=["dead donor"], denominators=["edited/total"],
+    )
+    review = review_and_record(store, Envelope(experiment_branch_id="test"), actor=system_actor(), defn=exp)
+    tracker.define_experiment(problem, exp, review)
+    events = [r.event_type.value for r in store.branch_records("test")] \
+             + [r.event_type.value for r in store.branch_records(f"problem/{problem.problem_id}")]
+    assert "experiment_defined" in events
+    assert "experiment_readiness_reviewed" in events

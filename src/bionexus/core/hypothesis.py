@@ -73,6 +73,14 @@ class PortfolioDecision(BaseModel):
     reason: str = ""
 
 
+class ExperimentDefinitionRef(BaseModel):
+    """Reference to the scientific experiment definition (see bionexus.experiment)."""
+    experiment_id: str
+    scientific_question: str
+    claim_type: str
+    summary: str = ""
+
+
 class ExperimentDesign(BaseModel):
     """The experiment that will test the hypothesis — specified up-front."""
     assay_type: str
@@ -82,6 +90,8 @@ class ExperimentDesign(BaseModel):
     design_notes: str = ""
     protocol_id: str | None = None       # filled when the protocol is submitted
     run_id: str | None = None
+    definition: ExperimentDefinitionRef | None = None   # scientific manifest
+    readiness_verdict: str | None = None  # ready / ready_with_warnings / blocked
 
 
 class Hypothesis(BaseModel):
@@ -118,6 +128,38 @@ class HypothesisTracker:
         self.store = store
         self.actor = actor
         self.hypotheses: dict[str, Hypothesis] = {}
+
+    def define_experiment(
+        self,
+        problem: ProblemStatement,
+        definition: Any,
+        review: Any = None,
+    ) -> Any:
+        """Register a scientific ExperimentDefinition (bionexus.experiment)
+        with its readiness review before any protocol is submitted.
+        `definition` is an ExperimentDefinition; `review` is the readiness
+        review result if already computed."""
+        branch = f"problem/{problem.problem_id}"
+        env = Envelope(experiment_branch_id=branch)
+        verdict = review.verdict.value if review is not None else None
+        self.store.append(self._record(
+            env, EventType.experiment_defined, self.actor,
+            decision={
+                "experiment_id": definition.experiment_id,
+                "scientific_question": definition.scientific_question,
+                "claim_type": definition.claim_type.value,
+                "target": definition.intervention.target,
+                "verdict": verdict,
+            }))
+        self.store.append(record_for(
+            env, EventType.experiment_readiness_reviewed, self.actor,
+            decision={
+                "experiment_id": definition.experiment_id,
+                "verdict": verdict,
+                "warnings": [f.message for f in review.warnings] if review else [],
+                "blockers": [b.message for b in review.blockers] if review else [],
+            }))
+        return definition
 
     # ------------------------------------------- stage 0: problem & portfolio
 

@@ -301,6 +301,8 @@ class EventType(str, Enum):
     problem_defined = "problem_defined"
     hypothesis_proposed = "hypothesis_proposed"
     hypotheses_filtered = "hypotheses_filtered"
+    experiment_defined = "experiment_defined"
+    experiment_readiness_reviewed = "experiment_readiness_reviewed"
     hypothesis_tested = "hypothesis_tested"
     hypothesis_validated = "hypothesis_validated"
     hypothesis_invalidated = "hypothesis_invalidated"
