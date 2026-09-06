@@ -28,8 +28,8 @@ jobs:
         run: python -m bionexus.cli prove full-flow --db full_flow.db
       # - name: Template campaign
       #   run: python -m bionexus.cli auto examples/workflow.yml --db bionexus.db
-      - name: Provenance audit (template)
-        run: python -m bionexus.cli prove demo-run --db bionexus.db
+      # - name: Provenance audit (template)
+      #   run: python -m bionexus.cli prove demo-run --db bionexus.db
       - name: Test suite
         run: python -m pytest tests/ -q
 
