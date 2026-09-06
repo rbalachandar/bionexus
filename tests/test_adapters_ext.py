@@ -234,16 +234,32 @@ def test_mcp_tool_calls():
 
 def test_report_html(tmp_path):
     import subprocess, sys
-    subprocess.run([sys.executable, "examples/demo_full_flow.py"], capture_output=True)
-    out = tmp_path / "report.html"
-    r = subprocess.run([sys.executable, "-m", "bionexus.cli", "prove", "full-flow",
-                        "--db", "full_flow.db", "--html", str(out)], capture_output=True, text=True)
-    assert out.exists()
-    html = out.read_text()
-    assert "chain intact" in r.stdout
-    assert "BioNexus" in html
-    assert "lab_run" in html or "gate_decision" in html
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
 
+    db = tmp_path / "test.db"
+    store = SqliteProvenanceStore(str(db))
+    actor = system_actor("test")
+    env = Envelope(experiment_branch_id="report-test")
+
+    for et, d in [
+        (EventType.problem_defined, {"objective": "test objective"}),
+        (EventType.lab_run, {"run_id": "r-1", "candidate": "C1"}),
+        (EventType.gate_decision, {"gate": "approve_wetlab_protocol", "approved": True}),
+    ]:
+        store.append(record_for(env, et, actor, decision=d))
+
+    out = tmp_path / "report.html"
+    r = subprocess.run(
+        [sys.executable, "-m", "bionexus.cli", "prove", "report-test",
+         "--db", str(db), "--html", str(out)],
+        capture_output=True, text=True)
+    assert "chain intact" in r.stdout, f"prove stdout: {r.stdout[:300]}\nstderr: {r.stderr[:300]}"
+    assert out.exists(), f"report not created; prove stdout: {r.stdout[:200]}"
+    html = out.read_text()
+    assert "BioNexus" in html
+    assert "lab_run" in html
 
 # ---- benchmark harness (offline fixture) -----------------------------------------
 
