@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install pydantic pytest pyyaml && pip install -e . --no-deps
+      - run: pip install pydantic pytest pyyaml numpy && pip install -e . --no-deps
       - run: python examples/demo_full_flow.py
       - run: python -m bionexus.cli prove full-flow --db full_flow.db
 
@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install pydantic pytest && pip install -e . --no-deps
+      - run: pip install pydantic pytest numpy && pip install -e . --no-deps
       - run: python examples/demo_full_flow.py
       - run: python -m bionexus.cli prove full-flow --db full_flow.db
       - run: python -m pytest tests/ -q   # now includes recording-playback test
