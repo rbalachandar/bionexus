@@ -9,6 +9,7 @@ the instrument export the experiment produced. Each step feeds the next.
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
@@ -26,9 +27,11 @@ from bionexus.experiment import (
 from bionexus.readiness import review_experiment
 from bionexus.adapters.admet import get_admet_predictor
 from bionexus.adapters.retrosynthesis import SimulatedRetrosynthesis
+from bionexus.wizard_store import WizardStore
 
 DEFAULTS = {
-    "step": 1,
+    "step": 0,              # 0 = overview (ongoing experiments)
+    "exp_id": None,         # persistent experiment record id
     "problem": None,        # step 1 output: question + claim
     "exp_def": None,        # step 2 output: ExperimentDefinition
     "readiness": None,      # step 2 output: review verdict
@@ -39,8 +42,20 @@ for k, v in DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-STEPS = ["Define Problem", "Design Experiment", "Readiness", "Execute",
-         "Upload Results", "Analyze & Verdict"]
+STEPS = ["Overview", "Define Problem", "Design Experiment", "Readiness",
+         "Execute", "Upload Results", "Analyze & Verdict"]
+STATUS_STEP = {  # status -> wizard step to resume at
+    "defining": 1, "designing": 2, "readiness_ok": 4, "ready_blocked": 3,
+    "executing": 4, "results_uploaded": 6, "verdict_recorded": 6,
+}
+
+store = WizardStore()
+
+
+def _save(status: str, **fields) -> None:
+    eid = st.session_state.get("exp_id")
+    if eid:
+        store.update(eid, status, **fields)
 
 
 def _nav(current: int) -> None:
@@ -61,9 +76,58 @@ _nav(st.session_state["step"])
 step = st.session_state["step"]
 
 # =========================================================================
+# STEP 0 — OVERVIEW: ongoing experiments
+# =========================================================================
+if step == 0:
+    st.header("Experiments")
+    ongoing = store.ongoing()
+    if ongoing:
+        st.subheader(f"Ongoing ({len(ongoing)})")
+        for e in ongoing:
+            col1, col2, col3 = st.columns([5, 3, 2])
+            with col1:
+                st.markdown(f"**{e['question'][:80]}**")
+            with col2:
+                st.caption(f"`{e['id']}` · {e['status'].replace('_', ' ')} · "
+                           f"updated {time.strftime('%Y-%m-%d %H:%M', time.localtime(e['updated_at']))}")
+            with col3:
+                if st.button("Resume →", key=f"res_{e['id']}"):
+                    from bionexus.readiness import (ExperimentReadinessReview,
+                                                    ReviewVerdict)
+                    p = e["payload"]
+                    st.session_state["exp_id"] = e["id"]
+                    st.session_state["problem"] = p.get("problem")
+                    if p.get("exp_def"):
+                        ed = p["exp_def"]
+                        st.session_state["exp_def"] = (
+                            ed if isinstance(ed, ExperimentDefinition)
+                            else ExperimentDefinition.model_validate(ed))
+                    if p.get("readiness"):
+                        rd = dict(p["readiness"])
+                        rd["verdict"] = ReviewVerdict(rd["verdict"])
+                        st.session_state["readiness"] = (
+                            rd if isinstance(rd, ExperimentReadinessReview)
+                            else ExperimentReadinessReview.model_validate(rd))
+                    st.session_state["selected"] = p.get("selected", [])
+                    st.session_state["plate_data"] = None
+                    st.session_state["step"] = STATUS_STEP.get(e["status"], 1)
+                    st.rerun()
+    else:
+        st.info("No ongoing experiments — define a new one below.")
+
+    if store.finished():
+        st.subheader("Recently concluded")
+        for e in store.finished(5):
+            st.caption(f"✅ `{e['id']}` · {e['question'][:70]}")
+
+    if st.button("＋ New experiment", type="primary"):
+        st.session_state["step"] = 1
+        st.rerun()
+
+# =========================================================================
 # STEP 1 — DEFINE PROBLEM
 # =========================================================================
-if step == 1:
+elif step == 1:
     st.header("1 · Define the problem")
     st.caption("What are you trying to show? A good claim is specific: "
                "what intervention, in what system, measured how.")
@@ -81,10 +145,8 @@ if step == 1:
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("← Reset wizard"):
-            for k in DEFAULTS:
-                st.session_state[k] = DEFAULTS[k] if isinstance(DEFAULTS[k], (int, list)) else None
-            st.session_state["step"] = 1
+        if st.button("← Overview"):
+            st.session_state["step"] = 0
             st.rerun()
     with col2:
         if st.button("Continue →", type="primary", disabled=not q.strip()):
@@ -92,6 +154,8 @@ if step == 1:
                 "question": q.strip(), "target": target,
                 "claim": ClaimType(claim),
             }
+            st.session_state["exp_id"] = store.create(q.strip(), claim, target)
+            _save("designing", problem=st.session_state["problem"])
             _goto(2)
 
 # =========================================================================
@@ -133,7 +197,12 @@ elif step == 2:
     )
     st.session_state["exp_def"] = exp
     if st.button("Check readiness →", type="primary"):
-        st.session_state["readiness"] = review_experiment(exp)
+        review = review_experiment(exp)
+        st.session_state["readiness"] = review
+        _save("designing", exp_def=exp.model_dump(mode="json"),
+              readiness={"verdict": review.verdict.value,
+                         "findings": [f.model_dump(mode="json")
+                                      for f in review.findings]})
         _goto(3)
 
 # =========================================================================
@@ -168,6 +237,7 @@ elif step == 3:
             if st.button("Proceed to execution →", type="primary",
                          disabled=blocked,
                          help="Resolve blockers before running the experiment"):
+                _save("readiness_ok" if not blocked else "ready_blocked")
                 _goto(4)
 
 # =========================================================================
@@ -193,6 +263,7 @@ elif step == 4:
             _goto(3)
     with col2:
         if st.button("I have results →", type="primary"):
+            _save("executing")
             _goto(5)
 
 # =========================================================================
@@ -209,7 +280,12 @@ elif step == 5:
         tmp = tempfile.NamedTemporaryFile(suffix=".csv", delete=False)
         tmp.write(f.getvalue())
         tmp.close()
-        st.session_state["plate_data"] = read_plate(tmp.name)
+        r = read_plate(tmp.name)
+        st.session_state["plate_data"] = r
+        _save("results_uploaded",
+              plate={"format": r.format, "n_wells": len(r.records),
+                     "z_prime": r.z_prime,
+                     "samples": list(r.analysis["compounds"])})
         _goto(6)
     r = st.session_state.get("plate_data")
     if r:
@@ -284,8 +360,13 @@ elif step == 6:
                        ["supports hypothesis", "refutes hypothesis",
                         "inconclusive"], horizontal=True)
         if st.button("Record verdict", type="primary"):
+            _save("verdict_recorded", verdict=obs,
+                  selected_hits=st.session_state["selected"])
             st.success(f"Recorded: **{obs}** — provenance-chained to the "
                        f"experiment definition from step 2. "
                        f"Full audit: `bn prove --html` or `bn diary`.")
+            if st.button("← Back to overview"):
+                st.session_state["step"] = 0
+                st.rerun()
         if st.button("← Back"):
             _goto(5)
