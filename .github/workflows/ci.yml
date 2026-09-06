@@ -15,40 +15,26 @@ jobs:
       - run: pip install pydantic pytest && pip install -e . --no-deps
       - run: python -m pytest tests/ -q    # includes the anti-bloat import scan
 
-  example:  # P8: full round on the simulator
+  e2e:  # P8: full DMTA flow + templates + recording playback on the virtual lab
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install pydantic pytest pyyaml numpy && pip install -e . --no-deps
-      - run: python examples/demo_full_flow.py
-      - run: python -m bionexus.cli prove full-flow --db full_flow.db
-
-  full-campaign:  # P8: entire pipeline flow on the virtual lab, then playback
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install pydantic pytest numpy && pip install -e . --no-deps
-      - run: python examples/demo_full_flow.py
-      - run: python -m bionexus.cli prove full-flow --db full_flow.db
-      - run: python -m pytest tests/ -q   # now includes recording-playback test
-
-  yaml-workflow:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install pydantic pyyaml && pip install -e . --no-deps
-      - run: python -m bionexus.cli run examples/workflow.yml
-      - run: python -m bionexus.cli prove demo-run --db bionexus.db
+      - name: Full flow (all layers)
+        run: python examples/demo_full_flow.py
+      - name: Provenance audit
+        run: python -m bionexus.cli prove full-flow --db full_flow.db
+      - name: Template campaign
+        run: python -m bionexus.cli auto examples/workflow.yml --db bionexus.db
+      - name: Provenance audit (template)
+        run: python -m bionexus.cli prove demo-run --db bionexus.db
+      - name: Test suite
+        run: python -m pytest tests/ -q
 
   case-study:  # blind reproduction of a published paper (real ChEMBL data)
     runs-on: ubuntu-latest
-    environment: pypi-env
     if: false  # requires LLM env; run manually or on schedule
     steps:
       - uses: actions/checkout@v4
