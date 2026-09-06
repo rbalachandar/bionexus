@@ -116,7 +116,7 @@ python examples/iteration_loop.py         # the same, step by step (see notebook
 
 A round runs: hypothesis tournament → safety-gated protocol → virtual wet lab →
 analysis → provenance. Every stage can also be driven from Python with the five
-core interfaces (see the [notebooks](notebooks/)).
+core interfaces .
 
 ### Autonomous — hand the loop to the agent
 
@@ -342,9 +342,6 @@ those skills teach an agent *how* to author protocols and query databases;
 BioNexus decides *whether they run*, and records what happened. Focused skills:
 `bionexus` (overview) · `bionexus-labread` · `bionexus-labwatch` ·
 `bionexus-campaign` · `bionexus-opentrons`.
-
-Tutorials: [`notebooks/`](notebooks/) — run a campaign · write an adapter ·
-bring your own model.
 
 ## Architecture
 
