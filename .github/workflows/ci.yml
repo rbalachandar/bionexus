@@ -22,8 +22,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install pydantic pytest pyyaml && pip install -e . --no-deps
-      - run: python examples/iteration_loop.py
-      - run: python -m bionexus.cli prove branch-root --db bionexus.db
+      - run: python examples/demo_full_flow.py
+      - run: python -m bionexus.cli prove full-flow --db full_flow.db
 
   full-campaign:  # P8: entire pipeline flow on the virtual lab, then playback
     runs-on: ubuntu-latest
@@ -32,8 +32,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install pydantic pytest && pip install -e . --no-deps
-      - run: python examples/full_campaign.py
-      - run: python -m bionexus.cli prove campaign-root --db campaign.db
+      - run: python examples/demo_full_flow.py
+      - run: python -m bionexus.cli prove full-flow --db full_flow.db
       - run: python -m pytest tests/ -q   # now includes recording-playback test
 
   yaml-workflow:
@@ -44,7 +44,7 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install pydantic pyyaml && pip install -e . --no-deps
       - run: python -m bionexus.cli run examples/workflow.yml
-      - run: python -m bionexus.cli prove demo-run
+      - run: python -m bionexus.cli prove demo-run --db bionexus.db
 
   case-study:  # blind reproduction of a published paper (real ChEMBL data)
     runs-on: ubuntu-latest

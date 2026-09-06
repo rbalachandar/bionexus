@@ -55,7 +55,7 @@ CONCS = ["0.5uM", "2uM", "10uM", "40uM"]
 
 
 def main() -> None:
-    store = SqliteProvenanceStore(Path_cwd() / "case_study.db")
+    store = SqliteProvenanceStore(Path.cwd() / "full_flow.db")
     actor = system_actor("full-flow")
     model = OpenAICompatProvider()
     registry = Registry()
@@ -233,11 +233,6 @@ def main() -> None:
         say(f"    {ev}: {count}")
     say(f"\n  verify: bn prove full-flow --db full_flow.db")
     say(f"  diary:  bn diary full-flow --db full_flow.db --html diary.html")
-
-
-def Path_cwd():
-    from pathlib import Path
-    return Path.cwd()
 
 
 def standard_small_molecule_tpp(name, target, ic50_nm=50):

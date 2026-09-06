@@ -135,9 +135,9 @@ def test_flywheel_pairs_from_round(tmp_path):
 
 def test_campaign_recording_playbacks(tmp_path):
     """Full-flow field recording replays identically offline (P8)."""
-    rec_path = Path("examples/_campaign_recording.json")
+    rec_path = Path(".data/images-vision")
     if not rec_path.exists():
-        pytest.skip("run examples/full_campaign.py first")
+        pytest.skip("vision demo not run in this session")
     pb = PlaybackLab(rec_path)
     caps = pb.list_capabilities()
     assert caps["assays"]
@@ -252,10 +252,10 @@ def test_mcp_tool_calls():
 
 def test_report_html(tmp_path):
     import subprocess, sys
-    subprocess.run([sys.executable, "examples/full_campaign.py"], capture_output=True)
+    subprocess.run([sys.executable, "examples/demo_full_flow.py"], capture_output=True)
     out = tmp_path / "report.html"
-    r = subprocess.run([sys.executable, "-m", "bionexus.cli", "prove", "campaign-root",
-                        "--db", "campaign.db", "--html", str(out)], capture_output=True, text=True)
+    r = subprocess.run([sys.executable, "-m", "bionexus.cli", "prove", "full-flow",
+                        "--db", "full_flow.db", "--html", str(out)], capture_output=True, text=True)
     assert out.exists()
     html = out.read_text()
     assert "chain intact" in r.stdout and "ok" in html
