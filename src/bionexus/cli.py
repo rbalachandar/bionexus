@@ -240,7 +240,12 @@ def cmd_auto(args: argparse.Namespace) -> int:
         cfg_doc = build_campaign(fill(load_template(args.template), fields,
                                       prompt_missing=not getattr(args, "yes", False)))
     elif args.config:
-        cfg_doc = json.loads(Path(args.config).read_text())
+        raw = Path(args.config).read_text()
+        try:
+            import yaml
+            cfg_doc = yaml.safe_load(raw)
+        except ImportError:
+            cfg_doc = json.loads(raw)
     else:
         print("bn auto: pass a config file or --template NAME", file=sys.stderr)
         return 2

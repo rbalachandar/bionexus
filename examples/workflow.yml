@@ -1,24 +1,37 @@
-# BioNexus workflow — run with: bn run examples/workflow.yml
-branch: demo-run
-target: KRAS_G12C
+# BioNexus workflow — run with: bn auto examples/workflow.yml
+problem:
+  objective: "Identify active HPK1 inhibitors from the compound series"
+  constraints:
+    - name: potency
+      description: "IC50 <= 20 uM"
+      kind: hard
+      limit: 20.0
+      unit: uM
+  success_metric: "orthogonal confirmation"
 
 model:
   name: stub-1
-  # base_url: http://localhost:11434/v1   # ollama/vLLM/any OpenAI-compatible server
 
 lab:
   adapter: simulator
   seed: 42
-  # adapter: my_org.labs.opentrons:OpentronsLab   # any LabAdapter via 'module:Class'
 
 store:
   path: bionexus.db
 
-tournament:
-  population: 6
-  survivors: 3
-  waves: 2
+hypotheses:
+  - statement: "C-101 binds HPK1 with IC50 <= 20 uM"
+    candidate: "C-101"
+    assay_type: binding
+    predicted: "IC50 <= 20 uM"
+    predicted_value: 20.0
+    rationale: "covalent warhead precedent"
+  - statement: "C-102 binds HPK1 with IC50 <= 20 uM"
+    candidate: "C-102"
+    assay_type: binding
+    predicted: "IC50 <= 20 uM"
+    predicted_value: 20.0
+    rationale: "scaffold hop"
 
-assay:
-  enabled: true
-  type: binding
+k: 2
+autonomy: act
