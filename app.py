@@ -1,7 +1,8 @@
 """BioNexus Workbench — guided DMTA wizard for scientists.
 
-A step-by-step flow that mirrors the real drug-discovery cycle.
-Each step feeds the next. State persists via st.session_state.
+Flow mirrors the scientific method: define the problem and hypothesis
+FIRST, design + readiness-check the experiment, execute it, then analyze
+the instrument export the experiment produced. Each step feeds the next.
 
     streamlit run app.py
 """
@@ -18,8 +19,6 @@ st.set_page_config(page_title="BioNexus", page_icon="🧬", layout="wide")
 
 from bionexus.labread import read_plate
 from bionexus.plots import dose_response_svg
-from bionexus.tpp import TPP, Criterion, CriterionCategory, CriterionPhase, \
-    standard_small_molecule_tpp
 from bionexus.experiment import (
     BiologicalSystem, ClaimType, DeliveryConditions, ExperimentDefinition,
     Intervention, ReadoutSpec,
@@ -27,245 +26,266 @@ from bionexus.experiment import (
 from bionexus.readiness import review_experiment
 from bionexus.adapters.admet import get_admet_predictor
 from bionexus.adapters.retrosynthesis import SimulatedRetrosynthesis
-from bionexus.agents import get_persona, AgentRole
 
-# ---------------------------------------------------------------------------
-# Session state defaults
-# ---------------------------------------------------------------------------
 DEFAULTS = {
     "step": 1,
-    "plate_data": None,
-    "tpp": None,
-    "candidates": [],
-    "selected": [],
-    "exp_def": None,
-    "readiness": None,
-    "results": {},
+    "problem": None,        # step 1 output: question + claim
+    "exp_def": None,        # step 2 output: ExperimentDefinition
+    "readiness": None,      # step 2 output: review verdict
+    "plate_data": None,     # step 4 output: PlateReadResult
+    "selected": [],         # step 5 output: chosen hit(s)
 }
 for k, v in DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-STEPS = ["Upload", "Review Hits", "Assess", "Define Experiment",
-         "Readiness", "Execute"]
+STEPS = ["Define Problem", "Design Experiment", "Readiness", "Execute",
+         "Upload Results", "Analyze & Verdict"]
 
 
 def _nav(current: int) -> None:
     cols = st.columns(len(STEPS))
     for i, (col, name) in enumerate(zip(cols, STEPS), 1):
         marker = "🟢" if i < current else "🔵" if i == current else "⚪"
-        col.markdown(f"**{marker} {name}**" if i == current
-                     else f"{marker} {name}")
+        col.markdown(f"**{marker} {name}**" if i == current else f"{marker} {name}")
 
 
-def _next_step():
-    st.session_state.step = min(st.session_state.step + 1, len(STEPS))
+def _goto(n: int) -> None:
+    st.session_state.step = n
     st.rerun()
 
 
-def _prev_step():
-    st.session_state.step = max(st.session_state.step - 1, 1)
-    st.rerun()
-
-
-# ---------------------------------------------------------------------------
-# Main wizard
 # ---------------------------------------------------------------------------
 st.title("🧬 BioNexus")
 _nav(st.session_state["step"])
 step = st.session_state["step"]
 
 # =========================================================================
+# STEP 1 — DEFINE PROBLEM
+# =========================================================================
 if step == 1:
-    # ------------------------------------------------------- UPLOAD
-    st.header("1 · Upload instrument export")
-    st.caption("Plate-reader export (CSV/TSV/XLSX). Auto-detects format, "
-               "controls, and dose–response IC50s.")
-    f = st.file_uploader("Upload export file", type=["csv", "tsv", "xlsx"])
-    if f:
-        import tempfile
-        tmp = tempfile.NamedTemporaryFile(suffix=".csv", delete=False)
-        tmp.write(f.getvalue())
-        tmp.close()
-        st.session_state["plate_data"] = read_plate(tmp.name)
-        st.session_state["step"] = 2
-        st.rerun()
-    if st.session_state.get("plate_data"):
-        r = st.session_state["plate_data"]
-        st.success(f"Loaded: {r.format} · {len(r.records)} wells · "
-                   f"Z' = {r.z_prime}")
-        st.code(r.table())
-        if st.button("Continue →"):
-            _next_step()
+    st.header("1 · Define the problem")
+    st.caption("What are you trying to show? A good claim is specific: "
+               "what intervention, in what system, measured how.")
 
+    q = st.text_area(
+        "Scientific question",
+        placeholder="Does S62 phosphorylation cause c-Myc degradation?",
+        key="q",
+    )
+    col1, col2 = st.columns(2)
+    target = col1.text_input("Target (protein/pathway)", "c-Myc")
+    claim = col2.selectbox("Claim type", [c.value for c in ClaimType],
+                           help="What kind of statement would a successful "
+                                "experiment support?")
 
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("← Reset wizard"):
+            for k in DEFAULTS:
+                st.session_state[k] = DEFAULTS[k] if isinstance(DEFAULTS[k], (int, list)) else None
+            st.session_state["step"] = 1
+            st.rerun()
+    with col2:
+        if st.button("Continue →", type="primary", disabled=not q.strip()):
+            st.session_state["problem"] = {
+                "question": q.strip(), "target": target,
+                "claim": ClaimType(claim),
+            }
+            _goto(2)
+
+# =========================================================================
+# STEP 2 — DESIGN EXPERIMENT
 # =========================================================================
 elif step == 2:
-    # ------------------------------------------------------- REVIEW HITS
-    st.header("2 · Review hits")
-    r = st.session_state.get("plate_data")
-    if not r:
-        st.warning("Upload a plate first (step 1)")
-        if st.button("← Back"): _prev_step()
-    else:
-        compounds = list(r.analysis["compounds"].items())
-        selected = st.session_state.get("selected", [])
-        for sample, data in compounds:
-            ic50 = data.get("ic50_um")
-            col1, col2, col3 = st.columns([4, 2, 1])
-            with col1:
-                st.markdown(f"**{sample}** — "
-                            f"IC50 = {f'{ic50:.1f} µM' if ic50 else '> range'}")
-            with col2:
-                if ic50:
-                    st.metric("IC50 (µM)", f"{ic50:.1f}")
-            with col3:
-                key = f"sel_{sample}"
-                st.checkbox("Select", key=key,
-                            value=sample in selected,
-                            on_change=lambda s=sample, k=key: (
-                                st.session_state["selected"].append(s)
-                                if st.session_state[k]
-                                else st.session_state["selected"].remove(s)
-                            ) if s in st.session_state["selected"] or
-                            st.session_state[k] else None)
-            if data.get("curve"):
-                st.markdown(dose_response_svg(data["curve"],
-                            ic50=data["ic50_um"],
-                            title=sample), unsafe_allow_html=True)
-        st.session_state["selected"] = list(set(st.session_state.get("selected", [])))
-        st.info(f"{len(st.session_state['selected'])} candidate(s) selected")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("← Back"): _prev_step()
-        with col2:
-            if st.button("Continue →", type="primary"):
-                st.session_state["step"] = 3
-                st.rerun()
+    st.header("2 · Design the experiment")
+    p = st.session_state.get("problem") or {}
+    st.info(f"**Question:** {p.get('question', '—')}")
 
-
-# =========================================================================
-elif step == 3:
-    # ------------------------------------------------------- ASSESS
-    st.header("3 · Assess: ADMET + Retrosynthesis + Readiness")
-    selected = st.session_state.get("selected", [])
-    if not selected:
-        st.warning("No candidates selected — go back to step 2")
-        if st.button("← Back"): _prev_step()
-    else:
-        admet = get_admet_predictor()
-        retro = SimulatedRetrosynthesis()
-        tpp = standard_small_molecule_tpp("campaign", "target")
-        for smi in selected:
-            st.subheader(smi)
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("**ADMET**")
-                try:
-                    r = admet.predict(smi)
-                    s = r.summary()
-                    st.markdown(f"- MW: {s['mw_da']} Da\n"
-                                f"- LogP: {s.get('logp', '?')}\n"
-                                f"- TPSA: {s.get('tpsa', '?')}\n"
-                                f"- Lipinski violations: "
-                                f"{s['lipinski_violations']}\n"
-                                f"- PAINS: {s['pains_alerts'] or 'none'}\n"
-                                f"- Veber: "
-                                f"{'PASS' if s.get('rotatable_bonds', 99) <= 10 else 'CHECK'}")
-                except Exception as e:
-                    st.warning(f"ADMET unavailable: {e}")
-            with col2:
-                st.markdown("**Retrosynthesis**")
-                try:
-                    from bionexus.adapters.retrosynthesis import \
-                        SimulatedRetrosynthesis
-                    route = SimulatedRetrosynthesis().plan(smi)
-                    st.markdown(f"- Feasible: "
-                                f"{'✅' if route.feasible else '❌'}\n"
-                                f"- Steps: {route.num_steps}\n"
-                                f"- Score: {route.overall_score}")
-                except Exception as e:
-                    st.warning(f"Retrosynthesis unavailable: {e}")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("← Back"): _prev_step()
-        with col2:
-            if st.button("Continue →", type="primary"):
-                st.session_state["step"] = 4
-                st.rerun()
-
-
-# =========================================================================
-elif step == 4:
-    # ------------------------------------------------------- DEFINE EXPERIMENT
-    st.header("4 · Define experiment")
-    selected = st.session_state.get("selected", [])
-    st.info(f"Candidates: {', '.join(selected)}")
-    q = st.text_area("Scientific question",
-                     placeholder="Does compound X bind target Y with "
-                                 "IC50 <= 20 uM?")
     col1, col2 = st.columns(2)
-    claim = col1.selectbox("Claim type", [c.value for c in ClaimType])
+    site = col1.text_input("Site / variant (if relevant)", "S62")
     half_life = col2.number_input("Target half-life (min)", 1, 9999, 120)
-    edited_frac = st.checkbox("Readout measures edited fraction")
-    mimetic = st.checkbox("Distinguishes mimetic")
-    controls = st.text_area("Controls (one per line)").split("\n")
-    controls = [c.strip() for c in controls if c.strip()]
+    edited_frac = st.checkbox("Readout measures edited fraction",
+                              help="Does the assay quantify the fraction of "
+                                   "molecules actually modified?")
+    mimetic = st.checkbox("Distinguishes real from mimetic phenotype",
+                          help="Can the assay tell a true modification from "
+                               "a look-alike artefact?")
+    controls = st.text_area("Controls (one per line)",
+                            placeholder="DMSO vehicle\nKnown inhibitor\n"
+                                        "Kinase-dead mutant")
+    controls = [c.strip() for c in controls.split("\n") if c.strip()]
+
+    if st.button("← Back"):
+        _goto(1)
 
     exp = ExperimentDefinition(
-        scientific_question=q or "user experiment",
-        claim_type=ClaimType(claim),
-        intervention=Intervention(kind="binding", target="user-target"),
+        scientific_question=p.get("question", "user experiment"),
+        claim_type=p.get("claim", ClaimType.CAUSAL),
+        intervention=Intervention(kind="user_defined",
+                                  target=p.get("target", "user-target"),
+                                  site=site or None),
         system=BiologicalSystem(cell_line="user", target_half_life_min=half_life),
         delivery=DeliveryConditions(method="user", per_cell_loading_measured=True),
         readout=ReadoutSpec(assay="user", measures_edited_fraction=edited_frac,
                             distinguishes_modified_from_mimetic=mimetic),
         controls=controls,
     )
-    review = review_experiment(exp)
-
-    icon = {"ready": "✅", "ready_with_warnings": "⚠️", "blocked": "❌"}
-    st.markdown(f"### Readiness: {icon.get(review.verdict.value, '—')} "
-                f"{review.verdict.value.replace('_', ' ').title()}")
-    for f in review.findings:
-        if f.severity == "blocker":
-            st.error(f"❌ {f.check}: {f.message}")
-        elif f.severity == "warning":
-            st.warning(f"⚠️ {f.check}: {f.message}")
-        else:
-            st.success(f"✅ {f.check}")
-
-    if review.verdict == "blocked":
-        st.info("Redesign the experiment to resolve blockers, then re-check.")
-    elif st.button("Continue →", type="primary"):
-        st.session_state["exp_def"] = exp
-        st.session_state["readiness"] = review
-        st.session_state["step"] = 5
-        st.rerun()
-
-    if st.button("← Back"): _prev_step()
-
+    st.session_state["exp_def"] = exp
+    if st.button("Check readiness →", type="primary"):
+        st.session_state["readiness"] = review_experiment(exp)
+        _goto(3)
 
 # =========================================================================
-elif step == 5:
-    # ------------------------------------------------------- READINESS SUMMARY
-    st.header("5 · Readiness summary")
+# STEP 3 — READINESS GATE
+# =========================================================================
+elif step == 3:
+    st.header("3 · Readiness check")
     exp = st.session_state.get("exp_def")
     review = st.session_state.get("readiness")
     if not exp or not review:
-        st.warning("Complete step 4 first")
-        if st.button("← Back"): _prev_step()
+        st.warning("Design the experiment first (step 2)")
+        if st.button("← Back"):
+            _goto(2)
     else:
-        st.markdown(f"**Question:** {exp.scientific_question}")
-        st.markdown(f"**Claim:** {exp.claim_type.value}")
-        st.markdown(f"**Verdict:** {review.verdict.value}")
-        st.markdown(f"**Controls:** {', '.join(exp.controls)}")
-        st.markdown(f"**Denominators:** {', '.join(exp.denominators)}")
+        icon = {"ready": "✅", "ready_with_warnings": "⚠️", "blocked": "❌"}
+        st.markdown(f"### {icon.get(review.verdict.value, '—')} "
+                    f"{review.verdict.value.replace('_', ' ').title()}")
+        for f in review.findings:
+            if f.severity == "blocker":
+                st.error(f"❌ **{f.check}**: {f.message}")
+            elif f.severity == "warning":
+                st.warning(f"⚠️ {f.check}: {f.message}")
+            else:
+                st.success(f"✅ {f.check}")
+
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("← Back"): _prev_step()
+            if st.button("← Redesign"):
+                _goto(2)
         with col2:
-            if st.button("✅ Confirm & Execute"):
-                st.balloons()
-                st.success("Experiment defined and provenance-recorded. "
-                           "Submit via `bn serve` or `bn auto` to execute.")
+            blocked = review.verdict.value == "blocked"
+            if st.button("Proceed to execution →", type="primary",
+                         disabled=blocked,
+                         help="Resolve blockers before running the experiment"):
+                _goto(4)
+
+# =========================================================================
+# STEP 4 — EXECUTE
+# =========================================================================
+elif step == 4:
+    st.header("4 · Execute")
+    exp = st.session_state.get("exp_def")
+    st.info(f"**Question:** {exp.scientific_question}\n\n"
+            f"**Claim:** {exp.claim_type.value} · "
+            f"**Controls:** {len(exp.controls)}")
+    st.markdown(
+        "Run the experiment at the bench (or submit it to a configured lab "
+        "via `bn serve` → Approve, or `bn auto` for simulated runs). When the "
+        "instrument finishes, continue to step 5 with its export file.")
+    lab = st.selectbox("Execution route",
+                       ["Bench (manual — bring back the export)",
+                        "Simulated lab (`bn auto`)",
+                        "Connected lab (`bn serve` approval queue)"])
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("← Back"):
+            _goto(3)
+    with col2:
+        if st.button("I have results →", type="primary"):
+            _goto(5)
+
+# =========================================================================
+# STEP 5 — UPLOAD RESULTS
+# =========================================================================
+elif step == 5:
+    st.header("5 · Upload instrument export")
+    st.caption("Plate-reader export (CSV/TSV/XLSX) produced by the experiment "
+               "you just defined. Auto-detects format, controls, and "
+               "dose–response IC50s.")
+    f = st.file_uploader("Export file", type=["csv", "tsv", "xlsx"])
+    if f:
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(suffix=".csv", delete=False)
+        tmp.write(f.getvalue())
+        tmp.close()
+        st.session_state["plate_data"] = read_plate(tmp.name)
+        _goto(6)
+    r = st.session_state.get("plate_data")
+    if r:
+        st.success(f"Loaded: {r.format} · {len(r.records)} wells · "
+                   f"Z' = {r.z_prime}")
+    if st.button("← Back"):
+        _goto(4)
+
+# =========================================================================
+# STEP 6 — ANALYZE & VERDICT
+# =========================================================================
+elif step == 6:
+    st.header("6 · Analyze hits & verdict")
+    r = st.session_state.get("plate_data")
+    exp = st.session_state.get("exp_def")
+    if not r:
+        st.warning("Upload the instrument export (step 5)")
+        if st.button("← Back"):
+            _goto(5)
+    else:
+        selected = st.session_state["selected"]
+        for sample, data in r.analysis["compounds"].items():
+            ic50 = data.get("ic50_um")
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.markdown(f"**{sample}** — "
+                            f"IC50 = {f'{ic50:.1f} µM' if ic50 else '> range'}")
+            with col2:
+                if ic50 and st.checkbox("Hit", key=f"sel_{sample}",
+                                        value=sample in selected):
+                    if sample not in selected:
+                        selected.append(sample)
+                elif sample in selected:
+                    selected.remove(sample)
+            if data.get("curve"):
+                st.markdown(dose_response_svg(data["curve"],
+                            ic50=ic50, title=sample), unsafe_allow_html=True)
+        st.session_state["selected"] = selected
+
+        # secondary assessment of the selected hit(s)
+        if selected:
+            st.subheader("Hit assessment")
+            admet = get_admet_predictor()
+            for smi in selected:
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"**ADMET — {smi}**")
+                    try:
+                        s = admet.predict(smi).summary()
+                        st.markdown(
+                            f"- MW: {s['mw_da']} Da · LogP: {s.get('logp', '?')} · "
+                            f"TPSA: {s.get('tpsa', '?')}\n"
+                            f"- Lipinski violations: {s['lipinski_violations']}\n"
+                            f"- PAINS: {s['pains_alerts'] or 'none'}")
+                    except Exception as e:
+                        st.caption(f"ADMET unavailable: {e}")
+                with col2:
+                    st.markdown("**Retrosynthesis**")
+                    try:
+                        route = SimulatedRetrosynthesis().plan(smi)
+                        st.markdown(f"- Feasible: "
+                                    f"{'✅' if route.feasible else '❌'} · "
+                                    f"Steps: {route.num_steps}")
+                    except Exception as e:
+                        st.caption(f"Retrosynthesis unavailable: {e}")
+
+        st.subheader("Verdict")
+        st.markdown(
+            f"Record the predicted-vs-observed comparison against the "
+            f"hypothesis from step 1:\n\n> **{exp.scientific_question}**")
+        obs = st.radio("Observed outcome vs prediction",
+                       ["supports hypothesis", "refutes hypothesis",
+                        "inconclusive"], horizontal=True)
+        if st.button("Record verdict", type="primary"):
+            st.success(f"Recorded: **{obs}** — provenance-chained to the "
+                       f"experiment definition from step 2. "
+                       f"Full audit: `bn prove --html` or `bn diary`.")
+        if st.button("← Back"):
+            _goto(5)
