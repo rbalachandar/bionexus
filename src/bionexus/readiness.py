@@ -26,6 +26,7 @@ from bionexus.experiment import (
     ExperimentDefinition,
     ReadoutCapability,
 )
+from bionexus.kinetic import InteinPairConfig, check_intein_pair
 
 
 class ReviewVerdict(str, Enum):
@@ -139,11 +140,40 @@ def review_experiment(defn: ExperimentDefinition) -> ExperimentReadinessReview:
     else:
         add("delivery_variance", True, True, "no delivery variance concern declared")
 
-    # 5. acceptor-bearing state (the cassette burden)
+    # 5. acceptor-bearing state (the cassette burden) — BLOCKER when
+    # historical controls are absent and cassette is a significant fraction
+    meta = defn.metadata or {}
+    hist_controls = meta.get("historical_controls", [])
     if defn.intervention.requires_prior_genome_edit:
-        add("acceptor_burden", True, True,
-            "target carries the construct before the experiment; the "
-            "acceptor-bearing state, not the edit, may drive the phenotype")
+        kda = defn.intervention.construct_size_kda
+        has_hist_data = bool(hist_controls)
+        if kda is not None and kda > 15 and not has_hist_data:
+            add("cassette_burden", False, False,
+                f"acceptor cassette is {kda} kDa (significant fraction of target "
+                f"mass) and no historical control data is declared. A "
+                f"cycloheximide chase or interactome comparison is required to "
+                f"verify the acceptor-bearing state does not alter baseline "
+                f"biology before the edit can be attributed causally")
+        else:
+            add("cassette_burden", True, True,
+                f"cassette burden assessed: {kda or 'unknown'} kDa, "
+                f"historical controls {'declared' if has_hist_data else 'not required'}")
+
+    # 5b. kinetic matching for split-intein pairs
+    meta = defn.metadata or {}
+    intein_pair = meta.get("intein_pair")
+    if intein_pair:
+        from bionexus.kinetic import InteinPairConfig, check_intein_pair
+        pair_cfg = InteinPairConfig(**intein_pair) if isinstance(intein_pair, dict) else intein_pair
+        result = check_intein_pair(pair_cfg)
+        if not result.compatible:
+            add("kinetic_matching", False, False,
+                f"intein pair rate mismatch: {result.details}; "
+                f"intermediates will accumulate — slow one domain or choose "
+                f"a matched pair")
+        else:
+            add("kinetic_matching", True, True,
+                f"rates matched (ratio {result.rate_ratio}x)")
 
     # 6. controls
     add("controls", bool(defn.controls), True,

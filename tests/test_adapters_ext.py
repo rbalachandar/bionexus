@@ -1469,3 +1469,130 @@ def test_agent_toolkit_submit_and_results(tmp_path):
     assert r["status"] == "submitted" and "run_id" in r
     results = tk._tool_results(r["run_id"])
     assert results["measurements"]
+
+
+# ---- article-inspired guardrails (cassette burden, kinetic matching, denominator) ----
+
+def test_cassette_burden_blocker_without_hist_controls():
+    from bionexus.experiment import (BiologicalSystem, ClaimType,
+                                     DeliveryConditions, ExperimentDefinition,
+                                     Intervention, ReadoutSpec)
+    from bionexus.readiness import review_experiment
+
+    exp = ExperimentDefinition(
+        scientific_question="test",
+        claim_type=ClaimType.detection_or_pulldown,
+        intervention=Intervention(
+            kind="protein_edit", target="c-Myc", site="S62",
+            requires_prior_genome_edit=True, construct_size_kda=22.0,
+        ),
+        system=BiologicalSystem(cell_line="HEK293T"),
+        delivery=DeliveryConditions(method="electroporation",
+                                    per_cell_loading_measured=True),
+        readout=ReadoutSpec(assay="western", capabilities=[]),
+        controls=["no-donor"],
+        metadata={},  # no historical controls — must BLOCK
+    )
+    review = review_experiment(exp)
+    blockers = [b.message for b in review.blockers]
+    assert any("cassette" in b.lower() for b in blockers), (
+        f"cassette burden must be a blocker; blockers={blockers}")
+
+    # with historical controls declared → no blocker
+    exp.metadata["historical_controls"] = ["cycloheximide chase", "interactome MS"]
+    review2 = review_experiment(exp)
+    assert not any("cassette" in b.message.lower() for b in review2.blockers)
+
+
+def test_kinetic_mismatch_blocker():
+    from bionexus.experiment import (BiologicalSystem, ClaimType,
+                                     DeliveryConditions, ExperimentDefinition,
+                                     Intervention, ReadoutSpec)
+    from bionexus.readiness import review_experiment
+
+    exp = ExperimentDefinition(
+        scientific_question="test",
+        claim_type=ClaimType.detection_or_pulldown,
+        intervention=Intervention(
+            kind="protein_edit", target="c-Myc",
+            requires_prior_genome_edit=False),
+        system=BiologicalSystem(cell_line="HEK293T"),
+        delivery=DeliveryConditions(method="electroporation",
+                                    per_cell_loading_measured=True),
+        readout=ReadoutSpec(assay="western", capabilities=[]),
+        controls=["no-donor"],
+        metadata={
+            "intein_pair": {
+                "n_intein": "Gp41-1", "c_intein": "Npu DnaE",
+                "n_splicing_rate": 0.18, "c_splicing_rate": 0.011,
+                "is_engineered_slow_variant": False,
+            },
+        },
+    )
+    review = review_experiment(exp)
+    blockers = [b.message for b in review.blockers]
+    assert any("rate mismatch" in b.lower() or "kinetic" in b.lower()
+               for b in blockers), (
+        f"10x+ rate mismatch must be a blocker; blockers={blockers}")
+
+
+def test_kinetic_match_passes_when_rates_close():
+    from bionexus.experiment import (BiologicalSystem, ClaimType,
+                                     DeliveryConditions, ExperimentDefinition,
+                                     Intervention, ReadoutSpec)
+    from bionexus.readiness import review_experiment
+
+    exp = ExperimentDefinition(
+        scientific_question="test",
+        claim_type=ClaimType.detection_or_pulldown,
+        intervention=Intervention(
+            kind="protein_edit", target="c-Myc",
+            requires_prior_genome_edit=False),
+        system=BiologicalSystem(cell_line="HEK293T"),
+        delivery=DeliveryConditions(method="electroporation",
+                                    per_cell_loading_measured=True),
+        readout=ReadoutSpec(assay="western", capabilities=[]),
+        controls=["no-donor"],
+        metadata={
+            "intein_pair": {
+                "n_intein": "Cat", "c_intein": "mut-Cfa",
+                "n_splicing_rate": 0.05, "c_splicing_rate": 0.04,
+                "is_engineered_slow_variant": True,
+            },
+        },
+    )
+    review = review_experiment(exp)
+    kinetic_findings = [f for f in review.findings
+                        if f.check == "kinetic_matching"]
+    assert kinetic_findings and kinetic_findings[0].severity == "pass"
+
+
+def test_denominator_blocker_for_loss_of_function():
+    """The 'missing denominator' guardrail: loss-of-function claims on a bulk
+    readout (no edited fraction) must be a BLOCKER, not a warning."""
+    from bionexus.experiment import (BiologicalSystem, ClaimType,
+                                     DeliveryConditions, ExperimentDefinition,
+                                     Intervention, ReadoutSpec)
+    from bionexus.readiness import ReviewVerdict, review_experiment
+
+    exp = ExperimentDefinition(
+        scientific_question="Does the edit cause loss of function?",
+        claim_type=ClaimType.loss_of_function,
+        intervention=Intervention(
+            kind="protein_edit", target="c-Myc",
+            requires_prior_genome_edit=False),
+        system=BiologicalSystem(cell_line="HEK293T"),
+        delivery=DeliveryConditions(method="electroporation",
+                                    per_cell_loading_measured=True),
+        readout=ReadoutSpec(
+            assay="bulk Western blot", capabilities=[],
+            measures_edited_fraction=False,
+            distinguishes_modified_from_mimetic=False),
+        controls=["no-donor"],
+    )
+    review = review_experiment(exp)
+    assert review.verdict == ReviewVerdict.blocked
+    blocker_msgs = [b.message for b in review.blockers]
+    assert any("denominator" in m.lower() or "edited" in m.lower()
+               for m in blocker_msgs), (
+        f"missing denominator must be a blocker; blockers={blocker_msgs}")
