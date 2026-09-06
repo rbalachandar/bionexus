@@ -20,7 +20,7 @@ from typing import Any
 
 from bionexus.core.contracts import (
     AssayResult, Envelope, InstrumentInfo, Measurement, ProtocolSubmission,
-    RunStatus,
+    RunStatus, SampleKind,
 )
 
 
@@ -61,7 +61,7 @@ class LCMSAdapter:
     name = "lcms"
 
     def __init__(self, seed: int = 7, simulator: bool = True):
-        self.seed = seed
+        self.rng = random.Random(seed)
         self.sim = LCMSSimulator(seed)
         self.simulator = simulator
         self._runs: dict[str, list[str]] = {}

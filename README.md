@@ -323,7 +323,7 @@ and interchangeable. The contracts are the pydantic models in `bionexus.core.con
 | Interface | Adapters (now → roadmap) |
 |---|---|
 | `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub), anthropic → gemini |
-| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator, Opentrons OT-2/Flex (HTTP), PlateReaderShare → cloud labs |
+| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator, Opentrons OT-2/Flex (HTTP), PlateReaderShare, SiLA 2 (generic, multi-device), HCS microscope (per-cell imaging), LC-MS (ratiometric proteomics), RoboticArmScheduler (plate transport) → cloud labs |
 | `Sandbox` | local (copy-on-fork), docker (commit-based snapshots), OpenSandbox (gVisor/Kata/Firecracker runtimes, K8s scale, egress controls) → AgentENV |
 | `ProvenanceStore` | sqlite → postgres, s3-worm |
 | `BioTool` | rdkit descriptors → docking, ADMET, ESMFold |

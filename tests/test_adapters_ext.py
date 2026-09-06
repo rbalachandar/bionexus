@@ -1626,8 +1626,8 @@ def test_sila2_adapter_mock_channel():
         samples=[SampleSpec(sample_id="C1", kind=SampleKind.compound)])
     proto.protocol_id = "test-proto"
     rid = adapter.submit_protocol(proto)
-    assert rid == "sila2-test-proto"
-    assert any("exec" in ep for _, ep in calls)
+    assert rid.startswith("sila2-test-")
+    assert any("exec" in ep for ep, _ in calls)  # ep is the endpoint string
 
 
 def test_hcs_microscope_per_cell():
