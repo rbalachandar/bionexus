@@ -1596,3 +1596,90 @@ def test_denominator_blocker_for_loss_of_function():
     assert any("denominator" in m.lower() or "edited" in m.lower()
                for m in blocker_msgs), (
         f"missing denominator must be a blocker; blockers={blocker_msgs}")
+
+
+# ---- SiLA 2, HCS microscope, LC-MS, robotic arm scheduler ----------------------------
+
+def test_sila2_adapter_mock_channel():
+    from bionexus.adapters.devices.sila2 import SiLA2Adapter, SiLA2HTTPChannel
+    calls = []
+    class _Ch:
+        def call(self, ep, payload):
+            calls.append((ep, payload))
+            if "status" in ep:
+                return {"status": "done"}
+            if "results" in ep:
+                return {"status": "completed", "measurements": [
+                    {"sample_id": "C1", "value": 7.2, "unit": "pIC50"}]}
+            return {}
+    ch = _Ch()
+    adapter = SiLA2Adapter.__new__(SiLA2Adapter)
+    adapter.channel = ch
+    adapter.device_label = "test-device"
+    adapter.feature_map = {"execute": "/exec", "status": "/status", "results": "/results"}
+    adapter._runs = {}
+    from bionexus.core.contracts import ProtocolSubmission, ProtocolOp, ProtocolStep
+    proto = ProtocolSubmission(
+        envelope=Envelope(experiment_branch_id="sila2-test"),
+        title="t", assay_type="binding",
+        steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense)],
+        samples=[SampleSpec(sample_id="C1", kind=SampleKind.compound)])
+    proto.protocol_id = "test-proto"
+    rid = adapter.submit_protocol(proto)
+    assert rid == "sila2-test-proto"
+    assert any("exec" in ep for _, ep in calls)
+
+
+def test_hcs_microscope_per_cell():
+    from bionexus.adapters.devices.hcs_microscope import HCSMicroscopeAdapter
+    from bionexus.core.contracts import ProtocolOp, ProtocolStep
+    lab = HCSMicroscopeAdapter.__new__(HCSMicroscopeAdapter)
+    lab.seed = 7
+    lab.image_dir = None
+    lab._runs = {}
+    proto = ProtocolSubmission(
+        envelope=Envelope(experiment_branch_id="hcs"),
+        title="t", assay_type="binding",
+        steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense)],
+        samples=[SampleSpec(sample_id="C1", kind=SampleKind.compound,
+                            concentration="10uM")])
+    rid = lab.submit_protocol(proto)
+    result = lab.fetch_results(rid)
+    assert result.measurements
+    m = result.measurements[0]
+    assert 0 <= m.value <= 1  # edited fraction is 0-1
+
+
+def test_lcms_adapter_ratiometric():
+    from bionexus.adapters.devices.lcms import LCMSAdapter
+    from bionexus.core.contracts import ProtocolOp, ProtocolStep
+    lab = LCMSAdapter(seed=3)
+    proto = ProtocolSubmission(
+        envelope=Envelope(experiment_branch_id="lcms"),
+        title="t", assay_type="custom",
+        steps=[ProtocolStep(seq=1, op=ProtocolOp.measure)],
+        samples=[SampleSpec(sample_id="C1", kind=SampleKind.compound)])
+    rid = lab.submit_protocol(proto)
+    result = lab.fetch_results(rid)
+    assert result.measurements[0].unit == "fraction_edited"
+    assert 0 <= result.measurements[0].value <= 1
+
+
+def test_robotic_scheduler(tmp_path):
+    from bionexus.adapters.devices.scheduler import HTTPScheduler, RoboticArmScheduler
+    calls = []
+    class _T:
+        def post(self, path, body):
+            calls.append(("POST", path, body))
+            return {"move_id": "mv-1"}
+        def get(self, path):
+            calls.append(("GET", path))
+            if "queue" in path:
+                return {"queue": []}
+            return {"status": "completed"}
+    sched = RoboticArmScheduler(_T())
+    r = sched.move_plate("incubator", "reader", "plate-1")
+    assert r["move_id"] == "mv-1"
+    assert any("move_plate" in c[1] for c in calls)
+    ok = sched.wait_for_transport("mv-1", timeout=1)
+    assert ok
