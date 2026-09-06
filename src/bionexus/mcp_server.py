@@ -61,6 +61,22 @@ TOOLS: list[dict[str, Any]] = [
 ]
 
 
+def _fit_ic50(points):
+    """Fit IC50 from (conc_um, response) points using half-max interpolation."""
+    if not points:
+        return None
+    pts = sorted(points)
+    top = max(v for _, v in pts)
+    if top <= 0:
+        return None
+    target = top / 2.0
+    for (c0, v0), (c1, v1) in zip(pts, pts[1:]):
+        if min(v0, v1) <= target <= max(v0, v1):
+            frac = 0.0 if v1 == v0 else (target - v0) / (v1 - v0)
+            return round(c0 + frac * (c1 - c0), 2)
+    return None
+
+
 class McpSession:
     """Request/response handler, separated from the stdio loop for testability."""
 
@@ -130,8 +146,7 @@ class McpSession:
         return out.output["text"]
 
     def _tool_assay(self, args: dict[str, Any]) -> str:
-        from examples.full_campaign import fit_ic50
-
+    
         compounds = [str(c) for c in args["compounds"]]
         concs = args.get("concentrations") or ["0.5uM", "2uM", "10uM", "40uM"]
         from bionexus.adapters.lab.simulator import parse_concentration_um
@@ -159,7 +174,7 @@ class McpSession:
                 continue
             by.setdefault(m.sample_id, []).append(
                 (parse_concentration_um(m.well.split("-")[-1]), m.value))
-        report = {c: {"ic50_um": (round(fit_ic50(pts), 2) if pts else None), "points": pts}
+        report = {c: {"ic50_um": (_fit_ic50(pts) if pts else None), "points": pts}
                   for c, pts in by.items()}
         return json.dumps({"run_id": run_id, "results": report}, indent=1)
 

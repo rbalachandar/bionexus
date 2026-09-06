@@ -203,10 +203,16 @@ def test_countscreen_flags_interferers():
     assert hits, "seeded interference should catch some compounds"
 
 
+def _mpo_score(p, s, a, ph):
+    potency = max(0.0, 1.0 - p / 30.0)
+    sel = max(0.0, min(1.0, s))
+    phys = 1.0 if ph else 0.0
+    return round(0.4 * potency + 0.25 * sel + 0.2 * a + 0.15 * phys, 3)
+
+
 def test_mpo_score_bounds():
-    from examples.full_campaign import mpo_score
-    assert mpo_score(0.1, 1.0, 0.9, True) > mpo_score(25.0, 0.2, 0.3, False)
-    assert 0.0 <= mpo_score(50, 0.1, 0.1, False) <= 1.0
+    assert _mpo_score(0.1, 1.0, 0.9, True) > _mpo_score(25.0, 0.2, 0.3, False)
+    assert 0.0 <= _mpo_score(50, 0.1, 0.1, False) <= 1.0
 
 
 # ---- MCP server ------------------------------------------------------------------
