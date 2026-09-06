@@ -209,6 +209,12 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
   verdicts with predicted-vs-observed, gate decisions.
 - **`bn read --csv out.csv`** — standardized results ready for Excel/GraphPad.
 
+- **`bn read --csv out.csv`** — standardized results ready for Excel/GraphPad.
+- **`streamlit run app.py`** — a browser-based workbench: read instrument
+  exports, design experiments with readiness checks, view the TPP, browse
+  agent personas, and check ADMET/retrosynthesis. No code required for daily
+  use.
+
 ### The DMTA cycle — scientific decision layer
 
 BioNexus structures the Design-Make-Test-Analyze cycle as first-class objects:
