@@ -112,7 +112,7 @@ def _campaign_start_form() -> None:
 
     # any template-required fields beyond compounds/threshold get inputs
     extra_fields: dict[str, str] = {}
-    missing_required: list[str] = []
+    missing_required = False
     tpl_doc = None if custom else load_template(tpl)
     if not custom and tpl_doc:
         for fname, spec in (tpl_doc.get("fields") or {}).items():
@@ -120,15 +120,12 @@ def _campaign_start_form() -> None:
                 continue
             label = spec.get("prompt", fname.replace("_", " ").title())
             default = str(spec.get("default") or "")
-            val = st.text_input(f"{label}{' (required)' if spec.get('required') else ''}",
-                                value=default, key=f"fld_{fname}")
+            star = " *" if spec.get("required") else ""
+            val = st.text_input(label + star, value=default, key=f"fld_{fname}")
             if val.strip():
                 extra_fields[fname] = val.strip()
             elif spec.get("required") and default == "":
-                missing_required.append(label)
-
-    if missing_required:
-        st.warning("Required: " + ", ".join(missing_required))
+                missing_required = True
 
     ready = bool(compounds.strip()) and not missing_required
     if st.button("🚀 Start campaign", type="primary", disabled=not ready):
