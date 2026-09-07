@@ -71,111 +71,6 @@ def _goto(n: int) -> None:
 
 
 # ---------------------------------------------------------------------------
-st.title("🧬 BioNexus")
-_nav(st.session_state["step"])
-step = st.session_state["step"]
-
-# =========================================================================
-# STEP 0 — OVERVIEW: approvals → live agents → experiments → start
-# =========================================================================
-if step == 0:
-    from bionexus.serve import (campaign_index, campaign_running, CAMPAIGN_DIR,
-                                save_campaign_index)
-    from bionexus.approvals import ApprovalInbox
-
-    inbox = ApprovalInbox(".data/approvals.jsonl")
-    pending = inbox.pending()
-
-    # ---------------------------------------------------- 1. approvals
-    st.header("Awaiting your decision")
-    if pending:
-        for p in pending:
-            with st.container(border=True):
-                st.markdown(f"**{p['title']}**")
-                if p.get("detail"):
-                    st.caption(p["detail"])
-                c1, c2, _ = st.columns([1, 1, 3])
-                if c1.button("✅ Approve", key=f"ok_{p['id']}", type="primary"):
-                    inbox.decide(p["id"], True)
-                    st.rerun()
-                if c2.button("❌ Deny", key=f"no_{p['id']}"):
-                    inbox.decide(p["id"], False)
-                    st.rerun()
-        st.caption("The campaign is paused until you decide.")
-
-        @st.fragment(run_every=3)
-        def _wait_approvals():
-            if not ApprovalInbox(".data/approvals.jsonl").pending():
-                st.rerun()
-        _wait_approvals()
-    else:
-        st.caption("Nothing pending.")
-
-    # ---------------------------------------------------- 2. experiments (unified)
-    idx = campaign_index()
-    running = {cid: m for cid, m in idx.items() if campaign_running(m)}
-
-    st.header("Experiments")
-    rows = []
-    for cid, m in idx.items():
-        logf = Path(m.get("log", ""))
-        rows.append({"kind": "agent", "id": cid, "title": m.get("objective", ""),
-                     "status": "running" if cid in running else "finished",
-                     "ts": logf.stat().st_mtime if logf.exists() else 0, "meta": m})
-    for e in store.ongoing() + store.finished(3):
-        rows.append({"kind": "wizard", "id": e["id"], "title": e["question"],
-                     "status": e["status"].replace("_", " "),
-                     "ts": e["updated_at"], "meta": e})
-    rows.sort(key=lambda r: r["ts"], reverse=True)
-
-    if not rows:
-        st.info("Nothing yet — start your first experiment below.")
-    for r in rows:
-        icon = "🤖" if r["kind"] == "agent" else "🧑"
-        dot = "●" if r["status"] == "running" else "○"
-        c1, c2, c3 = st.columns([5, 3, 2])
-        c1.markdown(f"{icon} **{r['title'][:75]}**")
-        c2.caption(f"{dot} {r['status']} · "
-                   f"{time.strftime('%m-%d %H:%M', time.localtime(r['ts']))}")
-        with c3:
-            if r["kind"] == "agent":
-                if st.button("View pipeline", key=f"v_{r['id']}"):
-                    st.session_state["view_campaign"] = r["id"]
-                    st.rerun()
-            else:
-                if r["status"] != "verdict recorded" and st.button(
-                        "Resume →", key=f"v_{r['id']}"):
-                    _resume_wizard(r["meta"])
-                    st.rerun()
-
-    # detail view for the selected agent campaign
-    view = st.session_state.get("view_campaign")
-    if view and view in idx:
-        meta = idx[view]
-        is_running = view in running
-        st.subheader(f"🤖 {view}")
-        st.caption(f"autonomy: {meta.get('autonomy', '')} · "
-                   f"{'● running' if is_running else '○ finished'} · "
-                   f"{meta.get('objective', '')[:60]}")
-        _render_campaign_pipeline(meta, is_running)
-        if st.button("← Close"):
-            st.session_state["view_campaign"] = None
-            st.rerun()
-
-    # ---------------------------------------------------- 3. start new work
-    st.header("Start new work")
-    mode = st.radio("How do you want to run it?",
-                    ["🤖 Agent campaign — agent proposes and tests hypotheses",
-                     "🧑 Step-by-step — I define it, readiness-gated"],
-                    horizontal=True, label_visibility="collapsed")
-    if mode.startswith("🤖"):
-        _campaign_start_form()
-    else:
-        if st.button("＋ Define experiment", type="primary"):
-            st.session_state["step"] = 1
-            st.rerun()
-
-
 def _resume_wizard(e: dict) -> None:
     from bionexus.readiness import (ExperimentReadinessReview, ReviewVerdict)
     p = e["payload"]
@@ -332,6 +227,110 @@ def _campaign_start_form() -> None:
         save_campaign_index(idx)
         st.session_state["view_campaign"] = cid
         st.rerun()
+
+st.title("🧬 BioNexus")
+_nav(st.session_state["step"])
+step = st.session_state["step"]
+
+# =========================================================================
+# STEP 0 — OVERVIEW: approvals → live agents → experiments → start
+# =========================================================================
+if step == 0:
+    from bionexus.serve import (campaign_index, campaign_running, CAMPAIGN_DIR,
+                                save_campaign_index)
+    from bionexus.approvals import ApprovalInbox
+
+    inbox = ApprovalInbox(".data/approvals.jsonl")
+    pending = inbox.pending()
+
+    # ---------------------------------------------------- 1. approvals
+    st.header("Awaiting your decision")
+    if pending:
+        for p in pending:
+            with st.container(border=True):
+                st.markdown(f"**{p['title']}**")
+                if p.get("detail"):
+                    st.caption(p["detail"])
+                c1, c2, _ = st.columns([1, 1, 3])
+                if c1.button("✅ Approve", key=f"ok_{p['id']}", type="primary"):
+                    inbox.decide(p["id"], True)
+                    st.rerun()
+                if c2.button("❌ Deny", key=f"no_{p['id']}"):
+                    inbox.decide(p["id"], False)
+                    st.rerun()
+        st.caption("The campaign is paused until you decide.")
+
+        @st.fragment(run_every=3)
+        def _wait_approvals():
+            if not ApprovalInbox(".data/approvals.jsonl").pending():
+                st.rerun()
+        _wait_approvals()
+    else:
+        st.caption("Nothing pending.")
+
+    # ---------------------------------------------------- 2. experiments (unified)
+    idx = campaign_index()
+    running = {cid: m for cid, m in idx.items() if campaign_running(m)}
+
+    st.header("Experiments")
+    rows = []
+    for cid, m in idx.items():
+        logf = Path(m.get("log", ""))
+        rows.append({"kind": "agent", "id": cid, "title": m.get("objective", ""),
+                     "status": "running" if cid in running else "finished",
+                     "ts": logf.stat().st_mtime if logf.exists() else 0, "meta": m})
+    for e in store.ongoing() + store.finished(3):
+        rows.append({"kind": "wizard", "id": e["id"], "title": e["question"],
+                     "status": e["status"].replace("_", " "),
+                     "ts": e["updated_at"], "meta": e})
+    rows.sort(key=lambda r: r["ts"], reverse=True)
+
+    if not rows:
+        st.info("Nothing yet — start your first experiment below.")
+    for r in rows:
+        icon = "🤖" if r["kind"] == "agent" else "🧑"
+        dot = "●" if r["status"] == "running" else "○"
+        c1, c2, c3 = st.columns([5, 3, 2])
+        c1.markdown(f"{icon} **{r['title'][:75]}**")
+        c2.caption(f"{dot} {r['status']} · "
+                   f"{time.strftime('%m-%d %H:%M', time.localtime(r['ts']))}")
+        with c3:
+            if r["kind"] == "agent":
+                if st.button("View pipeline", key=f"v_{r['id']}"):
+                    st.session_state["view_campaign"] = r["id"]
+                    st.rerun()
+            else:
+                if r["status"] != "verdict recorded" and st.button(
+                        "Resume →", key=f"v_{r['id']}"):
+                    _resume_wizard(r["meta"])
+                    st.rerun()
+
+    # detail view for the selected agent campaign
+    view = st.session_state.get("view_campaign")
+    if view and view in idx:
+        meta = idx[view]
+        is_running = view in running
+        st.subheader(f"🤖 {view}")
+        st.caption(f"autonomy: {meta.get('autonomy', '')} · "
+                   f"{'● running' if is_running else '○ finished'} · "
+                   f"{meta.get('objective', '')[:60]}")
+        _render_campaign_pipeline(meta, is_running)
+        if st.button("← Close"):
+            st.session_state["view_campaign"] = None
+            st.rerun()
+
+    # ---------------------------------------------------- 3. start new work
+    st.header("Start new work")
+    mode = st.radio("How do you want to run it?",
+                    ["🤖 Agent campaign — agent proposes and tests hypotheses",
+                     "🧑 Step-by-step — I define it, readiness-gated"],
+                    horizontal=True, label_visibility="collapsed")
+    if mode.startswith("🤖"):
+        _campaign_start_form()
+    else:
+        if st.button("＋ Define experiment", type="primary"):
+            st.session_state["step"] = 1
+            st.rerun()
 
 
 # =========================================================================
