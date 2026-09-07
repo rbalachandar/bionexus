@@ -277,8 +277,8 @@ def _campaign_start_form() -> None:
 st.title("🧬 BioNexus")
 step = st.session_state["step"]
 if step == 0:
-    st.caption("Your work in one place — approvals, experiments, and the "
-               "agents running them.")
+    st.caption("Pending approvals, active experiments, and agent campaigns — "
+               "tracked from definition to verdict.")
 else:
     _nav(step)
     if st.button("← Overview"):
