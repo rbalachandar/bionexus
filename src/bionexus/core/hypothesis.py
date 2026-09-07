@@ -398,6 +398,26 @@ class HypothesisTracker:
                       "statement": h.statement},
         )
 
+    def record_outcome(self, h: Hypothesis) -> Hypothesis:
+        """Provenance-record a verdict already determined on `h` (e.g. by the
+        auto-analysis agent fitting a device export). Same event shape as
+        `verdict()` — observed, threshold, qc, evidence run — so the pipeline
+        view and diary see agent-side and lab-side verdicts identically."""
+        event = {
+            "validated": EventType.hypothesis_validated,
+            "invalidated": EventType.hypothesis_invalidated,
+        }.get(h.status, EventType.hypothesis_tested)
+        env = Envelope(experiment_branch_id=h.branch_id)
+        self.store.append(self._record(env, event, h, decision={
+            "metric": h.criteria.metric if h.criteria else "value",
+            "threshold": h.criteria.threshold if h.criteria else None,
+            "observed": h.observed_value,
+            "qc_passed": h.qc_passed,
+            "evidence_run_id": h.evidence_run_id,
+            "verdict": h.status,
+        }))
+        return h
+
     def _record(self, env: Envelope, event: EventType, h: Any,
                 decision: dict) -> ProvenanceRecord:
         artifact = self._artifact(h) if isinstance(h, Hypothesis) else None

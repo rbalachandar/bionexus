@@ -113,9 +113,12 @@ class AutoAnalysisAgent:
                 if match and hyp.status in ("proposed", "designed", "tested") and match["ic50_um"]:
                     # attach evidence directly (measurement already fitted)
                     hyp.observed_value = match["ic50_um"]
+                    hyp.qc_passed = (result.z_prime or 0) >= 0.5
                     if hyp.criteria:
                         hyp.status = ("validated" if hyp.criteria.met(match["ic50_um"])
                                       else "invalidated")
+                    if hasattr(self.tracker, "record_outcome"):
+                        self.tracker.record_outcome(hyp)
                     verdicts.append((hyp.hypothesis_id, hyp.candidate, hyp.status,
                                      match["ic50_um"]))
                     self.notify(f"hypothesis {hyp.hypothesis_id} ({hyp.candidate}): "
