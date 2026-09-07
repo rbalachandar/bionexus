@@ -72,163 +72,6 @@ def _goto(n: int) -> None:
 
 
 # ---------------------------------------------------------------------------
-def _resume_wizard(e: dict) -> None:
-    from bionexus.readiness import (ExperimentReadinessReview, ReviewVerdict)
-    p = e["payload"]
-    st.session_state["exp_id"] = e["id"]
-    st.session_state["problem"] = p.get("problem")
-    if p.get("exp_def"):
-        ed = p["exp_def"]
-        st.session_state["exp_def"] = (
-            ed if isinstance(ed, ExperimentDefinition)
-            else ExperimentDefinition.model_validate(ed))
-    if p.get("readiness"):
-        rd = dict(p["readiness"])
-        rd["verdict"] = ReviewVerdict(rd["verdict"])
-        st.session_state["readiness"] = (
-            rd if isinstance(rd, ExperimentReadinessReview)
-            else ExperimentReadinessReview.model_validate(rd))
-    st.session_state["selected"] = p.get("selected", [])
-    st.session_state["plate_data"] = None
-    st.session_state["step"] = STATUS_STEP.get(e["status"], 1)
-
-
-def _render_experiment_pipeline(logf: Path, problem_id: str | None,
-                                running: bool, store, eid: str) -> None:
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    branch = f"problem/{problem_id}" if problem_id else None
-    recs = []
-    if branch and Path("bionexus.db").exists():
-        try:
-            recs = SqliteProvenanceStore("bionexus.db").branch_records(branch)
-        except Exception:
-            recs = []
-
-    proposed: dict[str, dict] = {}
-    filtered: dict[str, dict] = {}
-    run_map: dict[str, list[str]] = {}   # hypothesis_id -> run ids (provenance)
-    tested: dict[str, dict] = {}
-    gates = 0
-    problem_info: dict = {}
-    run_ts: dict[str, float] = {}
-    for r in recs:
-        d = r.decision or {}
-        et = r.event_type.value
-        art_id = r.artifact.artifact_id if r.artifact else None
-        art_meta = r.artifact.metadata if r.artifact else {}
-        ts = getattr(getattr(r, "envelope", None), "created_at", None)
-        if et == "problem_defined":
-            problem_info = d
-        if et == "lab_run" and d.get("run_id"):
-            run_ts[d["run_id"]] = ts or 0
-        if et == "hypothesis_proposed":
-            hid = d.get("hypothesis_id") or art_id or d.get("candidate", "?")
-            proposed[hid] = {**d, "candidate": d.get("candidate") or art_meta.get("candidate"),
-                             "predicted": d.get("predicted") or art_meta.get("predicted"),
-                             "ts": ts}
-        elif et == "hypotheses_filtered":
-            for dec in d.get("decisions", []):
-                if dec.get("hypothesis_id"):
-                    filtered[dec["hypothesis_id"]] = dec
-        elif et == "lab_run" and d.get("run_id"):
-            pass
-        elif et == "hypothesis_tested" and d.get("run_id"):
-            hid = d.get("hypothesis_id") or art_id
-            if hid:
-                run_map.setdefault(hid, []).append(d["run_id"])
-        elif et in ("hypothesis_validated", "hypothesis_invalidated"):
-            hid = d.get("hypothesis_id") or d.get("id") or art_id
-            if hid:
-                tested[hid] = {"verdict": d.get("verdict", et),
-                               "observed": d.get("observed") or d.get("ic50_um"),
-                               "evidence": d.get("evidence_run_id")}
-        elif et == "gate_decision":
-            gates += 1
-
-    if problem_info:
-        st.markdown(f"**Objective:** {problem_info.get('objective', '')}")
-        cons = ", ".join(
-            f"{c.get('name')}: {c.get('description', '')}"
-            for c in problem_info.get("constraints", []))
-        st.caption(f"constraints — {cons} · success: "
-                   f"{problem_info.get('success_metric', '—')}")
-
-    if proposed:
-        st.markdown("**Hypothesis pipeline**")
-        for hid, hp in proposed.items():
-            sel = filtered.get(hid)
-            verd = tested.get(hid, {})
-            v = (verd.get("verdict") or "").lower()
-            if v in ("confirmed", "validated"):
-                icon, stage = "✅", "validated"
-            elif v in ("refuted", "invalidated"):
-                icon, stage = "❌", "refuted"
-            elif run_map.get(hid):
-                icon, stage = "🔬", "in lab"
-            elif sel and sel.get("selected"):
-                icon, stage = "🔬", "in lab"
-            elif sel:
-                icon, stage = "✂️", "not selected"
-            else:
-                icon, stage = "💡", "proposed"
-            with st.container(border=True):
-                c1, c2 = st.columns([4, 2])
-                c1.markdown(f"{icon} **{hp.get('candidate', hid)}** — "
-                            f"{hp.get('statement', '')}")
-                c2.caption(stage)
-                crit = hp.get("criteria") or {}
-                meta_bits = [f"predicted: {hp.get('predicted', '—')}"]
-                if crit.get("threshold") is not None:
-                    meta_bits.append(f"threshold: {crit['threshold']} µM "
-                                     f"({crit.get('metric', '?')})")
-                if hp.get("rationale"):
-                    meta_bits.append(f"rationale: {hp['rationale']}")
-                if sel and sel.get("selected"):
-                    meta_bits.append(f"selected: {sel.get('reason', '')}")
-                if verd:
-                    bits = [f"observed: {verd.get('observed')} µM"
-                            if verd.get("observed") is not None else ""]
-                    if verd.get("evidence"):
-                        bits.append(f"evidence: `{verd['evidence']}`")
-                    meta_bits.append(" · ".join(b for b in bits if b))
-                if hp.get("ts"):
-                    meta_bits.append("proposed "
-                                     + time.strftime("%m-%d %H:%M",
-                                                     time.localtime(hp["ts"])))
-                st.caption(" · ".join(meta_bits))
-                if run_map.get(hid):
-                    run_bits = []
-                    for rid in run_map[hid]:
-                        t = run_ts.get(rid)
-                        when = time.strftime("%H:%M", time.localtime(t)) if t else "?"
-                        run_bits.append(f"`{rid}` ({when})")
-                    st.caption("🧪 runs: " + " · ".join(run_bits))
-        unlinked = [r for r in recs if r.event_type.value == "lab_run"
-                    and r.decision and r.decision.get("run_id")
-                    and r.decision["run_id"] not in
-                    {x for v in run_map.values() for x in v}]
-        if unlinked:
-            st.caption(f"🧪 {len(unlinked)} run(s) awaiting result analysis: "
-                       + ", ".join(f"`{u.decision['run_id']}`" for u in unlinked[-4:]))
-
-    if gates:
-        st.caption(f"🚦 {gates} gate decision(s)")
-
-    with st.expander("Raw agent log"):
-        @st.fragment(run_every=3 if running else None)
-        def _live_log():
-            if logf.exists():
-                tail = logf.read_text(errors="replace").splitlines()[-30:]
-                st.code("\n".join(tail) or "(waiting for output...)", language=None)
-            else:
-                st.caption("(no log written yet)")
-        _live_log()
-    if branch and recs:
-        if st.button("📓 Open full diary"):
-            st.session_state["diary_branch"] = branch
-            st.switch_page("pages/Diary.py")
-
-
 def _campaign_start_form() -> None:
     from bionexus.templates import (build_campaign, fill, load_template,
                                     list_templates, save_user_template)
@@ -317,7 +160,7 @@ def _campaign_start_form() -> None:
                     "objective": cfg["problem"]["objective"], "log": str(logf)}
         save_campaign_index(idx)
         st.session_state["view_experiment"] = cid
-        st.rerun()
+        st.switch_page("pages/Experiment.py")
 
 st.title("🧬 BioNexus")
 step = st.session_state["step"]
@@ -336,6 +179,7 @@ else:
 if step == 0:
     from bionexus.serve import (campaign_index, campaign_running, CAMPAIGN_DIR,
                                 save_campaign_index)
+    from bionexus.webview import resume_wizard as _resume_wizard
     from bionexus.approvals import ApprovalInbox
 
     inbox = ApprovalInbox(".data/approvals.jsonl")
@@ -416,35 +260,10 @@ if step == 0:
                          disabled=(status == "verdict recorded")):
                 if agent:
                     st.session_state["view_experiment"] = e["id"]
-                    st.rerun()
+                    st.switch_page("pages/Experiment.py")
                 else:
                     _resume_wizard(e)
                     st.rerun()
-
-    # detail view for an agent-driven experiment
-    view = st.session_state.get("view_experiment")
-    vrow = next((e for e in all_rows if e["id"] == view), None)
-    if vrow and vrow["payload"].get("agent"):
-        ag = vrow["payload"]["agent"]
-        logf = Path(ag.get("log", ""))
-        # resolve + persist the provenance branch for this experiment
-        problem_id = ag.get("problem_id")
-        if not problem_id and logf.exists():
-            m = re.findall(r"problem (prob-\w+):", logf.read_text(errors="replace"))
-            if m:
-                problem_id = m[-1]
-                store.link_problem(vrow["id"], problem_id)
-        status, _ = _agent_row_status(vrow)
-        st.subheader(f"🤖 experiment `{vrow['id']}`")
-        st.caption(f"agent-driven · autonomy: {ag.get('autonomy', 'act')} · "
-                   f"{status}" +
-                   (f" · branch `problem/{problem_id}`" if problem_id else ""))
-        _render_experiment_pipeline(logf, problem_id,
-                                    running=(status == "running"),
-                                    store=store, eid=vrow["id"])
-        if st.button("← Close"):
-            st.session_state["view_experiment"] = None
-            st.rerun()
 
     # ------------------------------------------------ 3. start new work
     st.header("Start new work")
