@@ -325,6 +325,13 @@ class Handler(BaseHTTPRequestHandler):
         idx[cid] = {"pid": proc.pid, "autonomy": autonomy,
                     "objective": cfg["problem"]["objective"], "log": str(log.name)}
         save_campaign_index(idx)
+        try:  # one registry: the experiment also lands in the wizard store
+            from bionexus.wizard_store import WizardStore
+            WizardStore().register_agent(
+                cid, cfg["problem"]["objective"], str(log.name),
+                autonomy=autonomy, pid=proc.pid)
+        except Exception:
+            pass
         self._redirect("/")
 
 

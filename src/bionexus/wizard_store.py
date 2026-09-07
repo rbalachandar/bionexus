@@ -55,7 +55,7 @@ class WizardStore:
         return eid
 
     def register_agent(self, eid: str, objective: str, log: str,
-                       autonomy: str = "act") -> str:
+                       autonomy: str = "act", pid: int | None = None) -> str:
         """One registry: agent-driven experiments live in the same table as
         wizard-defined ones, tagged by origin."""
         with self._lock:
@@ -64,7 +64,7 @@ class WizardStore:
                 "INSERT OR REPLACE INTO experiments VALUES (?,?,?,?,?,?)",
                 (eid, now, now, "executing", objective,
                  json.dumps({"agent": {"log": log, "autonomy": autonomy,
-                                       "problem_id": None}})))
+                                       "pid": pid, "problem_id": None}})))
             self._conn.commit()
         return eid
 

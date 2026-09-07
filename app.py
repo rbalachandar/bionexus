@@ -311,7 +311,7 @@ def _campaign_start_form() -> None:
             stdout=open(logf, "ab", buffering=0), stderr=subprocess.STDOUT,
             cwd=str(Path.cwd()))
         store.register_agent(cid, cfg["problem"]["objective"], str(logf),
-                             autonomy=cfg["autonomy"])
+                             autonomy=cfg["autonomy"], pid=proc.pid)
         idx = campaign_index()
         idx[cid] = {"pid": proc.pid, "autonomy": cfg["autonomy"],
                     "objective": cfg["problem"]["objective"], "log": str(logf)}
@@ -377,8 +377,24 @@ if step == 0:
         logf = Path(ag.get("log", ""))
         if logf.exists() and "CAMPAIGN COMPLETE" in logf.read_text(errors="replace"):
             return "completed", logf
+        pid = ag.get("pid")
+        if pid:
+            try:
+                import os as _os
+                _os.kill(pid, 0)
+                return "running", logf          # process alive, not finished yet
+            except OSError:
+                pass
+            return "interrupted", logf          # process died without completing
         if e["status"] == "executing":
-            return "running", logf
+            # no pid recorded (older record): fall back to log recency
+            if logf.exists():
+                import time as _t
+                age = _t.time() - logf.stat().st_mtime
+                if age > 300:
+                    return "interrupted", logf  # no output for 5+ minutes
+                return "running", logf
+            return "interrupted", logf
         return e["status"].replace("_", " "), logf
 
     for e in all_rows:
