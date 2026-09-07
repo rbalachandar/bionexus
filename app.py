@@ -160,7 +160,7 @@ def _campaign_start_form() -> None:
                     "objective": cfg["problem"]["objective"], "log": str(logf)}
         save_campaign_index(idx)
         st.session_state["view_experiment"] = cid
-        st.switch_page("pages/Experiment.py")
+        st.switch_page("pages/Experiments.py")
 
 st.title("🧬 BioNexus")
 step = st.session_state["step"]
@@ -260,7 +260,7 @@ if step == 0:
                          disabled=(status == "verdict recorded")):
                 if agent:
                     st.session_state["view_experiment"] = e["id"]
-                    st.switch_page("pages/Experiment.py")
+                    st.switch_page("pages/Experiments.py")
                 else:
                     _resume_wizard(e)
                     st.rerun()

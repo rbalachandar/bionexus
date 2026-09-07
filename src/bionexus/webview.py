@@ -137,10 +137,7 @@ def render_experiment_pipeline(logf: Path, problem_id: str | None,
             else:
                 st.caption("(no log written yet)")
         _live_log()
-    if branch and recs:
-        if st.button("📓 Open full diary"):
-            st.session_state["diary_branch"] = branch
-            st.switch_page("pages/Diary.py")
+
 
 
 def resume_wizard(e: dict) -> None:
