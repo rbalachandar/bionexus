@@ -187,28 +187,74 @@ def _render_campaign_pipeline(meta: dict, is_running: bool) -> None:
 
 
 def _campaign_start_form() -> None:
-    from bionexus.templates import build_campaign, fill, load_template, list_templates
+    from bionexus.templates import (build_campaign, fill, load_template,
+                                    list_templates, save_user_template)
     from bionexus.serve import save_campaign_index
     from bionexus.paths import ensure_dirs
     import subprocess
     import sys as _sys
 
-    tpl_names = [t["name"] for t in list_templates()]
+    tpl_names = [t["name"] for t in list_templates()] + ["✏️ Custom…"]
     c1, c2 = st.columns(2)
-    tpl = c1.selectbox("Template", tpl_names)
+    tpl = c1.selectbox("Template", tpl_names,
+                       format_func=lambda n: n if not n.endswith("…") else n)
     autonomy = c2.selectbox(
         "Autonomy",
         ["act — autonomous within safety rules",
          "gate — I approve each experiment",
          "observe — analysis only"])
-    compounds = st.text_input(
+
+    custom = tpl == "✏️ Custom…"
+    if custom:
+        st.caption("No template — describe the problem yourself. Compounds "
+                   "become one hypothesis each with your potency criterion.")
+    objective_default = "Rank compounds by binding potency and identify those with IC50 <= {threshold} uM"
+    objective = st.text_input(
+        "Objective", value="" if custom else "",
+        placeholder=objective_default if custom else None,
+        disabled=not custom)
+    c3, c4 = st.columns(2)
+    compounds = c3.text_input(
         "Compounds (comma-separated)", "gefitinib,erlotinib,lapatinib,osimertinib")
-    threshold = st.number_input("Potency threshold (µM)", 0.1, 1000.0, 20.0)
+    threshold = c4.number_input("Potency threshold (µM)", 0.1, 1000.0, 20.0)
+    k = st.slider("How many hypotheses may go to the lab (top-k)", 1, 6, 2)
+
+    save_as = None
+    if custom:
+        save_as = st.text_input("Save as reusable template (optional name)",
+                                placeholder="my-kinase-screen")
+
     if st.button("🚀 Start campaign", type="primary", disabled=not compounds.strip()):
-        tpl_doc = load_template(tpl)
-        cfg = build_campaign(fill(tpl_doc, {"compounds": compounds,
-                                            "threshold": str(int(threshold))},
-                                 prompt_missing=False))
+        threshold_s = str(int(threshold)) if threshold == int(threshold) else str(threshold)
+        if custom:
+            objective_text = (objective.strip() or objective_default).replace(
+                "{threshold}", threshold_s)
+            problem = {"objective": objective_text,
+                       "constraints": [{"name": "potency",
+                                        "description": f"IC50 <= {threshold_s} uM",
+                                        "kind": "hard",
+                                        "limit": float(threshold), "unit": "uM"}],
+                       "success_metric": "IC50 ranking consistent across replicates"}
+            if save_as and save_as.strip():
+                p = save_user_template(save_as.strip(), objective_text, problem,
+                                       {"type": "binding"})
+                st.toast(f"Template saved: {p}")
+            cfg = {"problem": problem,
+                   "hypotheses": [
+                       {"statement": f"{c.strip()} binds with IC50 <= {threshold_s} uM",
+                        "candidate": c.strip(), "assay_type": "binding",
+                        "predicted": f"IC50 <= {threshold_s}",
+                        "predicted_value": float(threshold),
+                        "rationale": "custom"}
+                       for c in compounds.split(",") if c.strip()],
+                   "k": k, "autonomy": autonomy.split(" —")[0],
+                   "concentrations": ["0.5uM", "2uM", "10uM", "40uM"]}
+        else:
+            tpl_doc = load_template(tpl)
+            cfg = build_campaign(fill(tpl_doc, {"compounds": compounds,
+                                                "threshold": threshold_s},
+                                      prompt_missing=False))
+            cfg["k"] = k
         cfg["autonomy"] = autonomy.split(" —")[0]
         ensure_dirs()
         cid = f"cmp-{int(time.time())}"

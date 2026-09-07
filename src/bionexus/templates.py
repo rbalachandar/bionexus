@@ -12,23 +12,60 @@ from pathlib import Path
 from typing import Any
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
+USER_TEMPLATE_DIR = Path(".data/templates")   # drop your own .json here
 
 
 def list_templates() -> list[dict[str, str]]:
     out = []
-    for f in sorted(TEMPLATE_DIR.glob("*.json")):
-        doc = json.loads(f.read_text())
-        out.append({"name": doc["template"], "description": doc.get("description", "")})
+    seen = set()
+    for d in (TEMPLATE_DIR, USER_TEMPLATE_DIR):
+        if not d.exists():
+            continue
+        for f in sorted(d.glob("*.json")):
+            doc = json.loads(f.read_text())
+            name = doc["template"]
+            if name in seen:
+                continue
+            seen.add(name)
+            out.append({"name": name,
+                        "description": doc.get("description", ""),
+                        "source": "user" if d == USER_TEMPLATE_DIR else "built-in"})
     return out
 
 
 def load_template(name: str) -> dict[str, Any]:
-    path = TEMPLATE_DIR / f"{name}.json"
-    if not path.exists():
-        raise FileNotFoundError(
-            f"unknown template '{name}' — available: "
-            + ", ".join(t["name"] for t in list_templates()))
-    return json.loads(path.read_text())
+    for d in (USER_TEMPLATE_DIR, TEMPLATE_DIR):   # user overrides built-in
+        path = d / f"{name}.json"
+        if path.exists():
+            return json.loads(path.read_text())
+    raise FileNotFoundError(
+        f"unknown template '{name}' — available: "
+        + ", ".join(t["name"] for t in list_templates()))
+
+
+def save_user_template(name: str, description: str, problem: dict[str, Any],
+                       assay: dict[str, Any]) -> Path:
+    """Persist a reusable template under .data/templates/<name>.json."""
+    from bionexus.paths import ensure_dirs
+    ensure_dirs()
+    safe = "".join(c for c in name.lower() if c.isalnum() or c in "-_")
+    path = USER_TEMPLATE_DIR / f"{safe}.json"
+    path.write_text(json.dumps({
+        "template": safe,
+        "description": description,
+        "problem": problem,
+        "hypotheses": [],
+        "hypothesis_source": "config",
+        "autonomy": "gate",
+        "assay": assay,
+        "fields": {
+            "compounds": {"prompt": "Compounds (comma-separated)",
+                          "required": True},
+            "threshold": {"prompt": "Potency threshold (uM)",
+                          "default": 20},
+        },
+    }, indent=1))
+    return path
 
 
 def fill(template: dict[str, Any], fields: dict[str, str],
