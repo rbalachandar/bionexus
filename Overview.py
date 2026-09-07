@@ -110,6 +110,19 @@ def _campaign_start_form() -> None:
         save_as = st.text_input("Save as reusable template (optional name)",
                                 placeholder="my-kinase-screen")
 
+    # any template-required fields beyond compounds/threshold get inputs
+    extra_fields: dict[str, str] = {}
+    if not custom:
+        for fname, spec in (tpl_doc.get("fields") or {}).items():
+            if fname in ("compounds", "threshold"):
+                continue
+            label = spec.get("prompt", fname.replace("_", " ").title())
+            default = str(spec.get("default") or "")
+            val = st.text_input(f"{label}{' (required)' if spec.get('required') else ''}",
+                                value=default, key=f"fld_{fname}")
+            if val.strip():
+                extra_fields[fname] = val.strip()
+
     if st.button("🚀 Start campaign", type="primary", disabled=not compounds.strip()):
         threshold_s = str(int(threshold)) if threshold == int(threshold) else str(threshold)
         if custom:
@@ -138,7 +151,8 @@ def _campaign_start_form() -> None:
         else:
             tpl_doc = load_template(tpl)
             cfg = build_campaign(fill(tpl_doc, {"compounds": compounds,
-                                                "threshold": threshold_s},
+                                                "threshold": threshold_s,
+                                                **extra_fields},
                                       prompt_missing=False))
             cfg["k"] = k
         cfg["autonomy"] = autonomy.split(" —")[0]
