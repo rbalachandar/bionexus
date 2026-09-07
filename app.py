@@ -109,15 +109,23 @@ def _render_experiment_pipeline(logf: Path, problem_id: str | None,
     run_map: dict[str, list[str]] = {}   # hypothesis_id -> run ids (provenance)
     tested: dict[str, dict] = {}
     gates = 0
+    problem_info: dict = {}
+    run_ts: dict[str, float] = {}
     for r in recs:
         d = r.decision or {}
         et = r.event_type.value
         art_id = r.artifact.artifact_id if r.artifact else None
         art_meta = r.artifact.metadata if r.artifact else {}
+        ts = getattr(getattr(r, "envelope", None), "created_at", None)
+        if et == "problem_defined":
+            problem_info = d
+        if et == "lab_run" and d.get("run_id"):
+            run_ts[d["run_id"]] = ts or 0
         if et == "hypothesis_proposed":
             hid = d.get("hypothesis_id") or art_id or d.get("candidate", "?")
             proposed[hid] = {**d, "candidate": d.get("candidate") or art_meta.get("candidate"),
-                             "predicted": d.get("predicted") or art_meta.get("predicted")}
+                             "predicted": d.get("predicted") or art_meta.get("predicted"),
+                             "ts": ts}
         elif et == "hypotheses_filtered":
             for dec in d.get("decisions", []):
                 if dec.get("hypothesis_id"):
@@ -137,6 +145,14 @@ def _render_experiment_pipeline(logf: Path, problem_id: str | None,
         elif et == "gate_decision":
             gates += 1
 
+    if problem_info:
+        st.markdown(f"**Objective:** {problem_info.get('objective', '')}")
+        cons = ", ".join(
+            f"{c.get('name')}: {c.get('description', '')}"
+            for c in problem_info.get("constraints", []))
+        st.caption(f"constraints — {cons} · success: "
+                   f"{problem_info.get('success_metric', '—')}")
+
     if proposed:
         st.markdown("**Hypothesis pipeline**")
         for hid, hp in proposed.items():
@@ -144,23 +160,49 @@ def _render_experiment_pipeline(logf: Path, problem_id: str | None,
             verd = tested.get(hid, {})
             v = (verd.get("verdict") or "").lower()
             if v in ("confirmed", "validated"):
-                icon, stage = "✅", f"validated — observed {verd.get('observed')} µM" \
-                                     + (f" · evidence `{verd.get('evidence')}`"
-                                        if verd.get("evidence") else "")
+                icon, stage = "✅", "validated"
             elif v in ("refuted", "invalidated"):
-                icon, stage = "❌", f"refuted — observed {verd.get('observed')} µM"
+                icon, stage = "❌", "refuted"
             elif run_map.get(hid):
-                icon, stage = "🔬", f"in lab · run {', '.join(run_map[hid])}"
+                icon, stage = "🔬", "in lab"
             elif sel and sel.get("selected"):
                 icon, stage = "🔬", "in lab"
             elif sel:
-                icon, stage = "✂️", f"not selected ({str(sel.get('reason', ''))[:30]})"
+                icon, stage = "✂️", "not selected"
             else:
                 icon, stage = "💡", "proposed"
-            c1, c2 = st.columns([4, 2])
-            c1.markdown(f"{icon} **{hp.get('candidate', hid)}** — "
-                        f"{hp.get('statement', '')[:65]}")
-            c2.caption(stage)
+            with st.container(border=True):
+                c1, c2 = st.columns([4, 2])
+                c1.markdown(f"{icon} **{hp.get('candidate', hid)}** — "
+                            f"{hp.get('statement', '')}")
+                c2.caption(stage)
+                crit = hp.get("criteria") or {}
+                meta_bits = [f"predicted: {hp.get('predicted', '—')}"]
+                if crit.get("threshold") is not None:
+                    meta_bits.append(f"threshold: {crit['threshold']} µM "
+                                     f"({crit.get('metric', '?')})")
+                if hp.get("rationale"):
+                    meta_bits.append(f"rationale: {hp['rationale']}")
+                if sel and sel.get("selected"):
+                    meta_bits.append(f"selected: {sel.get('reason', '')}")
+                if verd:
+                    bits = [f"observed: {verd.get('observed')} µM"
+                            if verd.get("observed") is not None else ""]
+                    if verd.get("evidence"):
+                        bits.append(f"evidence: `{verd['evidence']}`")
+                    meta_bits.append(" · ".join(b for b in bits if b))
+                if hp.get("ts"):
+                    meta_bits.append("proposed "
+                                     + time.strftime("%m-%d %H:%M",
+                                                     time.localtime(hp["ts"])))
+                st.caption(" · ".join(meta_bits))
+                if run_map.get(hid):
+                    run_bits = []
+                    for rid in run_map[hid]:
+                        t = run_ts.get(rid)
+                        when = time.strftime("%H:%M", time.localtime(t)) if t else "?"
+                        run_bits.append(f"`{rid}` ({when})")
+                    st.caption("🧪 runs: " + " · ".join(run_bits))
         unlinked = [r for r in recs if r.event_type.value == "lab_run"
                     and r.decision and r.decision.get("run_id")
                     and r.decision["run_id"] not in
