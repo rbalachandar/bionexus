@@ -45,7 +45,7 @@ if not row:
 
 # ------------------------------------------------ selected experiment view
 if st.button("← All experiments"):
-    st.switch_page("app.py")
+    st.switch_page("Overview.py")
 
 agent = row["payload"].get("agent")
 

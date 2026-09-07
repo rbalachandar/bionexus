@@ -4,7 +4,7 @@ Flow mirrors the scientific method: define the problem and hypothesis
 FIRST, design + readiness-check the experiment, execute it, then analyze
 the instrument export the experiment produced. Each step feeds the next.
 
-    streamlit run app.py
+    streamlit run Overview.py
 """
 from __future__ import annotations
 
@@ -269,7 +269,7 @@ if step == 0:
     st.header("Start new work")
     mode = st.radio("How do you want to run it?",
                     ["🤖 Agent-driven — agent proposes and tests hypotheses",
-                     "🧑 Step-by-step — I define it, readiness-gated"],
+                     "🧑 Manual — Define and test hypotheses"],
                     horizontal=True, label_visibility="collapsed")
     if mode.startswith("🤖"):
         _campaign_start_form()

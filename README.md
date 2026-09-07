@@ -210,7 +210,7 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
 - **`bn read --csv out.csv`** — standardized results ready for Excel/GraphPad.
 
 - **`bn read --csv out.csv`** — standardized results ready for Excel/GraphPad.
-- **`streamlit run app.py`** — a browser-based workbench: read instrument
+- **`streamlit run Overview.py`** — a browser-based workbench: read instrument
   exports, design experiments with readiness checks, view the TPP, browse
   agent personas, and check ADMET/retrosynthesis. No code required for daily
   use.
