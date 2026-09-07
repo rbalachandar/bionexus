@@ -76,13 +76,163 @@ _nav(st.session_state["step"])
 step = st.session_state["step"]
 
 # =========================================================================
-# STEP 0 — OVERVIEW: ongoing experiments + live agent campaigns
+# STEP 0 — OVERVIEW: approvals → live agents → experiments → start
 # =========================================================================
 if step == 0:
+    from bionexus.serve import (campaign_index, campaign_running, CAMPAIGN_DIR,
+                                save_campaign_index)
+    from bionexus.approvals import ApprovalInbox
+
+    inbox = ApprovalInbox(".data/approvals.jsonl")
+    pending = inbox.pending()
+
+    # ---------------------------------------------------- 1. approvals
+    st.header("Awaiting your decision")
+    if pending:
+        for p in pending:
+            with st.container(border=True):
+                st.markdown(f"**{p['title']}**")
+                if p.get("detail"):
+                    st.caption(p["detail"])
+                c1, c2, _ = st.columns([1, 1, 3])
+                if c1.button("✅ Approve", key=f"ok_{p['id']}", type="primary"):
+                    inbox.decide(p["id"], True)
+                    st.rerun()
+                if c2.button("❌ Deny", key=f"no_{p['id']}"):
+                    inbox.decide(p["id"], False)
+                    st.rerun()
+        st.caption("The campaign is paused until you decide.")
+
+        @st.fragment(run_every=3)
+        def _wait_approvals():
+            if not ApprovalInbox(".data/approvals.jsonl").pending():
+                st.rerun()
+        _wait_approvals()
+    else:
+        st.caption("Nothing pending.")
+
+    # ---------------------------------------------------- 2. live agents
+    idx = campaign_index()
+    running = {cid: m for cid, m in idx.items() if campaign_running(m)}
+    if idx:
+        st.subheader(f"Live agents ({len(running)} running)")
+        options = list(idx.keys())[::-1]
+        pick = st.selectbox(
+            "Campaign",
+            options,
+            format_func=lambda c: ("● " if c in running else "○ ") + f"{c} — "
+                                   f"{idx[c].get('objective', '')[:50]}")
+        meta = idx[pick]
+        st.caption(f"autonomy: {meta.get('autonomy', '')} · "
+                   f"{'● running' if pick in running else '○ finished'}")
+
+        @st.fragment(run_every=3 if pick in running else None)
+        def _live_log():
+            logf = Path(meta.get("log", ""))
+            if logf.exists():
+                tail = logf.read_text(errors="replace").splitlines()[-30:]
+                st.code("\n".join(tail) or "(waiting for output...)",
+                        language=None)
+            else:
+                st.caption("(no log written yet)")
+
+        # resolve the campaign's provenance branch (problem/...)
+        import re as _re
+        from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+        problem_id = None
+        logf = Path(meta.get("log", ""))
+        if logf.exists():
+            m = _re.findall(r"problem (prob-\w+):", logf.read_text(errors="replace"))
+            problem_id = m[-1] if m else None
+        db_path = "bionexus.db"
+        branch = f"problem/{problem_id}" if problem_id else None
+        recs = []
+        if branch and Path(db_path).exists():
+            try:
+                recs = SqliteProvenanceStore(db_path).branch_records(branch)
+            except Exception:
+                recs = []
+
+        # structured pipeline: one row per hypothesis
+        proposed: dict[str, dict] = {}
+        filtered: dict[str, dict] = {}
+        runs: list[str] = []
+        tested: dict[str, dict] = {}
+        gates: list[str] = []
+        for r in recs:
+            d = r.decision or {}
+            et = r.event_type.value
+            if et == "hypothesis_proposed":
+                hid = (d.get("hypothesis_id")
+                       or (r.artifact.artifact_id if r.artifact else None)
+                       or d.get("candidate", "?"))
+                am = r.artifact.metadata if r.artifact else {}
+                proposed[hid] = {**d,
+                                 "candidate": d.get("candidate")
+                                              or am.get("candidate"),
+                                 "predicted": d.get("predicted")
+                                              or am.get("predicted")}
+            elif et == "hypotheses_filtered":
+                for dec in d.get("decisions", []):
+                    if dec.get("hypothesis_id"):
+                        filtered[dec["hypothesis_id"]] = dec
+            elif et == "lab_run":
+                if d.get("run_id"):
+                    runs.append(d["run_id"])
+            elif et in ("hypothesis_tested", "hypothesis_validated",
+                        "hypothesis_invalidated"):
+                hid = d.get("hypothesis_id") or d.get("id")
+                if hid:
+                    tested[hid] = {"verdict": d.get("verdict", et),
+                                   "observed": d.get("observed") or d.get("ic50_um")}
+            elif et == "gate_decision":
+                gates.append(json.dumps(d)[:60])
+
+        if proposed:
+            st.markdown("**Hypothesis pipeline**")
+            for hid, hp in proposed.items():
+                sel = filtered.get(hid)
+                verd = tested.get(hid, {})
+                v = (verd.get("verdict") or "").lower()
+                if v in ("confirmed", "validated"):
+                    icon, stage = "✅", "validated"
+                elif v in ("refuted", "invalidated"):
+                    icon, stage = "❌", "refuted"
+                elif sel and sel.get("selected"):
+                    icon, stage = "🔬", "in lab"
+                elif sel:
+                    icon, stage = "✂️", f"filtered out ({str(sel.get('reason', ''))[:30]})"
+                else:
+                    icon, stage = "💡", "proposed"
+                c1, c2, c3 = st.columns([4, 2, 2])
+                c1.markdown(f"{icon} **{hp.get('candidate', hid)}** — "
+                            f"{hp.get('statement', '')[:60]}")
+                c2.caption(f"predicted: {hp.get('predicted', '?')}")
+                c3.caption(f"observed: {verd.get('observed', '—')}" if verd
+                           else (f"score: {sel.get('score', '—')}" if sel else ""))
+
+        # device / instrument status
+        inbox_dir = Path(".data/inbox")
+        if inbox_dir.exists():
+            files = sorted(inbox_dir.glob("*"), key=lambda f: f.stat().st_mtime)
+            if files:
+                st.caption(f"🎛️ instrument outbox: {len(files)} result file(s) — "
+                           + ", ".join(f"`{f.name}`" for f in files[-5:]))
+        if runs:
+            st.caption(f"🧪 {len(runs)} lab run(s): {', '.join(runs[-4:])}")
+        if gates:
+            st.caption(f"🚦 {len(gates)} gate decision(s)")
+
+        with st.expander("Raw agent log"):
+            _live_log()
+        if branch and recs:
+            st.page_link(f"http://localhost:8080/diary/{branch}",
+                         label=f"Full diary: {branch}")
+
+    # ---------------------------------------------------- 3. your experiments
     st.header("Experiments")
     ongoing = store.ongoing()
     if ongoing:
-        st.subheader(f"Ongoing ({len(ongoing)})")
         st.subheader(f"Ongoing ({len(ongoing)})")
         for e in ongoing:
             col1, col2, col3 = st.columns([5, 3, 2])
@@ -124,36 +274,6 @@ if step == 0:
     if st.button("＋ New experiment", type="primary"):
         st.session_state["step"] = 1
         st.rerun()
-
-    # ------------------------------------------------ live agent campaigns
-    from bionexus.serve import campaign_index, campaign_running, CAMPAIGN_DIR
-
-    idx = campaign_index()
-    running = {cid: m for cid, m in idx.items() if campaign_running(m)}
-    if running or idx:
-        st.subheader(f"Live agents ({len(running)} running)")
-        options = list(idx.keys())[::-1]
-        pick = st.selectbox(
-            "Campaign",
-            options,
-            format_func=lambda c: ("● " if c in running else "○ ") + f"{c} — "
-                                   f"{idx[c].get('objective', '')[:50]}")
-        meta = idx[pick]
-        st.caption(f"autonomy: {meta.get('autonomy', '')} · "
-                   f"{'● running' if pick in running else '○ finished'}")
-
-        @st.fragment(run_every=3 if pick in running else None)
-        def _live_log():
-            logf = Path(meta.get("log", ""))
-            if logf.exists():
-                tail = logf.read_text(errors="replace").splitlines()[-30:]
-                st.code("\n".join(tail) or "(waiting for output...)",
-                        language=None)
-            else:
-                st.caption("(no log written yet)")
-        _live_log()
-
-        st.page_link("http://localhost:8080/", label="Open full cockpit (bn serve :8080)")
 
 # =========================================================================
 # STEP 1 — DEFINE PROBLEM
