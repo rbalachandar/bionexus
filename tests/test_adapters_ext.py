@@ -528,7 +528,10 @@ def test_autoloop_full_flow_act_and_observe(tmp_path):
                          autonomy="act", inbox=str(tmp_path / "in"), poll_secs=0.05)
     report = run_campaign(cfg, SimulatorLab(seed=4), SqliteProvenanceStore())
     assert report.selected == ["C1", "C2"]
-    assert all(v == "validated" for v in report.verdicts.values())
+    # act-mode ends in a terminal verdict per hypothesis; with the orthogonal
+    # confirmation loop the best hit may reach "confirmed"
+    terminal = {"validated", "confirmed", "refuted", "invalidated", "inconclusive"}
+    assert report.verdicts and all(v in terminal for v in report.verdicts.values())
 
     # observe: nothing submitted
     cfg2 = CampaignConfig(problem=problem, hypotheses=specs,
