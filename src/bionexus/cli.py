@@ -287,6 +287,40 @@ def cmd_connect(args: argparse.Namespace) -> int:
     if args.command == "scan":
         print(format_scan(scan_share(args.path)))
         return 0
+    if args.command == "describe":
+        from bionexus.core.device_card import save_operator_tags, to_agent_text, \
+            builtin_card, load_card
+        print(f"Interview: what should an agent know to operate "
+              f"'{args.device}' safely? Enter notes one per line; "
+              f"empty line finishes.")
+        notes = []
+        prompts = [
+            "What does it measure / adjust?",
+            "Any physical quirks not in the manual?",
+            "Safety limits an agent must respect?",
+            "Anything else (free notes)?",
+        ]
+        for p in prompts:
+            line = input(f"  {p} > ").strip()
+            if line:
+                notes.append(line)
+        base = builtin_card(args.device, args.device, {}) if args.builtin else None
+        card = save_operator_tags(args.device, notes, base=base)
+        card = load_card(args.device, base=card) or card
+        print("\nReference file:\n")
+        print(to_agent_text(card))
+        return 0
+    if args.command == "card":
+        from bionexus.core.device_card import load_card, to_agent_text, \
+            builtin_card
+        base = builtin_card(args.device, args.device, {}) if args.builtin else None
+        card = load_card(args.device, base=base)
+        if not card:
+            print(f"no card for '{args.device}' — run "
+                  f"`bn connect describe {args.device}` first")
+            return 1
+        print(to_agent_text(card))
+        return 0
     if args.command == "robot":
         info = probe_robot(args.ip)
         if info.get("reachable"):
@@ -361,6 +395,14 @@ def main(argv: list[str] | None = None) -> int:
     cscan.add_argument("path")
     crob = conns.add_parser("robot", help="probe an Opentrons robot (IP or URL)")
     crob.add_argument("ip")
+    cdesc = conns.add_parser("describe",
+                             help="interview the operator; produce an agent reference file for a device")
+    cdesc.add_argument("device")
+    cdesc.add_argument("--builtin", action="store_true",
+                       help="seed with the built-in capability card")
+    ccard = conns.add_parser("card", help="print the agent reference file for a device")
+    ccard.add_argument("device")
+    ccard.add_argument("--builtin", action="store_true")
     conn.set_defaults(func=cmd_connect)
 
     diary = sub.add_parser("diary", help="render provenance as a lab-notebook narrative")
