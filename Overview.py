@@ -112,7 +112,8 @@ def _campaign_start_form() -> None:
 
     # any template-required fields beyond compounds/threshold get inputs
     extra_fields: dict[str, str] = {}
-    if not custom:
+    tpl_doc = None if custom else load_template(tpl)
+    if not custom and tpl_doc:
         for fname, spec in (tpl_doc.get("fields") or {}).items():
             if fname in ("compounds", "threshold"):
                 continue
@@ -149,7 +150,6 @@ def _campaign_start_form() -> None:
                    "k": k, "autonomy": autonomy.split(" —")[0],
                    "concentrations": ["0.5uM", "2uM", "10uM", "40uM"]}
         else:
-            tpl_doc = load_template(tpl)
             cfg = build_campaign(fill(tpl_doc, {"compounds": compounds,
                                                 "threshold": threshold_s,
                                                 **extra_fields},
