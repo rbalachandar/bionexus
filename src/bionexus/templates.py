@@ -48,6 +48,7 @@ def save_user_template(name: str, description: str, problem: dict[str, Any],
     """Persist a reusable template under .data/templates/<name>.json."""
     from bionexus.paths import ensure_dirs
     ensure_dirs()
+    USER_TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
     safe = "".join(c for c in name.lower() if c.isalnum() or c in "-_")
     path = USER_TEMPLATE_DIR / f"{safe}.json"
     path.write_text(json.dumps({
