@@ -192,8 +192,13 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     monitor = DeviceMonitor(inbox, poll_secs=cfg.poll_secs)
     time.sleep(0.2)
     n_expected = sum(1 for h in selected if h.design and h.design.run_id)
-    for ev in monitor.events(stop_after=n_expected):
+    # primary runs + their orthogonal confirmations (guarded, <= 1 per candidate)
+    terminal = {"confirmed", "refuted", "invalidated", "inconclusive"}
+    for i, ev in enumerate(monitor.events(stop_after=n_expected * 2 + 1,
+                                          idle_timeout=max(5.0, cfg.poll_secs * 20))):
         agent.handle(ev)
+        if all(h.status in terminal for h in selected) and i + 1 >= n_expected:
+            break
 
     verdicts = {h.candidate: h.status for h in selected}
     say(f"CAMPAIGN COMPLETE {problem.problem_id}: "

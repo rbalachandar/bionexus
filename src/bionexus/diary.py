@@ -115,8 +115,13 @@ def build_diary_html(records: list[Any], branch: str) -> str:
                     f"threshold {d.get('threshold', '—')}"]
             if d.get("evidence_run_id"):
                 bits.append(f"evidence run `{d['evidence_run_id']}`")
+            head = ("HYPOTHESIS CONFIRMED (ORTHOGONAL)"
+                    if d.get("verdict") == "confirmed"
+                    else ev.replace("hypothesis_", "HYPOTHESIS ").upper())
+            if d.get("verdict") == "confirmed":
+                bits.append("agreed within 3x of primary")
             lane["entries"].append(_entry(
-                ev.replace("hypothesis_", "HYPOTHESIS ").upper(),
+                head,
                 lane.get("statement") or d.get("metric", ""),
                 " · ".join(bits), cls=ev.split("_")[1]))
         elif ev == "gate_decision":
@@ -135,8 +140,10 @@ def build_diary_html(records: list[Any], branch: str) -> str:
     def _lane_html(cand: str, lane: dict) -> str:
         status = ""
         for e in lane["entries"]:
-            if "VALIDATED" in e:
-                status = "✅ validated"
+            if "CONFIRMED" in e:
+                status = "✅ confirmed"
+            elif "VALIDATED" in e:
+                status = "✅ validated (preliminary)"
             elif "INVALIDATED" in e:
                 status = "❌ refuted"
         head = (f"<div class='lane-head'><b>{_html.escape(cand)}</b>"

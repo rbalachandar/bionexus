@@ -73,8 +73,14 @@ def render_experiment_pipeline(logf: Path, problem_id: str | None,
             sel = filtered.get(hid)
             verd = tested.get(hid, {})
             v = (verd.get("verdict") or "").lower()
-            if v in ("confirmed", "validated"):
-                icon, stage = "✅", "validated"
+            if v == "confirmed":
+                icon, stage = "✅", ("confirmed by orthogonal assay"
+                                     + (f" — observed {verd.get('observed')} µM"
+                                        if verd.get("observed") is not None else ""))
+            elif v == "validated":
+                icon, stage = "✅", ("validated (preliminary)"
+                                     + (f" — observed {verd.get('observed')} µM"
+                                        if verd.get("observed") is not None else ""))
             elif v in ("refuted", "invalidated"):
                 icon, stage = "❌", "refuted"
             elif run_map.get(hid):

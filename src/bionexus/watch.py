@@ -55,16 +55,23 @@ class DeviceMonitor:
                                        detail=f"instrument output appeared: {f.name}"))
         return events
 
-    def events(self, stop_after: int | None = None, once: bool = False) -> Iterator[LabEvent]:
-        """Blocking generator. `stop_after` bounds total events (for demos/tests)."""
+    def events(self, stop_after: int | None = None, once: bool = False,
+               idle_timeout: float | None = None) -> Iterator[LabEvent]:
+        """Blocking generator. `stop_after` bounds total events (for demos/tests);
+        `idle_timeout` ends the stream after that many seconds without a new
+        event (for open-ended campaigns)."""
         count = 0
+        last_event = time.time()
         while True:
             for ev in self.poll():
                 yield ev
                 count += 1
+                last_event = time.time()
                 if stop_after is not None and count >= stop_after:
                     return
             if once:
+                return
+            if idle_timeout is not None and time.time() - last_event > idle_timeout:
                 return
             time.sleep(self.poll_secs)
 
@@ -96,12 +103,17 @@ class AutoAnalysisAgent:
         self.branch_id = branch_id
         self.auto_confirm = auto_confirm and gateway is not None
         self.export_fn = export_fn   # drops the instrument export for a run
+        self._confirmations: dict[str, dict] = {}   # run_id -> confirmation task
+        self._confirm_submitted: set[str] = set()   # candidates already confirmed
 
     def handle(self, event: LabEvent) -> dict[str, Any] | None:
         if event.kind != "plate_ready" or event.path is None:
             return None
         from bionexus.labread import read_plate
 
+        conf = self._confirmations.get(event.path.stem)
+        if conf:
+            return self._handle_confirmation(event, conf)
         self.notify(f"noticed device output: {event.path.name} — reading it")
         result = read_plate(event.path, max_response=self.max_response)
         self.notify(f"analyzed: {len(result.analysis['compounds'])} compound(s), "
@@ -125,7 +137,8 @@ class AutoAnalysisAgent:
                     verdicts.append((hyp.hypothesis_id, hyp.candidate, hyp.status,
                                      match["ic50_um"]))
                     self.notify(f"hypothesis {hyp.hypothesis_id} ({hyp.candidate}): "
-                                f"{hyp.status.upper()} — IC50 {match['ic50_um']} uM "
+                                f"{hyp.status.upper()} (preliminary — pending "
+                                f"orthogonal confirmation) — IC50 {match['ic50_um']} uM "
                                 f"vs threshold {hyp.criteria.threshold if hyp.criteria else '?'}")
         # scientist-facing diary line
         best = sorted(((c, r["ic50_um"]) for c, r in result.analysis["compounds"].items()
@@ -134,11 +147,52 @@ class AutoAnalysisAgent:
             candidate, ic50 = best[0]
             self.notify(f"recommendation: best binder so far is {candidate} "
                         f"(IC50 {ic50} uM) — next: confirm with orthogonal assay")
-            if self.auto_confirm:
+            if self.auto_confirm and candidate not in self._confirm_submitted:
                 self._submit_confirmation(candidate, ic50)
         summary = {"compounds": len(result.analysis["compounds"]),
                    "z_prime": result.z_prime, "verdicts": verdicts}
         return summary
+
+    def _handle_confirmation(self, event, conf: dict) -> dict[str, Any]:
+        """Orthogonal confirmation means AGREEMENT between methods, not just a
+        second curve: |primary/secondary| within 3x -> confirmed; otherwise
+        refuted; bad QC -> inconclusive. Provenance carries the comparison."""
+        from bionexus.labread import read_plate
+        cand, primary = conf["candidate"], conf["primary_ic50"]
+        result = read_plate(event.path, max_response=self.max_response)
+        match = result.analysis["compounds"].get(cand)
+        secondary = match.get("ic50_um") if match else None
+        qc_ok = (result.z_prime or 0) >= 0.5
+        ratio = (max(primary, secondary) / min(primary, secondary)
+                 if primary and secondary else None)
+        agreed = ratio is not None and ratio <= 3.0
+        if not qc_ok:
+            status = "inconclusive"
+        elif agreed:
+            status = "confirmed"
+        else:
+            status = "refuted"
+        self.notify(f"orthogonal confirmation for {cand}: primary {primary:.2f} vs "
+                    f"secondary {secondary:.2f} µM (ratio {ratio:.1f}x) -> {status.upper()}"
+                    if ratio else f"orthogonal confirmation for {cand}: no usable "
+                    f"secondary fit -> {status.upper()}")
+        if self.tracker:
+            for hyp in self.tracker.hypotheses.values():
+                if hyp.candidate == cand:
+                    hyp.observed_value = secondary or primary
+                    hyp.evidence_run_id = event.path.stem
+                    hyp.qc_passed = qc_ok
+                    hyp.status = status
+                    if hasattr(self.tracker, "record_outcome"):
+                        self.tracker.record_outcome(hyp, extra={
+                            "confirmation": {"run_id": event.path.stem,
+                                             "primary_ic50": primary,
+                                             "secondary_ic50": secondary,
+                                             "ratio": round(ratio, 2) if ratio else None,
+                                             "agreed": agreed}})
+                    break
+        return {"confirmation": status, "candidate": cand,
+                "primary": primary, "secondary": secondary, "ratio": ratio}
 
     def _submit_confirmation(self, candidate: str, ic50: float) -> str | None:
         """Close the loop: design + safety-submit the orthogonal confirmation."""
@@ -163,6 +217,8 @@ class AutoAnalysisAgent:
         if rejection:
             self.notify(f"confirmation assay for {candidate} BLOCKED by safety: {rejection}")
             return None
+        self._confirm_submitted.add(candidate)
+        self._confirmations[run_id] = {"candidate": candidate, "primary_ic50": ic50}
         if self.export_fn:
             self.export_fn(run_id, candidate)   # confirmation runs get outputs too
         # keep the run↔hypothesis link in provenance, not just in memory
