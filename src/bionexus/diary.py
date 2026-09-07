@@ -103,7 +103,9 @@ def build_diary_html(records: list[Any], branch: str) -> str:
                 *_run_submission_entry(rid, cand, info,
                                        ts=getattr(getattr(r, "envelope", None),
                                                   "created_at", None))))
-            lane["entries"].append(_run_output_html(rid, cand))
+            lane["entries"].append(_run_output_html(
+                rid, cand, assay=info.get("assay"),
+                instrument=info.get("instrument")))
         elif ev == "lab_run" and d.get("run_id"):
             labrun_info[d["run_id"]] = d
         elif ev in ("hypothesis_validated", "hypothesis_invalidated"):
@@ -200,47 +202,17 @@ def _run_submission_entry(run_id: str, candidate: str | None,
     return ("lab run submitted", head, body)
 
 
-def _run_output_html(run_id: str, candidate: str | None) -> str:
-    """Scientist-facing lab output for one run: dose-response points, fitted
-    IC50, QC. Purely additive — missing instrument files degrade to a note."""
-    try:
-        from pathlib import Path
-        f = Path(".data/inbox") / f"{run_id}.csv"
-        if not f.exists():
-            return _entry("instrument output", "pending",
-                          "the instrument has not dropped its export yet")
-        from bionexus.labread import read_plate
-        from bionexus.plots import dose_response_svg
-        result = read_plate(str(f))
-        comp = result.analysis["compounds"].get(candidate or "")
-        if not comp:
-            sample = next(iter(result.analysis["compounds"]), None)
-            comp = result.analysis["compounds"].get(sample, {}) if sample else {}
-            candidate = candidate or sample
-        ic50 = comp.get("ic50_um")
-        pts = [(r["conc_um"], r["value"]) for r in result.records
-               if r.get("sample") == candidate and not r.get("control")]
-        svg = ""
-        if pts:
-            svg = dose_response_svg([(c, v) for c, v in pts], ic50=ic50,
-                                    title=f"{candidate or 'sample'} — run {run_id}",
-                                    width=380, height=220)
-        rows = "".join(
-            f"<span class='pt'>{_html.escape(_fmt_conc(c))}: {v:.1f} RFU</span>"
-            for c, v in pts)
-        bits = [f"fit IC50 <b>{ic50:.3f} µM</b>" if ic50 else "fit failed"]
-        if result.z_prime is not None:
-            bits.append(f"Z&#8242; = {result.z_prime:.3f} "
-                        f"({'accept' if result.z_prime >= 0.5 else 'marginal'})")
-        bits.append(f"{len(result.records)} wells")
-        table = f"<div class='pts'>{rows}</div>" if rows else ""
-        return ("<div class='entry runout'>"
-                f"<div class='k'>instrument output</div>"
-                f"<div class='title'>{' · '.join(bits)}</div>"
-                f"{svg}"
-                f"{table}</div>")
-    except Exception as exc:  # never let cosmetics kill the diary
-        return _entry("instrument output", "unavailable", str(exc)[:120])
+def _run_output_html(run_id: str, candidate: str | None,
+                     assay: str | None = None,
+                     instrument: str | None = None) -> str:
+    """Scientist-facing lab output for one run. Device-aware: dispatches to
+    the matching output renderer (dose-response, image, robot log, table)."""
+    from pathlib import Path
+    from bionexus.output_blocks import dispatch_output
+    f = Path(".data/inbox") / f"{run_id}.csv"
+    ctx = {"assay": assay, "instrument": instrument,
+           "run_id": run_id, "candidate": candidate}
+    return dispatch_output(f, ctx)
 
 
 def _fmt_conc(c: float) -> str:
