@@ -258,7 +258,12 @@ def cmd_auto(args: argparse.Namespace) -> int:
         approver = web_approver(inbox=args.inbox or ".data/approvals.jsonl",
                                 notify=lambda m: print(f"[campaign] {m}"))
     lab = SimulatorLab(seed=cfg_doc.get("seed", 42))
-    report = run_campaign(cfg, lab, SqliteProvenanceStore(args.db), approver=approver)
+
+    import time as _time
+    def _ts_notify(msg: str) -> None:
+        print(f"[{_time.strftime('%H:%M:%S')}] {msg}", flush=True)
+    report = run_campaign(cfg, lab, SqliteProvenanceStore(args.db),
+                          approver=approver, notify=_ts_notify)
     print(json.dumps({"problem": report.problem_id, "selected": report.selected,
                       "verdicts": report.verdicts}, indent=1))
     return 0

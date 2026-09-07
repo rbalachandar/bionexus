@@ -123,6 +123,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     selected = tracker.select_portfolio(problem, portfolio, score_fn, k=cfg.k,
                                         max_per_family=1)
     say(f"problem {problem.problem_id}: {len(portfolio)} hypotheses -> {len(selected)} selected")
+    say("PHASE design+submit")
 
     # 1. design + submit for each selected hypothesis
     _submit = gateway.submit
@@ -175,6 +176,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                               selected=[h.candidate for h in selected])
 
     # 2. agent notices the outputs, verdicts, confirms
+    say("PHASE analyze")
     messages: list[str] = []
     agent = AutoAnalysisAgent(notify=(lambda m: (messages.append(m), say(f"[agent] {m}"))),
                               tracker=tracker, gateway=gateway,
@@ -187,6 +189,8 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         agent.handle(ev)
 
     verdicts = {h.candidate: h.status for h in selected}
+    say(f"CAMPAIGN COMPLETE {problem.problem_id}: "
+        + ", ".join(f"{c}={s}" for c, s in verdicts.items()))
     return CampaignReport(problem_id=problem.problem_id,
                           selected=[h.candidate for h in selected],
                           verdicts=verdicts,

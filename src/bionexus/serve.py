@@ -109,7 +109,7 @@ def page_home(inbox: ApprovalInbox, db_path: str | None) -> str:
         for p in pending) or "<p class='mono' style='color:#6b6558'>nothing pending</p>"
     idx = campaign_index()
     crows = "".join(
-        f"<tr><td class='mono'>{_esc(cid)}</td>"
+        f"<tr><td class='mono'><a href='/campaigns/{_esc(cid)}'>{_esc(cid)}</a></td>"
         f"<td>{'&#9679; running' if campaign_running(m) else 'finished'} </td>"
         f"<td class='mono'>{_esc(m.get('autonomy',''))}</td>"
         f"<td class='mono'>{_esc(m.get('objective','')[:60])}</td></tr>"
@@ -161,6 +161,27 @@ def page_read_result(result, path: str) -> str:
 <p><a class="btn" href="/export/{_esc(export_name)}">download CSV (Excel-ready)</a></p>""")
 
 
+def page_campaign(cid: str, meta: dict) -> str:
+    running = campaign_running(meta)
+    log_path = Path(meta.get("log", ""))
+    tail_lines = 120
+    if log_path.exists():
+        lines = log_path.read_text(errors="replace").splitlines()[-tail_lines:]
+        log_html = "\n".join(_esc(ln) for ln in lines) or "(empty so far)"
+    else:
+        log_html = "(no log written yet)"
+    status = ("&#9679; running" if running else "finished")
+    return _page(f"campaign {cid}", f"""
+<h2>Campaign <span class="mono">{_esc(cid)}</span> — {status}</h2>
+<p class="mono">autonomy: {_esc(meta.get('autonomy', ''))} ·
+objective: {_esc(meta.get('objective', '')[:80])}</p>
+<h3>Live activity</h3>
+<pre class="mono" style="background:#f6f4ee;padding:12px;border-radius:6px;
+overflow:auto;max-height:60vh">{log_html}</pre>
+<p><a class="btn" href="/campaigns">all campaigns</a>
+<a class="btn" href="/diary">diary</a></p>""", refresh=3 if running else None)
+
+
 def page_campaigns_form() -> str:
     from bionexus.templates import list_templates
     opts = "".join(f"<option value='{t['name']}'>{t['name']} — {_esc(t['description'])}</option>"
@@ -177,7 +198,7 @@ def page_campaigns_form() -> str:
 <option value="act">act — autonomous within safety rules</option></select>
 <button>Start campaign</button></form>
 <table><tr><th>id</th><th>status</th><th>autonomy</th><th>objective</th></tr>
-{''.join(f"<tr><td class='mono'>{_esc(cid)}</td><td>{'&#9679; running' if campaign_running(m) else 'finished'}</td><td class='mono'>{_esc(m.get('autonomy',''))}</td><td class='mono'>{_esc(m.get('objective','')[:60])}</td></tr>" for cid, m in campaign_index().items())}
+{''.join(f"<tr><td class='mono'><a href='/campaigns/{_esc(cid)}'>{_esc(cid)}</a></td><td>{'&#9679; running' if campaign_running(m) else 'finished'}</td><td class='mono'>{_esc(m.get('autonomy',''))}</td><td class='mono'>{_esc(m.get('objective','')[:60])}</td></tr>" for cid, m in campaign_index().items())}
 </table>""")
 
 
@@ -230,6 +251,13 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, page_read_form())
         elif path == "/campaigns":
             self._send(200, page_campaigns_form())
+        elif path.startswith("/campaigns/"):
+            cid = path[len("/campaigns/"):]
+            meta = campaign_index().get(cid)
+            if meta:
+                self._send(200, page_campaign(cid, meta))
+            else:
+                self._send(404, "unknown campaign", "text/plain")
         elif path == "/diary":
             self._send(200, page_diary(self.db_path, None))
         elif path.startswith("/diary/"):
