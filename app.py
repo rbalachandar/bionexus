@@ -264,7 +264,9 @@ if step == 0:
                     st.session_state["step"] = STATUS_STEP.get(e["status"], 1)
                     st.rerun()
     else:
-        st.info("No ongoing experiments — define a new one below.")
+        st.info("No wizard-defined experiments yet. Agent campaigns (above) "
+                "run independently — start one from `bn serve` or define a "
+                "step-by-step experiment below.")
 
     if store.finished():
         st.subheader("Recently concluded")
