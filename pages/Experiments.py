@@ -73,10 +73,11 @@ def agent_status(row: dict) -> tuple[str, Path]:
 if agent:
     status, logf = agent_status(row)
     problem_id = agent.get("problem_id")
-    if not problem_id and logf.exists():
+    if logf.exists():
         m = re.findall(r"problem (prob-\w+):", logf.read_text(errors="replace"))
-        if m:
-            problem_id = m[-1]
+        latest = m[-1] if m else None
+        if latest and latest != problem_id:
+            problem_id = latest
             store.link_problem(row["id"], problem_id)
     st.title(f"🤖 {row['question'][:70]}")
     st.caption(f"experiment `{row['id']}` · agent-driven · "
