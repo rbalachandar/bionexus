@@ -44,65 +44,112 @@ font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
 
 
 def build_diary_html(records: list[Any], branch: str) -> str:
-    """Fold provenance records into notebook entries."""
-    entries: list[str] = []
+    """Fold provenance records into notebook entries, grouped as one flow per
+    hypothesis (swimlanes) preceded by campaign-level events."""
     counts = {"hypotheses": 0, "validated": 0, "invalidated": 0,
               "inconclusive": 0, "gates": 0, "runs": 0}
+
+    shared: list[str] = []                 # campaign-level entries
+    lanes: dict[str, dict] = {}            # candidate -> {"hid", "statement", "entries"}
+    hid_to_cand: dict[str, str] = {}
+
+    def _lane(hid: str | None, cand: str, stmt: str = "") -> dict:
+        if cand not in lanes:
+            lanes[cand] = {"hid": hid, "statement": stmt, "entries": []}
+        return lanes[cand]
 
     for r in records:
         ev = r.event_type.value
         d = r.decision or {}
+        art = (r.artifact.metadata if r.artifact else {}) or {}
+        art_id = r.artifact.artifact_id if r.artifact else None
+        cand = art.get("candidate")
+        if art_id and cand:
+            hid_to_cand[art_id] = cand
+
         if ev == "problem_defined":
             cons = ", ".join(c.get("name", "?") for c in d.get("constraints", [])) or "—"
-            entries.append(_entry("problem", d.get("objective", ""),
-                                  f"constraints: {cons} · success metric: "
-                                  f"{d.get('success_metric', '—')}"))
+            shared.append(_entry("problem", d.get("objective", ""),
+                                 f"constraints: {cons} · success metric: "
+                                 f"{d.get('success_metric', '—')}"))
         elif ev == "hypothesis_proposed":
-            stmt = (d.get("statement") or (r.artifact.metadata if r.artifact else {})
-                    .get("statement", "")) or ""
+            stmt = (d.get("statement") or art.get("statement", "")) or ""
             counts["hypotheses"] += 1
-            entries.append(_entry(
-                "hypothesis proposed", stmt,
-                f"rationale: {d.get('rationale', '—')} · prediction: "
-                f"{d.get('predicted', '—')}"))
+            lane = _lane(art_id, cand or stmt[:24] or "?", stmt)
+            bits = []
+            if d.get("rationale"):
+                bits.append(f"rationale: {d['rationale']}")
+            if d.get("predicted"):
+                bits.append(f"prediction: {d['predicted']}")
+            lane["entries"].append(_entry("hypothesis proposed", stmt,
+                                          " · ".join(bits) or "—"))
         elif ev == "hypotheses_filtered":
             dec = d.get("decisions", [])
-            sel = [x for x in dec if x.get("selected")]
-            rej = [x for x in dec if not x.get("selected")]
-            entries.append(_entry(
+            sel = sum(1 for x in dec if x.get("selected"))
+            shared.append(_entry(
                 "portfolio filter",
-                f"{len(sel)} selected, {len(rej)} passed over",
-                "; ".join(f"{x['hypothesis_id']}: {x['reason']}" for x in dec)[:300]))
-        elif ev == "hypothesis_tested":
-            entries.append(_entry("experiment run", "assay in progress",
-                                  f"run {d.get('run_id', '?')}"))
+                f"{sel} of {len(dec)} hypotheses selected for the lab",
+                "; ".join(f"{hid_to_cand.get(x['hypothesis_id'], x['hypothesis_id'])}: "
+                          f"{'selected' if x.get('selected') else 'passed over'} "
+                          f"({x.get('reason', '')})" for x in dec)[:400]))
+        elif ev == "hypothesis_tested" and d.get("run_id"):
+            lane = _lane(art_id, hid_to_cand.get(art_id, cand or "?"))
             counts["runs"] += 1
+            lane["entries"].append(_entry(
+                "lab run submitted", f"run `{d.get('run_id', '?')}`",
+                f"protocol {d.get('protocol_id', '?')}"[:80]))
         elif ev in ("hypothesis_validated", "hypothesis_invalidated"):
             counts[ev.split("_")[1]] += 1
-            art = (r.artifact.metadata if r.artifact else {}) or {}
-            entries.append(_entry(
-                ev.replace("hypothesis_", "").upper(),
-                art.get("statement", d.get("metric", "")),
-                f"predicted {d.get('predicted', '—')} · observed {d.get('observed', '—')} "
-                f"· threshold {d.get('threshold', '—')} · evidence run "
-                f"{d.get('evidence_run_id', '—')}", cls=ev.split("_")[1]))
+            lane = _lane(art_id, hid_to_cand.get(art_id, cand or "?"), art.get("statement", ""))
+            bits = [f"observed {d.get('observed', '—')} µM",
+                    f"threshold {d.get('threshold', '—')}"]
+            if d.get("evidence_run_id"):
+                bits.append(f"evidence run `{d['evidence_run_id']}`")
+            lane["entries"].append(_entry(
+                ev.replace("hypothesis_", "HYPOTHESIS ").upper(),
+                lane.get("statement") or d.get("metric", ""),
+                " · ".join(bits), cls=ev.split("_")[1]))
         elif ev == "gate_decision":
             counts["gates"] += 1
             approved = d.get("approved", d.get("pass", d.get("match")))
-            entries.append(_entry(
+            shared.append(_entry(
                 f"review gate — {d.get('gate', d.get('question', ''))}",
                 "APPROVED" if approved else "REJECTED",
                 f"by {d.get('approved_by', 'operator')} · "
                 f"{d.get('reason', '')}", cls="gate"))
         elif ev == "stage_transition" and d.get("stage"):
-            entries.append(_entry("stage", d.get("stage", ""), d.get("detail", "")))
+            shared.append(_entry("stage", d.get("stage", ""), d.get("detail", "")))
+
+    counts["validated_or_not"] = counts["validated"] + counts["invalidated"]
+
+    def _lane_html(cand: str, lane: dict) -> str:
+        status = ""
+        for e in lane["entries"]:
+            if "VALIDATED" in e:
+                status = "✅ validated"
+            elif "INVALIDATED" in e:
+                status = "❌ refuted"
+        head = (f"<div class='lane-head'><b>{_html.escape(cand)}</b>"
+                f"<span class='mono'>{_html.escape(status)}</span></div>")
+        return ("<div class='lane'>" + head + "".join(lane["entries"]) + "</div>")
+
+    body = "\n".join(shared)
+    if lanes:
+        body += "<h2 class='lane-title'>Hypothesis flows</h2>" + "".join(
+            _lane_html(c, l) for c, l in lanes.items())
+    if not body:
+        body = "<p class='sub'>no narrative events recorded yet</p>"
 
     stats = "".join(f"<div class='stat'><b>{v}</b><span>{k}</span></div>"
-                    for k, v in counts.items())
-    body = "\n".join(entries) or "<p class='sub'>no narrative events recorded yet</p>"
+                    for k, v in counts.items()
+                    if k != "validated_or_not")
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Campaign diary — {_html.escape(branch)}</title><style>{_CSS}</style></head>
+<title>Campaign diary — {_html.escape(branch)}</title><style>{_CSS}
+.lane{{border:1px solid #d8d2c2;border-radius:8px;padding:10px 14px;margin:10px 0;background:#faf8f2}}
+.lane-head{{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}}
+.lane-title{{margin:18px 0 6px;font-size:15px}}
+</style></head>
 <body><div class="wrap">
 <h1>Campaign diary</h1>
 <p class="sub">branch <span class="mono">{_html.escape(branch)}</span> ·
