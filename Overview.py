@@ -8,6 +8,7 @@ the instrument export the experiment produced. Each step feeds the next.
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 import time
