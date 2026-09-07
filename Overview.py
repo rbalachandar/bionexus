@@ -297,13 +297,7 @@ if step == 1:
                            help="What kind of statement would a successful "
                                 "experiment support?")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("← Overview"):
-            st.session_state["step"] = 0
-            st.rerun()
-    with col2:
-        if st.button("Continue →", type="primary", disabled=not q.strip()):
+    if st.button("Continue →", type="primary", disabled=not q.strip()):
             st.session_state["problem"] = {
                 "question": q.strip(), "target": target,
                 "claim": ClaimType(claim),
