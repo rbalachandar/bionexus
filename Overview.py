@@ -112,6 +112,7 @@ def _campaign_start_form() -> None:
 
     # any template-required fields beyond compounds/threshold get inputs
     extra_fields: dict[str, str] = {}
+    missing_required: list[str] = []
     tpl_doc = None if custom else load_template(tpl)
     if not custom and tpl_doc:
         for fname, spec in (tpl_doc.get("fields") or {}).items():
@@ -123,8 +124,14 @@ def _campaign_start_form() -> None:
                                 value=default, key=f"fld_{fname}")
             if val.strip():
                 extra_fields[fname] = val.strip()
+            elif spec.get("required") and default == "":
+                missing_required.append(label)
 
-    if st.button("🚀 Start campaign", type="primary", disabled=not compounds.strip()):
+    if missing_required:
+        st.warning("Required: " + ", ".join(missing_required))
+
+    ready = bool(compounds.strip()) and not missing_required
+    if st.button("🚀 Start campaign", type="primary", disabled=not ready):
         threshold_s = str(int(threshold)) if threshold == int(threshold) else str(threshold)
         if custom:
             objective_text = (objective.strip() or objective_default).replace(
