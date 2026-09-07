@@ -86,7 +86,8 @@ class AutoAnalysisAgent:
                  notify: Callable[[str], None] | None = None,
                  max_response: float | None = None,
                  gateway: Any = None, branch_id: str = "autonomous-loop",
-                 auto_confirm: bool = True):
+                 auto_confirm: bool = True,
+                 export_fn: Callable[[str, str], None] | None = None):
         self.store = store
         self.tracker = tracker
         self.notify = notify or (lambda msg: print(f"[agent] {msg}"))
@@ -94,6 +95,7 @@ class AutoAnalysisAgent:
         self.gateway = gateway
         self.branch_id = branch_id
         self.auto_confirm = auto_confirm and gateway is not None
+        self.export_fn = export_fn   # drops the instrument export for a run
 
     def handle(self, event: LabEvent) -> dict[str, Any] | None:
         if event.kind != "plate_ready" or event.path is None:
@@ -161,6 +163,8 @@ class AutoAnalysisAgent:
         if rejection:
             self.notify(f"confirmation assay for {candidate} BLOCKED by safety: {rejection}")
             return None
+        if self.export_fn:
+            self.export_fn(run_id, candidate)   # confirmation runs get outputs too
         # keep the run↔hypothesis link in provenance, not just in memory
         if self.tracker:
             for hyp in self.tracker.hypotheses.values():

@@ -180,10 +180,15 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     # 2. agent notices the outputs, verdicts, confirms
     say("PHASE analyze")
     messages: list[str] = []
+    def _export(run_id: str, candidate: str) -> None:
+        _export_instrument_file(inbox, run_id, candidate,
+                                cfg.concentrations, lab=lab)
+
     agent = AutoAnalysisAgent(notify=(lambda m: (messages.append(m), say(f"[agent] {m}"))),
                               tracker=tracker, gateway=gateway,
                               branch_id=f"problem/{problem.problem_id}",
-                              auto_confirm=cfg.autonomy == "act")
+                              auto_confirm=cfg.autonomy == "act",
+                              export_fn=_export)
     monitor = DeviceMonitor(inbox, poll_secs=cfg.poll_secs)
     time.sleep(0.2)
     n_expected = sum(1 for h in selected if h.design and h.design.run_id)
