@@ -109,13 +109,32 @@ class LabGateway:
         from bionexus.core.contracts import EventType, InstrumentInfo
         from bionexus.core.interfaces import record_for
 
+        samples = [s for s in protocol.samples if not s.sample_id.startswith("ctrl")]
+        controls = [s for s in protocol.samples if s.sample_id.startswith("ctrl")]
+        def _conc_um(v: Any) -> float:
+            try:
+                return float(str(v).strip().rstrip("uMµ").strip())
+            except ValueError:
+                return 0.0
+        concs = sorted({_conc_um(s.concentration) for s in samples if s.concentration})
         self.store.append(
             record_for(
                 protocol.envelope,
                 EventType.lab_run,
                 self.actor,
                 artifact=None,
-                decision={"run_id": run_id, "protocol_id": protocol.protocol_id},
+                decision={
+                    "run_id": run_id,
+                    "protocol_id": protocol.protocol_id,
+                    "title": protocol.title,
+                    "assay": getattr(protocol.assay_type, "value",
+                                     str(protocol.assay_type)),
+                    "instrument": getattr(self.lab, "name", "lab"),
+                    "n_samples": len(samples),
+                    "n_controls": len(controls),
+                    "replicates": getattr(self.lab, "replicates", None),
+                    "concentrations": concs,
+                },
             )
         )
         return run_id, None

@@ -13,6 +13,7 @@ Same light-blueprint style as the report.
 from __future__ import annotations
 
 import html as _html
+import time
 import json
 from pathlib import Path
 from typing import Any
@@ -49,6 +50,7 @@ def build_diary_html(records: list[Any], branch: str) -> str:
     counts = {"hypotheses": 0, "validated": 0, "invalidated": 0,
               "inconclusive": 0, "gates": 0, "runs": 0}
 
+    labrun_info: dict[str, dict] = {}      # run_id -> lab_run decision
     shared: list[str] = []                 # campaign-level entries
     lanes: dict[str, dict] = {}            # candidate -> {"hid", "statement", "entries"}
     hid_to_cand: dict[str, str] = {}
@@ -96,11 +98,14 @@ def build_diary_html(records: list[Any], branch: str) -> str:
             lane = _lane(art_id, hid_to_cand.get(art_id, cand or "?"))
             counts["runs"] += 1
             rid = d.get("run_id", "?")
+            info = labrun_info.get(rid, {})
             lane["entries"].append(_entry(
-                "lab run submitted", f"run `{rid}`",
-                (f"protocol {d.get('protocol_id', '?')}"[:40]
-                 + (f" · {d.get('assay_type', '')}" if d.get("assay_type") else ""))))
+                *_run_submission_entry(rid, cand, info,
+                                       ts=getattr(getattr(r, "envelope", None),
+                                                  "created_at", None))))
             lane["entries"].append(_run_output_html(rid, cand))
+        elif ev == "lab_run" and d.get("run_id"):
+            labrun_info[d["run_id"]] = d
         elif ev in ("hypothesis_validated", "hypothesis_invalidated"):
             counts[ev.split("_")[1]] += 1
             lane = _lane(art_id, hid_to_cand.get(art_id, cand or "?"), art.get("statement", ""))
@@ -165,6 +170,34 @@ def build_diary_html(records: list[Any], branch: str) -> str:
 <div class="stats">{stats}</div>
 {body}
 </div></body></html>"""
+
+
+def _run_submission_entry(run_id: str, candidate: str | None,
+                          info: dict, ts: float | None) -> tuple[str, str, str]:
+    """Scientist-readable description of what was sent to the lab, and why."""
+    assay = info.get("assay", "assay")
+    inst = info.get("instrument", "lab instrument")
+    concs = info.get("concentrations") or []
+    conc_txt = (", ".join(str(c) for c in concs[:-1]) + f" and {concs[-1]}"
+                if len(concs) > 1 else (str(concs[0]) if concs else ""))
+    title = str(info.get("title", ""))
+    purpose = ("orthogonally confirm the initial hit"
+               if "confirmation" in title.lower()
+               else "test the potency hypothesis")
+    bits = []
+    if candidate:
+        bits.append(f"{candidate} at {conc_txt} µM" if concs
+                    else f"{candidate}")
+    if info.get("n_controls"):
+        bits.append(f"{info['n_controls']} buffer control"
+                    if info["n_controls"] == 1 else f"{info['n_controls']} buffer controls")
+    if info.get("replicates"):
+        bits.append(f"{info['replicates']} replicates")
+    bits.append(f"on {inst}")
+    when = time.strftime("%H:%M", time.localtime(ts)) if ts else ""
+    head = f"{assay.capitalize()} run — to {purpose}"
+    body = " · ".join(bits) + (f" · submitted {when}" if when else "")
+    return ("lab run submitted", head, body)
 
 
 def _run_output_html(run_id: str, candidate: str | None) -> str:

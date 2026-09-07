@@ -350,7 +350,10 @@ class HypothesisTracker:
         env = Envelope(experiment_branch_id=h.branch_id)
         self.store.append(self._record(env, EventType.hypothesis_tested, h,
                                        decision={"run_id": run_id,
-                                                 "protocol_id": protocol.protocol_id}))
+                                                 "protocol_id": protocol.protocol_id,
+                                                 "assay": getattr(
+                                                     protocol.assay_type, "value",
+                                                     str(protocol.assay_type))}))
 
     def verdict(self, h: Hypothesis, result: AssayResult,
                 threshold: float | None = None) -> Hypothesis:
