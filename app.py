@@ -182,8 +182,11 @@ def _render_campaign_pipeline(meta: dict, is_running: bool) -> None:
                 st.caption("(no log written yet)")
         _live_log()
     if branch and recs:
-        st.page_link(f"http://localhost:8080/diary/{branch}",
-                     label=f"Full diary: {branch}")
+        with st.expander("📓 Full diary"):
+            import streamlit.components.v1 as _components
+            from bionexus.diary import build_diary_html
+            _components.html(build_diary_html(recs, branch),
+                             height=520, scrolling=True)
 
 
 def _campaign_start_form() -> None:
