@@ -8,6 +8,7 @@ the instrument export the experiment produced. Each step feeds the next.
 """
 from __future__ import annotations
 
+import re
 import sys
 import time
 from pathlib import Path
@@ -92,14 +93,9 @@ def _resume_wizard(e: dict) -> None:
     st.session_state["step"] = STATUS_STEP.get(e["status"], 1)
 
 
-def _render_campaign_pipeline(meta: dict, is_running: bool) -> None:
-    import re as _re
+def _render_experiment_pipeline(logf: Path, problem_id: str | None,
+                                running: bool, store, eid: str) -> None:
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    logf = Path(meta.get("log", ""))
-    problem_id = None
-    if logf.exists():
-        m = _re.findall(r"problem (prob-\w+):", logf.read_text(errors="replace"))
-        problem_id = m[-1] if m else None
     branch = f"problem/{problem_id}" if problem_id else None
     recs = []
     if branch and Path("bionexus.db").exists():
@@ -116,13 +112,12 @@ def _render_campaign_pipeline(meta: dict, is_running: bool) -> None:
     for r in recs:
         d = r.decision or {}
         et = r.event_type.value
+        art_id = r.artifact.artifact_id if r.artifact else None
+        art_meta = r.artifact.metadata if r.artifact else {}
         if et == "hypothesis_proposed":
-            hid = (d.get("hypothesis_id")
-                   or (r.artifact.artifact_id if r.artifact else None)
-                   or d.get("candidate", "?"))
-            am = r.artifact.metadata if r.artifact else {}
-            proposed[hid] = {**d, "candidate": d.get("candidate") or am.get("candidate"),
-                             "predicted": d.get("predicted") or am.get("predicted")}
+            hid = d.get("hypothesis_id") or art_id or d.get("candidate", "?")
+            proposed[hid] = {**d, "candidate": d.get("candidate") or art_meta.get("candidate"),
+                             "predicted": d.get("predicted") or art_meta.get("predicted")}
         elif et == "hypotheses_filtered":
             for dec in d.get("decisions", []):
                 if dec.get("hypothesis_id"):
@@ -131,7 +126,7 @@ def _render_campaign_pipeline(meta: dict, is_running: bool) -> None:
             runs.append(d["run_id"])
         elif et in ("hypothesis_tested", "hypothesis_validated",
                     "hypothesis_invalidated"):
-            hid = d.get("hypothesis_id") or d.get("id")
+            hid = d.get("hypothesis_id") or d.get("id") or art_id
             if hid:
                 tested[hid] = {"verdict": d.get("verdict", et),
                                "observed": d.get("observed") or d.get("ic50_um")}
@@ -145,35 +140,35 @@ def _render_campaign_pipeline(meta: dict, is_running: bool) -> None:
             verd = tested.get(hid, {})
             v = (verd.get("verdict") or "").lower()
             if v in ("confirmed", "validated"):
-                icon, stage = "✅", "validated"
+                icon, stage = "✅", f"validated ({verd.get('observed')} µM)"
             elif v in ("refuted", "invalidated"):
-                icon, stage = "❌", "refuted"
+                icon, stage = "❌", f"refuted ({verd.get('observed')} µM)"
             elif sel and sel.get("selected"):
                 icon, stage = "🔬", "in lab"
             elif sel:
-                icon, stage = "✂️", f"filtered out ({str(sel.get('reason', ''))[:30]})"
+                icon, stage = "✂️", f"not selected ({str(sel.get('reason', ''))[:30]})"
             else:
                 icon, stage = "💡", "proposed"
-            c1, c2, c3 = st.columns([4, 2, 2])
+            c1, c2 = st.columns([4, 2])
             c1.markdown(f"{icon} **{hp.get('candidate', hid)}** — "
-                        f"{hp.get('statement', '')[:60]}")
-            c2.caption(f"predicted: {hp.get('predicted', '?')}")
-            c3.caption(f"observed: {verd.get('observed', '—')}" if verd
-                       else (f"score: {sel.get('score', '—')}" if sel else ""))
+                        f"{hp.get('statement', '')[:65]}")
+            c2.caption(stage)
 
-    inbox_dir = Path(".data/inbox")
-    if inbox_dir.exists():
-        files = sorted(inbox_dir.glob("*"), key=lambda f: f.stat().st_mtime)
-        if files:
-            st.caption(f"🎛️ instrument outbox: {len(files)} result file(s) — "
-                       + ", ".join(f"`{f.name}`" for f in files[-5:]))
+    # everything below is scoped to THIS experiment's runs
     if runs:
-        st.caption(f"🧪 {len(runs)} lab run(s): {', '.join(runs[-4:])}")
+        st.caption(f"🧪 {len(runs)} lab run(s) · "
+                   + ", ".join(f"`{r}`" for r in runs[-4:]))
+        inbox_dir = Path(".data/inbox")
+        if inbox_dir.exists():
+            mine = [f for f in inbox_dir.glob("*") if f.stem in set(runs)]
+            if mine:
+                st.caption(f"🎛️ instrument results for these runs: "
+                           + ", ".join(f"`{f.name}`" for f in mine[-5:]))
     if gates:
         st.caption(f"🚦 {gates} gate decision(s)")
 
     with st.expander("Raw agent log"):
-        @st.fragment(run_every=3 if is_running else None)
+        @st.fragment(run_every=3 if running else None)
         def _live_log():
             if logf.exists():
                 tail = logf.read_text(errors="replace").splitlines()[-30:]
@@ -182,7 +177,7 @@ def _render_campaign_pipeline(meta: dict, is_running: bool) -> None:
                 st.caption("(no log written yet)")
         _live_log()
     if branch and recs:
-        if st.button("📓 Open full diary", type="secondary"):
+        if st.button("📓 Open full diary"):
             st.session_state["diary_branch"] = branch
             st.switch_page("pages/Diary.py")
 
@@ -268,11 +263,13 @@ def _campaign_start_form() -> None:
              "--db", "bionexus.db", "--inbox", ".data/approvals.jsonl", "--yes"],
             stdout=open(logf, "ab", buffering=0), stderr=subprocess.STDOUT,
             cwd=str(Path.cwd()))
+        store.register_agent(cid, cfg["problem"]["objective"], str(logf),
+                             autonomy=cfg["autonomy"])
         idx = campaign_index()
         idx[cid] = {"pid": proc.pid, "autonomy": cfg["autonomy"],
                     "objective": cfg["problem"]["objective"], "log": str(logf)}
         save_campaign_index(idx)
-        st.session_state["view_campaign"] = cid
+        st.session_state["view_experiment"] = cid
         st.rerun()
 
 st.title("🧬 BioNexus")
@@ -322,61 +319,74 @@ if step == 0:
     else:
         st.caption("Nothing pending.")
 
-    # ---------------------------------------------------- 2. experiments (unified)
-    idx = campaign_index()
-    running = {cid: m for cid, m in idx.items() if campaign_running(m)}
-
+    # ------------------------------------------------ 2. experiments (ONE list)
+    all_rows = store.ongoing() + store.finished(50)
     st.header("Experiments")
-    rows = []
-    for cid, m in idx.items():
-        logf = Path(m.get("log", ""))
-        rows.append({"kind": "agent", "id": cid, "title": m.get("objective", ""),
-                     "status": "running" if cid in running else "finished",
-                     "ts": logf.stat().st_mtime if logf.exists() else 0, "meta": m})
-    for e in store.ongoing() + store.finished(3):
-        rows.append({"kind": "wizard", "id": e["id"], "title": e["question"],
-                     "status": e["status"].replace("_", " "),
-                     "ts": e["updated_at"], "meta": e})
-    rows.sort(key=lambda r: r["ts"], reverse=True)
-
-    if not rows:
+    if not all_rows:
         st.info("Nothing yet — start your first experiment below.")
-    for r in rows:
-        icon = "🤖" if r["kind"] == "agent" else "🧑"
-        dot = "●" if r["status"] == "running" else "○"
-        c1, c2, c3 = st.columns([5, 3, 2])
-        c1.markdown(f"{icon} **{r['title'][:75]}**")
-        c2.caption(f"{dot} {r['status']} · "
-                   f"{time.strftime('%m-%d %H:%M', time.localtime(r['ts']))}")
+
+    def _agent_row_status(e: dict) -> tuple[str, Path]:
+        ag = e["payload"].get("agent") or {}
+        logf = Path(ag.get("log", ""))
+        if logf.exists() and "CAMPAIGN COMPLETE" in logf.read_text(errors="replace"):
+            return "completed", logf
+        if e["status"] == "executing":
+            return "running", logf
+        return e["status"].replace("_", " "), logf
+
+    for e in all_rows:
+        agent = e["payload"].get("agent")
+        if agent:
+            status, _ = _agent_row_status(e)
+            icon = "🤖"
+            action = "View pipeline"
+        else:
+            status = e["status"].replace("_", " ")
+            icon = "🧑"
+            action = "Resume →"
+        c1, c2, c3 = st.columns([6, 2, 2])
+        c1.markdown(f"{icon} **{e['question'][:78]}**")
+        c2.caption(f"{status} · "
+                   f"{time.strftime('%m-%d %H:%M', time.localtime(e['updated_at']))}")
         with c3:
-            if r["kind"] == "agent":
-                if st.button("View pipeline", key=f"v_{r['id']}"):
-                    st.session_state["view_campaign"] = r["id"]
+            if st.button(action, key=f"v_{e['id']}",
+                         disabled=(status == "verdict recorded")):
+                if agent:
+                    st.session_state["view_experiment"] = e["id"]
                     st.rerun()
-            else:
-                if r["status"] != "verdict recorded" and st.button(
-                        "Resume →", key=f"v_{r['id']}"):
-                    _resume_wizard(r["meta"])
+                else:
+                    _resume_wizard(e)
                     st.rerun()
 
-    # detail view for the selected agent campaign
-    view = st.session_state.get("view_campaign")
-    if view and view in idx:
-        meta = idx[view]
-        is_running = view in running
-        st.subheader(f"🤖 {view}")
-        st.caption(f"autonomy: {meta.get('autonomy', '')} · "
-                   f"{'● running' if is_running else '○ finished'} · "
-                   f"{meta.get('objective', '')[:60]}")
-        _render_campaign_pipeline(meta, is_running)
+    # detail view for an agent-driven experiment
+    view = st.session_state.get("view_experiment")
+    vrow = next((e for e in all_rows if e["id"] == view), None)
+    if vrow and vrow["payload"].get("agent"):
+        ag = vrow["payload"]["agent"]
+        logf = Path(ag.get("log", ""))
+        # resolve + persist the provenance branch for this experiment
+        problem_id = ag.get("problem_id")
+        if not problem_id and logf.exists():
+            m = re.findall(r"problem (prob-\w+):", logf.read_text(errors="replace"))
+            if m:
+                problem_id = m[-1]
+                store.link_problem(vrow["id"], problem_id)
+        status, _ = _agent_row_status(vrow)
+        st.subheader(f"🤖 experiment `{vrow['id']}`")
+        st.caption(f"agent-driven · autonomy: {ag.get('autonomy', 'act')} · "
+                   f"{status}" +
+                   (f" · branch `problem/{problem_id}`" if problem_id else ""))
+        _render_experiment_pipeline(logf, problem_id,
+                                    running=(status == "running"),
+                                    store=store, eid=vrow["id"])
         if st.button("← Close"):
-            st.session_state["view_campaign"] = None
+            st.session_state["view_experiment"] = None
             st.rerun()
 
-    # ---------------------------------------------------- 3. start new work
+    # ------------------------------------------------ 3. start new work
     st.header("Start new work")
     mode = st.radio("How do you want to run it?",
-                    ["🤖 Agent campaign — agent proposes and tests hypotheses",
+                    ["🤖 Agent-driven — agent proposes and tests hypotheses",
                      "🧑 Step-by-step — I define it, readiness-gated"],
                     horizontal=True, label_visibility="collapsed")
     if mode.startswith("🤖"):
@@ -385,7 +395,6 @@ if step == 0:
         if st.button("＋ Define experiment", type="primary"):
             st.session_state["step"] = 1
             st.rerun()
-
 
 # =========================================================================
 # STEP 1 — DEFINE PROBLEM

@@ -41,17 +41,46 @@ class WizardStore:
         return {"id": r[0], "created_at": r[1], "updated_at": r[2],
                 "status": r[3], "question": r[4], "payload": json.loads(r[5])}
 
-    def create(self, question: str, claim: str, target: str) -> str:
-        eid = uuid.uuid4().hex[:12]
+    def create(self, question: str, claim: str, target: str,
+               eid: str | None = None) -> str:
+        eid = eid or uuid.uuid4().hex[:12]
         with self._lock:
             now = time.time()
             self._conn.execute(
-                "INSERT INTO experiments VALUES (?,?,?,?,?,?)",
+                "INSERT OR REPLACE INTO experiments VALUES (?,?,?,?,?,?)",
                 (eid, now, now, "defining", question,
                  json.dumps({"problem": {"question": question, "claim": claim,
                                          "target": target}})))
             self._conn.commit()
         return eid
+
+    def register_agent(self, eid: str, objective: str, log: str,
+                       autonomy: str = "act") -> str:
+        """One registry: agent-driven experiments live in the same table as
+        wizard-defined ones, tagged by origin."""
+        with self._lock:
+            now = time.time()
+            self._conn.execute(
+                "INSERT OR REPLACE INTO experiments VALUES (?,?,?,?,?,?)",
+                (eid, now, now, "executing", objective,
+                 json.dumps({"agent": {"log": log, "autonomy": autonomy,
+                                       "problem_id": None}})))
+            self._conn.commit()
+        return eid
+
+    def link_problem(self, eid: str, problem_id: str) -> None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT payload FROM experiments WHERE id=?", (eid,)).fetchone()
+            if not row:
+                return
+            payload = json.loads(row[0])
+            if payload.get("agent") is not None:
+                payload["agent"]["problem_id"] = problem_id
+                self._conn.execute(
+                    "UPDATE experiments SET payload=?, updated_at=? WHERE id=?",
+                    (json.dumps(payload), time.time(), eid))
+                self._conn.commit()
 
     def update(self, eid: str, status: str, **fields) -> None:
         assert status in STATUSES
