@@ -76,12 +76,13 @@ _nav(st.session_state["step"])
 step = st.session_state["step"]
 
 # =========================================================================
-# STEP 0 — OVERVIEW: ongoing experiments
+# STEP 0 — OVERVIEW: ongoing experiments + live agent campaigns
 # =========================================================================
 if step == 0:
     st.header("Experiments")
     ongoing = store.ongoing()
     if ongoing:
+        st.subheader(f"Ongoing ({len(ongoing)})")
         st.subheader(f"Ongoing ({len(ongoing)})")
         for e in ongoing:
             col1, col2, col3 = st.columns([5, 3, 2])
@@ -123,6 +124,36 @@ if step == 0:
     if st.button("＋ New experiment", type="primary"):
         st.session_state["step"] = 1
         st.rerun()
+
+    # ------------------------------------------------ live agent campaigns
+    from bionexus.serve import campaign_index, campaign_running, CAMPAIGN_DIR
+
+    idx = campaign_index()
+    running = {cid: m for cid, m in idx.items() if campaign_running(m)}
+    if running or idx:
+        st.subheader(f"Live agents ({len(running)} running)")
+        options = list(idx.keys())[::-1]
+        pick = st.selectbox(
+            "Campaign",
+            options,
+            format_func=lambda c: ("● " if c in running else "○ ") + f"{c} — "
+                                   f"{idx[c].get('objective', '')[:50]}")
+        meta = idx[pick]
+        st.caption(f"autonomy: {meta.get('autonomy', '')} · "
+                   f"{'● running' if pick in running else '○ finished'}")
+
+        @st.fragment(run_every=3 if pick in running else None)
+        def _live_log():
+            logf = Path(meta.get("log", ""))
+            if logf.exists():
+                tail = logf.read_text(errors="replace").splitlines()[-30:]
+                st.code("\n".join(tail) or "(waiting for output...)",
+                        language=None)
+            else:
+                st.caption("(no log written yet)")
+        _live_log()
+
+        st.page_link("http://localhost:8080/", label="Open full cockpit (bn serve :8080)")
 
 # =========================================================================
 # STEP 1 — DEFINE PROBLEM
