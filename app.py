@@ -275,8 +275,15 @@ def _campaign_start_form() -> None:
         st.rerun()
 
 st.title("🧬 BioNexus")
-_nav(st.session_state["step"])
 step = st.session_state["step"]
+if step == 0:
+    st.caption("Your work in one place — approvals, experiments, and the "
+               "agents running them.")
+else:
+    _nav(step)
+    if st.button("← Overview"):
+        st.session_state["step"] = 0
+        st.rerun()
 
 # =========================================================================
 # STEP 0 — OVERVIEW: approvals → live agents → experiments → start
