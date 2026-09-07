@@ -113,6 +113,7 @@ class AutoAnalysisAgent:
                 if match and hyp.status in ("proposed", "designed", "tested") and match["ic50_um"]:
                     # attach evidence directly (measurement already fitted)
                     hyp.observed_value = match["ic50_um"]
+                    hyp.evidence_run_id = event.path.stem  # run ↔ verdict link
                     hyp.qc_passed = (result.z_prime or 0) >= 0.5
                     if hyp.criteria:
                         hyp.status = ("validated" if hyp.criteria.met(match["ic50_um"])
@@ -160,6 +161,12 @@ class AutoAnalysisAgent:
         if rejection:
             self.notify(f"confirmation assay for {candidate} BLOCKED by safety: {rejection}")
             return None
+        # keep the run↔hypothesis link in provenance, not just in memory
+        if self.tracker:
+            for hyp in self.tracker.hypotheses.values():
+                if hyp.candidate == candidate and self.tracker.hypotheses.get(hyp.hypothesis_id):
+                    self.tracker.attach_test(hyp, protocol, run_id)
+                    break
         self.notify(f"loop closed: confirmation assay for {candidate} auto-submitted "
                     f"(safety-approved) -> run {run_id}")
         return run_id

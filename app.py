@@ -106,7 +106,7 @@ def _render_experiment_pipeline(logf: Path, problem_id: str | None,
 
     proposed: dict[str, dict] = {}
     filtered: dict[str, dict] = {}
-    runs: list[str] = []
+    run_map: dict[str, list[str]] = {}   # hypothesis_id -> run ids (provenance)
     tested: dict[str, dict] = {}
     gates = 0
     for r in recs:
@@ -123,13 +123,17 @@ def _render_experiment_pipeline(logf: Path, problem_id: str | None,
                 if dec.get("hypothesis_id"):
                     filtered[dec["hypothesis_id"]] = dec
         elif et == "lab_run" and d.get("run_id"):
-            runs.append(d["run_id"])
-        elif et in ("hypothesis_tested", "hypothesis_validated",
-                    "hypothesis_invalidated"):
+            pass
+        elif et == "hypothesis_tested" and d.get("run_id"):
+            hid = d.get("hypothesis_id") or art_id
+            if hid:
+                run_map.setdefault(hid, []).append(d["run_id"])
+        elif et in ("hypothesis_validated", "hypothesis_invalidated"):
             hid = d.get("hypothesis_id") or d.get("id") or art_id
             if hid:
                 tested[hid] = {"verdict": d.get("verdict", et),
-                               "observed": d.get("observed") or d.get("ic50_um")}
+                               "observed": d.get("observed") or d.get("ic50_um"),
+                               "evidence": d.get("evidence_run_id")}
         elif et == "gate_decision":
             gates += 1
 
@@ -140,9 +144,13 @@ def _render_experiment_pipeline(logf: Path, problem_id: str | None,
             verd = tested.get(hid, {})
             v = (verd.get("verdict") or "").lower()
             if v in ("confirmed", "validated"):
-                icon, stage = "✅", f"validated ({verd.get('observed')} µM)"
+                icon, stage = "✅", f"validated — observed {verd.get('observed')} µM" \
+                                     + (f" · evidence `{verd.get('evidence')}`"
+                                        if verd.get("evidence") else "")
             elif v in ("refuted", "invalidated"):
-                icon, stage = "❌", f"refuted ({verd.get('observed')} µM)"
+                icon, stage = "❌", f"refuted — observed {verd.get('observed')} µM"
+            elif run_map.get(hid):
+                icon, stage = "🔬", f"in lab · run {', '.join(run_map[hid])}"
             elif sel and sel.get("selected"):
                 icon, stage = "🔬", "in lab"
             elif sel:
@@ -153,17 +161,14 @@ def _render_experiment_pipeline(logf: Path, problem_id: str | None,
             c1.markdown(f"{icon} **{hp.get('candidate', hid)}** — "
                         f"{hp.get('statement', '')[:65]}")
             c2.caption(stage)
+        unlinked = [r for r in recs if r.event_type.value == "lab_run"
+                    and r.decision and r.decision.get("run_id")
+                    and r.decision["run_id"] not in
+                    {x for v in run_map.values() for x in v}]
+        if unlinked:
+            st.caption(f"🧪 {len(unlinked)} run(s) awaiting result analysis: "
+                       + ", ".join(f"`{u.decision['run_id']}`" for u in unlinked[-4:]))
 
-    # everything below is scoped to THIS experiment's runs
-    if runs:
-        st.caption(f"🧪 {len(runs)} lab run(s) · "
-                   + ", ".join(f"`{r}`" for r in runs[-4:]))
-        inbox_dir = Path(".data/inbox")
-        if inbox_dir.exists():
-            mine = [f for f in inbox_dir.glob("*") if f.stem in set(runs)]
-            if mine:
-                st.caption(f"🎛️ instrument results for these runs: "
-                           + ", ".join(f"`{f.name}`" for f in mine[-5:]))
     if gates:
         st.caption(f"🚦 {gates} gate decision(s)")
 

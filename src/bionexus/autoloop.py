@@ -168,6 +168,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         if rejection:
             say(f"submission for {h.candidate} rejected: {rejection}")
             continue
+        tracker.attach_test(h, protocol, run_id)
         h.design.run_id = run_id
         _export_instrument_file(inbox, run_id, h.candidate, cfg.concentrations)
 
