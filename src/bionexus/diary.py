@@ -95,9 +95,12 @@ def build_diary_html(records: list[Any], branch: str) -> str:
         elif ev == "hypothesis_tested" and d.get("run_id"):
             lane = _lane(art_id, hid_to_cand.get(art_id, cand or "?"))
             counts["runs"] += 1
+            rid = d.get("run_id", "?")
             lane["entries"].append(_entry(
-                "lab run submitted", f"run `{d.get('run_id', '?')}`",
-                f"protocol {d.get('protocol_id', '?')}"[:80]))
+                "lab run submitted", f"run `{rid}`",
+                (f"protocol {d.get('protocol_id', '?')}"[:40]
+                 + (f" · {d.get('assay_type', '')}" if d.get("assay_type") else ""))))
+            lane["entries"].append(_run_output_html(rid, cand))
         elif ev in ("hypothesis_validated", "hypothesis_invalidated"):
             counts[ev.split("_")[1]] += 1
             lane = _lane(art_id, hid_to_cand.get(art_id, cand or "?"), art.get("statement", ""))
@@ -149,6 +152,10 @@ def build_diary_html(records: list[Any], branch: str) -> str:
 .lane{{border:1px solid #d8d2c2;border-radius:8px;padding:10px 14px;margin:10px 0;background:#faf8f2}}
 .lane-head{{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}}
 .lane-title{{margin:18px 0 6px;font-size:15px}}
+.runout .title{{color:#1f7a86}}
+.runout svg{{max-width:100%;height:auto;margin:6px 0}}
+.pts{{display:flex;gap:10px;flex-wrap:wrap}}
+.pt{{font-family:var(--mono);font-size:11px;color:var(--dim)}}
 </style></head>
 <body><div class="wrap">
 <h1>Campaign diary</h1>
@@ -158,6 +165,53 @@ def build_diary_html(records: list[Any], branch: str) -> str:
 <div class="stats">{stats}</div>
 {body}
 </div></body></html>"""
+
+
+def _run_output_html(run_id: str, candidate: str | None) -> str:
+    """Scientist-facing lab output for one run: dose-response points, fitted
+    IC50, QC. Purely additive — missing instrument files degrade to a note."""
+    try:
+        from pathlib import Path
+        f = Path(".data/inbox") / f"{run_id}.csv"
+        if not f.exists():
+            return _entry("instrument output", "pending",
+                          "the instrument has not dropped its export yet")
+        from bionexus.labread import read_plate
+        from bionexus.plots import dose_response_svg
+        result = read_plate(str(f))
+        comp = result.analysis["compounds"].get(candidate or "")
+        if not comp:
+            sample = next(iter(result.analysis["compounds"]), None)
+            comp = result.analysis["compounds"].get(sample, {}) if sample else {}
+            candidate = candidate or sample
+        ic50 = comp.get("ic50_um")
+        pts = [(r["conc_um"], r["value"]) for r in result.records
+               if r.get("sample") == candidate and not r.get("control")]
+        svg = ""
+        if pts:
+            svg = dose_response_svg([(c, v) for c, v in pts], ic50=ic50,
+                                    title=f"{candidate or 'sample'} — run {run_id}",
+                                    width=380, height=220)
+        rows = "".join(
+            f"<span class='pt'>{_html.escape(_fmt_conc(c))}: {v:.1f} RFU</span>"
+            for c, v in pts)
+        bits = [f"fit IC50 <b>{ic50:.3f} µM</b>" if ic50 else "fit failed"]
+        if result.z_prime is not None:
+            bits.append(f"Z&#8242; = {result.z_prime:.3f} "
+                        f"({'accept' if result.z_prime >= 0.5 else 'marginal'})")
+        bits.append(f"{len(result.records)} wells")
+        table = f"<div class='pts'>{rows}</div>" if rows else ""
+        return ("<div class='entry runout'>"
+                f"<div class='k'>instrument output</div>"
+                f"<div class='title'>{' · '.join(bits)}</div>"
+                f"{svg}"
+                f"{table}</div>")
+    except Exception as exc:  # never let cosmetics kill the diary
+        return _entry("instrument output", "unavailable", str(exc)[:120])
+
+
+def _fmt_conc(c: float) -> str:
+    return f"{c:g} µM"
 
 
 def _entry(kind: str, title: str, body: str, cls: str = "") -> str:
