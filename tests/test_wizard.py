@@ -51,3 +51,18 @@ def test_invalid_status_rejected(tmp_path):
 def test_get_missing(tmp_path):
     s = WizardStore(tmp_path / "wiz.db")
     assert s.get("nope") is None
+
+
+def test_wizard_chain_records(tmp_path, monkeypatch):
+    from bionexus.core.contracts import EventType
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.wizard_chain import record_wizard_event
+    db = str(tmp_path / "chain.db")
+    record_wizard_event("e1", EventType.experiment_defined,
+                        {"statement": "q"}, db_path=db)
+    record_wizard_event("e1", EventType.hypothesis_validated,
+                        {"verdict": "supports hypothesis"}, db_path=db)
+    recs = SqliteProvenanceStore(db).branch_records("wizard/e1")
+    assert [r.event_type.value for r in recs] == [
+        "experiment_defined", "hypothesis_validated"]
+    assert recs[1].prev_record_hash == recs[0].record_hash  # chained
