@@ -17,6 +17,29 @@ from bionexus.core.interfaces import record_for
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
+        "name": "rank_variants",
+        "description": "Score and rank candidate genetic variants by "
+                       "AlphaGenome Atlas Variant Impact (AVI) score with "
+                       "feature attributions (splicing, chromatin, expression, "
+                       "conservation, protein impact). Input: list of "
+                       "{chromosome, position, ref, alt}.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "variants": {
+                    "type": "array",
+                    "items": {"type": "object",
+                              "properties": {"chromosome": {"type": "string"},
+                                             "position": {"type": "integer"},
+                                             "ref": {"type": "string"},
+                                             "alt": {"type": "string"}},
+                              "required": ["chromosome", "position", "ref", "alt"]},
+                },
+            },
+            "required": ["variants"],
+        },
+    },
+    {
         "name": "predict_admet",
         "description": "Predict ADMET properties (MW, LogP, TPSA, HBD/HBA, "
                        "rotatable bonds, Lipinski/Veber/PAINS) for a SMILES string.",
@@ -125,6 +148,7 @@ class AgentToolkit:
         self._runs: dict[str, dict] = {}
         self._admet = None
         self._retro = None
+        self._variant_scorer = None
 
     @property
     def admet(self):
@@ -132,6 +156,13 @@ class AgentToolkit:
             from bionexus.adapters.admet import get_admet_predictor
             self._admet = get_admet_predictor()
         return self._admet
+
+    @property
+    def variant_scorer(self):
+        if self._variant_scorer is None:
+            from bionexus.adapters.genomics.alphagenome import get_variant_scorer
+            self._variant_scorer = get_variant_scorer()
+        return self._variant_scorer
 
     @property
     def retro(self):
@@ -149,6 +180,7 @@ class AgentToolkit:
             "check_results": self._tool_results,
             "record_verdict": self._tool_verdict,
             "query_tpp": self._tool_tpp,
+            "rank_variants": self._tool_rank_variants,
         }
 
     @staticmethod
@@ -156,6 +188,14 @@ class AgentToolkit:
         return TOOL_SCHEMAS
 
     # ---- implementations ------------------------------------------------
+
+    def _tool_rank_variants(self, variants: list[dict]) -> dict:
+        """variants: [{chromosome, position, ref, alt}, ...] — ranked by
+        AlphaGenome Atlas AVI score (real API when configured, else seeded
+        simulation flagged as such)."""
+        scored = self.variant_scorer.rank(variants)
+        return {"source": scored[0].source if scored else "none",
+                "ranked": [v.summary() for v in scored]}
 
     def _tool_admet(self, smiles: str) -> dict:
         return self.admet.predict(smiles).summary()
