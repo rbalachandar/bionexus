@@ -346,6 +346,13 @@ def overview_view() -> None:
         st.markdown("*Hierarchy:* 🎯 Program (TPP) ▸ Problem ▸ Hypothesis ▸ "
                     "Experiment. The gate below sets the potency bar that "
                     "wizard hypotheses and agent experiments inherit.")
+        # apply a pending ChEMBL suggestion before the widgets instantiate
+        sp = st.session_state.pop("suggest_profile", None)
+        if sp:
+            st.session_state["tpp_hit"] = sp["hit_ic50_nm"]
+            st.session_state["tpp_lead"] = sp["lead_ic50_nm"]
+            if sp["source"] == "chembl":
+                st.session_state["tpp_gate"] = "hit"
         tp1, tp2 = st.columns(2)
         prog = tp1.text_input("Program", doc["program"], key="tpp_prog")
         tgt = tp2.text_input("Target", doc["target"], key="tpp_tgt")
@@ -354,16 +361,29 @@ def overview_view() -> None:
                                                 "clinical"],
                              index=["hit", "lead", "candidate", "clinical"]
                              .index(doc["gate"]), key="tpp_gate")
+        if "suggest_basis" in st.session_state:
+            st.caption("🧪 " + st.session_state.pop("suggest_basis"))
         hit = tp4.number_input("Hit IC50 (nM)", 1.0, 100000.0,
                                float(doc["hit_ic50_nm"]), key="tpp_hit")
         lead = tp5.number_input("Lead IC50 (nM)", 1.0, 100000.0,
                                 float(doc["lead_ic50_nm"]), key="tpp_lead")
-        if st.button("💾 Save program", type="primary"):
+        sb1, sb2 = st.columns(2)
+        if sb1.button("💾 Save program", type="primary"):
             program_cfg.save({"program": prog, "target": tgt, "gate": gate,
                               "hit_ic50_nm": hit, "lead_ic50_nm": lead})
             st.toast(f"Program saved — {gate} gate at IC50 ≤ "
                      f"{(hit if gate == 'hit' else lead) / 1000:g} µM",
                      icon="🎯")
+            st.rerun()
+        if sb2.button("✨ Suggest gates from ChEMBL published data"):
+            from bionexus.adapters.databases.chembl_gates import suggest
+            with st.spinner(f"Querying ChEMBL for {tgt}…"):
+                prof = suggest(tgt)
+            st.session_state["suggest_profile"] = prof.as_dict()
+            st.session_state["suggest_basis"] = (
+                f"suggested from {prof.n_activities} published activities — "
+                f"{prof.basis}" if prof.source == "chembl"
+                else f"using conventional defaults — {prof.basis}")
             st.rerun()
         st.markdown("**Full criteria by phase** (cumulative; required = "
                     "hard gate)")
