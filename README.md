@@ -50,7 +50,7 @@ bn connect scan <share>                # detect instruments writing into a folde
 bn watch <outbox>                      # agent notices device outputs as they land
 bn templates                           # campaign presets — no JSON needed
 bn auto --template dose-response-screen --field compounds=C1,C2,C3
-bn serve                               # cockpit: approval inbox + campaign status
+bn serve                               # headless cockpit (or: streamlit run Overview.py)
 bn diary <branch>                      # campaign as a lab-notebook narrative
 bn prove <branch> --html out.html      # tamper-evident provenance + shareable report
 bn sim                                 # reference design round on the virtual lab
@@ -189,7 +189,7 @@ bn connect scan /path/to/reader_share
 | autonomy | agent behavior |
 |---|---|
 | `observe` | reads, fits, recommends — submits nothing |
-| `gate` | proposes everything; each lab submission waits for your click in `bn serve` |
+| `gate` | proposes everything; each lab submission waits for your Approve click in the workbench |
 | `act` | autonomous within the SafetyEngine, including confirmation assays |
 
 A `ResourceBudget` (max lab runs, hypotheses, confirmations, wall clock) is
@@ -197,23 +197,23 @@ enforced at submission and generation time. Every step — problem, hypotheses,
 decisions, submissions, verdicts — lands in the hash-chained provenance store;
 `bn prove <problem-id> --html report.html` renders it as a shareable audit.
 
-### The scientist's cockpit, diary, and inbox
+### The scientist's workbench
 
-- **`bn serve`** — the scientist workbench, all in one local web page:
-  pending approvals with Approve/Deny buttons, start campaigns from templates
-  via a form, analyze instrument exports with fitted curves and CSV download,
-  and read campaign diaries and audits. No accounts, no cloud — data never
-  leaves your machine.
-- **`bn diary <branch>`** — the hash-chained record rendered as a
-  lab-notebook narrative: hypotheses with rationale, tests with evidence runs,
-  verdicts with predicted-vs-observed, gate decisions.
+- **`streamlit run Overview.py`** — the single portal, all local, no accounts,
+  no cloud: pending approvals with Approve/Deny, start agent experiments from
+  templates (or your own custom problem), a readiness-gated step-by-step
+  wizard for experiments you define yourself, a live hypothesis pipeline per
+  experiment (stage, runs, instrument output with fitted curves and Z′,
+  evidence-linked verdicts), the target product profile, and the hash-chained
+  lab narrative. Wizard experiments are provenance-chained too —
+  `bn prove wizard/<id>`.
+- **`bn serve`** — a headless alternative cockpit (stdlib HTTP, no
+  dependencies) for approval queues and diaries on machines without a
+  browser; useful for remote/headless boxes.
+- **`bn diary <branch>`** — the hash-chained record as a static lab-notebook
+  HTML file: hypotheses with rationale, tests with evidence runs, verdicts
+  with predicted-vs-observed, gate decisions.
 - **`bn read --csv out.csv`** — standardized results ready for Excel/GraphPad.
-
-- **`bn read --csv out.csv`** — standardized results ready for Excel/GraphPad.
-- **`streamlit run Overview.py`** — a browser-based workbench: read instrument
-  exports, design experiments with readiness checks, view the TPP, browse
-  agent personas, and check ADMET/retrosynthesis. No code required for daily
-  use.
 
 ### The DMTA cycle — scientific decision layer
 

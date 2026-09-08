@@ -26,6 +26,7 @@ from bionexus.experiment import (
     BiologicalSystem, ClaimType, DeliveryConditions, ExperimentDefinition,
     Intervention, ReadoutSpec,
 )
+from bionexus.core.contracts import EventType
 from bionexus.readiness import review_experiment
 from bionexus.adapters.admet import get_admet_predictor
 from bionexus.adapters.retrosynthesis import SimulatedRetrosynthesis
@@ -73,6 +74,43 @@ def _goto(n: int) -> None:
 
 
 # ---------------------------------------------------------------------------
+def _spawn_agent_experiment(cfg: dict, objective: str) -> str:
+    """Launch an agent-driven experiment subprocess and register it."""
+    import subprocess
+    import sys as _sys
+    from bionexus.serve import save_campaign_index
+    from bionexus.paths import ensure_dirs
+    ensure_dirs()
+    cid = f"cmp-{int(time.time())}"
+    cfgpath = CAMPAIGN_DIR / f"{cid}.json"
+    cfgpath.write_text(json.dumps(cfg, indent=1))
+    logf = CAMPAIGN_DIR / f"{cid}.log"
+    proc = subprocess.Popen(
+        [_sys.executable, "-m", "bionexus.cli", "auto", str(cfgpath),
+         "--db", "bionexus.db", "--inbox", ".data/approvals.jsonl", "--yes"],
+        stdout=open(logf, "ab", buffering=0), stderr=subprocess.STDOUT,
+        cwd=str(Path.cwd()))
+    store.register_agent(cid, objective, str(logf),
+                         autonomy=cfg.get("autonomy", "act"), pid=proc.pid)
+    idx = campaign_index()
+    idx[cid] = {"pid": proc.pid, "autonomy": cfg.get("autonomy", "act"),
+                "objective": objective, "log": str(logf)}
+    save_campaign_index(idx)
+    return cid
+
+
+def _wprove(event, decision: dict) -> None:
+    """Hash-chain a wizard lifecycle step into the provenance store."""
+    eid = st.session_state.get("exp_id")
+    if not eid:
+        return
+    try:
+        from bionexus.wizard_chain import record_wizard_event
+        record_wizard_event(eid, event, decision)
+    except Exception as exc:
+        st.caption(f"(provenance write failed: {exc})")
+
+
 def _campaign_start_form() -> None:
     from bionexus.templates import (build_campaign, fill, load_template,
                                     list_templates, save_user_template)
@@ -129,7 +167,7 @@ def _campaign_start_form() -> None:
                 missing_required = True
 
     ready = bool(compounds.strip()) and not missing_required
-    if st.button("🚀 Start campaign", type="primary", disabled=not ready):
+    if st.button("🚀 Start agent experiment", type="primary", disabled=not ready):
         threshold_s = str(int(threshold)) if threshold == int(threshold) else str(threshold)
         if custom:
             objective_text = (objective.strip() or objective_default).replace(
@@ -161,23 +199,7 @@ def _campaign_start_form() -> None:
                                       prompt_missing=False))
             cfg["k"] = k
         cfg["autonomy"] = autonomy.split(" —")[0]
-        ensure_dirs()
-        cid = f"cmp-{int(time.time())}"
-        cfgpath = CAMPAIGN_DIR / f"{cid}.json"
-        cfgpath.write_text(json.dumps(cfg, indent=1))
-        logf = CAMPAIGN_DIR / f"{cid}.log"
-        import sys as _sys
-        proc = subprocess.Popen(
-            [_sys.executable, "-m", "bionexus.cli", "auto", str(cfgpath),
-             "--db", "bionexus.db", "--inbox", ".data/approvals.jsonl", "--yes"],
-            stdout=open(logf, "ab", buffering=0), stderr=subprocess.STDOUT,
-            cwd=str(Path.cwd()))
-        store.register_agent(cid, cfg["problem"]["objective"], str(logf),
-                             autonomy=cfg["autonomy"], pid=proc.pid)
-        idx = campaign_index()
-        idx[cid] = {"pid": proc.pid, "autonomy": cfg["autonomy"],
-                    "objective": cfg["problem"]["objective"], "log": str(logf)}
-        save_campaign_index(idx)
+        cid = _spawn_agent_experiment(cfg, cfg["problem"]["objective"])
         st.session_state["view_experiment"] = cid
         st.switch_page("pages/Experiments.py")
 
@@ -207,11 +229,32 @@ if step == 0:
     # ---------------------------------------------------- 1. approvals
     st.header("Awaiting your decision")
     if pending:
+        import re as _re
         for p in pending:
             with st.container(border=True):
                 st.markdown(f"**{p['title']}**")
                 if p.get("detail"):
                     st.caption(p["detail"])
+                m = _re.search(r"\[(problem/prob-\w+)\]", p["title"])
+                owner = None
+                if m:
+                    want = m.group(1)
+                    for e in store.ongoing():
+                        ag = e["payload"].get("agent") or {}
+                        if f"problem/{ag.get('problem_id')}" == want:
+                            owner = e
+                            break
+                        lg = Path(ag.get("log", ""))
+                        if lg.exists() and want.split("/")[1] in lg.read_text(
+                                errors="replace"):
+                            store.link_problem(e["id"], want.split("/")[1])
+                            owner = e
+                            break
+                    if owner:
+                        if st.button(f"↗ {owner['question'][:40]}",
+                                     key=f"own_{p['id']}"):
+                            st.session_state["view_experiment"] = owner["id"]
+                            st.switch_page("pages/Experiments.py")
                 c1, c2, _ = st.columns([1, 1, 3])
                 if c1.button("✅ Approve", key=f"ok_{p['id']}", type="primary"):
                     inbox.decide(p["id"], True)
@@ -219,7 +262,7 @@ if step == 0:
                 if c2.button("❌ Deny", key=f"no_{p['id']}"):
                     inbox.decide(p["id"], False)
                     st.rerun()
-        st.caption("The campaign is paused until you decide.")
+        st.caption("The experiment is paused until you decide.")
 
         @st.fragment(run_every=3)
         def _wait_approvals():
@@ -283,6 +326,24 @@ if step == 0:
                 else:
                     _resume_wizard(e)
                     st.rerun()
+
+    # ------------------------------------------------ TPP for the program
+    with st.expander("🎯 Target product profile"):
+        from bionexus.tpp import standard_small_molecule_tpp
+        tp1, tp2, tp3 = st.columns(3)
+        prog = tp1.text_input("Program", "My-Program", key="tpp_prog")
+        tgt = tp2.text_input("Target", "MAP4K1", key="tpp_tgt")
+        thr = tp3.number_input("Hit IC50 (nM)", 1, 10000, 50, key="tpp_thr")
+        tpp = standard_small_molecule_tpp(prog, tgt, ic50_nm=thr)
+        from bionexus.tpp import CriterionPhase
+        for phase in CriterionPhase:
+            crs = tpp.criteria_for_phase(phase)
+            if crs:
+                st.markdown(f"**{phase.value.title()}**")
+                for c in crs:
+                    direction = "≤" if c.direction == "min" else "≥"
+                    req = "required" if c.required else "optional"
+                    st.caption(f"- {c.name}: {direction} {c.threshold} {c.unit} ({req})")
 
     # ------------------------------------------------ 3. start new work
     st.header("Start new work")
@@ -370,6 +431,11 @@ elif step == 2:
               readiness={"verdict": review.verdict.value,
                          "findings": [f.model_dump(mode="json")
                                       for f in review.findings]})
+        _wprove(EventType.experiment_defined, {
+            "statement": exp.scientific_question,
+            "claim_type": exp.claim_type.value,
+            "target": exp.intervention.target,
+            "controls": exp.controls})
         _goto(3)
 
 # =========================================================================
@@ -405,6 +471,12 @@ elif step == 3:
                          disabled=blocked,
                          help="Resolve blockers before running the experiment"):
                 _save("readiness_ok" if not blocked else "ready_blocked")
+                _wprove(EventType.experiment_readiness_reviewed, {
+                    "verdict": review.verdict.value,
+                    "blockers": [f.check for f in review.findings
+                                 if f.severity == "blocker"],
+                    "warnings": [f.check for f in review.findings
+                                 if f.severity == "warning"]})
                 _goto(4)
 
 # =========================================================================
@@ -416,22 +488,55 @@ elif step == 4:
     st.info(f"**Question:** {exp.scientific_question}\n\n"
             f"**Claim:** {exp.claim_type.value} · "
             f"**Controls:** {len(exp.controls)}")
-    st.markdown(
-        "Run the experiment at the bench (or submit it to a configured lab "
-        "via `bn serve` → Approve, or `bn auto` for simulated runs). When the "
-        "instrument finishes, continue to step 5 with its export file.")
-    lab = st.selectbox("Execution route",
-                       ["Bench (manual — bring back the export)",
-                        "Simulated lab (`bn auto`)",
-                        "Connected lab (`bn serve` approval queue)"])
+    route = st.radio("Execution route",
+                     ["🧑 I run it at the bench — bring back the export",
+                      "🤖 Agent executes — compounds go through the lab loop"],
+                     horizontal=True)
     col1, col2 = st.columns(2)
     with col1:
         if st.button("← Back"):
             _goto(3)
     with col2:
-        if st.button("I have results →", type="primary"):
-            _save("executing")
-            _goto(5)
+        if route.startswith("🧑"):
+            if st.button("I have results →", type="primary"):
+                _save("executing")
+                _wprove(EventType.stage_transition,
+                        {"stage": "executing", "detail": "at the bench"})
+                _goto(5)
+        else:
+            comps = st.text_input("Compounds for the agent to test",
+                                  placeholder="compound-a,compound-b")
+            thr = st.number_input("Potency threshold (µM)", 0.1, 1000.0, 20.0)
+            if st.button("🤖 Launch agent execution", type="primary",
+                         disabled=not comps.strip()):
+                from bionexus.core.hypothesis import Constraint
+                thr_s = f"{thr:g}"
+                cfg = {
+                    "problem": {
+                        "objective": exp.scientific_question,
+                        "constraints": [{"name": "potency",
+                                         "description": f"IC50 <= {thr_s} uM",
+                                         "kind": "hard", "limit": float(thr),
+                                         "unit": "uM"}],
+                        "success_metric": "IC50 ranking consistent across replicates"},
+                    "hypotheses": [
+                        {"statement": f"{c.strip()} tested — {exp.scientific_question}",
+                         "candidate": c.strip(),
+                         "assay_type": exp.readout.assay
+                         if exp.readout.assay != "user" else "binding",
+                         "predicted": f"IC50 <= {thr_s}",
+                         "predicted_value": float(thr),
+                         "rationale": f"wizard experiment {st.session_state.get('exp_id')}"}
+                        for c in comps.split(",") if c.strip()],
+                    "k": min(4, len([c for c in comps.split(",") if c.strip()])),
+                    "autonomy": "gate",
+                    "concentrations": ["0.5uM", "2uM", "10uM", "40uM"]}
+                cid = _spawn_agent_experiment(cfg, exp.scientific_question)
+                _save("executing", agent_link=cid)
+                _wprove(EventType.stage_transition,
+                        {"stage": "handed-off", "detail": f"agent experiment {cid}"})
+                st.session_state["view_experiment"] = cid
+                st.switch_page("pages/Experiments.py")
 
 # =========================================================================
 # STEP 5 — UPLOAD RESULTS
@@ -453,6 +558,12 @@ elif step == 5:
               plate={"format": r.format, "n_wells": len(r.records),
                      "z_prime": r.z_prime,
                      "samples": list(r.analysis["compounds"])})
+        _wprove(EventType.evaluation, {
+            "artifact": "uploaded instrument export",
+            "format": r.format, "n_wells": len(r.records),
+            "z_prime": r.z_prime,
+            "fits": {c: d.get("ic50_um") for c, d in
+                     r.analysis["compounds"].items()}})
         _goto(6)
     r = st.session_state.get("plate_data")
     if r:
@@ -529,9 +640,16 @@ elif step == 6:
         if st.button("Record verdict", type="primary"):
             _save("verdict_recorded", verdict=obs,
                   selected_hits=st.session_state["selected"])
-            st.success(f"Recorded: **{obs}** — provenance-chained to the "
-                       f"experiment definition from step 2. "
-                       f"Full audit: `bn prove --html` or `bn diary`.")
+            ev = (EventType.hypothesis_validated if "supports" in obs
+                  else EventType.hypothesis_invalidated if "refutes" in obs
+                  else EventType.stage_transition)
+            _wprove(ev, {"statement": exp.scientific_question,
+                         "verdict": obs,
+                         "hits": st.session_state["selected"],
+                         "evidence": "uploaded instrument export"})
+            st.success(f"Recorded: **{obs}** — hash-chained with the "
+                       f"definition and readiness review. Audit: "
+                       f"`bn prove wizard/{st.session_state.get('exp_id')}`")
             if st.button("← Back to overview"):
                 st.session_state["step"] = 0
                 st.rerun()

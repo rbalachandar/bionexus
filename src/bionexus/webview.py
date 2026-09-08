@@ -9,6 +9,19 @@ import streamlit as st
 
 def render_experiment_pipeline(logf: Path, problem_id: str | None,
                                 running: bool, store, eid: str) -> None:
+    """Live view: when the experiment is running the whole block refreshes
+    every 3s (provenance, cards, log), so stages move without user action."""
+    if running:
+        @st.fragment(run_every=3)
+        def _live():
+            _pipeline_body(logf, problem_id, running, store, eid)
+        _live()
+    else:
+        _pipeline_body(logf, problem_id, running, store, eid)
+
+
+def _pipeline_body(logf: Path, problem_id: str | None,
+                   running: bool, store, eid: str) -> None:
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
     branch = f"problem/{problem_id}" if problem_id else None
     recs = []
@@ -134,15 +147,12 @@ def render_experiment_pipeline(logf: Path, problem_id: str | None,
     if gates:
         st.caption(f"🚦 {gates} gate decision(s)")
 
-    with st.expander("Raw agent log"):
-        @st.fragment(run_every=3 if running else None)
-        def _live_log():
-            if logf.exists():
-                tail = logf.read_text(errors="replace").splitlines()[-30:]
-                st.code("\n".join(tail) or "(waiting for output...)", language=None)
-            else:
-                st.caption("(no log written yet)")
-        _live_log()
+    with st.expander("Raw agent log", expanded=True):
+        if logf.exists():
+            tail = logf.read_text(errors="replace").splitlines()[-30:]
+            st.code("\n".join(tail) or "(waiting for output...)", language=None)
+        else:
+            st.caption("(no log written yet)")
 
 
 

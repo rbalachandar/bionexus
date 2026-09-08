@@ -93,7 +93,10 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     if cfg.autonomy == "gate":
         if approver is None:
             raise ValueError("autonomy='gate' requires an approver callback")
-        gateway = _GatedGateway(lab, safety, store, actor, approver, say)
+        branch_hint = f"[problem/{cfg.problem.problem_id or 'pending'}]"
+        gateway = _GatedGateway(
+            lab, safety, store, actor,
+            lambda t: approver(f"{t} {branch_hint}"), say)
     else:
         gateway = LabGateway(lab, safety, store, actor)
 

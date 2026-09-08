@@ -20,7 +20,8 @@ pip install -e ".[sandbox-agentenv]"  # AgentENV fork/snapshot sandboxes
 ```sh
 bn connect scan /path/to/reader_share   # what instrument is this?
 bn read results.csv --csv out.csv --html report.html   # analyze an export
-bn serve                                # cockpit: approvals + provenance
+streamlit run Overview.py               # the workbench: approvals, experiments, live agents
+# (headless alternative: bn serve)
 bn templates                            # campaign presets
 bn auto --template dose-response-screen --field compounds=C1,C2,C3 \
         --autonomy gate                 # pause at each submission for your click
