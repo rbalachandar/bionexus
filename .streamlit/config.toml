@@ -1,0 +1,13 @@
+# BioNexus workbench theme — warm paper, teal accent (matches the diary CSS)
+[theme]
+base = "light"
+primaryColor = "#1f7a86"
+backgroundColor = "#f3f1ea"
+secondaryBackgroundColor = "#faf8f2"
+textColor = "#2a2823"
+
+[client]
+toolbarMode = "minimal"
+
+[server]
+headless = true
