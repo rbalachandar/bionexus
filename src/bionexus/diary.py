@@ -113,6 +113,11 @@ def build_diary_html(records: list[Any], branch: str) -> str:
             lane = _lane(art_id, hid_to_cand.get(art_id, cand or "?"), art.get("statement", ""))
             bits = [f"observed {d.get('observed', '—')} µM",
                     f"threshold {d.get('threshold', '—')}"]
+            if d.get("observed_ci"):
+                lo, hi = d["observed_ci"]
+                bits.append(f"95% CI {lo}–{hi}")
+            if d.get("verdict") == "inconclusive":
+                bits.append("CI straddles threshold — honest abstention")
             if d.get("evidence_run_id"):
                 bits.append(f"evidence run `{d['evidence_run_id']}`")
             head = ("HYPOTHESIS CONFIRMED (ORTHOGONAL)"

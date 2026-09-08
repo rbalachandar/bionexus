@@ -149,17 +149,95 @@ def _parse_grid(rows: list[list[str]]) -> list[dict[str, Any]]:
 
 # --------------------------------------------------------------- analysis
 
+def _hill_sse(log_ic50: float, pts: list[tuple[float, float]],
+              max_response: float) -> float:
+    ic50 = 10 ** log_ic50
+    sse = 0.0
+    for c, v in pts:
+        pred = max_response / (1.0 + ic50 / max(c, 1e-9))
+        sse += (v - pred) ** 2
+    return sse
+
+
+def _hill_fit_ic50(pts: list[tuple[float, float]],
+                   max_response: float) -> float | None:
+    """Least-squares Hill (n=1) fit by grid search on log10 IC50, refined once.
+    Returns IC50 in µM or None if unbracketable."""
+    import math
+
+    if len(pts) < 2 or max_response <= 0:
+        return None
+    lo, hi = -3.0, 2.5                      # 0.001 – ~316 µM
+    best, best_sse = None, float("inf")
+    n = 60
+    for i in range(n + 1):
+        g = lo + (hi - lo) * i / n
+        s = _hill_sse(g, pts, max_response)
+        if s < best_sse:
+            best, best_sse = g, s
+    step = (hi - lo) / n
+    for i in range(-8, 9):                   # refine
+        g = best + i * step / 8
+        s = _hill_sse(g, pts, max_response)
+        if s < best_sse:
+            best, best_sse = g, s
+    if best_sse >= float("inf"):
+        return None
+    return 10 ** best
+
+
 def fit_ic50(points: list[tuple[float, float]], max_response: float = 100.0) -> float | None:
-    """IC50 from (conc, response) points against the known maximal response."""
+    """IC50 from (conc, response) points — Hill fit, with legacy linear
+    interpolation as the fallback for sparse data."""
     pts = sorted((c, v) for c, v in points if v is not None)
     if len(pts) < 2:
         return None
+    hill = _hill_fit_ic50(pts, max_response)
+    if hill is not None and len(pts) >= 3:
+        return round(hill, 3)
     target = max_response / 2.0
     for (c0, v0), (c1, v1) in zip(pts, pts[1:]):
         if min(v0, v1) <= target <= max(v0, v1):
             frac = 0.0 if v1 == v0 else (target - v0) / (v1 - v0)
             return round(c0 + frac * (c1 - c0), 3)
     return None  # right-censored within this concentration range
+
+
+def fit_ic50_ci(points: list[tuple[float, float]], max_response: float = 100.0,
+                n_boot: int = 300, seed: int = 7) -> dict[str, float] | None:
+    """Residual bootstrap CI for the Hill IC50.
+
+    Refits on resampled residuals around the fitted curve; returns
+    {ic50, ci_low, ci_high} (95%, log-scale percentiles) or None.
+    Deterministic given the seed — reproducible verdicts, same as everything
+    else in BioNexus.
+    """
+    import math
+    import random
+
+    pts = sorted((c, v) for c, v in points if v is not None)
+    if len(pts) < 3 or max_response <= 0:
+        return None
+    base = _hill_fit_ic50(pts, max_response)
+    if base is None:
+        return None
+    fitted = [max_response / (1.0 + base / max(c, 1e-9)) for c, _ in pts]
+    residuals = [v - f for (_, v), f in zip(pts, fitted)]
+    rng = random.Random(seed)
+    boots: list[float] = []
+    for _ in range(n_boot):
+        sample = [(c, max(0.0, f + rng.choice(residuals)))
+                  for (c, _v), f in zip(pts, fitted)]
+        est = _hill_fit_ic50(sample, max_response)
+        if est:
+            boots.append(math.log10(est))
+    if len(boots) < 30:                      # too few successful refits
+        return {"ic50": round(base, 3), "ci_low": None, "ci_high": None,
+                "method": "hill-no-ci"}
+    boots.sort()
+    q = lambda p: boots[max(0, min(len(boots) - 1, int(p * (len(boots) - 1))))]
+    return {"ic50": round(base, 3), "ci_low": round(10 ** q(0.025), 3),
+            "ci_high": round(10 ** q(0.975), 3), "method": "hill-bootstrap"}
 
 
 def z_factor(values: list[float]) -> float:
@@ -207,8 +285,15 @@ def analyze_records(records: list[dict[str, Any]],
             flagged = True
         else:
             flagged = False
+        ci = fit_ic50_ci(pts, max_response or (
+            max(v for _, v in pts) if pts else 100.0)) if len(pts) >= 3 else None
+        if ci:
+            ic50 = ci["ic50"]
         compounds[sample] = {
             "ic50_um": ic50,
+            "ic50_ci": (ci["ci_low"], ci["ci_high"]) if ci and ci.get("ci_low")
+                        is not None else None,
+            "fit_method": (ci or {}).get("method", "linear-interp"),
             "n_points": len(pts) or len(vals),
             "right_censored": pts and ic50 is None,
             "fit_quality": "known-max" if max_response else ("observed-max" if pts else "n/a"),

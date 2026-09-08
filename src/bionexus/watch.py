@@ -127,19 +127,23 @@ class AutoAnalysisAgent:
                 if match and hyp.status in ("proposed", "designed", "tested") and match["ic50_um"]:
                     # attach evidence directly (measurement already fitted)
                     hyp.observed_value = match["ic50_um"]
+                    hyp.observed_ci = match.get("ic50_ci")
                     hyp.evidence_run_id = event.path.stem  # run ↔ verdict link
                     hyp.qc_passed = (result.z_prime or 0) >= 0.5
                     if hyp.criteria:
-                        hyp.status = ("validated" if hyp.criteria.met(match["ic50_um"])
-                                      else "invalidated")
+                        hyp.status = hyp.criteria.classify(
+                            match["ic50_um"], match.get("ic50_ci"))
                     if hasattr(self.tracker, "record_outcome"):
                         self.tracker.record_outcome(hyp)
                     verdicts.append((hyp.hypothesis_id, hyp.candidate, hyp.status,
                                      match["ic50_um"]))
+                    ci_txt = (f" (95% CI {match['ic50_ci'][0]}–{match['ic50_ci'][1]})"
+                              if match.get("ic50_ci") else "")
                     self.notify(f"hypothesis {hyp.hypothesis_id} ({hyp.candidate}): "
                                 f"{hyp.status.upper()} (preliminary — pending "
-                                f"orthogonal confirmation) — IC50 {match['ic50_um']} uM "
-                                f"vs threshold {hyp.criteria.threshold if hyp.criteria else '?'}")
+                                f"orthogonal confirmation) — IC50 {match['ic50_um']} uM"
+                                f"{ci_txt} vs threshold "
+                                f"{hyp.criteria.threshold if hyp.criteria else '?'}")
         # scientist-facing diary line
         best = sorted(((c, r["ic50_um"]) for c, r in result.analysis["compounds"].items()
                        if r["ic50_um"]), key=lambda t: t[1])

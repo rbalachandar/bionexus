@@ -97,7 +97,10 @@ def _render_dose_response(f: Path, ctx: dict) -> str:
         svg = dose_response_svg(pts, ic50=ic50,
                                 title=f"{cand or 'sample'} — {ctx.get('run_id', '')}",
                                 width=380, height=220)
-    bits = [f"fit IC50 <b>{ic50:.3f} µM</b>" if ic50 else "fit failed"]
+    ci = comp.get("ic50_ci")
+    bits = [(f"fit IC50 <b>{ic50:.3f} µM</b>"
+             + (f" (95% CI {ci[0]:.2f}–{ci[1]:.2f})" if ci else ""))
+            if ic50 else "fit failed"]
     if result.z_prime is not None:
         bits.append(f"Z&#8242; = {result.z_prime:.3f} "
                     f"({'accept' if result.z_prime >= 0.5 else 'marginal'})")

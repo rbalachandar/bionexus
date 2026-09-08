@@ -68,6 +68,7 @@ def _pipeline_body(logf: Path, problem_id: str | None,
             if hid:
                 tested[hid] = {"verdict": d.get("verdict", et),
                                "observed": d.get("observed") or d.get("ic50_um"),
+                               "ci": d.get("observed_ci"),
                                "evidence": d.get("evidence_run_id")}
         elif et == "gate_decision":
             gates += 1
@@ -86,13 +87,19 @@ def _pipeline_body(logf: Path, problem_id: str | None,
             sel = filtered.get(hid)
             verd = tested.get(hid, {})
             v = (verd.get("verdict") or "").lower()
+            ci = verd.get("ci")
+            ci_txt = (f" (95% CI {ci[0]}–{ci[1]})" if ci else "")
             if v == "confirmed":
                 icon, stage = "✅", ("confirmed by orthogonal assay"
-                                     + (f" — observed {verd.get('observed')} µM"
+                                     + (f" — observed {verd.get('observed')} µM{ci_txt}"
                                         if verd.get("observed") is not None else ""))
             elif v == "validated":
                 icon, stage = "✅", ("validated (preliminary)"
-                                     + (f" — observed {verd.get('observed')} µM"
+                                     + (f" — observed {verd.get('observed')} µM{ci_txt}"
+                                        if verd.get("observed") is not None else ""))
+            elif v == "inconclusive":
+                icon, stage = "❔", ("inconclusive — CI straddles the threshold"
+                                     + (f" ({verd.get('observed')} µM{ci_txt})"
                                         if verd.get("observed") is not None else ""))
             elif v in ("refuted", "invalidated"):
                 icon, stage = "❌", "refuted"

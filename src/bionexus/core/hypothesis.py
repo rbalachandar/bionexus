@@ -42,6 +42,28 @@ class SuccessCriteria(BaseModel):
     def met(self, value: float) -> bool:
         return value <= self.threshold if self.direction == "min" else value >= self.threshold
 
+    def classify(self, value: float,
+                 ci: tuple[float | None, float | None] | None = None) -> str:
+        """Point estimate decides; the CI can VETO certainty.
+
+        If the 95% interval straddles the threshold, the honest verdict is
+        'inconclusive' — not a coin-flip dressed as a result.
+        """
+        if ci is None or ci[0] is None or ci[1] is None:
+            return "validated" if self.met(value) else "invalidated"
+        lo, hi = ci
+        if self.direction == "min":
+            if hi <= self.threshold:
+                return "validated"
+            if lo > self.threshold:
+                return "invalidated"
+        else:
+            if lo >= self.threshold:
+                return "validated"
+            if hi < self.threshold:
+                return "invalidated"
+        return "inconclusive"
+
 
 class Constraint(BaseModel):
     """A hard or soft constraint on the solution space, declared with the problem."""
@@ -108,6 +130,7 @@ class Hypothesis(BaseModel):
     criteria: SuccessCriteria | None = None
     design: ExperimentDesign | None = None
     observed_value: float | None = None
+    observed_ci: tuple[float | None, float | None] | None = None
     qc_passed: bool | None = None
     evidence_run_id: str | None = None
     problem_id: str | None = None        # root problem this hypothesis addresses
@@ -373,12 +396,19 @@ class HypothesisTracker:
         h.observed_value = value
         h.qc_passed = qc_ok
         h.evidence_run_id = result.run_id
+        ci = None
+        for m in result.measurements:
+            if m.sample_id == h.candidate:
+                low = m.derived_metrics.get("ic50_ci_low")
+                high = m.derived_metrics.get("ic50_ci_high")
+                if low is not None and high is not None:
+                    ci = (low, high)
         if not qc_ok:
             h.status = "inconclusive"
         elif value is None:
             h.status = "inconclusive"  # no usable evidence (right-censored etc.)
         else:
-            h.status = "validated" if criteria.met(value) else "invalidated"
+            h.status = criteria.classify(value, ci)
         event = {
             "validated": EventType.hypothesis_validated,
             "invalidated": EventType.hypothesis_invalidated,
@@ -416,6 +446,7 @@ class HypothesisTracker:
             "metric": h.criteria.metric if h.criteria else "value",
             "threshold": h.criteria.threshold if h.criteria else None,
             "observed": h.observed_value,
+            "observed_ci": list(h.observed_ci) if h.observed_ci else None,
             "qc_passed": h.qc_passed,
             "evidence_run_id": h.evidence_run_id,
             "verdict": h.status,

@@ -169,3 +169,27 @@ def test_core_has_no_heavy_imports():
         src = py.read_text()
         for bad in forbidden:
             assert f"import {bad}" not in src, f"{py.name} imports forbidden '{bad}'"
+
+
+def test_success_criteria_ci_straddle_is_inconclusive():
+    from bionexus.core.hypothesis import SuccessCriteria
+    c = SuccessCriteria(metric="ic50_um", threshold=20.0, direction="min")
+    assert c.classify(15.0, (9.0, 18.0)) == "validated"      # CI fully under
+    assert c.classify(25.0, (21.0, 40.0)) == "invalidated"   # CI fully over
+    assert c.classify(19.0, (12.0, 27.0)) == "inconclusive"  # straddles
+    assert c.classify(15.0, None) == "validated"             # no CI: point est.
+    hi = SuccessCriteria(metric="value", threshold=90.0, direction="max")
+    assert hi.classify(95.0, (91.0, 99.0)) == "validated"
+    assert hi.classify(95.0, (85.0, 99.0)) == "inconclusive"
+
+
+def test_fit_ic50_ci_covers_true_value():
+    import random
+    from bionexus.labread import fit_ic50_ci
+    rng = random.Random(3)
+    true_ic50, maxr = 5.0, 500.0
+    pts = [(c, maxr / (1 + true_ic50 / c) + rng.gauss(0, 12))
+           for c in (0.5, 2, 10, 40)]
+    out = fit_ic50_ci(pts, maxr)
+    assert out and out["ci_low"] <= true_ic50 <= out["ci_high"]
+    assert abs(out["ic50"] - true_ic50) / true_ic50 < 0.6

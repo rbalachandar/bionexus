@@ -7,18 +7,22 @@ epistemology of verdicts do not.** Work top-down — P0 first.
 Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## P0 — Uncertainty-aware verdicts (epistemic integrity)
-- [ ] Fit IC50 with a confidence interval (4-param Hill + bootstrap or delta
-  method) — `src/bionexus/labread.py`, `src/bionexus/plots.py`
-- [ ] Verdict rule: if the 95% CI straddles the success-criteria threshold →
-  `inconclusive`, not validated/invalidated — `src/bionexus/core/hypothesis.py`
-  (`SuccessCriteria.met`, `verdict`), `src/bionexus/watch.py`
-  (`_handle_confirmation` agreement check should use CIs too)
-- [ ] Show CI everywhere a number appears: pipeline cards (`webview.py`),
-  diary entries (`diary.py`), wizard step 6 (`Overview.py`)
+- [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap
+  (deterministic seed), `labread.fit_ic50_ci`; CI stored on compounds as
+  `ic50_ci` and in verdict provenance as `observed_ci`
+- [x] Verdict rule: `SuccessCriteria.classify(value, ci)` — CI straddling the
+  threshold → `inconclusive`; wired in `verdict()` and `watch.handle`.
+  [ ] remaining: `_handle_confirmation` agreement still uses point-estimate
+  ratio only (should widen to CI overlap)
+- [x] CI shown in pipeline cards, diary verdict lines, instrument output
+  blocks, wizard step 6 table. [ ] remaining: `plots.dose_response_svg` still
+  draws no CI band
 - [ ] Propagate replicate variance through to the fit (currently median-of-
   replicates hides spread) — `adapters/lab/simulator.py` + labread
-- Verify: new tests in `tests/test_core.py` / `test_adapters_ext.py`; rerun
-  `case-studies/02-az3246-hpk1` and confirm verdicts state CIs
+- Done 2026-09-08: tests `test_success_criteria_ci_straddle_is_inconclusive`,
+  `test_fit_ic50_ci_covers_true_value`; live campaign showed a CI-aware
+  confirmation REFUTING a preliminary hit (the mechanism working). Remaining:
+  rerun case-studies/02 to regenerate its verdict artifacts
 
 ## P0 — Small-n statistics
 - [ ] Bootstrap CIs on Spearman/EF@10% in case-study tables

@@ -643,6 +643,8 @@ def wizard_view() -> None:
         else:
             import pandas as pd
             rows = [{"sample": s, "ic50_uM": dd.get("ic50_um"),
+                     "ci_low": (dd.get("ic50_ci") or [None, None])[0],
+                     "ci_high": (dd.get("ic50_ci") or [None, None])[1],
                      "points": dd.get("n_points"),
                      "fit": dd.get("fit_quality", "")}
                     for s, dd in r.analysis["compounds"].items()]
