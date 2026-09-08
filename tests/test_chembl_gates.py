@@ -24,7 +24,7 @@ def test_derive_gates_too_thin_returns_none():
 
 
 def test_suggest_fallback_is_labeled(tmp_path, monkeypatch):
-    monkeypatch.setattr(G, "lookup_target",
+    monkeypatch.setattr(G, "lookup_targets",
                         lambda name: (_ for _ in ()).throw(OSError("offline")))
     prof = G.suggest("MAP4K1")
     assert prof.source == "fallback"
