@@ -31,6 +31,7 @@ from bionexus.experiment import (
 )
 from bionexus.labread import read_plate
 from bionexus.plots import dose_response_svg
+from bionexus import program as program_cfg
 from bionexus.readiness import review_experiment
 from bionexus.serve import CAMPAIGN_DIR, campaign_index, campaign_running
 from bionexus.tpp import CriterionPhase, standard_small_molecule_tpp
@@ -172,10 +173,13 @@ def start_dialog() -> None:
     objective = st.text_input("Objective", "",
                               placeholder=objective_default,
                               disabled=not custom)
+    pdoc = program_cfg.load()
+    st.caption(f"🎯 Inheriting program: {program_cfg.gate_summary(pdoc)}")
     c3, c4 = st.columns(2)
     compounds = c3.text_input("Compounds (comma-separated)",
                               "gefitinib,erlotinib,lapatinib,osimertinib")
-    threshold = c4.number_input("Potency threshold (µM)", 0.1, 1000.0, 20.0)
+    threshold = c4.number_input("Potency threshold (µM)", 0.001, 1000.0,
+                                program_cfg.gate_threshold_um(pdoc))
     k = st.slider("How many hypotheses may go to the lab (top-k)", 1, 6, 2)
 
     extra_fields: dict[str, str] = {}
@@ -333,15 +337,38 @@ def overview_view() -> None:
                         resume_wizard(e)
                         st.switch_page(PAGES["wizard"])
 
-    # ---------------------------------------------------- TPP
-    with st.expander("🎯 Target product profile"):
-        tp1, tp2, tp3 = st.columns(3)
-        prog = tp1.text_input("Program", "My-Program", key="tpp_prog")
-        tgt = tp2.text_input("Target", "MAP4K1", key="tpp_tgt")
-        thr = tp3.number_input("Hit IC50 (nM)", 1, 10000, 50, key="tpp_thr")
-        tpp = standard_small_molecule_tpp(prog, tgt, ic50_nm=thr)
+    # ---------------------------------------------------- Program & TPP
+    doc = program_cfg.load()
+    st.caption(f"🎯 Program: **{doc['program']}** ({doc['target']}) — "
+               f"screening gate: **{doc['gate']}** at IC50 ≤ "
+               f"{program_cfg.gate_threshold_um(doc):g} µM")
+    with st.expander("Program & target product profile — what winning looks like"):
+        st.markdown("*Hierarchy:* 🎯 Program (TPP) ▸ Problem ▸ Hypothesis ▸ "
+                    "Experiment. The gate below sets the potency bar that "
+                    "wizard hypotheses and agent experiments inherit.")
+        tp1, tp2 = st.columns(2)
+        prog = tp1.text_input("Program", doc["program"], key="tpp_prog")
+        tgt = tp2.text_input("Target", doc["target"], key="tpp_tgt")
+        tp3, tp4, tp5 = st.columns(3)
+        gate = tp3.selectbox("Screening gate", ["hit", "lead", "candidate",
+                                                "clinical"],
+                             index=["hit", "lead", "candidate", "clinical"]
+                             .index(doc["gate"]), key="tpp_gate")
+        hit = tp4.number_input("Hit IC50 (nM)", 1.0, 100000.0,
+                               float(doc["hit_ic50_nm"]), key="tpp_hit")
+        lead = tp5.number_input("Lead IC50 (nM)", 1.0, 100000.0,
+                                float(doc["lead_ic50_nm"]), key="tpp_lead")
+        if st.button("💾 Save program", type="primary"):
+            program_cfg.save({"program": prog, "target": tgt, "gate": gate,
+                              "hit_ic50_nm": hit, "lead_ic50_nm": lead})
+            st.toast(f"Program saved — {gate} gate at IC50 ≤ "
+                     f"{(hit if gate == 'hit' else lead) / 1000:g} µM",
+                     icon="🎯")
+            st.rerun()
+        st.markdown("**Full criteria by phase** (cumulative; required = "
+                    "hard gate)")
         for phase in CriterionPhase:
-            crs = tpp.criteria_for_phase(phase)
+            crs = program_cfg.tpp().criteria_for_phase(phase)
             if crs:
                 st.markdown(f"**{phase.value.title()}**")
                 for c in crs:
@@ -393,6 +420,9 @@ def wizard_view() -> None:
     # ---- STEP 1 — define problem
     if step == 1:
         st.header("1 · Define the problem")
+        pdoc = program_cfg.load()
+        st.caption(f"🎯 {program_cfg.gate_summary(pdoc)} — your hypothesis "
+                   f"thresholds start from this program gate.")
         st.caption("What are you trying to show? A good claim is specific: "
                    "what intervention, in what system, measured how.")
         q = st.text_area("Scientific question", key="q",
@@ -450,7 +480,8 @@ def wizard_view() -> None:
                 "statement": exp.scientific_question,
                 "claim_type": exp.claim_type.value,
                 "target": exp.intervention.target,
-                "controls": exp.controls})
+                "controls": exp.controls,
+                "success_bar": program_cfg.gate_summary()})
             _goto(3)
 
     # ---- STEP 3 — readiness gate
@@ -516,8 +547,8 @@ def wizard_view() -> None:
             else:
                 comps = st.text_input("Compounds for the agent to test",
                                       placeholder="compound-a,compound-b")
-                thr = st.number_input("Potency threshold (µM)", 0.1, 1000.0,
-                                      20.0)
+                thr = st.number_input("Potency threshold (µM)", 0.001, 1000.0,
+                                      program_cfg.gate_threshold_um())
                 if st.button("🤖 Launch agent execution", type="primary",
                              disabled=not comps.strip()):
                     thr_s = f"{thr:g}"
@@ -697,8 +728,8 @@ def experiment_view() -> None:
             store.link_problem(row["id"], problem_id)
         st.title(f"🤖 {row['question'][:70]}")
         st.markdown(chip_html(status), unsafe_allow_html=True)
-        st.caption(f"experiment `{row['id']}` · agent-driven · autonomy: "
-                   f"{ag.get('autonomy', 'act')} · updated {ago(row['updated_at'])}")
+        st.caption(f"agent-driven · autonomy: {ag.get('autonomy', 'act')} · "
+                   f"updated {ago(row['updated_at'])}")
         if status == "running":
             st.info("In progress — this view refreshes as the agent works.")
 
@@ -716,6 +747,8 @@ def experiment_view() -> None:
         m1.metric("Hypotheses", n_hyp)
         m2.metric("Decided", n_dec)
         m3.metric("Lab runs", n_runs)
+        st.caption(f"🎯 {program_cfg.gate_summary()} ▸ problem ▸ "
+                   f"{n_hyp} hypotheses ▸ experiment `{row['id']}`")
 
         with st.expander("Lab narrative (hash-chained)", expanded=False):
             if branch and recs:
@@ -731,7 +764,8 @@ def experiment_view() -> None:
         p = row["payload"]
         st.title(f"🧑 {row['question'][:70]}")
         chip(row["status"].replace("_", " "))
-        st.caption(f"experiment `{row['id']}` · wizard-defined · updated "
+        st.caption(f"🎯 {program_cfg.gate_summary()} ▸ problem ▸ "
+                   f"experiment `{row['id']}` · wizard-defined · updated "
                    f"{ago(row['updated_at'])}")
         exp_d = p.get("exp_def")
         if exp_d:
