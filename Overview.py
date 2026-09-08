@@ -246,9 +246,13 @@ def start_dialog() -> None:
 def overview_view() -> None:
     _consume_goto("overview")
     inject_css()
-    st.title("🧬 BioNexus")
-    st.caption("Pending approvals, active experiments, and agent campaigns — "
-               "tracked from definition to verdict.")
+    h1, h2, h3 = st.columns([5, 1.6, 1.6])
+    h1.title("🧬 BioNexus")
+    if h2.button("🤖 Agent experiment", type="primary"):
+        start_dialog()
+    if h3.button("🧑 Manual experiment"):
+        st.session_state["step"] = 1
+        st.switch_page(PAGES["wizard"])
 
     # consume keymap-initiated actions
     if st.session_state.pop("open_new", False):
@@ -257,9 +261,10 @@ def overview_view() -> None:
     inbox = ApprovalInbox(".data/approvals.jsonl")
     pending = inbox.pending()
 
-    # ---------------------------------------------------- approvals
-    st.header("Awaiting your decision")
+    # ---------------------------------------------------- approvals (only when
+    # something is actually blocked — pinned at top while it lasts)
     if pending:
+        st.header(f"⏸ Awaiting your decision ({len(pending)})")
         for p in pending:
             with st.container(border=True):
                 st.markdown(f"**{p['title']}**")
@@ -301,41 +306,6 @@ def overview_view() -> None:
             if not ApprovalInbox(".data/approvals.jsonl").pending():
                 st.rerun()
         _wait_approvals()
-    else:
-        st.caption("Nothing pending.")
-
-    # ---------------------------------------------------- experiments
-    all_rows = store.ongoing() + store.finished(50)
-    st.header("Experiments")
-    if not all_rows:
-        st.info("Nothing yet.")
-        if st.button("🧪 Start your first experiment", type="primary"):
-            start_dialog()
-    for e in all_rows:
-        ag = e["payload"].get("agent")
-        if ag:
-            status, _ = agent_row_status(e)
-            icon, action = "🤖", "View pipeline"
-        else:
-            status = e["status"].replace("_", " ")
-            icon, action = "🧑", "Resume →"
-        with st.container(border=True):
-            c1, c2 = st.columns([5, 4])
-            c1.markdown(f"{icon} **{e['question'][:78]}**")
-            c2.markdown(f"{chip_html(status)}  "
-                        f"<span style='color:#6b6558;font-size:13px'>"
-                        f"· {ago(e['updated_at'])}</span>",
-                        unsafe_allow_html=True)
-            c3, _ = st.columns([2, 6])
-            with c3:
-                if st.button(action, key=f"v_{e['id']}",
-                             disabled=(status == "verdict recorded")):
-                    if ag:
-                        st.session_state["view_experiment"] = e["id"]
-                        st.switch_page(PAGES["experiment"])
-                    else:
-                        resume_wizard(e)
-                        st.switch_page(PAGES["wizard"])
 
     # ---------------------------------------------------- Program & TPP
     doc = program_cfg.load()
@@ -397,15 +367,40 @@ def overview_view() -> None:
                     st.caption(f"- {c.name}: {direction} {c.threshold} "
                                f"{c.unit} ({req})")
 
-    # ---------------------------------------------------- start
-    st.header("Start new work")
-    c1, c2 = st.columns(2)
-    if c1.button("🤖 Agent experiment — agent proposes and tests hypotheses",
-                 type="primary"):
-        start_dialog()
-    c2.button("🧑 Manual — define and test hypotheses, readiness-gated",
-              on_click=_go("wizard", step=1))
 
+
+    # ---------------------------------------------------- experiments
+    all_rows = store.ongoing() + store.finished(50)
+    st.header("Experiments")
+    if not all_rows:
+        st.info("Nothing yet.")
+        if st.button("🧪 Start your first experiment", type="primary"):
+            start_dialog()
+    for e in all_rows:
+        ag = e["payload"].get("agent")
+        if ag:
+            status, _ = agent_row_status(e)
+            icon, action = "🤖", "View pipeline"
+        else:
+            status = e["status"].replace("_", " ")
+            icon, action = "🧑", "Resume →"
+        with st.container(border=True):
+            c1, c2 = st.columns([5, 4])
+            c1.markdown(f"{icon} **{e['question'][:78]}**")
+            c2.markdown(f"{chip_html(status)}  "
+                        f"<span style='color:#6b6558;font-size:13px'>"
+                        f"· {ago(e['updated_at'])}</span>",
+                        unsafe_allow_html=True)
+            c3, _ = st.columns([2, 6])
+            with c3:
+                if st.button(action, key=f"v_{e['id']}",
+                             disabled=(status == "verdict recorded")):
+                    if ag:
+                        st.session_state["view_experiment"] = e["id"]
+                        st.switch_page(PAGES["experiment"])
+                    else:
+                        resume_wizard(e)
+                        st.switch_page(PAGES["wizard"])
 
 # --------------------------------------------------------------------------
 # VIEW: wizard (DMTA steps 1–6)
