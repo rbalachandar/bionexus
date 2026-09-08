@@ -14,6 +14,7 @@ DEFAULT_W, DEFAULT_H = 560, 340
 def dose_response_svg(
     points: Sequence[tuple[float, float]],
     ic50: float | None = None,
+    ci: tuple[float, float] | None = None,
     max_response: float | None = None,
     title: str = "Dose–response",
     conc_unit: str = "µM",
@@ -26,6 +27,7 @@ def dose_response_svg(
     points:      (conc_um, response) pairs; responses are plotted as % of the
                  curve maximum (normalized internally if they exceed it).
     ic50:        optional fitted IC50 (µM) — drawn as a dashed drop-line.
+    ci:          optional 95% CI (µM) — drawn as a shaded band behind the data.
     max_response: known maximal response for IC50 placement; else the max of
                  the plotted points is used.
     """
@@ -51,6 +53,14 @@ def dose_response_svg(
         f' viewBox="0 0 {width} {height}" font-family="ui-sans-serif,system-ui,sans-serif">',
         f'<rect width="{width}" height="{height}" fill="#faf8f2"/>',
     ]
+    # 95% CI band behind everything else
+    if ci and ci[0] is not None and ci[1] is not None and c_hi >= ci[0]:
+        import math
+        x0 = X(max(c_lo, ci[0]))
+        x1 = X(min(c_hi, ci[1]))
+        if x1 > x0:
+            parts.append(f'<rect x="{x0:.1f}" y="{mt}" width="{x1 - x0:.1f}"'
+                         f' height="{plot_h}" fill="{color}" opacity="0.12"/>')
     # gridlines + y labels
     for gv in range(0, 101, 25):
         y = mt + (1 - gv / 100.0) * plot_h

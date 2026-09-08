@@ -217,19 +217,24 @@ def _export_instrument_file(inbox: Path, run_id: str, candidate: str,
     """Stand-in for the instrument finishing: it drops its export in the
     outbox. Uses the lab's per-compound ground truth when available so the
     fitted IC50 reflects simulated pharmacology, not a fixed pattern."""
+    import random
+
     time.sleep(0.1)
+    rng = random.Random(f"{run_id}:{candidate}")
+    n_rep = getattr(lab, "replicates", 3) if lab is not None else 3
     lines = ["Well ID,Compound,Conc (uM),RFU", "A1,ctrl,10,100", "A2,ctrl,10,104"]
     true_ic50 = None
     if lab is not None and hasattr(lab, "true_ic50_um"):
         true_ic50 = lab.true_ic50_um(run_id, candidate)
-    for i, c in enumerate(concentrations):
-        conc = float(c.rstrip("uM"))
-        if true_ic50 is not None:
-            rfu = 500.0 / (1.0 + true_ic50 / max(conc, 1e-6))
-            rfu += ((hash(f"{run_id}:{candidate}:{conc}") % 100) / 100.0 - 0.5) * 8
-        else:
-            rfu = 110 + i * 90
-        lines.append(f"A{i + 3},{candidate},{c},{rfu:.1f}")
+    well = 3
+    for c in concentrations:
+        conc = float(str(c).rstrip("uM"))
+        base = (500.0 / (1.0 + true_ic50 / max(conc, 1e-6))) if true_ic50 \
+            else 110 + concentrations.index(c) * 90
+        for _ in range(n_rep):          # real plates have replicate wells
+            noise = rng.gauss(0.0, max(4.0, base * 0.05))
+            lines.append(f"A{well},{candidate},{c},{max(0.0, base + noise):.1f}")
+            well += 1
     (inbox / f"{run_id}.csv").write_text("\n".join(lines) + "\n")
 
 

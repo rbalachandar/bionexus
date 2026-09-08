@@ -12,11 +12,11 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   `ic50_ci` and in verdict provenance as `observed_ci`
 - [x] Verdict rule: `SuccessCriteria.classify(value, ci)` — CI straddling the
   threshold → `inconclusive`; wired in `verdict()` and `watch.handle`.
-  [ ] remaining: `_handle_confirmation` agreement still uses point-estimate
-  ratio only (should widen to CI overlap)
+  [x] `_handle_confirmation` now prefers CI-overlap agreement (falls back to
+  3x ratio when a CI is missing); rule used is recorded in provenance
 - [x] CI shown in pipeline cards, diary verdict lines, instrument output
-  blocks, wizard step 6 table. [ ] remaining: `plots.dose_response_svg` still
-  draws no CI band
+  blocks, wizard step 6 table; `dose_response_svg(ci=...)` draws the shaded
+  95% band behind the curve
 - [ ] Propagate replicate variance through to the fit (currently median-of-
   replicates hides spread) — `adapters/lab/simulator.py` + labread
 - Done 2026-09-08: tests `test_success_criteria_ci_straddle_is_inconclusive`,
@@ -25,9 +25,11 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   rerun case-studies/02 to regenerate its verdict artifacts
 
 ## P0 — Small-n statistics
-- [ ] Bootstrap CIs on Spearman/EF@10% in case-study tables
-  (`case-studies/*/run.py`, `bionexus/benchmark.py`)
-- [ ] Multiple-comparison correction across the 30-paper screen (BH/FDR)
+- [x] `benchmark.spearman_ci` / `bootstrap_ci` added; case-study 03 rows now
+  carry `rf_spearman_ci95`. [ ] remaining: EF@10% CI + regenerate the
+  results.json artifacts (needs network day)
+- [x] `benchmark.benjamini_hochberg` available. [ ] remaining: apply across
+  the 30-paper screen_papers output when regenerated
 - [ ] Scaffold-split CV for the Morgan+RF baselines (leakage check)
 - Verify: regenerated `results.json` files include CI columns
 

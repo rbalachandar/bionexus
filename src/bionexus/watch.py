@@ -164,13 +164,21 @@ class AutoAnalysisAgent:
         from bionexus.labread import read_plate
         cand, primary = conf["candidate"], conf["primary_ic50"]
         result = read_plate(event.path, max_response=self.max_response)
-        match = result.analysis["compounds"].get(cand)
-        secondary = match.get("ic50_um") if match else None
+        match = result.analysis["compounds"].get(cand) or {}
+        secondary = match.get("ic50_um")
+        secondary_ci = match.get("ic50_ci")
+        primary_ci = conf.get("primary_ci")
         qc_ok = (result.z_prime or 0) >= 0.5
         ratio = (max(primary, secondary) / min(primary, secondary)
                  if primary and secondary else None)
-        agreed = ratio is not None and ratio <= 3.0
-        if not qc_ok:
+        if primary_ci and secondary_ci:
+            # interval overlap is a stronger agreement test than a point
+            # ratio: two methods whose CIs overlap cannot distinguish each other
+            agreed = min(primary_ci[1], secondary_ci[1]) >= max(
+                primary_ci[0], secondary_ci[0])
+        else:
+            agreed = ratio is not None and ratio <= 3.0
+        if not qc_ok or ratio is None:
             status = "inconclusive"
         elif agreed:
             status = "confirmed"
@@ -187,13 +195,19 @@ class AutoAnalysisAgent:
                     hyp.evidence_run_id = event.path.stem
                     hyp.qc_passed = qc_ok
                     hyp.status = status
+                    hyp.observed_ci = secondary_ci
                     if hasattr(self.tracker, "record_outcome"):
                         self.tracker.record_outcome(hyp, extra={
-                            "confirmation": {"run_id": event.path.stem,
-                                             "primary_ic50": primary,
-                                             "secondary_ic50": secondary,
-                                             "ratio": round(ratio, 2) if ratio else None,
-                                             "agreed": agreed}})
+                            "confirmation": {
+                                "run_id": event.path.stem,
+                                "primary_ic50": primary,
+                                "primary_ci": list(primary_ci) if primary_ci else None,
+                                "secondary_ic50": secondary,
+                                "secondary_ci": list(secondary_ci) if secondary_ci else None,
+                                "ratio": round(ratio, 2) if ratio else None,
+                                "agreed": agreed,
+                                "rule": ("ci-overlap" if (primary_ci and secondary_ci)
+                                         else "3x-ratio")}})
                     break
         return {"confirmation": status, "candidate": cand,
                 "primary": primary, "secondary": secondary, "ratio": ratio}
@@ -222,7 +236,14 @@ class AutoAnalysisAgent:
             self.notify(f"confirmation assay for {candidate} BLOCKED by safety: {rejection}")
             return None
         self._confirm_submitted.add(candidate)
-        self._confirmations[run_id] = {"candidate": candidate, "primary_ic50": ic50}
+        primary_ci = None
+        if self.tracker:
+            for hyp in self.tracker.hypotheses.values():
+                if hyp.candidate == candidate:
+                    primary_ci = hyp.observed_ci
+        self._confirmations[run_id] = {"candidate": candidate,
+                                       "primary_ic50": ic50,
+                                       "primary_ci": primary_ci}
         if self.export_fn:
             self.export_fn(run_id, candidate)   # confirmation runs get outputs too
         # keep the run↔hypothesis link in provenance, not just in memory

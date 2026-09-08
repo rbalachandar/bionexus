@@ -188,7 +188,7 @@ def scaffold_markers(scaffold: str, smiles_sample: list[str]) -> list[str]:
 def main() -> None:
     use_llm = "--llm" in sys.argv
     from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF
-    from bionexus.benchmark import roc_auc, spearman  # noqa: F401
+    from bionexus.benchmark import roc_auc, spearman, spearman_ci  # noqa: F401
 
     papers = dict(PAPERS)
     if "--docs" in sys.argv:
@@ -243,7 +243,9 @@ def main() -> None:
             pool_mean = sum(p for _, p in pool) / len(pool)
             row["baseline_rmse"] = round(math.sqrt(sum((pool_mean - t) ** 2
                                                         for t in truth) / len(truth)), 3)
-            row["rf_spearman"] = round(spearman(preds, truth), 3)
+            rho, ci_lo, ci_hi = spearman_ci(preds, truth)
+            row["rf_spearman"] = round(rho, 3)
+            row["rf_spearman_ci95"] = [ci_lo, ci_hi]
             row["rf_rmse"] = round(math.sqrt(sum((a - b) ** 2 for a, b in zip(preds, truth))
                                              / len(truth)), 3)
             top_n = max(1, len(preds) // 10)

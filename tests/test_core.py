@@ -193,3 +193,29 @@ def test_fit_ic50_ci_covers_true_value():
     out = fit_ic50_ci(pts, maxr)
     assert out and out["ci_low"] <= true_ic50 <= out["ci_high"]
     assert abs(out["ic50"] - true_ic50) / true_ic50 < 0.6
+
+
+def test_bootstrap_ci_brackets_mean():
+    from bionexus.benchmark import bootstrap_ci
+    lo, hi = bootstrap_ci([1.0, 1.2, 0.9, 1.1, 1.3, 0.8, 1.05, 1.15])
+    assert lo <= 1.087 <= hi
+    assert hi > lo
+
+
+def test_spearman_ci_width_reflects_n():
+    from bionexus.benchmark import spearman_ci
+    perfect = list(range(30)), [i * 2.0 for i in range(30)]
+    rho, lo, hi = spearman_ci(*perfect)
+    assert rho == 1.0 and lo == 1.0 and hi == 1.0
+    noisy = [float(i) for i in range(8)], [7.0, 2.0, 5.0, 1.0, 6.0, 3.0, 8.0, 4.5]
+    r2, l2, h2 = spearman_ci(*noisy)
+    assert l2 <= r2 <= h2 and (h2 - l2) > 0.2       # small n -> wide CI
+
+
+def test_benjamini_hochberg():
+    from bionexus.benchmark import benjamini_hochberg
+    p = [0.001, 0.008, 0.039, 0.041, 0.21, 0.6]
+    flags = benjamini_hochberg(p, fdr=0.10)
+    # BH at fdr .1: 0.001<=.0166, 0.008<=.033, 0.039<=.05, 0.041<=.0664 -> 4 hits
+    assert flags[:4] == [True] * 4 and flags[4:] == [False] * 2
+    assert benjamini_hochberg([]) == []

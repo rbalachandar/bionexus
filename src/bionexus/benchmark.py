@@ -18,6 +18,7 @@ import json
 import math
 import time
 from pathlib import Path
+from typing import Callable
 from typing import Any, Protocol
 
 
@@ -277,6 +278,63 @@ def run_benchmark(dataset: Any, policies: list[Policy], train_frac: float = 0.8,
     if out:
         Path(out).write_text(json.dumps(results, indent=1))
     return results
-    if out:
-        Path(out).write_text(json.dumps(results, indent=1))
-    return results
+
+
+# ------------------------------------------------------------- statistics
+# Small-n honesty toolkit: every headline number in reports and case studies
+# should carry a bootstrap CI, and multi-test screens should be FDR-corrected.
+
+def bootstrap_ci(values: list[float], stat: Callable[[list[float]], float] | None = None,
+                 n_boot: int = 2000, seed: int = 7,
+                 alpha: float = 0.05) -> tuple[float, float]:
+    """Percentile bootstrap CI for a statistic over a sample (default mean)."""
+    import random
+
+    if not values:
+        return (float("nan"), float("nan"))
+    stat = stat or (lambda vs: sum(vs) / len(vs))
+    rng = random.Random(seed)
+    n = len(values)
+    boots = sorted(stat([values[rng.randrange(n)] for _ in range(n)])
+                   for _ in range(n_boot))
+    lo = boots[int(alpha / 2 * n_boot)]
+    hi = boots[min(n_boot - 1, int((1 - alpha / 2) * n_boot))]
+    return round(lo, 4), round(hi, 4)
+
+
+def spearman_ci(pred: list[float], true: list[float], n_boot: int = 1000,
+                seed: int = 7) -> tuple[float, float, float]:
+    """(rho, ci_low, ci_high) — bootstrap over paired observations."""
+    import random
+
+    rho = spearman(pred, true)
+    if len(pred) < 4:
+        return rho, float("nan"), float("nan")
+    rng = random.Random(seed)
+    n = len(pred)
+    pairs = list(zip(pred, true))
+    boots = []
+    for _ in range(n_boot):
+        sample = [pairs[rng.randrange(n)] for _ in range(n)]
+        boots.append(spearman([p for p, _ in sample], [t for _, t in sample]))
+    boots.sort()
+    return rho, round(boots[int(0.025 * n_boot)], 4), \
+        round(boots[min(n_boot - 1, int(0.975 * n_boot))], 4)
+
+
+def benjamini_hochberg(pvals: list[float], fdr: float = 0.10) -> list[bool]:
+    """BH significance flags: discoveries at the requested false-discovery
+    rate. Empty input -> empty output."""
+    n = len(pvals)
+    if n == 0:
+        return []
+    order = sorted(range(n), key=lambda i: pvals[i])
+    k_max = 0
+    for rank, i in enumerate(order, start=1):
+        if pvals[i] <= fdr * rank / n:
+            k_max = rank
+    flags = [False] * n
+    if k_max:
+        for i in order[:k_max]:
+            flags[i] = True
+    return flags

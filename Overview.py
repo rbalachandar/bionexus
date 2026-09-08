@@ -669,6 +669,7 @@ def wizard_view() -> None:
                        if rr.get("sample") == sample and not rr.get("control")]
                 if pts:
                     st.markdown(dose_response_svg(pts, ic50=ic50,
+                                ci=data.get("ic50_ci"),
                                 title=sample), unsafe_allow_html=True)
             st.session_state["selected"] = selected
 
