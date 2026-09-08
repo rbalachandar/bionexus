@@ -405,6 +405,7 @@ Deeper design docs: [`docs/architecture.md`](docs/architecture.md) (blocks A–F
 | [`docs/research-landscape.md`](docs/research-landscape.md) | review vs. Google, Anthropic, Isomorphic, Cradle, Lila, FutureHouse, OpenAI Rosalind |
 | [`docs/critical-review.md`](docs/critical-review.md) | unsympathetic independent review: what works, what fails |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | live TODO plan: uncertainty-aware verdicts, eval harness, adaptive design |
 | [`docs/architecture.md`](docs/architecture.md) · [`docs/flows.md`](docs/flows.md) · [`docs/blocks/`](docs/blocks/) | architectural blocks A–F, components, interfaces, end-to-end flows |
 | [`case-studies/`](case-studies/) | blind reproduction studies on real published data |
 | [`diagrams/`](diagrams/) | SVG diagrams + styled HTML artifact pages |
