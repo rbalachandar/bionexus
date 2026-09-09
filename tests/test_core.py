@@ -1,4 +1,5 @@
 import json
+import math
 
 import pytest
 
@@ -244,3 +245,21 @@ def test_mechanistic_fields_flow_and_bonus():
     decisions = [x for r in recs if r.event_type.value == "hypotheses_filtered"
                  for x in (r.decision or {}).get("decisions", [])]
     assert any("explanatory power" in d.get("reason", "") for d in decisions)
+
+
+def test_dose_designer_posterior_converges():
+    from bionexus.adaptive import DoseDesigner
+    d = DoseDesigner(rmax=500.0, sigma=10.0)
+    true = 6.0
+    seen = set()
+    for _ in range(8):
+        c = d.next_dose()
+        if c is None:
+            break
+        seen.add(c)
+        d.observe(c, 500.0 / (1 + true / c))
+    est, ci = d.estimate()
+    assert ci[0] <= true <= ci[1]
+    assert abs(est - true) / true < 0.5
+    assert len(seen) >= 3          # actually explored distinct doses
+    assert d.entropy() < math.log(len(d.grid))   # posterior shrank

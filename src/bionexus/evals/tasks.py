@@ -156,3 +156,45 @@ def _t_falsifiability():
                       {"selected": sorted(str(p) for p in picked),
                        "rich_candidates": sorted(rich_set)},
                       "all k picks must be mechanistic+cited")
+
+
+@register("adaptive-dose-design",
+          "3-well Bayesian sequential design must beat the fixed 4-point "
+          "series on IC50 accuracy (and report its own CI coverage honestly)")
+def _t_adaptive():
+    import math
+    import random
+
+    from bionexus.adaptive import run_adaptive_series
+    from bionexus.evals.harness import TaskResult
+    from bionexus.labread import fit_ic50_ci
+
+    rmax, sigma = 500.0, 15.0
+    rng = random.Random(2027)
+    trues = [10 ** rng.uniform(math.log10(0.3), math.log10(150))
+             for _ in range(16)]
+    wins, errs_a, errs_f, covered = 0, [], [], 0
+    for i, true in enumerate(trues):
+        est, ci, wells = run_adaptive_series(true, rmax, sigma, 3,
+                                             random.Random(i))
+        noise = random.Random(100 + i)
+        pts = [(c, max(0.0, rmax / (1 + true / c) + noise.gauss(0, sigma)))
+               for c in (0.5, 2.0, 10.0, 40.0)]
+        f = fit_ic50_ci(pts, None)
+        ea = abs(math.log10(est / true))
+        ef = abs(math.log10(f["ic50"] / true)) if f and f["ic50"] else 1.0
+        errs_a.append(ea)
+        errs_f.append(ef)
+        wins += 1 if ea <= ef else 0
+        covered += 1 if ci[0] <= true <= ci[1] else 0
+    mean_a, mean_f = sum(errs_a) / 16, sum(errs_f) / 16
+    score = round(wins / 16, 3)
+    passed = score >= 0.6 and mean_a < mean_f
+    return TaskResult("adaptive-dose-design",
+                      "adaptive beats fixed on per-compound accuracy",
+                      score, passed,
+                      {"wins": f"{wins}/16", "mean_err_adaptive_3well": round(mean_a, 3),
+                       "mean_err_fixed_4well": round(mean_f, 3),
+                       "ci_coverage": f"{covered}/16"},
+                      f"3 wells beat 4: err {mean_a:.3f} vs {mean_f:.3f}; "
+                      f"CI coverage {covered}/16 (nominal 15.2)")

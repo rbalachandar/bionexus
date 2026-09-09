@@ -62,10 +62,18 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   decorative); wizard step 2 could collect mechanism/refutation too
 
 ## P2 — Adaptive experimentation (the result, not the feature)
-- [ ] Bayesian dose-series design: choose next concentrations from posterior
-  over IC50; target same accuracy in ~half the wells — new
-  `src/bionexus/adaptive.py` + use in `autoloop.py`
-- [ ] Demo: fixed 4-point vs adaptive on the simulator, report wells saved
+- [x] `src/bionexus/adaptive.py` — grid posterior over log-IC50 under the
+  Hill model; `next_dose()` maximizes posterior predictive spread (most
+  informative well); median + 95% credible interval readout
+- [x] Eval task `adaptive-dose-design`: 3-well adaptive vs 4-point fixed
+  (labread) on 16 log-uniform compounds → wins 14/16, mean |log10 err|
+  0.024 vs 0.090, CI coverage 15/16 at nominal 15.2. Measured, not claimed.
+- [ ] Wire into `autoloop.py` as `dose_design: adaptive` (sequential runs
+  per compound — needs the monitor loop to support multi-round protocols)
+- [ ] Negative lesson recorded: giving the fixed baseline the SAME
+  posterior estimator erases most of the advantage (0.038 vs 0.043) — the
+  win is against the real pipeline (linear/Hill point fits), and the eval
+  says so explicitly
 
 ## P2 — Learn from refutations (close the flywheel)
 - [ ] Feed invalidated hypotheses + their evidence back into scoring/
