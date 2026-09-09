@@ -225,7 +225,8 @@ def _campaign_from_doc(cfg_doc: dict) -> "CampaignConfig":
         concentrations=tuple(cfg_doc.get("concentrations",
                                          ["0.5uM", "2uM", "10uM", "40uM"])),
         max_families=cfg_doc.get("max_families", 3),
-        max_variants_per_family=cfg_doc.get("max_variants_per_family", 3))
+        max_variants_per_family=cfg_doc.get("max_variants_per_family", 3),
+        dose_design=cfg_doc.get("dose_design", "fixed"))
 
 
 def cmd_auto(args: argparse.Namespace) -> int:
@@ -251,6 +252,8 @@ def cmd_auto(args: argparse.Namespace) -> int:
         return 2
     if args.autonomy:
         cfg_doc["autonomy"] = args.autonomy
+    if getattr(args, "dose_design", None):
+        cfg_doc["dose_design"] = args.dose_design
     cfg = _campaign_from_doc(cfg_doc)
     approver = None
     if cfg.autonomy == "gate":
@@ -493,6 +496,8 @@ def main(argv: list[str] | None = None) -> int:
     watch_p.set_defaults(func=cmd_watch)
 
     auto = sub.add_parser("auto", help="start the whole campaign flow (config or --template)")
+    auto.add_argument("--dose-design", choices=("fixed", "adaptive"),
+                      help="adaptive = Bayesian sequential dosing (3 wells/compound)")
     auto.add_argument("config", nargs="?", default=None)
     auto.add_argument("--template", default=None, help="preset template name (see: bn templates)")
     auto.add_argument("--field", action="append", metavar="KEY=VALUE",

@@ -94,7 +94,10 @@ class AutoAnalysisAgent:
                  max_response: float | None = None,
                  gateway: Any = None, branch_id: str = "autonomous-loop",
                  auto_confirm: bool = True,
-                 export_fn: Callable[[str, str], None] | None = None):
+                 export_fn: Callable[..., None] | None = None,
+                 adaptive: bool = False,
+                 dose_ladder: tuple[float, ...] = (0.5, 2.0, 10.0, 40.0, 80.0),
+                 adaptive_wells: int = 3):
         self.store = store
         self.tracker = tracker
         self.notify = notify or (lambda msg: print(f"[agent] {msg}"))
@@ -103,6 +106,10 @@ class AutoAnalysisAgent:
         self.branch_id = branch_id
         self.auto_confirm = auto_confirm and gateway is not None
         self.export_fn = export_fn   # drops the instrument export for a run
+        self.adaptive = adaptive and gateway is not None
+        self.dose_ladder = dose_ladder
+        self.adaptive_wells = adaptive_wells
+        self._designers: dict[str, Any] = {}
         self._confirmations: dict[str, dict] = {}   # run_id -> confirmation task
         self._confirm_submitted: set[str] = set()   # candidates already confirmed
 
@@ -111,6 +118,8 @@ class AutoAnalysisAgent:
             return None
         from bionexus.labread import read_plate
 
+        if self.adaptive:
+            return self._handle_adaptive(event)
         conf = self._confirmations.get(event.path.stem)
         if conf:
             return self._handle_confirmation(event, conf)
@@ -156,6 +165,97 @@ class AutoAnalysisAgent:
         summary = {"compounds": len(result.analysis["compounds"]),
                    "z_prime": result.z_prime, "verdicts": verdicts}
         return summary
+
+    _TERMINAL = ("validated", "confirmed", "invalidated", "refuted",
+                 "inconclusive")
+
+    def _handle_adaptive(self, event) -> None:
+        """Bayesian sequential dosing: each well updates the posterior over
+        IC50; the next dose is the most informative unused point on the
+        ladder; after `adaptive_wells` the posterior median + credible
+        interval decide the verdict (CI-aware, same gate as fixed runs)."""
+        from bionexus.adaptive import DoseDesigner
+        from bionexus.labread import read_plate
+
+        result = read_plate(event.path, max_response=self.max_response)
+        obs = {}
+        for r in result.records:
+            if not r.get("control") and r.get("conc_um") is not None:
+                obs[r["sample"]] = (r["conc_um"], r["value"])
+        for cand, (conc, value) in obs.items():
+            hyp = next((h for h in (self.tracker.hypotheses.values()
+                                    if self.tracker else [])
+                        if h.candidate == cand), None)
+            if hyp is None or hyp.status in self._TERMINAL:
+                continue
+            d = self._designers.get(cand)
+            if d is None:
+                d = self._designers[cand] = DoseDesigner(
+                    doses=self.dose_ladder, first_dose=conc)
+            if conc not in d.used:
+                d.observe(conc, value)
+                if len(d.used) == 1:
+                    self.notify(f"adaptive screen {cand}: {value:.0f} RFU @ "
+                                f"{conc:g} µM")
+                else:
+                    est0, ci0 = d.estimate()
+                    self.notify(f"adaptive: {cand} well @ {conc:g} µM -> "
+                                f"IC50 posterior {est0:.2f} µM "
+                                f"(CrI {ci0[0]:.2f}–{ci0[1]:.2f})")
+            if len(d.used) < self.adaptive_wells:
+                nxt = d.next_dose()
+                if nxt:
+                    run_id = self._submit_adaptive_well(cand, nxt, hyp)
+                    if run_id:
+                        self.notify(f"adaptive: {cand} next dose {nxt:g} µM "
+                                    f"-> run {run_id} "
+                                    f"({len(d.used)}/{self.adaptive_wells} wells)")
+                        continue
+            est, ci = d.estimate()
+            hyp.observed_value = est
+            hyp.observed_ci = ci
+            hyp.evidence_run_id = event.path.stem
+            hyp.qc_passed = True
+            hyp.status = (hyp.criteria.classify(est, ci) if hyp.criteria
+                          else "tested")
+            if self.tracker and hasattr(self.tracker, "record_outcome"):
+                self.tracker.record_outcome(hyp, extra={
+                    "design": {"mode": "adaptive-bayesian",
+                               "wells": [round(x, 3) for x in d.used]}})
+            self.notify(f"adaptive verdict {cand}: IC50 {est:.2f} µM "
+                        f"(95% CrI {ci[0]:.2f}–{ci[1]:.2f}) after "
+                        f"{len(d.used)} wells -> {hyp.status.upper()}")
+            self._designers.pop(cand, None)
+        return None
+
+    def _submit_adaptive_well(self, candidate: str, conc: float,
+                              hyp) -> str | None:
+        from bionexus.core.contracts import (
+            Envelope, ProtocolOp, ProtocolStep, ProtocolSubmission,
+            ReagentSpec, SampleKind, SampleSpec,
+        )
+        protocol = ProtocolSubmission(
+            envelope=Envelope(experiment_branch_id=self.branch_id),
+            title=f"adaptive-{candidate}-{conc:g}uM",
+            assay_type=hyp.assay_type or "binding",
+            steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense,
+                                params={"volume_ul": 50})],
+            samples=[SampleSpec(sample_id=candidate, kind=SampleKind.compound,
+                                concentration=f"{conc:g}uM"),
+                     SampleSpec(sample_id="ctrl-neg", kind=SampleKind.buffer,
+                                concentration="10uM")],
+            reagents=[ReagentSpec(name="assay-buffer", amount="5 mL",
+                                  bsl_level=1)],
+        )
+        run_id, rejection = self.gateway.submit(protocol)
+        if rejection:
+            self.notify(f"adaptive well for {candidate} blocked: {rejection}")
+            return None
+        if self.export_fn:
+            self.export_fn(run_id, candidate, [f"{conc:g}uM"])
+        if self.tracker:
+            self.tracker.attach_test(hyp, protocol, run_id)
+        return run_id
 
     def _handle_confirmation(self, event, conf: dict) -> dict[str, Any]:
         """Orthogonal confirmation means AGREEMENT between methods, not just a

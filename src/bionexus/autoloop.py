@@ -66,6 +66,8 @@ class CampaignConfig:
     k: int = 2                                # hypotheses taken to wet-lab
     budget: ResourceBudget | None = None      # None = uncapped ( discouraged)
     concentrations: tuple[str, ...] = ("0.5uM", "2uM", "10uM", "40uM")
+    dose_design: str = "fixed"          # "fixed" | "adaptive" (Bayesian
+                                        # sequential dosing, 3 wells)
     inbox: str | Path = ".data/inbox"
     autonomy: Autonomy = "gate"
     poll_secs: float = 0.5
@@ -150,13 +152,18 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
 
     inbox = Path(cfg.inbox)
     inbox.mkdir(parents=True, exist_ok=True)
+    adaptive = cfg.dose_design == "adaptive"
+    screen_conc = cfg.concentrations[len(cfg.concentrations) // 2] \
+        if adaptive else None
     for h in selected:
         protocol = ProtocolSubmission(
             envelope=Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
-            title=f"test-{h.candidate}", assay_type=h.assay_type,
+            title=f"screen-{h.candidate}" if adaptive else f"test-{h.candidate}",
+            assay_type=h.assay_type,
             steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense, params={"volume_ul": 50})],
             samples=[SampleSpec(sample_id=h.candidate, kind=SampleKind.compound,
-                                concentration=c) for c in cfg.concentrations]
+                                concentration=c)
+                     for c in ([screen_conc] if adaptive else cfg.concentrations)]
             + [SampleSpec(sample_id=f"ctrl-neg{i}", kind=SampleKind.buffer,
                           concentration="10uM") for i in (1, 2)],
             reagents=[ReagentSpec(name="assay-buffer", amount="5 mL", bsl_level=1)],
@@ -173,7 +180,8 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             continue
         tracker.attach_test(h, protocol, run_id)
         h.design.run_id = run_id
-        _export_instrument_file(inbox, run_id, h.candidate, cfg.concentrations,
+        _export_instrument_file(inbox, run_id, h.candidate,
+                                [screen_conc] if adaptive else cfg.concentrations,
                                 lab=lab)
 
     if cfg.autonomy == "observe":
@@ -183,22 +191,29 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     # 2. agent notices the outputs, verdicts, confirms
     say("PHASE analyze")
     messages: list[str] = []
-    def _export(run_id: str, candidate: str) -> None:
+    def _export(run_id: str, candidate: str,
+                concs: list[str] | None = None) -> None:
         _export_instrument_file(inbox, run_id, candidate,
-                                cfg.concentrations, lab=lab)
+                                concs or list(cfg.concentrations), lab=lab)
 
     agent = AutoAnalysisAgent(notify=(lambda m: (messages.append(m), say(f"[agent] {m}"))),
                               tracker=tracker, gateway=gateway,
                               branch_id=f"problem/{problem.problem_id}",
-                              auto_confirm=cfg.autonomy == "act",
-                              export_fn=_export)
+                              auto_confirm=cfg.autonomy == "act" and not adaptive,
+                              export_fn=_export,
+                              adaptive=adaptive,
+                              dose_ladder=tuple(
+                                  float(str(c).rstrip("uM"))
+                                  for c in cfg.concentrations) + (80.0,))
     monitor = DeviceMonitor(inbox, poll_secs=cfg.poll_secs)
     time.sleep(0.2)
     n_expected = sum(1 for h in selected if h.design and h.design.run_id)
     # primary runs + their orthogonal confirmations (guarded, <= 1 per candidate)
-    terminal = {"confirmed", "refuted", "invalidated", "inconclusive"}
-    for i, ev in enumerate(monitor.events(stop_after=n_expected * 2 + 1,
-                                          idle_timeout=max(5.0, cfg.poll_secs * 20))):
+    terminal = {"validated", "confirmed", "refuted", "invalidated",
+                "inconclusive"}
+    budget = n_expected * (4 if adaptive else 2) + 1
+    for i, ev in enumerate(monitor.events(stop_after=budget,
+                                          idle_timeout=max(5.0, cfg.poll_secs * 30))):
         agent.handle(ev)
         if all(h.status in terminal for h in selected) and i + 1 >= n_expected:
             break

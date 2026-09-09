@@ -1686,3 +1686,42 @@ def test_robotic_scheduler(tmp_path):
     assert any("move_plate" in c[1] for c in calls)
     ok = sched.wait_for_transport("mv-1", timeout=1)
     assert ok
+
+
+def test_autoloop_adaptive_dose_design(tmp_path):
+    import shutil
+    from bionexus.autoloop import CampaignConfig, run_campaign
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.core.hypothesis import Constraint, ProblemStatement
+
+    inbox = tmp_path / "in"
+    problem = ProblemStatement(
+        objective="o", problem_id="prob-ad",
+        constraints=[Constraint(name="potency", description="d",
+                                kind="hard", limit=20.0, unit="uM")])
+    cfg = CampaignConfig(
+        problem=problem,
+        hypotheses=[{"statement": f"A-{i} binds", "candidate": f"A-{i}",
+                     "assay_type": "binding", "predicted": "<=20",
+                     "predicted_value": 20.0} for i in (1, 2)],
+        k=2, autonomy="act", inbox=str(inbox), poll_secs=0.05,
+        dose_design="adaptive")
+    lab = SimulatorLab(seed=11)
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    store = SqliteProvenanceStore()
+    report = run_campaign(cfg, lab, store)
+    assert report.verdicts and all(
+        v in ("validated", "invalidated", "inconclusive", "confirmed",
+              "refuted") for v in report.verdicts.values())
+    adaptive = [r for r in store.branch_records("problem/prob-ad")
+                if (r.decision or {}).get("design", {}).get("mode")
+                == "adaptive-bayesian"]
+    assert len(adaptive) == 2
+    for r in adaptive:
+        d = r.decision
+        assert d.get("observed_ci")                      # posterior interval
+        assert 1 <= len(d["design"]["wells"]) <= 3       # well budget kept
+    # fewer wells than fixed (4/compound) + no confirmation runs
+    runs = [r for r in store.branch_records("problem/prob-ad")
+            if r.event_type.value == "lab_run"]
+    assert len(runs) <= 6
