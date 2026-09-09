@@ -274,9 +274,18 @@ def cmd_eval(args: argparse.Namespace) -> int:
     from bionexus.evals import tasks as _tasks          # registers suite
     from bionexus.evals.harness import TASKS, PASS_THRESHOLD
 
+    suites = None
+    if getattr(args, "all", False) or args.task:
+        suites = None
+    elif getattr(args, "suite", None):
+        suites = {s.strip() for s in args.suite.split(",")}
+    else:
+        suites = {"epistemics"}
     results = []
     for task in TASKS:
         if args.task and args.task != task.task_id:
+            continue
+        if suites and task.suite not in suites:
             continue
         t0 = _t.time()
         try:
@@ -287,15 +296,18 @@ def cmd_eval(args: argparse.Namespace) -> int:
                            notes=f"ERROR: {exc}")
         r.metrics["duration_s"] = round(_t.time() - t0, 1)
         results.append(r)
-        mark = "✅" if r.passed else "❌"
-        print(f"{mark} {r.task_id:24s} score={r.score:.3f}  "
+        skipped = r.notes.startswith("SKIPPED")
+        mark = "⏭ " if skipped else ("✅" if r.passed else "❌")
+        print(f"{mark} {r.task_id:24s} "
+              f"{'—' if skipped else f'score={r.score:.3f}'}  "
               f"({r.metrics.get('duration_s')}s)  {r.notes}")
 
     if not results:
         print("no tasks matched", file=sys.stderr)
         return 2
-    overall = sum(r.score for r in results) / len(results)
-    all_pass = all(r.passed for r in results)
+    scored = [r for r in results if not r.notes.startswith("SKIPPED")]
+    overall = sum(r.score for r in scored) / len(scored) if scored else 0.0
+    all_pass = all(r.passed for r in scored)
     print(f"\n{'PASS' if all_pass else 'FAIL'} — {len(results)} tasks, "
           f"mean score {overall:.3f} (pass bar {PASS_THRESHOLD})")
 
@@ -303,14 +315,24 @@ def cmd_eval(args: argparse.Namespace) -> int:
     from pathlib import Path as _P
     out = _P("evals/leaderboard.md")
     out.parent.mkdir(exist_ok=True)
-    rows = "\n".join(
-        f"| {r.task_id} | {r.score:.3f} | {'✅' if r.passed else '❌'} | "
-        f"{r.metrics.get('duration_s', '—')}s | {r.notes} |" for r in results)
+    by_suite: dict[str, list] = {}
+    for task, r in zip([t for t in TASKS if t.task_id in
+                        {x.task_id for x in results}], results):
+        by_suite.setdefault(task.suite, []).append(r)
+    sections = ""
+    for suite, rs in by_suite.items():
+        rows = "\n".join(
+            f"| {r.task_id} | {r.score:.3f} | "
+            f"{'⏭' if r.notes.startswith('SKIPPED') else ('✅' if r.passed else '❌')} | "
+            f"{r.metrics.get('duration_s', '—')}s | {r.notes} |" for r in rs)
+        sections += (f"\n### {suite} — mean "
+                     f"{sum(x.score for x in rs) / len(rs):.3f}\n\n"
+                     f"| task | score | pass | time | notes |\n"
+                     f"|---|---|---|---|---|\n{rows}\n")
     out.write_text(
         f"# BioNexus eval leaderboard\n\n"
         f"Run {_t.strftime('%Y-%m-%d %H:%M')} · mean **{overall:.3f}** · "
-        f"{'all pass' if all_pass else 'FAILING'}\n\n"
-        f"| task | score | pass | time | notes |\n|---|---|---|---|---|\n{rows}\n")
+        f"{'all pass' if all_pass else 'FAILING'}\n{sections}")
     _P("evals/results.json").write_text(_json.dumps(
         [{"task": r.task_id, "score": r.score, "passed": r.passed,
           "metrics": r.metrics, "notes": r.notes} for r in results], indent=1))
@@ -484,8 +506,11 @@ def main(argv: list[str] | None = None) -> int:
                       help="approval inbox file for gate mode (default .data/approvals.jsonl)")
     auto.set_defaults(func=cmd_auto)
 
-    ev = sub.add_parser("eval", help="run the offline eval suite (tasks, scores, leaderboard)")
+    ev = sub.add_parser("eval", help="run the eval suite (tasks, scores, leaderboard)")
     ev.add_argument("--task", help="run a single task by id")
+    ev.add_argument("--suite", help="comma list: epistemics,models,reproductions "
+                                    "(default: epistemics)")
+    ev.add_argument("--all", action="store_true", help="every suite")
     ev.set_defaults(func=cmd_eval)
     templates = sub.add_parser("templates", help="list campaign templates")
     templates.add_argument("name", nargs="?", default=None)

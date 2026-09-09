@@ -34,14 +34,17 @@ class Task:
     task_id: str
     description: str
     run: Callable[[], TaskResult]
+    suite: str = "epistemics"
+    optional: bool = False      # optional tasks SKIP (not fail) when unavailable
 
 
 TASKS: list[Task] = []
 
 
-def register(task_id: str, description: str):
+def register(task_id: str, description: str, suite: str = "epistemics",
+             optional: bool = False):
     def deco(fn):
-        TASKS.append(Task(task_id, description, fn))
+        TASKS.append(Task(task_id, description, fn, suite, optional))
         return fn
     return deco
 
@@ -162,3 +165,57 @@ def score_confirmation_coverage(verdicts: dict) -> TaskResult:
                       score, score >= PASS_THRESHOLD,
                       {"confirmed": len(confirmed), "with_agreement": len(backed)},
                       "no confirmations at all -> 0 (mechanism unused)")
+
+
+# ------------------------------------------------------- model benchmarking
+
+def run_model_task(dataset: str, min_spearman: float = 0.3) -> TaskResult:
+    """Score the offline policy ladder (Random/Mean/CharRidge) on a cached
+    MoleculeNet dataset. Passes when the learned policy clears the bar and
+    beats the floor. Degrades to a skipped-style 0 with the reason."""
+    from pathlib import Path
+
+    from bionexus.adapters.data.moleculenet import MoleculeNetDataset
+    from bionexus.benchmark import (CharRidgePolicy, MeanPolicy, RandomPolicy,
+                                    run_benchmark)
+
+    cache = Path(".data")
+    if not (cache / f"{dataset}.csv").exists():
+        return TaskResult(f"model-{dataset}",
+                          f"policy ladder on MoleculeNet {dataset}", 0.0,
+                          False, notes=f"SKIPPED — {dataset}.csv not cached "
+                                       f"(run with network once to fetch)")
+    ds = MoleculeNetDataset(dataset, cache_dir=str(cache), limit=8000)
+    res = run_benchmark(ds, [RandomPolicy(), MeanPolicy(),
+                             CharRidgePolicy(dim=256)],
+                        split="scaffold", seeds=(0, 1, 2))
+    classification = res.get("task") == "classification"
+    metric = "roc_auc" if classification else "spearman"
+
+    def val(entry: dict) -> float | None:
+        v = entry.get(f"{metric}_mean", entry.get(metric))
+        if isinstance(v, str):                       # "0.74±0.02"
+            v = float(v.split("±")[0])
+        return v if isinstance(v, (int, float)) else None
+
+    pols = res.get("policies", {})
+    floor = val(pols.get("random", {})) or 0.0
+    best_name, best = "", None
+    for name, entry in pols.items():
+        s = val(entry)
+        if s is not None and (best is None or s > best):
+            best_name, best = name, s
+    if best is None:
+        return TaskResult(f"model-{dataset}", "", 0.0, False,
+                          notes=f"no {metric} produced")
+    if classification:                               # AUC bar, not rho bar
+        floor, min_spearman = max(floor, 0.5), 0.65
+    score = max(0.0, min(1.0, (best - (floor + 0.05)) / 0.4))
+    passed = best >= min_spearman and best > floor
+    return TaskResult(f"model-{dataset}",
+                      f"policy ladder beats floor on {dataset}",
+                      round(score, 3), passed,
+                      {"best_policy": best_name, metric: round(best, 4),
+                       "floor_random": round(floor, 4)},
+                      f"{best_name} {metric}={best:.3f} (floor "
+                      f"{floor:.3f}, bar {min_spearman})")

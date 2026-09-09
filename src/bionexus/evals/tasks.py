@@ -47,3 +47,71 @@ def _t_verdict_honesty():
 def _t_confirmation():
     _, _, recs = run_offline_campaign(COMPOUNDS, 20.0, 6, 42, INBOX)
     return score_confirmation_coverage(verdict_records(recs))
+
+
+# ------------------------------------------------------------- models suite
+
+@register("model-lipophilicity", "policy ladder on MoleculeNet Lipophilicity",
+          suite="models", optional=True)
+def _m_lipo():
+    from bionexus.evals.harness import run_model_task
+    return run_model_task("lipophilicity", min_spearman=0.3)
+
+
+@register("model-esol", "policy ladder on MoleculeNet ESOL",
+          suite="models", optional=True)
+def _m_esol():
+    from bionexus.evals.harness import run_model_task
+    return run_model_task("esol", min_spearman=0.5)
+
+
+@register("model-hiv", "policy ladder on MoleculeNet HIV (classification)",
+          suite="models", optional=True)
+def _m_hiv():
+    from bionexus.evals.harness import run_model_task
+    return run_model_task("hiv", min_spearman=0.3)
+
+
+# ------------------------------------------------------- reproductions suite
+
+@register("repro-cs02-az3246", "blind reproduction of the AZ3246/HPK1 paper "
+          "(contamination-free)", suite="reproductions", optional=True)
+def _r_cs02():
+    return _run_case_study("02-az3246-hpk1")
+
+
+@register("repro-cs03-flow", "multi-paper flow validation (quantitative rows, "
+          "no LLM)", suite="reproductions", optional=True)
+def _r_cs03():
+    return _run_case_study("03-multi-paper", args=["run.py"])
+
+
+def _run_case_study(dirname: str, args=None):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    from bionexus.evals.harness import TaskResult
+    if os.environ.get("BIONEXUS_EVAL_REPRO") != "1":
+        return TaskResult(f"repro-{dirname}", f"case study {dirname}", 0.0,
+                          True, notes="SKIPPED (opt-in) — set "
+                          "BIONEXUS_EVAL_REPRO=1 to run; network-heavy, "
+                          "~10 min per study")
+    d = Path("case-studies") / dirname
+    script = d / (args[0] if args else "run.py")
+    if not script.exists():
+        return TaskResult(f"repro-{dirname}", "", 0.0, False,
+                          notes="SKIPPED — script missing")
+    try:
+        r = subprocess.run([sys.executable, script.name], cwd=str(d),
+                           capture_output=True, text=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        return TaskResult(f"repro-{dirname}", "", 0.0, False,
+                          notes="SKIPPED — timeout (needs network?)")
+    ok = r.returncode == 0 and "COMPLETE" in (r.stdout + r.stderr)
+    return TaskResult(f"repro-{dirname.split('-')[0]}",
+                      f"case study {dirname} rerun", 1.0 if ok else 0.0, ok,
+                      {"returncode": r.returncode},
+                      "reproduced" if ok else
+                      f"FAILED — {r.stdout.strip()[-120:] or r.stderr.strip()[-120:]}")
