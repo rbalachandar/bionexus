@@ -130,6 +130,7 @@ class LabGateway:
                     "assay": getattr(protocol.assay_type, "value",
                                      str(protocol.assay_type)),
                     "instrument": getattr(self.lab, "name", "lab"),
+                    "instrument_version": getattr(self.lab, "version", None),
                     "n_samples": len(samples),
                     "n_controls": len(controls),
                     "replicates": getattr(self.lab, "replicates", None),

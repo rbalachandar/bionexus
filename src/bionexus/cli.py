@@ -141,6 +141,13 @@ def cmd_prove(args: argparse.Namespace) -> int:
 
         path = write_report(records, args.html)
         print(f"report: {path}")
+    if getattr(args, "eln", None):
+        from bionexus.eln import export_eln
+
+        p = export_eln(records, args.eln,
+                       args.eln + ".json" if getattr(args, "eln_json", True)
+                       else None)
+        print(f"ELN export: {p} (+ .json sidecar)")
     return 0
 
 
@@ -220,6 +227,7 @@ def _campaign_from_doc(cfg_doc: dict) -> "CampaignConfig":
     return CampaignConfig(
         problem=problem, hypotheses=cfg_doc.get("hypotheses") or None,
         hypothesis_source=cfg_doc.get("hypothesis_source", "config"),
+        model=cfg_doc.get("_model"),
         k=cfg_doc.get("k", 2), autonomy=cfg_doc.get("autonomy", "act"),
         inbox=cfg_doc.get("inbox", ".data/inbox"),
         concentrations=tuple(cfg_doc.get("concentrations",
@@ -252,6 +260,15 @@ def cmd_auto(args: argparse.Namespace) -> int:
         return 2
     if args.autonomy:
         cfg_doc["autonomy"] = args.autonomy
+    if cfg_doc.get("hypothesis_source") == "agent" and not cfg_doc.get("model"):
+        try:
+            from bionexus.adapters.models.anthropic_provider import \
+                AnthropicProvider
+            cfg_doc["_model"] = AnthropicProvider()
+        except Exception as exc:
+            print(f"agent hypothesis source needs a model: {exc}",
+                  file=sys.stderr)
+            return 2
     if getattr(args, "dose_design", None):
         cfg_doc["dose_design"] = args.dose_design
     cfg = _campaign_from_doc(cfg_doc)
@@ -340,6 +357,25 @@ def cmd_eval(args: argparse.Namespace) -> int:
         [{"task": r.task_id, "score": r.score, "passed": r.passed,
           "metrics": r.metrics, "notes": r.notes} for r in results], indent=1))
     return 0 if all_pass else 1
+
+
+def cmd_anchor(args: argparse.Namespace) -> int:
+    from bionexus.anchor import anchor as make_anchor, verify
+
+    if args.verify:
+        res = verify(args.db, args.root)
+        ok = res["match"]
+        print(f"current root: {res['current_root'][:16]}…  "
+              f"anchored: {(res['anchored_root'] or '—')[:16]}…  "
+              f"records: {res['records']}  -> {'MATCH' if ok else 'MISMATCH'}")
+        return 0 if ok else 1
+    entry = make_anchor(args.db, publish_cmd=args.publish_cmd)
+    print(f"anchored {entry['records']} records -> root "
+          f"{entry['merkle_root'][:16]}…")
+    if "published" in entry:
+        print("published" if entry["published"]
+              else f"publish FAILED: {entry.get('publish_error', '')}")
+    return 0
 
 
 def cmd_templates(args: argparse.Namespace) -> int:
@@ -442,6 +478,7 @@ def main(argv: list[str] | None = None) -> int:
     prove.add_argument("--db", default="bionexus.db")
     prove.add_argument("--html", metavar="PATH",
                        help="also write a self-contained HTML report")
+    prove.add_argument("--eln", help="export branch as ELN CSV (+ .json sidecar)")
     prove.set_defaults(func=cmd_prove)
 
     mcp = sub.add_parser("mcp", help="serve BioNexus tools over MCP (stdio)")
@@ -511,11 +548,21 @@ def main(argv: list[str] | None = None) -> int:
                       help="approval inbox file for gate mode (default .data/approvals.jsonl)")
     auto.set_defaults(func=cmd_auto)
 
+    anc = sub.add_parser("anchor", help="Merkle-root the provenance store; "
+                         "publish the root for external tamper-evidence")
+    anc.add_argument("--db", default="bionexus.db")
+    anc.add_argument("--verify", action="store_true",
+                     help="recompute and compare against the latest anchor")
+    anc.add_argument("--root", help="explicit root to verify against")
+    anc.add_argument("--publish-cmd",
+                     help="shell command receiving the anchor JSON on stdin "
+                          "(e.g. 'gh gist create - && …', 'git commit …')")
     ev = sub.add_parser("eval", help="run the eval suite (tasks, scores, leaderboard)")
     ev.add_argument("--task", help="run a single task by id")
     ev.add_argument("--suite", help="comma list: epistemics,models,reproductions "
                                     "(default: epistemics)")
     ev.add_argument("--all", action="store_true", help="every suite")
+    anc.set_defaults(func=cmd_anchor)
     ev.set_defaults(func=cmd_eval)
     templates = sub.add_parser("templates", help="list campaign templates")
     templates.add_argument("name", nargs="?", default=None)

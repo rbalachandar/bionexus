@@ -1,12 +1,12 @@
 # Frontier-Review Roadmap (TODO plan)
 
-Source: critical review of BioNexus as a top-lab (DeepMind/Anthropic/Isomorphic)
+Source: critical review (note: T# here = priority TIER; P# in docs/PLAN.md = design principle — different schemes) of BioNexus as a top-lab (DeepMind/Anthropic/Isomorphic)
 reviewer would run it. Architecture survives scrutiny; **the statistics and the
-epistemology of verdicts do not.** Work top-down — P0 first.
+epistemology of verdicts do not.** Work top-down — T0 first.
 
 Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 
-## P0 — Uncertainty-aware verdicts (epistemic integrity)
+## T0 — Uncertainty-aware verdicts (epistemic integrity)
 - [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap
   (deterministic seed), `labread.fit_ic50_ci`; CI stored on compounds as
   `ic50_ci` and in verdict provenance as `observed_ci`
@@ -24,7 +24,7 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   confirmation REFUTING a preliminary hit (the mechanism working). Remaining:
   rerun case-studies/02 to regenerate its verdict artifacts
 
-## P0 — Small-n statistics
+## T0 — Small-n statistics
 - [x] `benchmark.spearman_ci` / `bootstrap_ci` added; case-study 03 rows now
   carry `rf_spearman_ci95`. [ ] remaining: EF@10% CI + regenerate the
   results.json artifacts (needs network day)
@@ -33,7 +33,7 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] Scaffold-split CV for the Morgan+RF baselines (leakage check)
 - Verify: regenerated `results.json` files include CI columns
 
-## P1 — Eval harness ("agentic science" as a measurable claim)
+## T1 — Eval harness ("agentic science" as a measurable claim)
 - [x] `python -m bionexus.cli eval` — offline task suite with ground truth:
   `hit-recovery` (calls vs seeded potency), `verdict-honesty` (bar placed on
   a compound's TRUE IC50 — abstention mandatory), `confirmation-coverage`
@@ -47,7 +47,7 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   the paper is memorized) — `case-studies/*/run.py`
 - Verify: `make eval-suite` (new target) runs offline except LLM rows
 
-## P1 — Mechanistic, falsifiable hypotheses
+## T1 — Mechanistic, falsifiable hypotheses
 - [x] Hypothesis fields: `mechanism`, `refutation_condition`,
   `predicted_observables`, `citation` (PMID/DOI) — carried through
   propose/propose_portfolio/propose_families, provenance decisions, and
@@ -64,7 +64,7 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] Templates: drop decorative "template:" rationale strings (empty beats
   decorative); wizard step 2 could collect mechanism/refutation too
 
-## P2 — Adaptive experimentation (the result, not the feature)
+## T2 — Adaptive experimentation (the result, not the feature)
 - [x] `src/bionexus/adaptive.py` — grid posterior over log-IC50 under the
   Hill model; `next_dose()` maximizes posterior predictive spread (most
   informative well); median + 95% credible interval readout
@@ -83,12 +83,11 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   says so explicitly
 
 ## Follow-up: agent path from the CLI
-- [ ] `bn auto --model <name>` / config `model:` should wire a real
-      ModelProvider when `hypothesis_source: agent` (today it only works
-      programmatically — the live-LLM validation had to build the
-      CampaignConfig in code). Small change in `_campaign_from_doc`/`cmd_auto`.
+- [x] `hypothesis_source: "agent"` in a `bn auto` config now auto-wires the
+      Anthropic provider from env (live-validated: agent proposed → lab →
+      CI-aware confirmation end to end from the CLI).
 
-## P2 — Learn from refutations (close the flywheel)
+## T2 — Learn from refutations (close the flywheel)
 - [x] `src/bionexus/flywheel.py` — every verdict submitted (tracker
   `on_verdict` hook, wired in `run_campaign`); family priors [0.5,1.5]
   discount failed mechanistic families in portfolio scoring; agent prompt
@@ -97,13 +96,17 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   ZERO lab slots in campaign 2.
 - [x] Negative-result summary surfaced in the workbench ("🚫 Ruled out")
 
-## P3 — Honesty/ops polish
+## T3 — Honesty/ops polish
 - [ ] Remove agent personas from UI + docs (keep toolsets, drop characters)
   — `src/bionexus/agents.py`, `Overview.py`, README
-- [ ] ELN export (Benchling/SISSYO-shaped CSV/JSON) from provenance branch
-- [ ] Daily Merkle root of the provenance store published to a transparency
-  log (tamper-evidence others can verify)
-- [ ] Simulator version tag in every provenance record that used it
+- [x] `bn prove <branch> --eln out.csv` — flat ELN CSV (18 cols: verdict,
+  observed + CI, run, instrument+version, record hash) + JSON sidecar
+  (`bionexus/eln.py`)
+- [x] `bn anchor` — Merkle root over all record hashes (`.data/anchors.json`
+  history); `--publish-cmd` pipes the anchor JSON to any transparency channel
+  (gist/repo/RFC3161); `bn anchor --verify` recomputes and compares.
+  Tamper test proves appended records break verification
+- [x] `instrument_version` on every lab_run decision (SimulatorLab = sim-v1)
 
 ## Do NOT (decided)
 - Multi-user/auth on the workbench — local-first is the point

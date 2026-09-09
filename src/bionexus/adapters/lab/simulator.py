@@ -63,6 +63,7 @@ class SimulatorLab:
     """
 
     name = "simulator"
+    version = "sim-v1"
 
     def __init__(self, seed: int = 7, instruments: dict[str, Any] | None = None,
                  replicates: int = 3, interference_rate: float = 0.25):

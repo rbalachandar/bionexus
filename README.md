@@ -53,6 +53,8 @@ bn auto --template dose-response-screen --field compounds=C1,C2,C3
 bn serve                               # headless cockpit (or: streamlit run Overview.py)
 bn diary <branch>                      # campaign as a lab-notebook narrative
 bn prove <branch> --html out.html      # tamper-evident provenance + shareable report
+bn prove <branch> --eln out.csv        # ELN-ready export (Benchling/SISSYO-friendly)
+bn anchor [--publish-cmd CMD]          # Merkle-root the store; publish the root
 bn sim                                 # reference design round on the virtual lab
 bn run examples/workflow.yml           # tournament + assay on the configured lab
 bn mcp                                 # MCP server: drive BioNexus from Claude/Cursor
@@ -267,14 +269,14 @@ step, and which BioNexus layer is responsible at each point:
 
 | Step | Who acts | What happens | What BioNexus enforces |
 |---|---|---|---|
-| 1. Problem setup | **Strategist** persona | Decomposes the objective into constraints | Records problem + constraints as provenance root |
-| 2. Hypothesis proposal | **Medicinal Chemist** using the `rdkit` **skill** | Generates analogs with SAR rationale | Validates schema, dedupes, records rationale |
-| 3. Portfolio filter | **Strategist** | Scores + ranks, applies diversity cap | Records every accept/reject with reason |
+| 1. Problem setup | **Problem definition** | Decomposes the objective into constraints | Records problem + constraints as provenance root |
+| 2. Hypothesis proposal | **Hypothesis agent** using the `rdkit` **skill** | Generates analogs with SAR rationale | Validates schema, dedupes, records rationale |
+| 3. Portfolio filter | **Portfolio selector** | Scores + ranks, applies diversity cap | Records every accept/reject with reason |
 | 4. Readiness review | **ExperimentDefinition** | Checks: is the readout capable? denominator present? synthesis feasible? | **Blocks** if result would be uninterpretable |
 | 5. Safety gate | **SafetyEngine** | Checks reagent compatibility, BSL, step count | **Refuses** unsafe protocols with a machine-readable reason |
 | 6. Lab execution | **LabAdapter** (simulator, Opentrons, PlateReaderShare) | Runs the assay, produces raw evidence | Records run ID, parameters, and raw output |
 | 7. Device event | **DeviceMonitor** | Notices the export appeared | Triggers agent analysis automatically |
-| 8. Analysis | **Analyst** persona + `labread` | Fits IC50s, checks QC, flags artifacts | Records measurements + QC flags as provenance |
+| 8. Analysis | **Analysis agent** + `labread` | Fits IC50s, checks QC, flags artifacts | Records measurements + QC flags as provenance |
 | 9. Verdict | **Analysis** against pre-registered criteria | VALIDATED / INVALIDATED / INCONCLUSIVE | Records the verdict with evidence and criteria |
 | 10. Audit | **ProvenanceStore** | Renders the full chain | `bn prove` verifies the hash chain |
 
