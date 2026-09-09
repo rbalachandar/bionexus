@@ -52,8 +52,11 @@ def register(task_id: str, description: str, suite: str = "epistemics",
 # --------------------------------------------------------------- campaign
 
 def run_offline_campaign(compounds: list[str], threshold_um: float,
-                         k: int, seed: int, inbox: Path):
-    """Execute a real dose-response campaign; return (report, lab, records)."""
+                         k: int, seed: int, inbox: Path,
+                         specs: list[dict] | None = None):
+    """Execute a real dose-response campaign; return (report, lab, records).
+    `specs` overrides the default bare-hypothesis set (for falsifiability
+    tasks that need richer hypotheses)."""
     import shutil
     shutil.rmtree(inbox, ignore_errors=True)
     inbox.mkdir(parents=True, exist_ok=True)
@@ -71,10 +74,11 @@ def run_offline_campaign(compounds: list[str], threshold_um: float,
                                 limit=threshold_um, unit="uM")])
     cfg = CampaignConfig(
         problem=problem,
-        hypotheses=[{"statement": f"{c} binds", "candidate": c,
-                     "assay_type": "binding", "predicted": f"<= {threshold_um:g}",
-                     "predicted_value": threshold_um, "rationale": "eval"}
-                    for c in compounds],
+        hypotheses=specs if specs is not None else [
+            {"statement": f"{c} binds", "candidate": c,
+             "assay_type": "binding", "predicted": f"<= {threshold_um:g}",
+             "predicted_value": threshold_um, "rationale": "eval"}
+            for c in compounds],
         k=k, autonomy="act", inbox=str(inbox), poll_secs=0.05)
     report = run_campaign(cfg, lab, store)
     branch = f"problem/{report.problem_id}"

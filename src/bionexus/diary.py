@@ -79,10 +79,16 @@ def build_diary_html(records: list[Any], branch: str) -> str:
             counts["hypotheses"] += 1
             lane = _lane(art_id, cand or stmt[:24] or "?", stmt)
             bits = []
+            if d.get("mechanism"):
+                bits.append(f"mechanism: {d['mechanism']}")
             if d.get("rationale"):
                 bits.append(f"rationale: {d['rationale']}")
+            if d.get("citation"):
+                bits.append(f"citation: {d['citation']}")
             if d.get("predicted"):
                 bits.append(f"prediction: {d['predicted']}")
+            if d.get("refutation_condition"):
+                bits.append(f"refuted if: {d['refutation_condition']}")
             lane["entries"].append(_entry("hypothesis proposed", stmt,
                                           " · ".join(bits) or "—"))
         elif ev == "hypotheses_filtered":

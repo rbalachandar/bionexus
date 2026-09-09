@@ -1,25 +1,20 @@
 [
  {
   "task": "hit-recovery",
-  "score": 0.833,
+  "score": 0.75,
   "passed": true,
   "metrics": {
    "judged": 6,
    "calls": {
-    "E-05": {
+    "E-02": {
      "verdict": "confirmed",
-     "true_ic50": 15.4,
-     "credit": 1.0
+     "true_ic50": 21.04,
+     "credit": 0.0
     },
     "E-06": {
      "verdict": "confirmed",
      "true_ic50": 12.97,
      "credit": 1.0
-    },
-    "E-02": {
-     "verdict": "inconclusive",
-     "true_ic50": 21.04,
-     "credit": 0.5
     },
     "E-03": {
      "verdict": "confirmed",
@@ -32,12 +27,17 @@
      "credit": 1.0
     },
     "E-01": {
-     "verdict": "inconclusive",
+     "verdict": "invalidated",
      "true_ic50": 26.74,
+     "credit": 1.0
+    },
+    "E-05": {
+     "verdict": "inconclusive",
+     "true_ic50": 15.4,
      "credit": 0.5
     }
    },
-   "duration_s": 6.5
+   "duration_s": 6.1
   },
   "notes": "1.0 confident-correct \u00b7 0.5 honest abstain \u00b7 0 wrong"
  },
@@ -46,75 +46,44 @@
   "score": 1.0,
   "passed": true,
   "metrics": {
-   "straddling_ci": 4,
+   "straddling_ci": 3,
    "violations": 0,
-   "duration_s": 8.2
+   "duration_s": 12.0
   },
-  "notes": "bar at E-03's true IC50 (10.75 uM); 4 borderline CIs, 0 overconfident verdicts"
+  "notes": "bar at E-03's true IC50 (10.75 uM); 3 borderline CIs, 0 overconfident verdicts"
  },
  {
   "task": "confirmation-coverage",
   "score": 1.0,
   "passed": true,
   "metrics": {
-   "confirmed": 2,
-   "with_agreement": 2,
-   "duration_s": 4.8
+   "confirmed": 3,
+   "with_agreement": 3,
+   "duration_s": 6.5
   },
   "notes": "no confirmations at all -> 0 (mechanism unused)"
  },
  {
-  "task": "model-lipophilicity",
+  "task": "falsifiability-tiebreak",
   "score": 1.0,
   "passed": true,
   "metrics": {
-   "best_policy": "char3gram-ridge",
-   "spearman": 0.502,
-   "floor_random": 0.0336,
-   "duration_s": 9.1
+   "selected": [
+    "E-01",
+    "E-03",
+    "E-05",
+    "E-07"
+   ],
+   "rich_candidates": [
+    "E-01",
+    "E-03",
+    "E-05",
+    "E-07",
+    "E-09",
+    "E-11"
+   ],
+   "duration_s": 4.0
   },
-  "notes": "char3gram-ridge spearman=0.502 (floor 0.034, bar 0.3)"
- },
- {
-  "task": "model-esol",
-  "score": 1.0,
-  "passed": true,
-  "metrics": {
-   "best_policy": "char3gram-ridge",
-   "spearman": 0.7058,
-   "floor_random": -0.1103,
-   "duration_s": 2.6
-  },
-  "notes": "char3gram-ridge spearman=0.706 (floor -0.110, bar 0.5)"
- },
- {
-  "task": "model-hiv",
-  "score": 0.526,
-  "passed": true,
-  "metrics": {
-   "best_policy": "char3gram-ridge",
-   "roc_auc": 0.7606,
-   "floor_random": 0.5,
-   "duration_s": 12.7
-  },
-  "notes": "char3gram-ridge roc_auc=0.761 (floor 0.500, bar 0.65)"
- },
- {
-  "task": "repro-02-az3246-hpk1",
-  "score": 0.0,
-  "passed": true,
-  "metrics": {
-   "duration_s": 0.0
-  },
-  "notes": "SKIPPED (opt-in) \u2014 set BIONEXUS_EVAL_REPRO=1 to run; network-heavy, ~10 min per study"
- },
- {
-  "task": "repro-03-multi-paper",
-  "score": 0.0,
-  "passed": true,
-  "metrics": {
-   "duration_s": 0.0
-  },
-  "notes": "SKIPPED (opt-in) \u2014 set BIONEXUS_EVAL_REPRO=1 to run; network-heavy, ~10 min per study"
+  "notes": "all k picks must be mechanistic+cited"
  }
 ]

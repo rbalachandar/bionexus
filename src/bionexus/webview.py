@@ -117,6 +117,12 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                             f"{hp.get('statement', '')}")
                 c2.caption(stage)
                 crit = hp.get("criteria") or {}
+                if hp.get("mechanism"):
+                    st.caption(f"⚙️ mechanism: {hp['mechanism']}"
+                               + (f" · 📚 {hp['citation']}"
+                                  if hp.get("citation") else ""))
+                if hp.get("refutation_condition"):
+                    st.caption(f"☠️ refuted if: {hp['refutation_condition']}")
                 meta_bits = [f"predicted: {hp.get('predicted', '—')}"]
                 if crit.get("threshold") is not None:
                     meta_bits.append(f"threshold: {crit['threshold']} µM "

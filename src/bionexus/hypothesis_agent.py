@@ -51,6 +51,10 @@ Reply ONLY with JSON:
   {{"family": "short-family-id",
     "parent_statement": "falsifiable mechanistic claim",
     "kind": "mechanistic",
+    "mechanism": "the CAUSAL story — molecules, binding, pathway; not 'it fits'",
+    "refutation_condition": "the ONE observation that kills this family",
+    "predicted_observables": ["what else must be true if this holds"],
+    "citation": "PMID or DOI grounding the rationale ('' if none — never invent)",
     "rationale": "why this bet",
     "confidence": 0.0-1.0,
     "variables": ["what you tune across variants"],
@@ -141,6 +145,12 @@ def propose_families_with_agent(
                 "rationale": v.get("rationale", ""),
                 "variables": v.get("variables", {}),
             }
+            for k in ("mechanism", "refutation_condition", "citation",
+                      "predicted_observables"):
+                if fam.get(k) is not None:
+                    spec[k] = fam[k]
+                elif v.get(k) is not None:
+                    spec[k] = v[k]
             specs.append({"family": fid, "parent_statement":
                           fam.get("parent_statement", ""), **spec})
 

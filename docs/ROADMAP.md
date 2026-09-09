@@ -48,14 +48,18 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - Verify: `make eval-suite` (new target) runs offline except LLM rows
 
 ## P1 — Mechanistic, falsifiable hypotheses
-- [ ] Required fields on Hypothesis: mechanism, predicted_observables,
-  refutation_condition — `core/hypothesis.py` + contracts; migrate existing
-  templates (drop "template:" rationale strings — empty beats decorative)
-- [ ] Portfolio scoring should weight explanatory power, not just threshold
-  pass — `core/hypothesis.py` `select_portfolio`
-- [ ] Hypothesis agent prompt: demand mechanism + citation (PubMed adapter
-  exists at `adapters/databases/pubmed.py`); record citation in provenance
-  artifact metadata
+- [x] Hypothesis fields: `mechanism`, `refutation_condition`,
+  `predicted_observables`, `citation` (PMID/DOI) — carried through
+  propose/propose_portfolio/propose_families, provenance decisions, and
+  artifact metadata; UI shows "⚙️ mechanism / ☠️ refuted if" on cards + diary
+- [x] `explanatory_bonus` (cap 0.2): portfolio ties break toward
+  mechanistic+cited hypotheses; reason recorded. Eval task
+  `falsifiability-tiebreak` proves it (all-k-picks-must-be-falsifiable)
+- [~] Hypothesis-agent prompt now demands mechanism/refutation/citation
+  ("never invent" clause); LIVE validation pending (needs LLM env):
+  run a campaign with hypothesis_source=agent and confirm fields populate
+- [ ] Templates: drop decorative "template:" rationale strings (empty beats
+  decorative); wizard step 2 could collect mechanism/refutation too
 
 ## P2 — Adaptive experimentation (the result, not the feature)
 - [ ] Bayesian dose-series design: choose next concentrations from posterior

@@ -115,3 +115,44 @@ def _run_case_study(dirname: str, args=None):
                       {"returncode": r.returncode},
                       "reproduced" if ok else
                       f"FAILED — {r.stdout.strip()[-120:] or r.stderr.strip()[-120:]}")
+
+
+@register("falsifiability-tiebreak",
+          "equal-scored hypotheses: the k selected must be the mechanistic, "
+          "refutable, cited ones (explanatory power breaks ties)")
+def _t_falsifiability():
+    from bionexus.evals.harness import TaskResult
+    k = 4
+    specs = []
+    for i, c in enumerate(COMPOUNDS):
+        rich = i % 2 == 0
+        spec = {"statement": f"{c} binds", "candidate": c,
+                "assay_type": "binding", "predicted": "<= 20",
+                "predicted_value": 20.0, "rationale": "eval"}
+        if rich:
+            spec.update(mechanism="covalent engagement of catalytic Cys",
+                        refutation_condition="loss of activity upon Cys mutation",
+                        citation="PMID:00000000")
+        specs.append(spec)
+    rich_set = {s["candidate"] for s in specs if s.get("mechanism")}
+    _, _, recs = run_offline_campaign(COMPOUNDS, 20.0, k, 11, INBOX, specs=specs)
+    selected = set()
+    for r in recs:
+        if r.event_type.value == "hypotheses_filtered":
+            for dec in (r.decision or {}).get("decisions", []):
+                if dec.get("selected"):
+                    selected.add(dec.get("hypothesis_id"))
+    # map ids->candidates via proposed records
+    id2cand = {}
+    for r in recs:
+        if r.event_type.value == "hypothesis_proposed" and r.artifact:
+            id2cand[r.artifact.artifact_id] = \
+                (r.artifact.metadata or {}).get("candidate")
+    picked = {id2cand.get(i) for i in selected}
+    frac = len(picked & rich_set) / len(picked) if picked else 0.0
+    return TaskResult("falsifiability-tiebreak",
+                      "explanatory power breaks portfolio ties",
+                      round(frac, 3), frac == 1.0,
+                      {"selected": sorted(str(p) for p in picked),
+                       "rich_candidates": sorted(rich_set)},
+                      "all k picks must be mechanistic+cited")

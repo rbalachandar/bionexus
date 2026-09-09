@@ -219,3 +219,28 @@ def test_benjamini_hochberg():
     # BH at fdr .1: 0.001<=.0166, 0.008<=.033, 0.039<=.05, 0.041<=.0664 -> 4 hits
     assert flags[:4] == [True] * 4 and flags[4:] == [False] * 2
     assert benjamini_hochberg([]) == []
+
+
+def test_mechanistic_fields_flow_and_bonus():
+    from bionexus.core.hypothesis import (HypothesisTracker, ProblemStatement,
+                                          explanatory_bonus)
+    t = HypothesisTracker(SqliteProvenanceStore(), system_actor())
+    p = ProblemStatement(objective="o")
+    hs = t.propose_portfolio(p, [
+        {"statement": "A binds", "candidate": "A", "predicted": "<=20",
+         "predicted_value": 20.0, "mechanism": "covalent-Cys",
+         "refutation_condition": "Cys-mut kills activity",
+         "citation": "PMID:12345",
+         "predicted_observables": ["mass adduct on peptide"]},
+        {"statement": "B binds", "candidate": "B", "predicted": "<=20",
+         "predicted_value": 20.0}])
+    a, b = hs
+    assert a.mechanism == "covalent-Cys" and a.citation == "PMID:12345"
+    assert a.predicted_observables == ["mass adduct on peptide"]
+    assert explanatory_bonus(a) == 0.2 and explanatory_bonus(b) == 0.0
+    sel = t.select_portfolio(p, hs, lambda h: 0.5, k=1)
+    assert sel == [a]                       # explanatory power broke the tie
+    recs = t.store.branch_records(f"problem/{p.problem_id}")
+    decisions = [x for r in recs if r.event_type.value == "hypotheses_filtered"
+                 for x in (r.decision or {}).get("decisions", [])]
+    assert any("explanatory power" in d.get("reason", "") for d in decisions)

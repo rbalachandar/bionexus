@@ -121,6 +121,10 @@ class Hypothesis(BaseModel):
     branch_id: str
     statement: str                      # falsifiable prediction
     rationale: str = ""                 # why we believe it (prior evidence)
+    mechanism: str = ""                 # the CAUSAL story, not just correlation
+    predicted_observables: list[str] = Field(default_factory=list)
+    refutation_condition: str = ""      # what observation KILLS this hypothesis
+    citation: str = ""                  # PMID/DOI grounding the rationale
     candidate: str                      # molecule/sample id under test
     assay_type: str = ""
     predicted: str                      # human-readable prediction
@@ -137,6 +141,21 @@ class Hypothesis(BaseModel):
     portfolio_rank: int | None = None    # order in the proposed portfolio
     family: str | None = None            # mechanistic family (same claim, many variants)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+def explanatory_bonus(h: "Hypothesis") -> float:
+    """Explanatory power is worth a portfolio edge: a hypothesis that says
+    WHY (mechanism), HOW IT COULD DIE (refutation condition), and WHERE IT
+    COMES FROM (citation) is more testable science than a bare prediction.
+    Capped at 0.2 so it breaks ties, never overrides real scores."""
+    bonus = 0.0
+    if h.mechanism:
+        bonus += 0.10
+    if h.refutation_condition:
+        bonus += 0.05
+    if h.citation:
+        bonus += 0.05
+    return min(bonus, 0.2)
 
 
 class HypothesisTracker:
@@ -218,6 +237,10 @@ class HypothesisTracker:
                 predicted=spec.get("predicted", spec["statement"]),
                 predicted_value=spec.get("predicted_value"),
                 rationale=spec.get("rationale", ""),
+                mechanism=spec.get("mechanism", ""),
+                refutation_condition=spec.get("refutation_condition", ""),
+                predicted_observables=spec.get("predicted_observables"),
+                citation=spec.get("citation", ""),
                 round_no=0,
                 criteria=spec.get("criteria"),
                 design=spec.get("design"),
@@ -257,6 +280,8 @@ class HypothesisTracker:
             for spec in fam.get("variants", []):
                 spec = dict(spec)
                 spec.setdefault("rationale", fam.get("rationale", ""))
+                for k in ("mechanism", "refutation_condition", "citation"):
+                    spec.setdefault(k, fam.get(k, ""))
                 h = self.propose(
                     branch_id=f"problem/{problem.problem_id}",
                     statement=spec["statement"],
@@ -265,6 +290,10 @@ class HypothesisTracker:
                     predicted=spec.get("predicted", spec["statement"]),
                     predicted_value=spec.get("predicted_value"),
                     rationale=spec.get("rationale", ""),
+                    mechanism=spec.get("mechanism", ""),
+                    refutation_condition=spec.get("refutation_condition", ""),
+                    predicted_observables=spec.get("predicted_observables"),
+                    citation=spec.get("citation", ""),
                     round_no=0,
                     criteria=spec.get("criteria"),
                     design=spec.get("design"),
@@ -285,7 +314,9 @@ class HypothesisTracker:
         of the same mechanistic family are taken (a sweep of one idea cannot
         crowd out different ideas). Every accept/reject decision is
         provenance-recorded with its reason."""
-        scored = sorted(proposed, key=score_fn, reverse=True)
+        def _total(h: Hypothesis) -> float:
+            return score_fn(h) + explanatory_bonus(h)
+        scored = sorted(proposed, key=_total, reverse=True)
         selected, decisions = [], []
         family_counts: dict[str, int] = {}
         for h in scored:
@@ -300,9 +331,12 @@ class HypothesisTracker:
                 selected.append(h)
                 if h.family:
                     family_counts[h.family] = family_counts.get(h.family, 0) + 1
+            bonus = explanatory_bonus(h)
             decisions.append(PortfolioDecision(
                 hypothesis_id=h.hypothesis_id, selected=sel,
-                score=round(score_fn(h), 4), reason=reason))
+                score=round(score_fn(h) + bonus, 4),
+                reason=(reason + (f" (+{bonus:.2f} explanatory power)"
+                                  if bonus else ""))))
         self.store.append(self._record(
             Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
             EventType.hypotheses_filtered, None,
@@ -317,6 +351,9 @@ class HypothesisTracker:
     def propose(self, statement: str, candidate: str, assay_type: str,
                 predicted: str, predicted_value: float | None = None,
                 rationale: str = "", round_no: int = 1,
+                mechanism: str = "", refutation_condition: str = "",
+                predicted_observables: list[str] | None = None,
+                citation: str = "",
                 criteria: SuccessCriteria | None = None,
                 design: ExperimentDesign | None = None,
                 branch_id: str | None = None, **meta: Any) -> Hypothesis:
@@ -333,6 +370,10 @@ class HypothesisTracker:
             branch_id=env.experiment_branch_id,
             statement=statement,
             rationale=rationale,
+            mechanism=mechanism,
+            refutation_condition=refutation_condition,
+            predicted_observables=predicted_observables or [],
+            citation=citation,
             candidate=candidate,
             assay_type=assay_type,
             predicted=predicted,
@@ -348,7 +389,13 @@ class HypothesisTracker:
                                                  "predicted": predicted,
                                                  "criteria": h.criteria.model_dump(),
                                                  "design": h.design.model_dump(),
-                                                 "rationale": rationale}))
+                                                 "rationale": rationale,
+                                                 "mechanism": mechanism,
+                                                 "refutation_condition":
+                                                     refutation_condition,
+                                                 "citation": citation,
+                                                 "predicted_observables":
+                                                     h.predicted_observables}))
         return h
 
     def specify_design(self, h: Hypothesis, design: ExperimentDesign) -> Hypothesis:
@@ -428,7 +475,9 @@ class HypothesisTracker:
             kind=ArtifactKind.hypothesis,
             uri=f"mem://{h.branch_id}/{h.hypothesis_id}",
             metadata={"candidate": h.candidate, "assay": h.assay_type,
-                      "statement": h.statement},
+                      "statement": h.statement,
+                      **({"mechanism": h.mechanism} if h.mechanism else {}),
+                      **({"citation": h.citation} if h.citation else {})},
         )
 
     def record_outcome(self, h: Hypothesis, extra: dict | None = None) -> Hypothesis:
