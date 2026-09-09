@@ -1756,7 +1756,7 @@ def test_confirmation_verifies_direction_not_relabels(tmp_path):
                 f.write_text("Well ID,Compound,Conc (uM),RFU\n"
                              "A1,ctrl,10,100\nA2,ctrl,10,104\n"
                              "A3,C,0.5,7\nA4,C,2,26\nA5,C,10,111\n"
-                             "A6,C,40,222\n")
+                             "A6,C,40,267\n")
             return f
         path = _path()
 
