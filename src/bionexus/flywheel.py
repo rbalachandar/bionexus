@@ -21,12 +21,15 @@ from typing import Any
 
 class Flywheel:
     def __init__(self, path: str | None = ".data/flywheel.db"):
-        self._conn = None if path is None else sqlite3.connect(
-            path, check_same_thread=False)
         self._lock = threading.Lock()
-        if self._conn is not None:
-            import os
-            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        if path is None:
+            self._conn = None
+            return
+        import os
+        if os.path.dirname(path):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+        self._conn = sqlite3.connect(path, check_same_thread=False)
+        if True:
             self._conn.execute(
                 """CREATE TABLE IF NOT EXISTS outcomes (
                     ts REAL NOT NULL,
