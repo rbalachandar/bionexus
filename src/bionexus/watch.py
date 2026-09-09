@@ -278,25 +278,36 @@ class AutoAnalysisAgent:
                 primary_ci[0], secondary_ci[0])
         else:
             agreed = ratio is not None and ratio <= 3.0
-        if not qc_ok or ratio is None:
-            status = "inconclusive"
-        elif agreed:
-            status = "confirmed"
-        else:
-            status = "refuted"
-        # agreement is about the MEASUREMENT; the gate is a separate axis.
-        # A confirmed measurement whose CI straddles the threshold cannot
-        # claim a hit — the gate stays inconclusive.
         hyp_tmp = next((h for h in (self.tracker.hypotheses.values()
                                     if self.tracker else [])
                         if h.candidate == cand), None)
-        if (status == "confirmed" and hyp_tmp is not None and hyp_tmp.criteria
-                and secondary is not None):
-            if hyp_tmp.criteria.classify(secondary, secondary_ci) == "inconclusive":
+        pri_status = hyp_tmp.status if hyp_tmp else "tested"
+        if not qc_ok or ratio is None:
+            status = "inconclusive"
+        elif not agreed:
+            # methods disagree: a claimed HIT that doesn't reproduce is
+            # refuted; a claimed NON-HIT that disagrees is simply unclear
+            status = "refuted" if pri_status in ("validated", "confirmed") \
+                else "inconclusive"
+        else:
+            # agreement VERIFIES the preliminary verdict's direction —
+            # confirmed only for hits, refuted for non-hits, and borderline
+            # CIs stay inconclusive no matter how well the methods agree
+            cls = (hyp_tmp.criteria.classify(secondary, secondary_ci)
+                   if (hyp_tmp and hyp_tmp.criteria and secondary is not None)
+                   else "inconclusive")
+            pri_cls = (hyp_tmp.criteria.classify(primary, primary_ci)
+                       if (hyp_tmp and hyp_tmp.criteria) else cls)
+            if cls == "inconclusive" or pri_cls == "inconclusive":
                 status = "inconclusive"
-                self.notify(f"gate honesty: {cand} measurement confirmed but "
-                            f"CI straddles threshold {hyp_tmp.criteria.threshold} "
+                self.notify(f"gate honesty: {cand} methods agree but a "
+                            f"borderline CI straddles threshold "
+                            f"{hyp_tmp.criteria.threshold if hyp_tmp and hyp_tmp.criteria else '?'} "
                             f"-> inconclusive")
+            elif pri_status in ("validated", "confirmed"):
+                status = "confirmed" if cls == "validated" else "refuted"
+            else:
+                status = "refuted" if cls == "invalidated" else "confirmed"
         self.notify(f"orthogonal confirmation for {cand}: primary {primary:.2f} vs "
                     f"secondary {secondary:.2f} µM (ratio {ratio:.1f}x) -> {status.upper()}"
                     if ratio else f"orthogonal confirmation for {cand}: no usable "

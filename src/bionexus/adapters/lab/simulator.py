@@ -81,7 +81,10 @@ class SimulatorLab:
         return dict(self._capabilities)
 
     def submit_protocol(self, protocol: ProtocolSubmission) -> str:
-        run_id = f"sim-{protocol.protocol_id[:8]}"
+        # deterministic run ids (seed + call order): downstream noise seeds
+        # derive from run ids, so evals and case studies stay reproducible
+        self._seq = getattr(self, "_seq", 0) + 1
+        run_id = f"sim-{self.seed}-{self._seq:03d}"
         self._runs[run_id] = protocol
         return run_id
 

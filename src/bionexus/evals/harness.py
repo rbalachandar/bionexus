@@ -53,7 +53,8 @@ def register(task_id: str, description: str, suite: str = "epistemics",
 
 def run_offline_campaign(compounds: list[str], threshold_um: float,
                          k: int, seed: int, inbox: Path,
-                         specs: list[dict] | None = None):
+                         specs: list[dict] | None = None,
+                         flywheel=None):
     """Execute a real dose-response campaign; return (report, lab, records).
     `specs` overrides the default bare-hypothesis set (for falsifiability
     tasks that need richer hypotheses)."""
@@ -79,7 +80,10 @@ def run_offline_campaign(compounds: list[str], threshold_um: float,
              "assay_type": "binding", "predicted": f"<= {threshold_um:g}",
              "predicted_value": threshold_um, "rationale": "eval"}
             for c in compounds],
-        k=k, autonomy="act", inbox=str(inbox), poll_secs=0.05)
+        k=k, autonomy="act", inbox=str(inbox), poll_secs=0.05,
+        flywheel=flywheel if flywheel is not None else
+        __import__("bionexus.flywheel", fromlist=["Flywheel"]).Flywheel(
+            ":memory:"))
     report = run_campaign(cfg, lab, store)
     branch = f"problem/{report.problem_id}"
     return report, lab, store.branch_records(branch)

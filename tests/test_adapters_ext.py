@@ -1725,3 +1725,48 @@ def test_autoloop_adaptive_dose_design(tmp_path):
     runs = [r for r in store.branch_records("problem/prob-ad")
             if r.event_type.value == "lab_run"]
     assert len(runs) <= 6
+
+
+def test_confirmation_verifies_direction_not_relabels(tmp_path):
+    """Agreement confirms the PRELIMINARY DIRECTION: an invalidated
+    (non-hit) that agrees on re-measure becomes refuted, never 'confirmed';
+    borderline CIs stay inconclusive however well methods agree."""
+    from bionexus.core.hypothesis import (HypothesisTracker, ProblemStatement,
+                                          SuccessCriteria)
+    from bionexus.watch import AutoAnalysisAgent
+
+    tracker = HypothesisTracker(SqliteProvenanceStore(), system_actor())
+    p = ProblemStatement(objective="o")
+    h = tracker.propose_portfolio(p, [
+        {"statement": "s", "candidate": "C", "predicted": "<=20",
+         "predicted_value": 20.0}])[0]
+    h.status = "invalidated"          # primary said non-hit (CI above bar)
+
+    calls = {"n": 0}
+
+    class FakeEvent:
+        kind = "plate_ready"
+
+        @staticmethod
+        def _path():
+            from pathlib import Path
+            calls["n"] += 1
+            f = tmp_path / "sim-x.csv"
+            if not f.exists():
+                f.write_text("Well ID,Compound,Conc (uM),RFU\n"
+                             "A1,ctrl,10,100\nA2,ctrl,10,104\n"
+                             "A3,C,2,26\nA4,C,10,111\nA5,C,40,222\n")
+            return f
+        path = _path()
+
+    class FakeGateway:
+        def submit(self, protocol):
+            return "sim-fake", None
+
+    agent = AutoAnalysisAgent(tracker=tracker, gateway=FakeGateway(),
+                              branch_id="problem/p", notify=lambda m: None,
+                              auto_confirm=True)
+    agent._confirmations["sim-x"] = {"candidate": "C", "primary_ic50": 23.2,
+                                     "primary_ci": (20.3, 31.0)}
+    agent.handle(FakeEvent())
+    assert h.status == "refuted", h.status   # NOT "confirmed"
