@@ -55,9 +55,12 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] `explanatory_bonus` (cap 0.2): portfolio ties break toward
   mechanistic+cited hypotheses; reason recorded. Eval task
   `falsifiability-tiebreak` proves it (all-k-picks-must-be-falsifiable)
-- [~] Hypothesis-agent prompt now demands mechanism/refutation/citation
-  ("never invent" clause); LIVE validation pending (needs LLM env):
-  run a campaign with hypothesis_source=agent and confirm fields populate
+- [x] Hypothesis-agent prompt demands mechanism/refutation/citation —
+  LIVE-validated 2026-09-09 (glm proxy): two real families (type-I ATP vs
+  type-II DFG-out), causal mechanisms, proper refutation conditions, and a
+  REAL citation (PMID 35377565) on one family with honest "—" on the other
+  (never-invent clause held). Full loop: agent hypotheses -> lab -> CI-aware
+  invalidated verdicts -> auto-confirmations.
 - [ ] Templates: drop decorative "template:" rationale strings (empty beats
   decorative); wizard step 2 could collect mechanism/refutation too
 
@@ -68,8 +71,12 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Eval task `adaptive-dose-design`: 3-well adaptive vs 4-point fixed
   (labread) on 16 log-uniform compounds → wins 14/16, mean |log10 err|
   0.024 vs 0.090, CI coverage 15/16 at nominal 15.2. Measured, not claimed.
-- [ ] Wire into `autoloop.py` as `dose_design: adaptive` (sequential runs
-  per compound — needs the monitor loop to support multi-round protocols)
+- [x] Wired into `autoloop.py`: `dose_design: "adaptive"` / `bn auto
+  --dose-design adaptive` — screen well, then up to 2 Bayesian follow-up
+  wells per compound with live posterior updates in the log; verdicts from
+  posterior median + credible interval (CI-aware classify reused).
+  Regression caught by eval: `validated` must stay non-terminal in the
+  monitor loop (fixed mode awaits confirmation).
 - [ ] Negative lesson recorded: giving the fixed baseline the SAME
   posterior estimator erases most of the advantage (0.038 vs 0.043) — the
   win is against the real pipeline (linear/Hill point fits), and the eval
