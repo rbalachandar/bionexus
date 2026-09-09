@@ -209,8 +209,11 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     time.sleep(0.2)
     n_expected = sum(1 for h in selected if h.design and h.design.run_id)
     # primary runs + their orthogonal confirmations (guarded, <= 1 per candidate)
-    terminal = {"validated", "confirmed", "refuted", "invalidated",
-                "inconclusive"}
+    # "validated" is PRELIMINARY in fixed mode (confirmation pending), so it
+    # must NOT count as terminal here or the loop exits before confirmations
+    # are processed. Adaptive mode has no confirmation step: its verdicts
+    # arrive as confirmed/refuted/inconclusive directly.
+    terminal = {"confirmed", "refuted", "invalidated", "inconclusive"}
     budget = n_expected * (4 if adaptive else 2) + 1
     for i, ev in enumerate(monitor.events(stop_after=budget,
                                           idle_timeout=max(5.0, cfg.poll_secs * 30))):
