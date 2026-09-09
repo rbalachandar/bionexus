@@ -80,6 +80,7 @@ def propose_families_with_agent(
     max_total_hypotheses: int | None = None,
     existing_keys: set[tuple[str, str]] | None = None,
     skill_guidance: str | None = None,
+    flywheel: Any = None,
     branch_id: str | None = None,
     score_fn: Callable[[dict[str, Any]], float] | None = None,
     notify: Callable[[str], None] | None = None,
@@ -117,6 +118,11 @@ def propose_families_with_agent(
         max_families=max_families,
         max_variants_per_family=max_variants_per_family,
     ) + ("\n\n" + guidance_block if guidance_block else "")
+    if flywheel is not None:
+        negs = flywheel.prompt_context()
+        if negs:
+            prompt = prompt + "\n\n" + negs
+            say("prompt includes previously ruled-out candidates (flywheel)")
     inv = ToolInvocation(envelope=env.model_copy(), tool="c.fm.generate_molecules")
     raw = model.generate(inv, prompt).output["text"]
     # record the raw generation (agent reasoning is provenance too)

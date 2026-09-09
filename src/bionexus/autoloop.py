@@ -69,6 +69,7 @@ class CampaignConfig:
     dose_design: str = "fixed"          # "fixed" | "adaptive" (Bayesian
                                         # sequential dosing, 3 wells)
     inbox: str | Path = ".data/inbox"
+    flywheel: Any = None                # shared Flywheel (default: local db)
     autonomy: Autonomy = "gate"
     poll_secs: float = 0.5
     actor_name: str = "campaign"
@@ -88,7 +89,15 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                  notify: Callable[[str], None] | None = None) -> CampaignReport:
     """Start-to-finish: problem -> portfolio -> filter -> test -> verdict -> confirm."""
     actor = system_actor(cfg.actor_name)
-    tracker = HypothesisTracker(store, actor)
+    from bionexus.flywheel import Flywheel
+    flywheel = cfg.flywheel if cfg.flywheel is not None else Flywheel()
+
+    def _on_verdict(h) -> None:
+        flywheel.submit(h.candidate, h.family, h.assay_type, h.status,
+                        h.observed_value, h.observed_ci,
+                        problem_id=(cfg.problem.problem_id or None))
+
+    tracker = HypothesisTracker(store, actor, on_verdict=_on_verdict)
     safety = SafetyEngine()
     say = notify or (lambda m: print(f"[campaign] {m}"))
 
@@ -118,13 +127,17 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                                      - len(tracker.hypotheses)),
             existing_keys={(h.candidate, h.statement) for h in tracker.hypotheses.values()},
             skill_guidance=cfg.skill_guidance,
+            flywheel=flywheel,
             notify=say)
         say(f"resource budget: {remaining_runs}/{budget.max_total_runs} lab runs remaining")
         say(f"agent proposed {len(portfolio)} variant hypotheses")
-        score_fn = cfg.score_fn or (lambda h: family_scores.get(h.family or "", 0.5))
+        _base = cfg.score_fn or (
+            lambda h: family_scores.get(h.family or "", 0.5))
+        score_fn = lambda h: _base(h) + flywheel.prior_bonus(h.family)
     else:
         portfolio = tracker.propose_portfolio(problem, cfg.hypotheses or [])
-        score_fn = cfg.score_fn or (lambda h: 0.5)
+        base_fn = cfg.score_fn or (lambda h: 0.5)
+        score_fn = lambda h: base_fn(h) + flywheel.prior_bonus(h.family)
     selected = tracker.select_portfolio(problem, portfolio, score_fn, k=cfg.k,
                                         max_per_family=1)
     say(f"problem {problem.problem_id}: {len(portfolio)} hypotheses -> {len(selected)} selected")

@@ -82,10 +82,20 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   win is against the real pipeline (linear/Hill point fits), and the eval
   says so explicitly
 
+## Follow-up: agent path from the CLI
+- [ ] `bn auto --model <name>` / config `model:` should wire a real
+      ModelProvider when `hypothesis_source: agent` (today it only works
+      programmatically — the live-LLM validation had to build the
+      CampaignConfig in code). Small change in `_campaign_from_doc`/`cmd_auto`.
+
 ## P2 — Learn from refutations (close the flywheel)
-- [ ] Feed invalidated hypotheses + their evidence back into scoring/
-  proposal (the `c.flywheel.*` tool names exist; nothing implements them)
-- [ ] Negative-result summary per program: what we ruled out, with evidence
+- [x] `src/bionexus/flywheel.py` — every verdict submitted (tracker
+  `on_verdict` hook, wired in `run_campaign`); family priors [0.5,1.5]
+  discount failed mechanistic families in portfolio scoring; agent prompt
+  gets an "ALREADY RULED OUT" block (don't re-propose dead mechanisms).
+  Eval task `flywheel-memory`: a family invalidated in campaign 1 gets
+  ZERO lab slots in campaign 2.
+- [x] Negative-result summary surfaced in the workbench ("🚫 Ruled out")
 
 ## P3 — Honesty/ops polish
 - [ ] Remove agent personas from UI + docs (keep toolsets, drop characters)

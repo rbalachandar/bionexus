@@ -307,6 +307,23 @@ def overview_view() -> None:
                 st.rerun()
         _wait_approvals()
 
+    # ---------------------------------------------------- flywheel memory
+    try:
+        from bionexus.flywheel import Flywheel
+        _fw = Flywheel()
+        _negs = _fw.negative_summary(limit=8)
+        if _negs:
+            with st.expander(f"🚫 Ruled out ({len(_negs)} recent negatives — "
+                             f"steers future portfolios)"):
+                for n in _negs:
+                    st.caption(f"- **{n['candidate']}** ({n['family']}, "
+                               f"{n['assay']}): {n['outcome']}"
+                               + (f" — observed {n['observed']:.1f} µM"
+                                  if n.get("observed") else "")
+                               + f" · {ago(n['ts'])}")
+    except Exception:
+        pass
+
     # ---------------------------------------------------- Program & TPP
     doc = program_cfg.load()
     st.caption(f"🎯 Program: **{doc['program']}** ({doc['target']}) — "

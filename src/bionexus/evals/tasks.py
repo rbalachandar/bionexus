@@ -198,3 +198,79 @@ def _t_adaptive():
                        "ci_coverage": f"{covered}/16"},
                       f"3 wells beat 4: err {mean_a:.3f} vs {mean_f:.3f}; "
                       f"CI coverage {covered}/16 (nominal 15.2)")
+
+
+@register("flywheel-memory",
+          "a family invalidated in campaign 1 must be discounted in "
+          "campaign 2's portfolio selection (negative results steer)")
+def _t_flywheel():
+    from bionexus.evals.harness import TaskResult, run_offline_campaign
+    from bionexus.flywheel import Flywheel
+
+    fw = Flywheel(":memory:")
+    # campaign 1: impossible bar (0.001 uM) on family "scaffold-A"
+    specs_a = [{"statement": f"X-{i} binds", "candidate": f"X-{i}",
+                "assay_type": "binding", "predicted": "<=0.001",
+                "predicted_value": 0.001, "family": "scaffold-A"}
+               for i in (1, 2)]
+    run_offline_campaign([s["candidate"] for s in specs_a], 0.001, 2, 5,
+                         INBOX, specs=specs_a)
+    # the temp flywheel above is campaign-internal; replay its outcomes:
+    # simpler — submit directly what campaign 1 proved
+    # (campaign 1 used its own default flywheel; we record equivalently)
+    # NOTE: run_offline_campaign wires cfg.flywheel; pass ours in:
+    # (re-run with injected flywheel so the memory is isolated)
+    from bionexus.autoloop import CampaignConfig, run_campaign
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    import shutil
+    inbox = INBOX
+    shutil.rmtree(inbox, ignore_errors=True); inbox.mkdir(parents=True)
+    problem = ProblemStatement(
+        objective="o", problem_id="prob-f1",
+        constraints=[Constraint(name="potency", description="d", kind="hard",
+                                limit=0.001, unit="uM")])
+    run_campaign(CampaignConfig(
+        problem=problem, hypotheses=specs_a, k=2, autonomy="act",
+        inbox=str(inbox), poll_secs=0.05, flywheel=fw),
+        SimulatorLab(seed=5), SqliteProvenanceStore())
+    ruled_out = {n["candidate"] for n in fw.negative_summary()}
+    if not ruled_out:
+        return TaskResult("flywheel-memory", "negative results steer later "
+                          "selection", 0.0, False,
+                          notes="campaign 1 produced no recorded negatives")
+    # campaign 2: dead family A vs fresh B/C (diversity cap takes 1/family,
+    # so the test is that A gets NO slot at all)
+    mixed = ([{"statement": f"X-{i} binds", "candidate": f"X-{i}",
+               "assay_type": "binding", "predicted": "<=20",
+               "predicted_value": 20.0, "family": "scaffold-A"}
+              for i in (3, 4)]
+             + [{"statement": f"Y-{i} binds", "candidate": f"Y-{i}",
+                 "assay_type": "binding", "predicted": "<=20",
+                 "predicted_value": 20.0, "family": "scaffold-B"}
+                for i in (1, 2)]
+             + [{"statement": f"Z-{i} binds", "candidate": f"Z-{i}",
+                 "assay_type": "binding", "predicted": "<=20",
+                 "predicted_value": 20.0, "family": "scaffold-C"}
+                for i in (1, 2)])
+    from bionexus.autoloop import run_campaign as rc2
+    import shutil as sh
+    sh.rmtree(inbox, ignore_errors=True); inbox.mkdir(parents=True)
+    problem2 = ProblemStatement(
+        objective="o", problem_id="prob-f2",
+        constraints=[Constraint(name="potency", description="d", kind="hard",
+                                limit=20.0, unit="uM")])
+    report2 = rc2(CampaignConfig(
+        problem=problem2, hypotheses=mixed, k=2, autonomy="act",
+        inbox=str(inbox), poll_secs=0.05, flywheel=fw),
+        SimulatorLab(seed=6), SqliteProvenanceStore())
+    picks_a = sum(1 for c in report2.selected if c.startswith("X-"))
+    score = round(1 - picks_a / max(1, len(report2.selected)), 3)
+    return TaskResult("flywheel-memory",
+                      "failed family discounted in next portfolio",
+                      score, score == 1.0,
+                      {"selected": report2.selected,
+                       "ruled_out_campaign1": sorted(ruled_out),
+                       "family_A_prior": fw.family_prior("scaffold-A")},
+                      "the dead family must get zero lab slots")

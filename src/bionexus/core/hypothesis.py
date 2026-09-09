@@ -166,10 +166,12 @@ class HypothesisTracker:
     -> validated | invalidated | inconclusive.
     """
 
-    def __init__(self, store: ProvenanceStore, actor: Actor):
+    def __init__(self, store: ProvenanceStore, actor: Actor,
+                 on_verdict: Callable[[Any], None] | None = None):
         self.store = store
         self.actor = actor
         self.hypotheses: dict[str, Hypothesis] = {}
+        self.on_verdict = on_verdict      # flywheel hook (best-effort)
 
     def define_experiment(
         self,
@@ -247,6 +249,7 @@ class HypothesisTracker:
             )
             h.problem_id = problem.problem_id
             h.portfolio_rank = i
+            h.family = spec.get("family")
             h.branch_id = f"problem/{problem.problem_id}"
             self.hypotheses[h.hypothesis_id] = h
             proposed.append(h)
@@ -503,6 +506,11 @@ class HypothesisTracker:
         if extra:
             decision.update(extra)
         self.store.append(self._record(env, event, h, decision=decision))
+        if self.on_verdict is not None:
+            try:
+                self.on_verdict(h)
+            except Exception:
+                pass                       # the flywheel must never break a run
         return h
 
     def _record(self, env: Envelope, event: EventType, h: Any,
