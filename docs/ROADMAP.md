@@ -40,8 +40,13 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   (no CONFIRMED without recorded agreement). Writes evals/leaderboard.md +
   results.json. Harness caught 3 real bugs on first run (observed-max bias,
   per-run potency instability, scorer blind to abstentions).
-- [ ] Make case-studies/01–03 the flagship benchmark suite, not a folder:
-  versioned fixtures + leaderboard integration (leaderboard exists now)
+- [x] Case-study data frozen: gzip checksummed fixtures + manifest per study,
+  `materialize()` restores caches byte-identically, `bn fixtures verify` in
+  CI (`fixtures` job). Pagination bug (offset-`next` mangled into a bogus
+  cursor -> duplicate training rows) fixed in CS02/CS03 during freezing.
+  [ ] CS02 training-pool freeze INCOMPLETE — EBI 500s on offset pages today;
+  re-warm + re-freeze when it recovers, then re-run CS02 artifacts (its
+  published numbers were computed on the duplicate-inflated training set).
 - [ ] Strengthen the contamination probe: synthetic-variant test (perturb
   SMILES of held-out compounds; if model "recognizes" altered structures,
   the paper is memorized) — `case-studies/*/run.py`

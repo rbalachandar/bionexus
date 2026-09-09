@@ -1,0 +1,95 @@
+{
+ "frozen_at": "2026-09-09T22:23:16",
+ "entries": [
+  {
+   "path": "doc_CHEMBL6078657.json",
+   "sha256": "0f841f7300eaff72fc7307f90741df548244ff2e3cae6c0c7e9028aac182a766",
+   "bytes": 434479,
+   "target": "case-studies/03-multi-paper/.cache/doc_CHEMBL6078657.json"
+  },
+  {
+   "path": "doc_CHEMBL6087407.json",
+   "sha256": "cfe5f12e856e44581835764112a8cb36b67e9a2cf7c6fcf99d4d47796efbcb78",
+   "bytes": 342374,
+   "target": "case-studies/03-multi-paper/.cache/doc_CHEMBL6087407.json"
+  },
+  {
+   "path": "doc_CHEMBL6087413.json",
+   "sha256": "061eb44e04a11e08a8f1cb6591028059dd909de1e9c87dcf4be0b6ee712aa8ee",
+   "bytes": 70206,
+   "target": "case-studies/03-multi-paper/.cache/doc_CHEMBL6087413.json"
+  },
+  {
+   "path": "doc_CHEMBL6087414.json",
+   "sha256": "ed0cb68511c2720d88e1d4510513b9a7ad1012d3a4202a686f0da6729802651a",
+   "bytes": 287335,
+   "target": "case-studies/03-multi-paper/.cache/doc_CHEMBL6087414.json"
+  },
+  {
+   "path": "doc_CHEMBL6087416.json",
+   "sha256": "0ea7861eec4c5d4e5e34aad833931e8429951e8fd70988df214fd2bc27191ab4",
+   "bytes": 75048,
+   "target": "case-studies/03-multi-paper/.cache/doc_CHEMBL6087416.json"
+  },
+  {
+   "path": "doc_CHEMBL6087417.json",
+   "sha256": "254c4deaa93fc9720743343cee0da54ab9f7282955b39097180e43d9ecd1f431",
+   "bytes": 155210,
+   "target": "case-studies/03-multi-paper/.cache/doc_CHEMBL6087417.json"
+  },
+  {
+   "path": "doc_CHEMBL6103581.json",
+   "sha256": "c66168fb8463ead4a3b53d5c71bce19f171eff1694f56aee1b04385fea7e36ec",
+   "bytes": 105176,
+   "target": "case-studies/03-multi-paper/.cache/doc_CHEMBL6103581.json"
+  },
+  {
+   "path": "doc_CHEMBL6103582.json",
+   "sha256": "2a7befdab5fca051888fad60e18830f5fb5f56e4cb9a322209abb4d036984e73",
+   "bytes": 140461,
+   "target": "case-studies/03-multi-paper/.cache/doc_CHEMBL6103582.json"
+  },
+  {
+   "path": "doc_CHEMBL6103584.json",
+   "sha256": "1c64848b428231d343f86ff6449a434e455fe9a21c3a21166acce2434566505a",
+   "bytes": 206842,
+   "target": "case-studies/03-multi-paper/.cache/doc_CHEMBL6103584.json"
+  },
+  {
+   "path": "doc_CHEMBL6103593.json",
+   "sha256": "5fe37a42e0e70603f3d1a43d433a35f2ae35709d1fe36365acfd85075096b6f7",
+   "bytes": 147066,
+   "target": "case-studies/03-multi-paper/.cache/doc_CHEMBL6103593.json"
+  },
+  {
+   "path": "pool_CHEMBL2842.json",
+   "sha256": "49b24588214ebf92a81e149ba88461b5a5d8f77bd472a79cf4a109a17a96ca9c",
+   "bytes": 1713519,
+   "target": "case-studies/03-multi-paper/.cache/pool_CHEMBL2842.json"
+  },
+  {
+   "path": "pool_CHEMBL392.json",
+   "sha256": "892ecd95642a54b198fe5d988f33fd6935135f855d88da81131f1140a20a5335",
+   "bytes": 1871590,
+   "target": "case-studies/03-multi-paper/.cache/pool_CHEMBL392.json"
+  },
+  {
+   "path": "pool_CHEMBL4508.json",
+   "sha256": "f65dcc7f4353c38ea76d715865caf7d22a9e3b85336ef438db90ea4a4bf78328",
+   "bytes": 1351516,
+   "target": "case-studies/03-multi-paper/.cache/pool_CHEMBL4508.json"
+  },
+  {
+   "path": "pool_CHEMBL613835.json",
+   "sha256": "2918169d265e9d643c7616d08be146bd54f423af2dbfd63a9a77a1771d84ef40",
+   "bytes": 1661743,
+   "target": "case-studies/03-multi-paper/.cache/pool_CHEMBL613835.json"
+  },
+  {
+   "path": "pool_CHEMBL614245.json",
+   "sha256": "8fbabb669ac49d6690a5c1dfca432240933c7d1757f4a8b645753479e2e303af",
+   "bytes": 1742310,
+   "target": "case-studies/03-multi-paper/.cache/pool_CHEMBL614245.json"
+  }
+ ]
+}

@@ -58,6 +58,10 @@ def load_all() -> dict[str, list[dict]]:
 
 
 def main() -> None:
+    from bionexus import fixtures
+    _n = fixtures.materialize(Path(__file__).parent)
+    if _n:
+        print(f"[fixtures] restored {_n} frozen data file(s)")
     store_p = Path(__file__).parent / "case_study.db"
     store_p.unlink(missing_ok=True)
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore

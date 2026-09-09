@@ -378,6 +378,24 @@ def cmd_anchor(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_fixtures(args: argparse.Namespace) -> int:
+    from bionexus import fixtures
+    study = args.study
+    if args.command == "verify":
+        ok, problems = fixtures.verify(study)
+        for p in problems:
+            print(p)
+        print(f"{study}: {'all fixtures intact' if ok else 'DRIFT DETECTED'}")
+        return 0 if ok else 1
+    if args.command == "materialize":
+        n = fixtures.materialize(study)
+        print(f"restored {n} cache file(s)")
+        return 0
+    print("freeze is dev-only; use bionexus.fixtures.freeze(study, sources)",
+          file=sys.stderr)
+    return 2
+
+
 def cmd_templates(args: argparse.Namespace) -> int:
     from bionexus.templates import list_templates, load_template
 
@@ -548,6 +566,12 @@ def main(argv: list[str] | None = None) -> int:
                       help="approval inbox file for gate mode (default .data/approvals.jsonl)")
     auto.set_defaults(func=cmd_auto)
 
+    fx = sub.add_parser("fixtures", help="case-study data fixtures: verify / materialize")
+    fxsub = fx.add_subparsers(dest="command", required=True)
+    for name in ("verify", "materialize"):
+        sp = fxsub.add_parser(name)
+        sp.add_argument("study")
+    fx.set_defaults(func=cmd_fixtures)
     anc = sub.add_parser("anchor", help="Merkle-root the provenance store; "
                          "publish the root for external tamper-evidence")
     anc.add_argument("--db", default="bionexus.db")

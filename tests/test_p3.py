@@ -60,3 +60,25 @@ def test_eln_export(tmp_path):
 def test_simulator_reports_version():
     from bionexus.adapters.lab.simulator import SimulatorLab
     assert SimulatorLab().version == "sim-v1"
+
+
+def test_fixtures_freeze_verify_materialize(tmp_path):
+    from bionexus import fixtures
+    study = tmp_path / "case-studies" / "s1"
+    study.mkdir(parents=True)
+    (tmp_path / ".data").mkdir()
+    live = tmp_path / ".data" / "x.csv"
+    live.write_text("a,b\n1,2\n")
+    # patch root resolution: freeze uses study.resolve().parents[1]
+    m = fixtures.freeze(study, [("x.csv", live)])
+    assert m["entries"][0]["target"] == ".data/x.csv"
+    ok, problems = fixtures.verify(study)
+    assert ok, problems
+    live.unlink()
+    n = fixtures.materialize(study)
+    assert n == 1 and live.read_text() == "a,b\n1,2\n"
+    # tamper detection
+    (study / "fixtures" / "x.csv.gz").write_bytes(
+        (__import__("gzip").compress(b"a,b\n9,9\n")))
+    ok, problems = fixtures.verify(study)
+    assert not ok and "MISMATCH" in problems[0]

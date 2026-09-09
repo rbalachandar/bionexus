@@ -1,0 +1,11 @@
+{
+ "frozen_at": "2026-09-09T22:23:16",
+ "entries": [
+  {
+   "path": "chembl_CHEMBL203.csv",
+   "sha256": "17ad6680073f175662ec3d6ebed7c6945cd489fd44c448fff07d8618e25a4090",
+   "bytes": 1393739,
+   "target": ".data/chembl_CHEMBL203.csv"
+  }
+ ]
+}

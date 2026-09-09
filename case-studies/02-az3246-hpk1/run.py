@@ -41,16 +41,32 @@ BRANCH = "case-study-02"
 CONCS = ["0.5uM", "2uM", "10uM", "40uM"]
 
 
+CACHE = Path(__file__).parent / ".cache"
+
+
 def chembl_json(path: str) -> dict:
+    import hashlib
     import urllib.request
+    CACHE.mkdir(exist_ok=True)
+    fp = CACHE / ("get_" + hashlib.sha1(path.encode()).hexdigest()[:12] + ".json")
+    if fp.exists():
+        return json.loads(fp.read_text())
     req = urllib.request.Request(
         "https://www.ebi.ac.uk/chembl/api/data" + path,
         headers={"Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=120) as r:  # noqa: S310
-        return json.loads(r.read())
+        data = json.loads(r.read())
+    fp.write_text(json.dumps(data))
+    return data
 
 
 def main() -> None:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+    from bionexus import fixtures
+    restored = fixtures.materialize(Path(__file__).parent)
+    if restored:
+        print(f"[fixtures] restored {restored} frozen data file(s) — "
+              f"byte-reproducible run")
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
     from bionexus.adapters.models.anthropic_provider import AnthropicProvider
     from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF as _M  # noqa
@@ -107,10 +123,10 @@ def main() -> None:
 
     print("[2] loading other HPK1 measurements for training (excl. paper)...")
     train = []
-    cursor = ""
-    while len(train) < 25000:
-        url = (f"/activity.json?target_chembl_id={TARGET}&assay_type=B&limit=1000"
-               + (f"&cursor={cursor}" if cursor else ""))
+    seen_rows: set[tuple[str, float]] = set()
+    url = (f"/activity.json?target_chembl_id={TARGET}&assay_type=B"
+           "&limit=1000")
+    while url and len(train) < 25000:
         d = chembl_json(url)
         for a in d.get("activities", []):
             if a.get("document_chembl_id") == PAPER_DOC:
@@ -121,11 +137,14 @@ def main() -> None:
                 except (TypeError, ValueError):
                     continue
                 if v > 0:
-                    train.append((a["canonical_smiles"],
-                                  -__import__("math").log10(v * 1e-9)))
-        meta = d.get("page_meta", {})
-        cursor = meta.get("next", "") and meta["next"].split("cursor=")[-1]
-        if not cursor or not d.get("activities"):
+                    row = (a["canonical_smiles"],
+                           -__import__("math").log10(v * 1e-9))
+                    if row not in seen_rows:      # offset paging can repeat
+                        seen_rows.add(row)       # rows; dedupe honestly
+                        train.append(row)
+        nxt = (d.get("page_meta") or {}).get("next") or ""
+        url = nxt.replace("https://www.ebi.ac.uk", "") or ""
+        if not d.get("activities"):
             break
     print(f"    training values: {len(train)}")
 

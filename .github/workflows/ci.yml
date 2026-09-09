@@ -33,6 +33,42 @@ jobs:
       - name: Test suite
         run: python -m pytest tests/ -q
 
+  eval:  # T1: the measurable claim — epistemics + model tiers, offline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pydantic pytest && pip install -e . --no-deps
+      - name: Fetch MoleculeNet datasets (models tier cache)
+        run: |
+          mkdir -p .data
+          curl -sL https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/Lipophilicity.csv -o .data/lipophilicity.csv
+          curl -sL https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/delaney-processed.csv -o .data/esol.csv
+          curl -sL https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/HIV.csv -o .data/hiv.csv
+      - name: Eval suite (epistemics + models)
+        run: python -m bionexus.cli eval --suite epistemics,models
+      - name: Provenance anchoring roundtrip
+        run: |
+          python -m bionexus.cli anchor --db bionexus.db || true
+          python -m bionexus.cli eval --task hit-recovery >/dev/null
+
+  fixtures:  # byte-reproducible case-study data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pydantic && pip install -e . --no-deps
+      - run: |
+          python -m bionexus.cli fixtures verify case-studies/01-egfr-blind-reproduction
+          python -m bionexus.cli fixtures verify case-studies/02-az3246-hpk1
+          python -m bionexus.cli fixtures verify case-studies/03-multi-paper
+      - name: materialize restores caches
+        run: |
+          python -m bionexus.cli fixtures materialize case-studies/01-egfr-blind-reproduction
+          test -s .data/chembl_CHEMBL203.csv
+
   case-study:  # blind reproduction of a published paper (real ChEMBL data)
     runs-on: ubuntu-latest
     if: false  # requires LLM env; run manually or on schedule

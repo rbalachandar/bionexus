@@ -78,16 +78,13 @@ def fetch_doc_activities(doc_id: str) -> list[dict]:
         if _cache_valid(cached):
             return cached
         f.unlink()  # poisoned by a soft-failure earlier — refetch
-    out, cursor = [], ""
-    while True:
-        p = f"/activity.json?document_chembl_id={doc_id}&limit=1000"
-        if cursor:
-            p += f"&cursor={cursor}"
+    out, p = [], (f"/activity.json?document_chembl_id={doc_id}&limit=1000")
+    while p:
         d = chembl(p)
         out += d.get("activities", [])
         nxt = d.get("page_meta", {}).get("next") or ""
-        cursor = nxt.split("cursor=")[-1] if nxt else ""
-        if not cursor or not d.get("activities"):
+        p = nxt.replace("https://www.ebi.ac.uk", "")
+        if not p or not d.get("activities"):
             break
     f.write_text(json.dumps(out))
     return out
@@ -99,11 +96,9 @@ def fetch_target_pool(target_id: str, exclude_doc: str, cap: int = 20000) -> lis
     if f.exists() and _cache_valid(json.loads(f.read_text())):
         rows = json.loads(f.read_text())
     else:
-        rows, cursor = [], ""
-        while len(rows) < cap:
-            p = f"/activity.json?target_chembl_id={target_id}&limit=1000"
-            if cursor:
-                p += f"&cursor={cursor}"
+        rows, p = [], (f"/activity.json?target_chembl_id={target_id}"
+                       "&limit=1000")
+        while p and len(rows) < cap:
             d = chembl(p, soft=True)
             if not d.get("activities"):
                 break
@@ -117,8 +112,8 @@ def fetch_target_pool(target_id: str, exclude_doc: str, cap: int = 20000) -> lis
                     if 0 < v < 1e5:
                         rows.append([smi, -math.log10(v * 1e-9)])
             nxt = d.get("page_meta", {}).get("next") or ""
-            cursor = nxt.split("cursor=")[-1] if nxt else ""
-            if not cursor or not d.get("activities"):
+            p = nxt.replace("https://www.ebi.ac.uk", "")
+            if not p or not d.get("activities"):
                 break
         f.write_text(json.dumps(rows))
     return [(s, p) for s, p in rows
@@ -186,6 +181,10 @@ def scaffold_markers(scaffold: str, smiles_sample: list[str]) -> list[str]:
 
 
 def main() -> None:
+    from bionexus import fixtures
+    _n = fixtures.materialize(Path(__file__).parent)
+    if _n:
+        print(f"[fixtures] restored {_n} frozen data file(s)")
     use_llm = "--llm" in sys.argv
     from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF
     from bionexus.benchmark import roc_auc, spearman, spearman_ci  # noqa: F401

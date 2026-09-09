@@ -1,0 +1,17 @@
+{
+ "frozen_at": "2026-09-09T22:23:16",
+ "entries": [
+  {
+   "path": "get_0a9b3f78542a.json",
+   "sha256": "6e8109e45a75278aa6f23c72e059e0e886429f6a262a8212e9aeee22fa9ecd88",
+   "bytes": 220364,
+   "target": "case-studies/02-az3246-hpk1/.cache/get_0a9b3f78542a.json"
+  },
+  {
+   "path": "get_98a9ba2dcfed.json",
+   "sha256": "d5f5642240aabe5582d7b3246ed2d133a3f764b47a4d5ac9f757ea1faadba8ba",
+   "bytes": 1786825,
+   "target": "case-studies/02-az3246-hpk1/.cache/get_98a9ba2dcfed.json"
+  }
+ ]
+}
