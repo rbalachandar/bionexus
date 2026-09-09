@@ -224,7 +224,7 @@ def start_dialog() -> None:
                         "candidate": c.strip(), "assay_type": "binding",
                         "predicted": f"IC50 <= {thr_s}",
                         "predicted_value": float(threshold),
-                        "rationale": "custom"}
+                        "rationale": ""}
                        for c in compounds.split(",") if c.strip()],
                    "k": k, "autonomy": autonomy.split(" —")[0],
                    "concentrations": ["0.5uM", "2uM", "10uM", "40uM"]}
@@ -464,6 +464,18 @@ def wizard_view() -> None:
         half_life = col2.number_input("Target half-life (min)", 1, 9999, 120)
         edited_frac = st.checkbox("Readout measures edited fraction")
         mimetic = st.checkbox("Distinguishes real from mimetic phenotype")
+        with st.expander("Make it falsifiable (optional — mechanistic, "
+                         "refutable, cited hypotheses are preferred)",
+                         expanded=False):
+            mech = st.text_input("Mechanism — the causal story",
+                                 key="w_mech",
+                                 placeholder="Phosphorylation blocks the "
+                                             "degron, stabilizing the protein")
+            refute = st.text_input("Refuted if...", key="w_refute",
+                                   placeholder="Non-phospho mimic also "
+                                               "stabilizes")
+            cite = st.text_input("Citation grounding it (PMID/DOI)",
+                                 key="w_cite")
         controls = [c.strip() for c in
                     st.text_area("Controls (one per line)").split("\n")
                     if c.strip()]
@@ -487,7 +499,11 @@ def wizard_view() -> None:
         if st.button("Check readiness →", type="primary"):
             review = review_experiment(exp)
             st.session_state["readiness"] = review
-            _save("designing", exp_def=exp.model_dump(mode="json"),
+            extras = {"mechanism": st.session_state.get("w_mech", ""),
+                      "refutation_condition": st.session_state.get("w_refute", ""),
+                      "citation": st.session_state.get("w_cite", "")}
+            _save("designing", design_extras=extras,
+                  exp_def=exp.model_dump(mode="json"),
                   readiness={"verdict": review.verdict.value,
                              "findings": [f.model_dump(mode="json")
                                           for f in review.findings]})
@@ -496,7 +512,7 @@ def wizard_view() -> None:
                 "claim_type": exp.claim_type.value,
                 "target": exp.intervention.target,
                 "controls": exp.controls,
-                "success_bar": program_cfg.gate_summary()})
+                "success_bar": program_cfg.gate_summary(), **extras})
             _goto(3)
 
     # ---- STEP 3 — readiness gate
@@ -585,8 +601,13 @@ def wizard_view() -> None:
                              if exp.readout.assay != "user" else "binding",
                              "predicted": f"IC50 <= {thr_s}",
                              "predicted_value": float(thr),
-                             "rationale": f"wizard experiment "
-                                          f"{st.session_state.get('exp_id')}"}
+                             "rationale": "",
+                             "mechanism": (st.session_state.get(
+                                 "w_mech") or ""),
+                             "refutation_condition": (st.session_state.get(
+                                 "w_refute") or ""),
+                             "citation": (st.session_state.get(
+                                 "w_cite") or "")}
                             for c in comps.split(",") if c.strip()],
                         "k": min(4, len([c for c in comps.split(",")
                                          if c.strip()])),

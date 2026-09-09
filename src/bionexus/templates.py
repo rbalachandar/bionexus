@@ -112,7 +112,7 @@ def build_campaign(rendered: dict[str, Any]) -> dict[str, Any]:
         {"statement": f"{c} binds with IC50 <= {threshold:g} uM",
          "candidate": c, "assay_type": assay.get("type", "binding"),
          "predicted": f"IC50 <= {threshold:g}", "predicted_value": threshold,
-         "rationale": "template: dose-response screen"}
+         "rationale": ""}
         for c in compounds
     ]
     return {
