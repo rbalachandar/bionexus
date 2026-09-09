@@ -90,11 +90,15 @@ class SimulatorLab:
     # -- per-compound ground truth (seeded, stable across runs) ----------------
 
     def _compound_key(self, protocol_id: str, sample_id: str) -> int:
-        material = f"{self.seed}:{protocol_id}:{sample_id}".encode()
+        # potency is a COMPOUND property, not a run property: key on the
+        # seed + sample only, so the same compound has the same ground truth
+        # across primary and confirmation runs (protocol_id kept in the
+        # signature for call-site stability)
+        material = f"{self.seed}:{sample_id}".encode()
         return int(hashlib.sha256(material).hexdigest()[:8], 16)
 
     def true_ic50_um(self, protocol_id: str, sample_id: str) -> float:
-        """Seeded true potency for a compound in this protocol's assay family."""
+        """Seeded true potency for a compound (stable across runs)."""
         key = self._compound_key(protocol_id, sample_id)
         return 0.5 + (key % 1000) / 1000.0 * 49.5  # 0.5 – 50 uM
 

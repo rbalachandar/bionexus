@@ -160,22 +160,52 @@ def _hill_sse(log_ic50: float, pts: list[tuple[float, float]],
 
 
 def _hill_fit_ic50(pts: list[tuple[float, float]],
-                   max_response: float) -> float | None:
-    """Least-squares Hill (n=1) fit by grid search on log10 IC50, refined once.
-    Returns IC50 in µM or None if unbracketable."""
+                   max_response: float | None) -> float | None:
+    """Least-squares Hill fit by grid search, refined once.
+
+    max_response given  -> 2-param fit (IC50 only).
+    max_response None   -> 3-param fit: the plateau is ALSO unknown, so we
+      grid-search the max multiplier over the observed top response (1x–4x).
+      Pretending the observed max is the true max biases IC50 toward the
+      potent side — the classic right-censoring trap.
+    Returns IC50 in µM or None."""
     import math
 
-    if len(pts) < 2 or max_response <= 0:
+    if len(pts) < 2:
+        return None
+    top = max(v for _, v in pts)
+    if top <= 0:
         return None
     lo, hi = -3.0, 2.5                      # 0.001 – ~316 µM
-    best, best_sse = None, float("inf")
     n = 60
+    step = (hi - lo) / n
+    if max_response is None:                # 3-param: unknown plateau
+        mults = [1.0 + 3.0 * j / 12 for j in range(13)]        # 1x .. 4x
+        best = (None, None, float("inf"))
+        for m in mults:
+            for i in range(n + 1):
+                g = lo + step * i
+                s = _hill_sse(g, pts, top * m)
+                if s < best[2]:
+                    best = (g, m, s)
+        if best[0] is None:
+            return None
+        g0, m0, sse0 = best
+        for m in [max(1.0, m0 - 0.25 + 0.5 * k / 4) for k in range(5)]:
+            for i in range(-8, 9):
+                g = g0 + i * step / 8
+                s = _hill_sse(g, pts, top * m)
+                if s < sse0:
+                    sse0, g0, m0 = s, g, m
+        return 10 ** g0
+    if max_response <= 0:
+        return None
+    best, best_sse = None, float("inf")
     for i in range(n + 1):
-        g = lo + (hi - lo) * i / n
+        g = lo + step * i
         s = _hill_sse(g, pts, max_response)
         if s < best_sse:
             best, best_sse = g, s
-    step = (hi - lo) / n
     for i in range(-8, 9):                   # refine
         g = best + i * step / 8
         s = _hill_sse(g, pts, max_response)
@@ -195,6 +225,8 @@ def fit_ic50(points: list[tuple[float, float]], max_response: float = 100.0) -> 
     hill = _hill_fit_ic50(pts, max_response)
     if hill is not None and len(pts) >= 3:
         return round(hill, 3)
+    if max_response is None and len(pts) >= 3:
+        return None  # 3-param declined to fit -> honest censoring, not a guess
     target = max_response / 2.0
     for (c0, v0), (c1, v1) in zip(pts, pts[1:]):
         if min(v0, v1) <= target <= max(v0, v1):
@@ -216,15 +248,23 @@ def fit_ic50_ci(points: list[tuple[float, float]], max_response: float = 100.0,
     import random
 
     pts = sorted((c, v) for c, v in points if v is not None)
-    if len(pts) < 3 or max_response <= 0:
+    if len(pts) < 3 or (max_response is not None and max_response <= 0):
         return None
     base = _hill_fit_ic50(pts, max_response)
     if base is None:
         return None
-    fitted = [max_response / (1.0 + base / max(c, 1e-9)) for c, _ in pts]
-    residuals = [v - f for (_, v), f in zip(pts, fitted)]
     rng = random.Random(seed)
     boots: list[float] = []
+    if max_response is None:
+        # residual bootstrap around the best 3-param fit, at its implied max
+        top = max(v for _, v in pts)
+        mults = [1.0 + 3.0 * j / 12 for j in range(13)]
+        best_m = min(mults, key=lambda m: _hill_sse(math.log10(base), pts,
+                                                    top * m))
+        fitted = [top * best_m / (1.0 + base / max(c, 1e-9)) for c, _ in pts]
+    else:
+        fitted = [max_response / (1.0 + base / max(c, 1e-9)) for c, _ in pts]
+    residuals = [v - f for (_, v), f in zip(pts, fitted)]
     for _ in range(n_boot):
         sample = [(c, max(0.0, f + rng.choice(residuals)))
                   for (c, _v), f in zip(pts, fitted)]
@@ -277,16 +317,9 @@ def analyze_records(records: list[dict[str, Any]],
         if is_control(sample):
             continue
         pts = [(c, v) for c, v in vals if c is not None]
-        ic50 = fit_ic50(pts, max_response) if max_response else None
-        if ic50 is None and pts:
-            # unknown max: use observed max (weaker; flagged)
-            top = max(v for _, v in pts)
-            ic50 = fit_ic50(pts, top * 1.0) if top > 0 else None
-            flagged = True
-        else:
-            flagged = False
-        ci = fit_ic50_ci(pts, max_response or (
-            max(v for _, v in pts) if pts else 100.0)) if len(pts) >= 3 else None
+        flagged = max_response is None
+        ic50 = fit_ic50(pts, max_response)
+        ci = fit_ic50_ci(pts, max_response) if len(pts) >= 3 else None
         if ci:
             ic50 = ci["ic50"]
         compounds[sample] = {

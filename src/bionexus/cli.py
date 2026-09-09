@@ -269,6 +269,54 @@ def cmd_auto(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_eval(args: argparse.Namespace) -> int:
+    import time as _t
+    from bionexus.evals import tasks as _tasks          # registers suite
+    from bionexus.evals.harness import TASKS, PASS_THRESHOLD
+
+    results = []
+    for task in TASKS:
+        if args.task and args.task != task.task_id:
+            continue
+        t0 = _t.time()
+        try:
+            r = task.run()
+        except Exception as exc:
+            from bionexus.evals.harness import TaskResult
+            r = TaskResult(task.task_id, task.description, 0.0, False,
+                           notes=f"ERROR: {exc}")
+        r.metrics["duration_s"] = round(_t.time() - t0, 1)
+        results.append(r)
+        mark = "✅" if r.passed else "❌"
+        print(f"{mark} {r.task_id:24s} score={r.score:.3f}  "
+              f"({r.metrics.get('duration_s')}s)  {r.notes}")
+
+    if not results:
+        print("no tasks matched", file=sys.stderr)
+        return 2
+    overall = sum(r.score for r in results) / len(results)
+    all_pass = all(r.passed for r in results)
+    print(f"\n{'PASS' if all_pass else 'FAIL'} — {len(results)} tasks, "
+          f"mean score {overall:.3f} (pass bar {PASS_THRESHOLD})")
+
+    import json as _json
+    from pathlib import Path as _P
+    out = _P("evals/leaderboard.md")
+    out.parent.mkdir(exist_ok=True)
+    rows = "\n".join(
+        f"| {r.task_id} | {r.score:.3f} | {'✅' if r.passed else '❌'} | "
+        f"{r.metrics.get('duration_s', '—')}s | {r.notes} |" for r in results)
+    out.write_text(
+        f"# BioNexus eval leaderboard\n\n"
+        f"Run {_t.strftime('%Y-%m-%d %H:%M')} · mean **{overall:.3f}** · "
+        f"{'all pass' if all_pass else 'FAILING'}\n\n"
+        f"| task | score | pass | time | notes |\n|---|---|---|---|---|\n{rows}\n")
+    _P("evals/results.json").write_text(_json.dumps(
+        [{"task": r.task_id, "score": r.score, "passed": r.passed,
+          "metrics": r.metrics, "notes": r.notes} for r in results], indent=1))
+    return 0 if all_pass else 1
+
+
 def cmd_templates(args: argparse.Namespace) -> int:
     from bionexus.templates import list_templates, load_template
 
@@ -436,6 +484,9 @@ def main(argv: list[str] | None = None) -> int:
                       help="approval inbox file for gate mode (default .data/approvals.jsonl)")
     auto.set_defaults(func=cmd_auto)
 
+    ev = sub.add_parser("eval", help="run the offline eval suite (tasks, scores, leaderboard)")
+    ev.add_argument("--task", help="run a single task by id")
+    ev.set_defaults(func=cmd_eval)
     templates = sub.add_parser("templates", help="list campaign templates")
     templates.add_argument("name", nargs="?", default=None)
     templates.set_defaults(func=cmd_templates)

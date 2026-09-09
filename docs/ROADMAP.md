@@ -34,11 +34,14 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - Verify: regenerated `results.json` files include CI columns
 
 ## P1 — Eval harness ("agentic science" as a measurable claim)
-- [ ] Fixed task suite with ground truth (BixBench/LAB-Bench style):
-  blind reproduction tasks + contamination probes, one command → score
+- [x] `python -m bionexus.cli eval` — offline task suite with ground truth:
+  `hit-recovery` (calls vs seeded potency), `verdict-honesty` (bar placed on
+  a compound's TRUE IC50 — abstention mandatory), `confirmation-coverage`
+  (no CONFIRMED without recorded agreement). Writes evals/leaderboard.md +
+  results.json. Harness caught 3 real bugs on first run (observed-max bias,
+  per-run potency instability, scorer blind to abstentions).
 - [ ] Make case-studies/01–03 the flagship benchmark suite, not a folder:
-  leaderboard.md, versioned fixtures, seeded simulator ground truth
-  (pin `SimulatorLab` seed + version tag so numbers repro across releases)
+  versioned fixtures + leaderboard integration (leaderboard exists now)
 - [ ] Strengthen the contamination probe: synthetic-variant test (perturb
   SMILES of held-out compounds; if model "recognizes" altered structures,
   the paper is memorized) — `case-studies/*/run.py`

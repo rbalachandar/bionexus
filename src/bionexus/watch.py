@@ -184,6 +184,19 @@ class AutoAnalysisAgent:
             status = "confirmed"
         else:
             status = "refuted"
+        # agreement is about the MEASUREMENT; the gate is a separate axis.
+        # A confirmed measurement whose CI straddles the threshold cannot
+        # claim a hit — the gate stays inconclusive.
+        hyp_tmp = next((h for h in (self.tracker.hypotheses.values()
+                                    if self.tracker else [])
+                        if h.candidate == cand), None)
+        if (status == "confirmed" and hyp_tmp is not None and hyp_tmp.criteria
+                and secondary is not None):
+            if hyp_tmp.criteria.classify(secondary, secondary_ci) == "inconclusive":
+                status = "inconclusive"
+                self.notify(f"gate honesty: {cand} measurement confirmed but "
+                            f"CI straddles threshold {hyp_tmp.criteria.threshold} "
+                            f"-> inconclusive")
         self.notify(f"orthogonal confirmation for {cand}: primary {primary:.2f} vs "
                     f"secondary {secondary:.2f} µM (ratio {ratio:.1f}x) -> {status.upper()}"
                     if ratio else f"orthogonal confirmation for {cand}: no usable "

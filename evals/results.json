@@ -1,0 +1,66 @@
+[
+ {
+  "task": "hit-recovery",
+  "score": 0.917,
+  "passed": true,
+  "metrics": {
+   "judged": 6,
+   "calls": {
+    "E-05": {
+     "verdict": "confirmed",
+     "true_ic50": 15.4,
+     "credit": 1.0
+    },
+    "E-04": {
+     "verdict": "confirmed",
+     "true_ic50": 1.34,
+     "credit": 1.0
+    },
+    "E-02": {
+     "verdict": "refuted",
+     "true_ic50": 21.04,
+     "credit": 1.0
+    },
+    "E-06": {
+     "verdict": "confirmed",
+     "true_ic50": 12.97,
+     "credit": 1.0
+    },
+    "E-03": {
+     "verdict": "confirmed",
+     "true_ic50": 10.75,
+     "credit": 1.0
+    },
+    "E-01": {
+     "verdict": "inconclusive",
+     "true_ic50": 26.74,
+     "credit": 0.5
+    }
+   },
+   "duration_s": 6.5
+  },
+  "notes": "1.0 confident-correct \u00b7 0.5 honest abstain \u00b7 0 wrong"
+ },
+ {
+  "task": "verdict-honesty",
+  "score": 1.0,
+  "passed": true,
+  "metrics": {
+   "straddling_ci": 2,
+   "violations": 0,
+   "duration_s": 12.2
+  },
+  "notes": "bar at E-03's true IC50 (10.75 uM); 2 borderline CIs, 0 overconfident verdicts"
+ },
+ {
+  "task": "confirmation-coverage",
+  "score": 1.0,
+  "passed": true,
+  "metrics": {
+   "confirmed": 2,
+   "with_agreement": 2,
+   "duration_s": 5.7
+  },
+  "notes": "no confirmations at all -> 0 (mechanism unused)"
+ }
+]
