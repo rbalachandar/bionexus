@@ -20,12 +20,24 @@ pip install -e ".[sandbox-agentenv]"  # AgentENV fork/snapshot sandboxes
 ```sh
 bn connect scan /path/to/reader_share   # what instrument is this?
 bn read results.csv --csv out.csv --html report.html   # analyze an export
+pip install "bionexuslab[ui]"           # streamlit for the workbench
 streamlit run Overview.py               # the workbench: approvals, experiments, live agents
 # (headless alternative: bn serve)
 bn templates                            # campaign presets
 bn auto --template dose-response-screen --field compounds=C1,C2,C3 \
         --autonomy gate                 # pause at each submission for your click
+bn auto campaign.json --dose-design adaptive  # Bayesian sequential dosing
 bn diary <branch> --html diary.html     # the campaign as a lab notebook
+```
+
+## Verify the claims
+
+```sh
+bn eval                               # epistemics tier: verdict honesty,
+                                      # confirmation, falsifiability, adaptive design
+bn eval --suite models                # baselines on MoleculeNet vs random floor
+bn prove <branch> --eln out.csv       # ELN-ready audit export
+bn anchor && bn anchor --verify       # Merkle root: externally checkable
 ```
 
 ## Run the reference round (no network, no model server)

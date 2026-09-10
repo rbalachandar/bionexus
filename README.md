@@ -60,6 +60,12 @@ bn run examples/workflow.yml           # tournament + assay on the configured la
 bn mcp                                 # MCP server: drive BioNexus from Claude/Cursor
 bn new-adapter lab my_robot            # scaffold a tested LabAdapter
 bn skills list                         # discovered Agent Skills (theirs and ours)
+bn eval --all                          # the measurable claim: scored task suite + leaderboard
+bn eval --suite epistemics,models      # run tiers separately
+bn anchor --verify                     # Merkle root: prove the whole store's state
+bn fixtures verify <study-dir>         # byte-reproducible case-study data
+bn connect describe <device>           # interview you into an agent-readable device card
+bn auto --dose-design adaptive ...     # Bayesian sequential dosing (3 wells, not 4)
 ```
 
 ## BioNexus case studies on published papers
@@ -71,11 +77,27 @@ reproduce it.
 | Study | Paper | Result |
 |---|---|---|
 | [Case study 01](case-studies/01-egfr-blind-reproduction/) | Gazit et al., *J. Med. Chem.* 1989 — the original tyrphostins paper | Q1 hypothesis identified, **qualified**: a probe confirmed the model has prior exposure to this literature (recognition, not derivation). Q2 ranking vs published IC50s passed. |
-| [Case study 02](case-studies/02-az3246-hpk1/) | AZ3246 HPK1 inhibitor, *J. Med. Chem.* 2025 — post-training-cutoff | **Contamination-free.** Both checks passed: agent derived the pyrazine-carboxamide hypothesis from structures alone, and its blinded ranking (ρ = +0.42) outperformed a Random Forest trained on 25,600 other HPK1 measurements (ρ = +0.08) |
+| [Case study 02](case-studies/02-az3246-hpk1/) | AZ3246 HPK1 inhibitor, *J. Med. Chem.* 2025 — post-training-cutoff | **Contamination-free** (self-report + never-published-variant probes). Agent derived the pyrazine-carboxamide hypothesis from structures alone; its blinded ranking (ρ = +0.42) outperformed a Random Forest trained on other HPK1 measurements (ρ = +0.08). *Figures predate a training-pool pagination fix; re-run on frozen fixtures is queued in the roadmap.* |
 | [Case study 03](case-studies/03-multi-paper/) | Multi-paper flow validation on recent ChEMBL studies | **Flow integrity passed** across completed campaigns: lifecycle events, provenance chains, and resource budgets were verified |
 
 Case study 02's clean design trades the realism of case study 01 for freedom
 from memorization; both READMEs document their limitations explicitly.
+
+## How do you know it works? — the eval suite
+
+"Agentic science" is a measurable claim or it is marketing. `bn eval` runs
+scored tasks against seeded ground truth — deterministic, offline, in CI:
+
+| Tier | Question | Tasks |
+|---|---|---|
+| **epistemics** | does it reason like a scientist? | hit-recovery vs truth · verdict-honesty (must abstain where the CI straddles) · confirmation-coverage · falsifiability-tiebreak · adaptive-dose-design · flywheel-memory |
+| **models** | how good are its baselines? | policy ladder on MoleculeNet (Lipophilicity, ESOL, HIV), scaffold-split, vs random floor |
+| **reproductions** | can it redo published discoveries? | the blind paper studies (opt-in; frozen data fixtures) |
+
+The suite has already earned its keep: it caught an observed-max fit bias,
+per-run ground-truth instability, confirmation labels that overrode the
+gate, and non-hermetic tests. `evals/leaderboard.md` is regenerated on
+every run; the CI job fails if any score drops below the pass bar.
 
 ## Using BioNexus
 
@@ -161,12 +183,13 @@ bn auto campaign.json
 ```
 [campaign] problem prob-89fd555d: 3 hypotheses -> 2 selected
 [campaign] [agent] noticed device output: sim-1403a26c.csv — reading it
-[campaign] [agent] hypothesis hyp-22911313 (C-102): VALIDATED — IC50 1.833 uM vs threshold 20.0
+[campaign] [agent] hypothesis hyp-22911313 (C-102): VALIDATED (preliminary — pending orthogonal confirmation) — IC50 1.833 uM (95% CI 1.5–2.4) vs threshold 20.0
 [campaign] [agent] loop closed: confirmation assay for C-102 auto-submitted (safety-approved)
+[campaign] [agent] orthogonal confirmation for C-102: primary 1.83 vs secondary 2.10 µM (ratio 1.1x, CIs overlap) -> CONFIRMED
 {
   "problem": "prob-89fd555d",
   "selected": ["C-101", "C-102"],
-  "verdicts": {"C-101": "validated", "C-102": "validated"}
+  "verdicts": {"C-101": "refuted", "C-102": "confirmed"}
 }
 ```
 
@@ -193,6 +216,14 @@ bn connect scan /path/to/reader_share
 | `observe` | reads, fits, recommends — submits nothing |
 | `gate` | proposes everything; each lab submission waits for your Approve click in the workbench |
 | `act` | autonomous within the SafetyEngine, including confirmation assays |
+
+Verdicts are uncertainty-aware: a fitted IC50 whose 95% CI straddles the
+threshold comes back `inconclusive`, never a coin-flip called validated. An
+orthogonal confirmation verifies the *direction* of the preliminary verdict —
+agreement confirms hits, refutes non-hits, and disagreement on a claimed hit
+refutes it. Campaigns may run `--dose-design adaptive`: a Bayesian posterior
+picks each next concentration (measured: 3 adaptive wells beat a fixed
+4-point series, ~4x lower error — `bn eval` proves it).
 
 A `ResourceBudget` (max lab runs, hypotheses, confirmations, wall clock) is
 enforced at submission and generation time. Every step — problem, hypotheses,
@@ -230,9 +261,13 @@ BioNexus structures the Design-Make-Test-Analyze cycle as first-class objects:
   experiment, if successful, would produce an interpretable result (denominators
   present, authentic modification distinguishable, delivery variance controlled,
   synthesis feasible)
-- **Agent Personas** — named roles (Strategist, Biologist, Medicinal Chemist,
-  ADMET Predictor, Synthesis Chemist, Analyst) mapped to ModelProvider configs
-  and tool preferences
+- **Program hierarchy** — 🎯 Program (TPP) ▸ Problem ▸ Hypothesis ▸ Experiment:
+  the program's screening gate sets the potency bar that hypotheses inherit
+  (and `✨ Suggest gates from ChEMBL` derives it from published activities
+  for your target, not folklore)
+- **Flywheel** — every verdict is remembered: mechanistic families that fail
+  are discounted in later portfolios, and the hypothesis agent is shown what
+  the lab already ruled out
 
 ```python
 from bionexus.tpp import standard_small_molecule_tpp, CriterionPhase
@@ -302,8 +337,10 @@ and auditable — and the case studies above test exactly that layer:
 | Portfolio filter | LLM scores confidence | Enforces diversity caps; records every accept/reject reason |
 | Experiment execution | — | Safety-gates the submission; the lab produces raw evidence |
 | Result awareness | — | Device monitor notices the output automatically |
-| Verdicts | LLM interprets | Scores against pre-registered criteria; QC failure → inconclusive |
-| Accountability | — | Hash-chained provenance; `bn prove` renders the audit |
+| Verdicts | LLM interprets | Scores against pre-registered criteria with **confidence intervals**: QC failure or CI straddling the threshold → inconclusive |
+| Memory | LLM avoids dead ends when told | Flywheel: failed mechanistic families are discounted in every later portfolio |
+| Accountability | — | Hash-chained provenance + Merkle anchoring; `bn prove` renders the audit, `bn anchor` makes it externally checkable |
+| Measurement | — | `bn eval`: scored, deterministic task suite in CI — hit recovery, verdict honesty, confirmation coverage, falsifiability, adaptive design, flywheel memory |
 
 ## The virtual lab
 
@@ -334,7 +371,7 @@ and interchangeable. The contracts are the pydantic models in `bionexus.core.con
 | `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator, Opentrons OT-2/Flex (HTTP), PlateReaderShare, SiLA 2 (generic, multi-device), HCS microscope (per-cell imaging), LC-MS (ratiometric proteomics), RoboticArmScheduler (plate transport) → cloud labs |
 | `Sandbox` | local (copy-on-fork), docker (commit-based snapshots), OpenSandbox (gVisor/Kata/Firecracker runtimes, K8s scale, egress controls) → AgentENV |
 | `ProvenanceStore` | sqlite → postgres, s3-worm |
-| `BioTool` | rdkit descriptors → docking, ADMET, ESMFold |
+| `BioTool` | rdkit descriptors, ADMET, AlphaGenome Atlas variant scoring (AVI) → docking, ESMFold |
 
 ## Agent Skills and MCP
 
@@ -424,6 +461,8 @@ Deeper design docs: [`docs/architecture.md`](docs/architecture.md) (blocks A–F
    versions, prompts, instrument run IDs) in WORM storage.
 5. **Safety is non-bypassable** — a policy engine sits in the physical-action path,
    outside any agent's trust boundary.
+6. **Claims are measured** — every capability claim has a scored eval task behind
+   it; uncertainty is reported, not rounded away.
 
 ## Contributing
 
