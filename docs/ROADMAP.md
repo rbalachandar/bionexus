@@ -17,8 +17,8 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] CI shown in pipeline cards, diary verdict lines, instrument output
   blocks, wizard step 6 table; `dose_response_svg(ci=...)` draws the shaded
   95% band behind the curve
-- [ ] Propagate replicate variance through to the fit (currently median-of-
-  replicates hides spread) — `adapters/lab/simulator.py` + labread
+- [x] Replicate variance propagates: exports write true replicate wells
+  (seeded noise per well); the residual bootstrap widens CIs accordingly
 - Done 2026-09-08: tests `test_success_criteria_ci_straddle_is_inconclusive`,
   `test_fit_ic50_ci_covers_true_value`; live campaign showed a CI-aware
   confirmation REFUTING a preliminary hit (the mechanism working). Remaining:
@@ -66,8 +66,9 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   REAL citation (PMID 35377565) on one family with honest "—" on the other
   (never-invent clause held). Full loop: agent hypotheses -> lab -> CI-aware
   invalidated verdicts -> auto-confirmations.
-- [ ] Templates: drop decorative "template:" rationale strings (empty beats
-  decorative); wizard step 2 could collect mechanism/refutation too
+- [x] Decorative "template:"/"custom" rationales dropped (empty beats
+  decorative); wizard step 2 gained the mechanism/refutation/citation panel
+  that flows into provenance and agent handoff
 
 ## T2 — Adaptive experimentation (the result, not the feature)
 - [x] `src/bionexus/adaptive.py` — grid posterior over log-IC50 under the
@@ -102,8 +103,8 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Negative-result summary surfaced in the workbench ("🚫 Ruled out")
 
 ## T3 — Honesty/ops polish
-- [ ] Remove agent personas from UI + docs (keep toolsets, drop characters)
-  — `src/bionexus/agents.py`, `Overview.py`, README
+- [x] Personas removed from README flow table + UI (layers named by
+  function); `agents.py` retained as toolset config for MCP consumers
 - [x] `bn prove <branch> --eln out.csv` — flat ELN CSV (18 cols: verdict,
   observed + CI, run, instrument+version, record hash) + JSON sidecar
   (`bionexus/eln.py`)
