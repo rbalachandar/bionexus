@@ -307,28 +307,12 @@ def overview_view() -> None:
                 st.rerun()
         _wait_approvals()
 
-    # ---------------------------------------------------- flywheel memory
-    try:
-        from bionexus.flywheel import Flywheel
-        _fw = Flywheel()
-        _negs = _fw.negative_summary(limit=8)
-        if _negs:
-            with st.expander(f"🚫 Ruled out ({len(_negs)} recent negatives — "
-                             f"steers future portfolios)"):
-                for n in _negs:
-                    st.caption(f"- **{n['candidate']}** ({n['family']}, "
-                               f"{n['assay']}): {n['outcome']}"
-                               + (f" — observed {n['observed']:.1f} µM"
-                                  if n.get("observed") else "")
-                               + f" · {ago(n['ts'])}")
-    except Exception:
-        pass
-
     # ---------------------------------------------------- Program & TPP
     doc = program_cfg.load()
-    st.caption(f"🎯 Program: **{doc['program']}** ({doc['target']}) — "
-               f"screening gate: **{doc['gate']}** at IC50 ≤ "
-               f"{program_cfg.gate_threshold_um(doc):g} µM")
+    st.header("🎯 Program")
+    st.markdown(f"**{doc['program']}** · target **{doc['target']}** · "
+                f"screening gate: **{doc['gate']}** at IC50 ≤ "
+                f"{program_cfg.gate_threshold_um(doc):g} µM")
     with st.expander("Program & target product profile — what winning looks like"):
         st.markdown("*Hierarchy:* 🎯 Program (TPP) ▸ Problem ▸ Hypothesis ▸ "
                     "Experiment. The gate below sets the potency bar that "
@@ -418,6 +402,23 @@ def overview_view() -> None:
                     else:
                         resume_wizard(e)
                         st.switch_page(PAGES["wizard"])
+
+    # ---------------------------------------------------- flywheel memory
+    try:
+        from bionexus.flywheel import Flywheel
+        _fw = Flywheel()
+        _negs = _fw.negative_summary(limit=8)
+        if _negs:
+            with st.expander(f"🚫 Ruled out ({len(_negs)} recent negatives — "
+                             f"steers future portfolios)"):
+                for n in _negs:
+                    st.caption(f"- **{n['candidate']}** ({n['family']}, "
+                               f"{n['assay']}): {n['outcome']}"
+                               + (f" — observed {n['observed']:.1f} µM"
+                                  if n.get("observed") else "")
+                               + f" · {ago(n['ts'])}")
+    except Exception:
+        pass
 
 # --------------------------------------------------------------------------
 # VIEW: wizard (DMTA steps 1–6)
