@@ -102,6 +102,25 @@ def main() -> None:
     print(f"    interpreted as: "
           f"{'CONTAMINATED' if contaminated else 'CLEAN (post-cutoff)'}")
 
+    # variant probe: never-published near-twins of paper compounds — if the
+    # model maps them to this paper, it memorized the series
+    from bionexus.probes import variant_contamination
+    vc = variant_contamination(
+        agent_model,
+        ["az3246", "hpk1", "map4k1", "pyrazine carboxamide",
+         "journal of medicinal chemistry"],
+        [c["smiles"] for c in paper[:3]])
+    store.append(record_for(
+        Envelope(experiment_branch_id=BRANCH), EventType.gate_decision, actor,
+        decision={"step": "contamination_probe_variants",
+                  "verdict": vc["verdict"],
+                  "hits": f"{vc['n_mapped_to_paper']}/"
+                          f"{vc['n_variants_probed']}",
+                  "detail": vc["detail"][:2]}))
+    print(f"    variant probe (never-published molecules): "
+          f"{vc['verdict']} "
+          f"({vc['n_mapped_to_paper']}/{vc['n_variants_probed']} linked)")
+
     # ------------------------------------------------ 1. data
     print("\n[1] loading the paper's measurements (CHEMBL6103590)...")
     acts = chembl_json(
@@ -152,6 +171,25 @@ def main() -> None:
     print("[3] training Morgan+RF on non-paper HPK1 measurements...")
     model = MorganFingerprintRF(n_estimators=300)
     model.fit(train)
+
+    # scaffold-leakage check: retrain without any training row sharing a
+    # Murcko scaffold with the held-out paper series
+    from rdkit import Chem
+    from rdkit.Chem.Scaffolds import MurckoScaffold
+
+    def _scaf(s):
+        m = Chem.MolFromSmiles(s)
+        return MurckoScaffold.MurckoScaffoldSmiles(mol=m) if m else None
+    paper_scafs = {_scaf(c["smiles"]) for c in paper} - {None}
+    paper_smis = {c["smiles"] for c in paper}
+    clean = [(s, v) for s, v in train
+             if s not in paper_smis and _scaf(s) not in paper_scafs]
+    n_overlap = len(train) - len(clean)
+    model_clean = MorganFingerprintRF(n_estimators=300)
+    if len(clean) >= 200:
+        model_clean.fit(clean)
+    print(f"    scaffold-leakage check: {n_overlap} overlapping training "
+          f"rows removed ({len(clean)} remain)")
 
     # ------------------------------------- 3. blind agent: hypothesis + scores
     print("[4] agent is shown 45 paper structures (values hidden)...")
@@ -246,6 +284,12 @@ SERIES
     model_preds = [model.predict(c["smiles"]) for c in agent_cpds]
     sp_agent = spearman(agent_scores, truth)
     sp_model = spearman(model_preds, truth)
+    sp_model_clean = (spearman([model_clean.predict(c["smiles"])
+                                for c in agent_cpds], truth)
+                      if len(clean) >= 200 else None)
+    if sp_model_clean is not None:
+        print(f"    scaffold-clean model: Spearman {sp_model_clean:+.3f} "
+              f"(vs {sp_model:+.3f} full — gap = scaffold memory)")
     mae_model = statistics.mean(abs(p - t) for p, t in zip(model_preds, truth))
     best_i = max(range(len(agent_cpds)), key=lambda i: truth[i])
     agent_rank = sorted(range(len(agent_cpds)),

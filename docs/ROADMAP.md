@@ -30,7 +30,9 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   results.json artifacts (needs network day)
 - [x] `benchmark.benjamini_hochberg` available. [ ] remaining: apply across
   the 30-paper screen_papers output when regenerated
-- [ ] Scaffold-split CV for the Morgan+RF baselines (leakage check)
+- [x] Scaffold-leakage checks: CS02 + CS03 retrain Morgan+RF with every
+  training row sharing a Murcko scaffold with the held-out paper removed,
+  reporting the spearman gap (= scaffold memory). Runs on network day
 - Verify: regenerated `results.json` files include CI columns
 
 ## T1 — Eval harness ("agentic science" as a measurable claim)
@@ -47,9 +49,11 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   [ ] CS02 training-pool freeze INCOMPLETE — EBI 500s on offset pages today;
   re-warm + re-freeze when it recovers, then re-run CS02 artifacts (its
   published numbers were computed on the duplicate-inflated training set).
-- [ ] Strengthen the contamination probe: synthetic-variant test (perturb
-  SMILES of held-out compounds; if model "recognizes" altered structures,
-  the paper is memorized) — `case-studies/*/run.py`
+- [x] `src/bionexus/probes.py` — never-published single-token variants of
+  held-out compounds are asked about blind; mapping a nonexistent near-twin
+  to the paper = memorization. Wired into CS02 (provenance-recorded) and
+  CS03 (`contamination_variants` row); stub-tested offline. [ ] results
+  land when studies are re-run (network day)
 - Verify: `make eval-suite` (new target) runs offline except LLM rows
 
 ## T1 — Mechanistic, falsifiable hypotheses

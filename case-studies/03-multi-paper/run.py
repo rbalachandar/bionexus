@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import math
+import re as _re_title
 import statistics
 import sys
 import time
@@ -254,6 +255,28 @@ def main() -> None:
             row["rf_ef10"] = round(hit / base, 2) if base > 0 else None
             print(f"   RF: spearman={row['rf_spearman']:+.3f} rmse={row['rf_rmse']:.2f} "
                   f"EF@10%={row['rf_ef10']}x (base {base:.2f})")
+
+            # scaffold-leakage check: retrain with training rows removed that
+            # share a Murcko scaffold with ANY paper compound — how much of
+            # the score is scaffold memory rather than generalization?
+            from rdkit import Chem
+            from rdkit.Chem.Scaffolds import MurckoScaffold
+
+            def _scaf(s):
+                m = Chem.MolFromSmiles(s)
+                return (MurckoScaffold.MurckoScaffoldSmiles(mol=m)
+                        if m else None)
+            paper_scafs = {_scaf(s) for s in smis} - {None}
+            clean = [(s, v) for s, v in pool if _scaf(s) not in paper_scafs]
+            row["n_scaffold_overlap"] = len(pool) - len(clean)
+            if len(clean) >= 200:
+                model2 = MorganFingerprintRF(n_estimators=300)
+                model2.fit(clean)
+                row["rf_spearman_scaffoldclean"] = round(
+                    spearman([model2.predict(s) for s, _ in paper], truth), 3)
+                print(f"   scaffold-clean RF: spearman="
+                      f"{row['rf_spearman_scaffoldclean']:+.3f} "
+                      f"({row['n_scaffold_overlap']} overlapping rows removed)")
         else:
             print("   insufficient training data — RF row skipped")
 
@@ -283,6 +306,14 @@ def run_agent_rows(agent, doc_id: str, label: str, sample: list[tuple[str, float
         "Answer yes/no + one sentence on what you know about its compounds.").output["text"]
     known = probe.strip().lower().startswith("yes")
     out["contamination"] = "CONTAMINATED" if known else "clean"
+
+    from bionexus.probes import variant_contamination
+    tokens = [w for w in _re_title.findall(r"[a-z]+", title.lower())
+              if len(w) >= 8][:6]
+    vc = variant_contamination(agent, tokens, [s for s, _ in sample[:3]])
+    out["contamination_variants"] = vc["verdict"]
+    out["contamination_variant_hits"] = (f"{vc['n_mapped_to_paper']}/"
+                                         f"{vc['n_variants_probed']}")
 
     smis = "\n".join(f"{i+1}. {s}" for i, (s, _) in enumerate(sample))
     resp = agent.generate(
