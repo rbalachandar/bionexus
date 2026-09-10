@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import math
+import random
 import re as _re_title
 import statistics
 import sys
@@ -253,6 +254,36 @@ def main() -> None:
             base = sum(1 for t in truth if t >= ACTIVE_PIC50) / len(truth)
             hit = sum(1 for _, t in top if t >= ACTIVE_PIC50) / len(top)
             row["rf_ef10"] = round(hit / base, 2) if base > 0 else None
+
+            # small-n honesty: bootstrap CI for EF@10% + hypergeometric p
+            if base > 0:
+                pairs = list(zip(preds, truth))
+                rng = random.Random(7)
+                ef_boot = []
+                for _ in range(500):
+                    s = [pairs[rng.randrange(len(pairs))] for _ in pairs]
+                    tn = max(1, len(s) // 10)
+                    tp = sorted(s, key=lambda t: -t[0])[:tn]
+                    b = sum(1 for _, t in s if t >= ACTIVE_PIC50) / len(s)
+                    if b > 0:
+                        ef_boot.append(sum(1 for _, t in tp if t >= ACTIVE_PIC50)
+                                       / tn / b)
+                if len(ef_boot) >= 30:
+                    ef_boot.sort()
+                    row["rf_ef10_ci95"] = [
+                        round(ef_boot[int(0.025 * len(ef_boot))], 2),
+                        round(ef_boot[min(len(ef_boot) - 1,
+                                          int(0.975 * len(ef_boot)))], 2)]
+                from math import comb
+                N, K, n = len(truth), sum(1 for t in truth if t >= ACTIVE_PIC50), \
+                    max(1, len(preds) // 10)
+                k = sum(1 for _, t in top if t >= ACTIVE_PIC50)
+                if 0 < K < N and n <= N - K + K:
+                    den = comb(N, n)
+                    num = sum(comb(K, i) * comb(N - K, n - i)
+                              for i in range(max(0, n - (N - K)),
+                                             min(n, K) + 1) if i >= k)
+                    row["rf_ef10_p"] = round(num / den, 5) if den else None
             print(f"   RF: spearman={row['rf_spearman']:+.3f} rmse={row['rf_rmse']:.2f} "
                   f"EF@10%={row['rf_ef10']}x (base {base:.2f})")
 
@@ -284,6 +315,15 @@ def main() -> None:
             row.update(run_agent_rows(agent, doc_id, label, paper[:45], markers))
 
         results[doc_id] = row
+
+    # Benjamini-Hochberg FDR across the papers' enrichment tests
+    tested = [(d, r["rf_ef10_p"]) for d, r in results.items()
+              if r.get("rf_ef10_p") is not None]
+    if len(tested) >= 2:
+        from bionexus.benchmark import benjamini_hochberg
+        flags = benjamini_hochberg([p for _, p in tested], fdr=0.10)
+        for (d, _), sig in zip(tested, flags):
+            results[d]["rf_ef10_bh_sig_fdr0.10"] = sig
 
     out = Path(__file__).parent / "results.json"
     out.write_text(json.dumps(results, indent=1))

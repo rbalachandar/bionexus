@@ -26,10 +26,11 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## T0 — Small-n statistics
 - [x] `benchmark.spearman_ci` / `bootstrap_ci` added; case-study 03 rows now
-  carry `rf_spearman_ci95`. [ ] remaining: EF@10% CI + regenerate the
-  results.json artifacts (needs network day)
-- [x] `benchmark.benjamini_hochberg` available. [ ] remaining: apply across
-  the 30-paper screen_papers output when regenerated
+  carry `rf_spearman_ci95`; EF@10% bootstrap CIs + hypergeometric p +
+  BH-across-papers added and CS03 artifacts REGENERATED from frozen
+  fixtures (2026-09-10): no enrichment survives correction; scaffold
+  leakage ~absent. See case-studies/03 README "Statistical honesty pass"
+- [x] `benchmark.benjamini_hochberg` applied across the CS04 enrichment tests
 - [x] Scaffold-leakage checks: CS02 + CS03 retrain Morgan+RF with every
   training row sharing a Murcko scaffold with the held-out paper removed,
   reporting the spearman gap (= scaffold memory). Runs on network day
@@ -91,6 +92,10 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   posterior estimator erases most of the advantage (0.038 vs 0.043) — the
   win is against the real pipeline (linear/Hill point fits), and the eval
   says so explicitly
+
+## Follow-up: determinism of case-study models
+- [ ] MorganFingerprintRF (sklearn) is unseeded — ρ drifted −0.200 → −0.193
+      across two runs today. Pass `random_state` derived from the study seed.
 
 ## Follow-up: agent path from the CLI
 - [x] `hypothesis_source: "agent"` in a `bn auto` config now auto-wires the

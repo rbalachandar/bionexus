@@ -71,6 +71,30 @@ The differing recall values are secondary: the strategy can improve or degrade
 compound selection, but **the lifecycle remains valid independently of the
 strategy**. This is the property BioNexus is intended to provide.
 
+### Statistical honesty pass (2026-09-10, frozen fixtures)
+
+Re-run with bootstrap CIs, hypergeometric enrichment p-values, Benjamini–Hochberg
+FDR across papers, and a scaffold-leakage control (retrain with every training
+row sharing a Murcko scaffold with the paper removed):
+
+| Paper | ρ (full) | ρ (scaffold-clean) | EF@10% | EF 95% CI | p | BH sig |
+|---|---|---|---|---|---|---|
+| CHEMBL6087414 | −0.193 | −0.189 (0 overlap) | n/a (no actives) | — | — | — |
+| CHEMBL6087416 | +0.175 | +0.175 (0 overlap) | 1.09× | [1.0, 1.23] | 0.77 | no |
+| CHEMBL6087417 | −0.554 | −0.554 (0 overlap) | 0.0× | [0.0, 0.0] | 1.00 | no |
+| CHEMBL6087407 | +0.662 | **+0.696** (299 removed) | 2.23× | **[0.0, 6.98]** | 0.38 | no |
+
+Three findings, stated plainly:
+
+1. **No enrichment claim survives correction.** The best-looking EF (2.23×)
+   has a bootstrap CI spanning 0.0–6.98 — at n=67 compounds the point estimate
+   was noise wearing a conclusion's clothes. The flow-integrity claim stands;
+   an EF-based "the model finds actives" claim would not.
+2. **Scaffold leakage is ~absent** — these 2025 papers genuinely introduce
+   novel scaffolds; removing overlapping training rows changes ρ by ≤0.03
+   (and *improves* CHEMBL6087407, so its +0.66 was not scaffold memory).
+3. Negative ρ on two papers is reported as negative, not re-rolled.
+
 ## Hypothesis reproduction status
 
 The next pass uses `--llm` to repeat the Case Study 02 test for each paper:
