@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo/bionexus-wordmark.png" alt="BioNexus" width="300">
+  <img src="assets/logo/bionexus-banner.png" alt="BioNexus — agentic lab framework" width="640">
 </p>
 
 <p align="center"><em>The gated loop: hypotheses iterate, evidence passes one gate,
