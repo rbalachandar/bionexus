@@ -1,4 +1,9 @@
-# BioNexus
+<p align="center">
+  <img src="assets/logo/bionexus-lockup.svg" alt="BioNexus" width="320">
+</p>
+
+<p align="center"><em>The gated loop: hypotheses iterate, evidence passes one gate,
+everything is recorded.</em></p>
 
 [![ci](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml/badge.svg)](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/bionexuslab)](https://pypi.org/project/bionexuslab/)
