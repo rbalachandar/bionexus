@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 200" width="540" height="200">
   <defs>
     <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
       <circle cx="10" cy="10" r="1" fill="#1d232b"/>
@@ -6,8 +6,8 @@
   </defs>
 
   <!-- card -->
-  <rect x="1" y="1" width="798" height="198" rx="14" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
-  <rect x="3" y="3" width="794" height="194" rx="12" fill="url(#dots)"/>
+  <rect x="1" y="1" width="538" height="198" rx="14" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
+  <rect x="3" y="3" width="534" height="194" rx="12" fill="url(#dots)"/>
 
   <!-- lattice mark: a well-grid, one route, and the gate it must pass -->
   <g transform="translate(58 52)" stroke-linecap="square">

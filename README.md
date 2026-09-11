@@ -2,9 +2,6 @@
   <img src="assets/logo/bionexus-banner.png" alt="BioNexus — agentic lab framework" width="640">
 </p>
 
-<p align="center"><em>The gated loop: hypotheses iterate, evidence passes one gate,
-everything is recorded.</em></p>
-
 [![ci](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml/badge.svg)](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/bionexuslab)](https://pypi.org/project/bionexuslab/)
 [![Python](https://img.shields.io/pypi/pyversions/bionexuslab)](https://pypi.org/project/bionexuslab/)
