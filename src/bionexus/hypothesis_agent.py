@@ -118,19 +118,39 @@ def propose_families_with_agent(
         max_families=max_families,
         max_variants_per_family=max_variants_per_family,
     ) + ("\n\n" + guidance_block if guidance_block else "")
+    negatives_injected: list[str] = []
     if flywheel is not None:
         negs = flywheel.prompt_context()
         if negs:
             prompt = prompt + "\n\n" + negs
+            negatives_injected = [line.split(" ")[1] for line
+                                  in negs.splitlines()[1:] if line.startswith("- ")]
             say("prompt includes previously ruled-out candidates (flywheel)")
     inv = ToolInvocation(envelope=env.model_copy(), tool="c.fm.generate_molecules")
     raw = model.generate(inv, prompt).output["text"]
     # record the raw generation (agent reasoning is provenance too)
     store_append = tracker.store.append
+    import hashlib as _hl
     store_append(record_for(env, EventType.tool_invocation, actor,
                             decision={"kind": "hypothesis_generation",
                                       "prompt_chars": len(prompt),
-                                      "response_chars": len(raw)}))
+                                      "response_chars": len(raw),
+                                      # retrieval trace: what shaped this gen
+                                      "trace": {
+                                          "prompt_sha256":
+                                              _hl.sha256(
+                                                  prompt.encode()).hexdigest()[:16],
+                                          "model": getattr(model, "model",
+                                                           "unknown"),
+                                          "skill_guidance_chars":
+                                              len(skill_guidance or ""),
+                                          "flywheel_negatives":
+                                              len(negatives_injected)
+                                              if "negatives_injected" in dir()
+                                              else 0,
+                                          "candidates_count":
+                                              len(candidates or []),
+                                      }}))
 
     doc = _extract_json(raw)
     families_in = doc.get("families", [])[:max_families]

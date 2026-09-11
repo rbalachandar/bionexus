@@ -87,9 +87,10 @@ class ToxicophoreRule:
                 continue
             out = screen_smiles(smi, (sample.metadata or {}).get("intent", ""))
             if out["refuse"]:
-                first = out["refuse"][0]
+                from bionexus.adapters.bio.tox_alerts import RULES_VERSION
                 return (f"sample '{sample.sample_id}' carries "
-                        f"{len(out['refuse'])} toxicophore alert(s): "
+                        f"{len(out['refuse'])} toxicophore alert(s) "
+                        f"[rules {RULES_VERSION}]: "
                         + "; ".join(f"{h['alert']} ({h['note']})"
                                     for h in out["refuse"][:3]))
         return None

@@ -128,3 +128,38 @@ def test_durc_campaign_refusal(tmp_path):
         run_campaign(CampaignConfig(problem=problem, hypotheses=[],
                                     autonomy="act", inbox=str(tmp_path)),
                      SimulatorLab(), SqliteProvenanceStore())
+
+
+def test_charridge_attribution_sums_to_prediction():
+    from bionexus.benchmark import CharRidgePolicy
+    from bionexus.interpret import explain_prediction
+    pol = CharRidgePolicy(dim=256)
+    data = [("CCO", 1.0), ("CCCO", 1.4), ("c1ccccc1O", 2.2),
+            ("CC(=O)O", 0.6), ("CCCCO", 1.8), ("c1ccccc1", 2.5)]
+    pol.fit(data)
+    ex = explain_prediction(pol, "c1ccccc1O")
+    assert ex["method"] == "ngram-contributions"
+    assert ex["top_positive"], "should find positive drivers"
+    total = (ex["baseline_mean"]
+             + sum(w for _, w in ex["top_positive"])
+             + sum(w for _, w in ex["top_negative"]))
+    assert abs(total - ex["prediction"]) < 0.6   # contribution accounting
+
+
+def test_rf_attribution_reports_bits():
+    pytest.importorskip("sklearn")
+    pytest.importorskip("rdkit")
+    from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF
+    from bionexus.interpret import explain_prediction
+    pol = MorganFingerprintRF(n_estimators=20)
+    pol.fit([("CCO", 1.0), ("CCCO", 1.4), ("c1ccccc1O", 2.2),
+             ("CC(=O)O", 0.6), ("CCCCO", 1.8), ("c1ccccc1", 2.5)])
+    ex = explain_prediction(pol, "c1ccccc1CCO")
+    assert ex["method"] == "importance-weighted-bits"
+    assert ex["top_bits"] and "caveat" in ex
+
+
+def test_safety_rules_data_file_versioned():
+    from bionexus.adapters.bio import tox_alerts
+    assert tox_alerts.RULES_VERSION == "safety-rules-v1"
+    assert len(tox_alerts.ALERTS) >= 18

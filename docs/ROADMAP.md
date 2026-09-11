@@ -196,7 +196,15 @@ Positioning bet: trustworthiness as architecture, not marketing. Priority order:
   invariant** — model output may add flags or demand review, never clear a
   deterministic refusal; human adjudications feed flywheel → candidate
   rules (humans promote, not the model)
+  - [x] step 1 done: rules externalized to `safety_rules.json`
+    (safety-rules-v1, 18 alerts + 27 select-agent families); version rides
+    every refusal ("[rules safety-rules-v1]"); missing file degrades to a
+    labeled builtin fallback, never silent
+  - [ ] step 2: ingest Benigni/Bosa + Toxtree/OpenAlerts rulebooks wholesale
+  - [ ] step 3: advisory AI tox reviewer (tighten-only wiring)
 - [ ] Attribution panel per prediction: Morgan-RF → top contributing fingerprint
   features; CharRidge → top n-grams; rendered beside verdicts ("why").
-- [ ] Retrieval traces in provenance: which flywheel negatives, skill blocks,
-  and ChEMBL context entered each generation prompt (currently only sizes).
+- [x] Retrieval traces in provenance: hypothesis_generation records now carry
+  prompt_sha256, model name, skill-guidance size, flywheel negatives
+  injected (as candidate list), and candidate count — "what shaped this
+  hypothesis" is answerable from the chain

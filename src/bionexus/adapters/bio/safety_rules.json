@@ -1,0 +1,146 @@
+{
+ "version": "safety-rules-v1",
+ "sources": [
+  "Murakami/Benigni-style curated toxicophores",
+  "NSAB Select Agent & Toxin list (text families)"
+ ],
+ "alerts": [
+  {
+   "name": "aromatic_nitro",
+   "smarts": "c[N+](=O)[O-]",
+   "severity": "hard",
+   "note": "mutagenicity (DNA adducts after reduction)"
+  },
+  {
+   "name": "aromatic_amine_vic",
+   "smarts": "Nc1ccc(N)cc1",
+   "severity": "hard",
+   "note": "p-phenylenediamine: methemoglobinemia/redox"
+  },
+  {
+   "name": "hydroquinone",
+   "smarts": "Oc1ccc(O)cc1",
+   "severity": "medium",
+   "note": "redox cycling / quinone formation"
+  },
+  {
+   "name": "quinone",
+   "smarts": "O=C1C=CC(=O)C=C1",
+   "severity": "hard",
+   "note": "redox cycling, Michael acceptor"
+  },
+  {
+   "name": "hydrazine",
+   "smarts": "[NX3][NX3]",
+   "severity": "hard",
+   "note": "mutagenicity"
+  },
+  {
+   "name": "azo",
+   "smarts": "N=N",
+   "severity": "hard",
+   "note": "azo: reductive cleavage to aromatic amines"
+  },
+  {
+   "name": "acyl_halide",
+   "smarts": "C(=O)Cl",
+   "severity": "hard",
+   "note": "acylating agent"
+  },
+  {
+   "name": "sulfonyl_halide",
+   "smarts": "S(=O)(=O)Cl",
+   "severity": "hard",
+   "note": "sulfonylating agent"
+  },
+  {
+   "name": "isocyanate",
+   "smarts": "N=C=O",
+   "severity": "hard",
+   "note": "protein haptenation"
+  },
+  {
+   "name": "azide",
+   "smarts": "[N-][N+]#N",
+   "severity": "hard",
+   "note": "nitrene precursor / explosive handle"
+  },
+  {
+   "name": "aziridine",
+   "smarts": "C1NC1",
+   "severity": "hard",
+   "note": "direct alkylator"
+  },
+  {
+   "name": "mustard_like",
+   "smarts": "Cl[CX4][CX4][NX3]",
+   "severity": "hard",
+   "note": "nitrogen-mustard motif: alkylator"
+  },
+  {
+   "name": "alpha_haloketone",
+   "smarts": "O=C[CH2]Cl",
+   "severity": "hard",
+   "note": "reactive alkylator"
+  },
+  {
+   "name": "epoxide",
+   "smarts": "C1OC1",
+   "severity": "medium",
+   "note": "alkylating strain electrophile"
+  },
+  {
+   "name": "michael_acceptor",
+   "smarts": "C=C[CHX3][CX3]=[OX1]",
+   "severity": "medium",
+   "note": "Michael acceptor (enone/enal/enoate)"
+  },
+  {
+   "name": "acrylamide",
+   "smarts": "C=CC(=O)N",
+   "severity": "medium",
+   "note": "soft thiol electrophile"
+  },
+  {
+   "name": "vinyl_sulfonamide",
+   "smarts": "C=CS(=O)(=O)",
+   "severity": "medium",
+   "note": "covalent warhead (BTK-style intent)"
+  },
+  {
+   "name": "aldehyde_aromatic",
+   "smarts": "[cH][CX3H](=O)",
+   "severity": "medium",
+   "note": "Schiff-base hapten"
+  }
+ ],
+ "select_agents": [
+  "variola",
+  "smallpox",
+  "bacillus anthracis",
+  "anthrax",
+  "yersinia pestis",
+  "plague",
+  "francisella tularensis",
+  "tularensis",
+  "burkholderia mallei",
+  "burkholderia pseudomallei",
+  "clostridium botulinum",
+  "botulinum toxin",
+  "ebola",
+  "marburg",
+  "lassa",
+  "nipah",
+  "hendra",
+  "rickettsia prowazekii",
+  "coxiella burnetii",
+  "coccidioides immitis",
+  "avian influenza",
+  "h5n1",
+  "ricin",
+  "ricinus communis",
+  "staphylococcal enterotoxin b",
+  "severe acute respiratory syndrome coronavirus 2",
+  "sars-coronavirus"
+ ]
+}

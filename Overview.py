@@ -751,6 +751,12 @@ def wizard_view() -> None:
                                 f"- PAINS: {s['pains_alerts'] or 'none'}")
                         except Exception as e:
                             st.caption(f"ADMET unavailable: {e}")
+                        else:
+                            from bionexus.interpret import explain_admet
+                            _why = explain_admet(s)
+                            if _why["reasons"] != ["no flags"]:
+                                st.caption("🔎 why flagged: "
+                                           + " · ".join(_why["reasons"]))
                     with col2:
                         st.markdown("**Retrosynthesis**")
                         try:

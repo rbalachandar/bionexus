@@ -11,61 +11,32 @@ never silently pretends to have checked.
 """
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
+
+# Rules live in VERSIONED DATA (safety_rules.json), not code — the list
+# scales by editing data (and later ingesting Benigni/Bosa + Toxtree
+# rulebooks wholesale), diffs in git, and the version rides along in every
+# gate decision so an audit knows WHICH rule set judged a molecule.
+_RULES_PATH = Path(__file__).parent / "safety_rules.json"
+
+
+def _load_rules() -> dict:
+    try:
+        return json.loads(_RULES_PATH.read_text())
+    except Exception:
+        return {"version": "builtin-fallback", "alerts": _FALLBACK,
+                "select_agents": _FALLBACK_AGENTS}
+
 
 # (name, smarts, severity, note)
-#   hard   -> always refuse (non-negotiable mutagen/alkylator classes)
-#   medium -> refuse unless the hypothesis declares matching intent
-#             (e.g. a covalent-warhead program screening an acrylamide)
-ALERTS: list[tuple[str, str, str, str]] = [
-    ("aromatic_nitro",      "c[N+](=O)[O-]",                "hard",
-     "mutagenicity (DNA adducts after reduction)"),
-    ("aromatic_amine_vic",  "Nc1ccc(N)cc1",                 "hard",
-     "p-phenylenediamine: methemoglobinemia/redox"),
-    ("hydroquinone",        "Oc1ccc(O)cc1",                 "medium",
-     "redox cycling / quinone formation"),
-    ("quinone",             "O=C1C=CC(=O)C=C1",             "hard",
-     "redox cycling, Michael acceptor"),
-    ("hydrazine",           "[NX3][NX3]",                   "hard",
-     "mutagenicity"),
-    ("azo",                 "N=N",                          "hard",
-     "azo: reductive cleavage to aromatic amines"),
-    ("acyl_halide",         "C(=O)Cl",                      "hard",
-     "acylating agent"),
-    ("sulfonyl_halide",     "S(=O)(=O)Cl",                  "hard",
-     "sulfonylating agent"),
-    ("isocyanate",          "N=C=O",                        "hard",
-     "protein haptenation"),
-    ("azide",               "[N-][N+]#N",                   "hard",
-     "nitrene precursor / explosive handle"),
-    ("aziridine",           "C1NC1",                        "hard",
-     "direct alkylator"),
-    ("mustard_like",        "Cl[CX4][CX4][NX3]",            "hard",
-     "nitrogen-mustard motif: alkylator"),
-    ("alpha_haloketone",    "O=C[CH2]Cl",                   "hard",
-     "reactive alkylator"),
-    ("epoxide",             "C1OC1",                        "medium",
-     "alkylating strain electrophile"),
-    ("michael_acceptor",    "C=C[CHX3][CX3]=[OX1]",         "medium",
-     "Michael acceptor (enone/enal/enoate)"),
-    ("acrylamide",          "C=CC(=O)N",                    "medium",
-     "soft thiol electrophile"),
-    ("vinyl_sulfonamide",   "C=CS(=O)(=O)",                 "medium",
-     "covalent warhead (BTK-style intent)"),
-    ("aldehyde_aromatic",   "[cH][CX3H](=O)",               "medium",
-     "Schiff-base hapten"),
-]
 
-_SELECT_AGENTS = [
-    "variola", "smallpox", "bacillus anthracis", "anthrax", "yersinia pestis",
-    "plague", "francisella tularensis", "tularensis", "burkholderia mallei",
-    "burkholderia pseudomallei", "clostridium botulinum", "botulinum toxin",
-    "ebola", "marburg", "lassa", "nipah", "hendra",
-    "rickettsia prowazekii", "coxiella burnetii",
-    "coccidioides immitis", "avian influenza", "h5n1",
-    "ricin", "ricinus communis", "staphylococcal enterotoxin b",
-    "severe acute respiratory syndrome coronavirus 2", "sars-coronavirus",
-]
+_RULES = _load_rules()
+RULES_VERSION = _RULES["version"]
+ALERTS = [(a["name"], a["smarts"], a["severity"], a["note"])
+          for a in _RULES["alerts"]]
+_SELECT_AGENTS = _RULES["select_agents"]
 
 
 def screen_smiles(smiles: str, intent: str = "") -> dict:
@@ -105,3 +76,9 @@ def durc_screen(text: str) -> list[str]:
     """Cheap, always-on: does this text name a select agent / toxin family?"""
     t = (text or "").lower()
     return [a for a in _SELECT_AGENTS if re.search(re.escape(a), t)]
+
+
+# minimal fallback if the data file is missing (never silent: version says so)
+_FALLBACK = [a for a in ALERTS if a[0] in ("aromatic_nitro", "aziridine",
+                                           "mustard_like", "hydrazine")]
+_FALLBACK_AGENTS = ["bacillus anthracis", "variola", "ebola", "yersinia pestis"]
