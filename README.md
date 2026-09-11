@@ -14,23 +14,20 @@ execute them on simulated or real laboratory equipment, observe the results as
 they arrive, and deliver verdicts against criteria that were registered before
 the experiment ran.
 
-Most agent demos stop at talking. BioNexus is built so you can let it act in a
-lab. Three reasons why:
+BioNexus is built on three principles:
 
-- **Safety is built in, not bolted on.** Agents never touch instruments
+- **Safety first, and it looks at molecules.** Agents never touch instruments
   directly. Every physical action passes through a policy engine that sits
   outside the agent's control, and budgets cap what a campaign may consume.
-  The gate also looks at molecules: structures are screened against versioned
-  toxicophore rules, so a declared covalent warhead can pass while an
-  undeclared one does not. Campaigns that name a regulated pathogen or toxin
-  are refused, and the refusal is recorded.
-- **AI can only make the rules stricter.** Deterministic checks hold the
-  floor. A model may add a flag or demand a human review, but it can never
-  clear a refusal. Humans settle the edge cases, and it is their judgment,
-  not the model's confidence, that writes new rules. Citations are checked
-  against PubMed: a hypothesis that cites a fake paper ranks below one that
-  cites nothing.
-- **Everything is auditable.** The problem, the hypotheses, every decision,
+  Structures are screened against versioned toxicophore rules, so a declared
+  covalent warhead can pass while an undeclared one does not. Campaigns that
+  name a regulated pathogen or toxin are refused, and the refusal is recorded.
+- **Tiered trust.** Deterministic rules hold the floor. A model may add a
+  flag or demand a human review, but it can never clear a refusal. Humans
+  settle the edge cases, and it is their judgment, not the model's
+  confidence, that writes new rules. Citations are checked against PubMed: a
+  hypothesis that cites a fake paper ranks below one that cites nothing.
+- **Everything auditable.** The problem, the hypotheses, every decision,
   submission, result and verdict go into a hash-chained provenance store.
   One command renders the whole story as a report. Another seals it with a
   checksum you can publish somewhere you do not control, so anyone can check
