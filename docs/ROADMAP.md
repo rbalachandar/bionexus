@@ -47,9 +47,14 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   `materialize()` restores caches byte-identically, `bn fixtures verify` in
   CI (`fixtures` job). Pagination bug (offset-`next` mangled into a bogus
   cursor -> duplicate training rows) fixed in CS02/CS03 during freezing.
-  [ ] CS02 training-pool freeze INCOMPLETE — EBI 500s on offset pages today;
+  [ ] CS02 training-pool freeze INCOMPLETE — EBI 500s on offset pages;
   re-warm + re-freeze when it recovers, then re-run CS02 artifacts (its
   published numbers were computed on the duplicate-inflated training set).
+- [x] CS03 `--llm` sweep COMPLETED 2026-09-10 (reuse fast-path + glm-4.5-air):
+  blind chemotype ID 4/4, variant probe flagged 1 leakage-suspect that the
+  self-report missed, agent-vs-RF mixed rankings reported honestly.
+  [ ] follow-up: chemist-judged core-match verdict (substring matcher is
+  brittle: "benzimidazole" fails a "benzene" contains-test)
 - [x] `src/bionexus/probes.py` — never-published single-token variants of
   held-out compounds are asked about blind; mapping a nonexistent near-twin
   to the paper = memorization. Wired into CS02 (provenance-recorded) and

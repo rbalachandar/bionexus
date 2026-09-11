@@ -61,7 +61,23 @@ class AnthropicProvider:
         }
         if system:
             body["system"] = system
-        req = urllib.request.Request(
+        # reasoning models can spend the whole budget thinking and return no
+        # text — escalate max_tokens rather than fail
+        attempts = 0
+        while True:
+            attempts += 1
+            data = self._post(self._request(body))
+            text = "".join(c.get("text", "") for c in data.get("content", [])
+                           if c.get("type") == "text")
+            if text:
+                return text
+            if attempts >= 5 or body["max_tokens"] >= 32000:
+                raise ValueError("model returned no text content "
+                                 "(reasoning may have exhausted max_tokens)")
+            body["max_tokens"] = min(32000, body["max_tokens"] * 2)
+
+    def _request(self, body: dict):
+        return urllib.request.Request(
             f"{self.base_url}/v1/messages",
             data=json.dumps(body).encode(),
             headers={
@@ -71,20 +87,15 @@ class AnthropicProvider:
             },
             method="POST",
         )
-        data = self._post(req)
-        text = "".join(c.get("text", "") for c in data.get("content", [])
-                       if c.get("type") == "text")
-        if not text:
-            raise ValueError("model returned no text content "
-                             "(reasoning may have exhausted max_tokens)")
-        return text
 
     def _post(self, req, tries: int = 6):
         import time
         import urllib.error
         for i in range(tries):
             try:
-                with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310
+                with urllib.request.urlopen(req, timeout=300) as resp:  # noqa: S310
+                    # 300s: reasoning models can pause well past a minute
+                    # before emitting text
                     return json.loads(resp.read())
             except urllib.error.HTTPError as exc:
                 if exc.code not in (429, 500, 502, 503) or i == tries - 1:

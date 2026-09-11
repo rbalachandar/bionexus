@@ -1,0 +1,32 @@
+   agent model: glm-4.5-air
+
+=== CHEMBL6087414 — 2025 paper, target CHEMBL392, 45 compounds ===
+   target CHEMBL392: 45 unique compounds; dominant scaffold markers: ['benzene', 'morpholine']
+   training pool (other papers): 20279
+   reusing cached quantitative row (--llm fast path)
+[18:41:40] Can't kekulize mol.  Unkekulized atoms: 6 24 25 26 27 28 29
+[18:41:40] Can't kekulize mol.  Unkekulized atoms: 6 24 25 26 27 28 29
+   agent: contamination=clean core='2-(3,5-disubstituted isoxazol-4-yl)benzimidazole (' match=False spearman=+0.421
+
+=== CHEMBL6087416 — 2025 paper, A2A adenosine receptor, 40 compounds ===
+   target CHEMBL247: 37 unique compounds; dominant scaffold markers: ['benzene', 'pyrimidine', 'trifluoromethyl', 'sulfonamide', 'amide']
+   training pool (other papers): 527
+   reusing cached quantitative row (--llm fast path)
+   agent: contamination=clean core='2-anilinopyrimidine (aminopyrimidine hinge-binder)' match=True spearman=-0.057
+
+=== CHEMBL6087417 — 2025 paper, target CHEMBL614245, 53 compounds ===
+   target CHEMBL614245: 53 unique compounds; dominant scaffold markers: ['benzene', 'thiazole', 'piperazine', 'trifluoromethyl', 'amide']
+   training pool (other papers): 20496
+   reusing cached quantitative row (--llm fast path)
+   agent: contamination=clean core='2-aminothiazole-urea series (4-benzylthiazolyl ure' match=True spearman=-0.039
+
+=== CHEMBL6087407 — 2025 paper, target CHEMBL4508, 67 compounds ===
+   target CHEMBL4508: 67 unique compounds; dominant scaffold markers: ['benzene', 'trifluoromethyl']
+   training pool (other papers): 20600
+   reusing cached quantitative row (--llm fast path)
+   agent: contamination=clean core='biaryl-imidazole (biphenyl tethered to 1H-imidazol' match=False spearman=+0.214
+
+=== CHEMBL6087413 — 2025 paper, target CHEMBL614388, 31 compounds ===
+   no target with >=12 unique compounds (best: 8) — skipped
+
+results: /Users/bramakri/dev/repos/agentic-drug-discovery/case-studies/03-multi-paper/results.json

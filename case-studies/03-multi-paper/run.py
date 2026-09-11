@@ -199,10 +199,26 @@ def main() -> None:
         papers = {i: meta.get(i, {}).get("title", i) for i in ids}
 
     results = {}
+    prev: dict = {}
+    if use_llm and "--no-reuse" not in sys.argv:
+        rf = Path(__file__).parent / "results.json"
+        if rf.exists():
+            try:
+                prev = json.loads(rf.read_text())
+            except Exception:
+                prev = {}
     agent = None
     if use_llm:
         from bionexus.adapters.models.anthropic_provider import AnthropicProvider
-        agent = AnthropicProvider()
+        # heavy structured-output sweeps use the text-first model (thinking
+        # models can exhaust any budget before emitting); override with
+        # CS03_LLM_MODEL
+        import os
+        model_name = (os.environ.get("CS03_LLM_MODEL")
+                      or os.environ.get("ANTHROPIC_DEFAULT_HAIKU_MODEL"))
+        agent = AnthropicProvider(model=model_name) if model_name \
+            else AnthropicProvider()
+        print(f"   agent model: {agent.model}")
 
     for doc_id, label in papers.items():
         print(f"\n=== {doc_id} — {label} ===")
@@ -236,6 +252,19 @@ def main() -> None:
         print(f"   training pool (other papers): {len(pool)}")
         row: dict = {"paper": label, "n_paper": len(paper), "n_train": len(pool),
                      "scaffold_markers": markers}
+        # --llm fast path: reuse quantitative rows computed earlier (guarded
+        # by n_train so a changed pool invalidates the cache)
+        step = max(1, len(paper) // 15)
+        if (use_llm and doc_id in prev
+                and prev[doc_id].get("n_train") == len(pool)
+                and prev[doc_id].get("rf_spearman") is not None):
+            row.update({k: v for k, v in prev[doc_id].items()
+                        if k.startswith(("rf_", "baseline"))})
+            print("   reusing cached quantitative row (--llm fast path)")
+            row.update(run_agent_rows(agent, doc_id, label,
+                                      paper[::step][:15], markers))
+            results[doc_id] = row
+            continue
         if len(pool) >= 200 and len(paper) >= 10:
             model = MorganFingerprintRF(n_estimators=300)
             model.fit(pool)
@@ -312,7 +341,8 @@ def main() -> None:
             print("   insufficient training data — RF row skipped")
 
         if agent and row.get("rf_spearman") is not None:
-            row.update(run_agent_rows(agent, doc_id, label, paper[:45], markers))
+            row.update(run_agent_rows(agent, doc_id, label,
+                                      paper[::step][:15], markers))
 
         results[doc_id] = row
 
