@@ -160,11 +160,15 @@ Positioning bet: trustworthiness as architecture, not marketing. Priority order:
   invalid; k=1 portfolio picked the verified-citation hypothesis.
   [ ] next step: verify the CITED WORK actually supports the claim (title/
   abstract relevance check), not just existence
-- [ ] **Molecular safety gate**: toxicophore screen (structural alerts:
-  mutagenicity, reactive-warhead liability beyond declared intent, PAINS
-  escalation) as a hard SafetyEngine check at submission — today it inspects
-  protocols, never molecules. DURC awareness pass on targets/sequences with
-  refusal + provenance record.
+- [x] **Molecular safety gate** (`adapters/bio/tox_alerts.py`): 18 curated
+  SMARTS toxicophore alerts in the SafetyEngine (hard: aromatic nitro,
+  aziridine, mustard, azide, quinone…; medium: Michael acceptors, epoxides,
+  acrylamides — downgraded ONLY when the hypothesis mechanism declares
+  covalent intent). DURC screen at TWO levels: campaign refusal if the
+  problem names a select agent (recorded, raises), per-protocol text rule.
+  No-RDKit installs report "unverified" honestly instead of pretending.
+  Verified live: nitrobenzene refused with machine-readable reason, declared
+  warhead passed, aspirin clean; 57 tests.
 
 ### Trust-T1 — reproducibility & honesty under fault
 - [ ] `bn reproduce <branch>` — replay from recorded seeds/prompts/model

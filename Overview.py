@@ -94,6 +94,13 @@ def _wprove(event, decision: dict) -> None:
         st.caption(f"(provenance write failed: {exc})")
 
 
+def _looks_like_smiles(text: str) -> bool:
+    t = text.strip()
+    return (" " not in t and len(t) > 4
+            and any(ch in t for ch in "cnoS")
+            and any(ch in t for ch in "#=("))
+
+
 def _spawn_agent_experiment(cfg: dict, objective: str) -> str:
     import subprocess
     from bionexus.paths import ensure_dirs
@@ -622,9 +629,13 @@ def wizard_view() -> None:
                             "success_metric": "IC50 ranking consistent "
                                               "across replicates"},
                         "hypotheses": [
-                            {"statement": f"{c.strip()} tested — "
+                            {"statement": f"{c.strip()[:24] if _looks_like_smiles(c) else c.strip()} tested — "
                                           f"{exp.scientific_question}",
-                             "candidate": c.strip(),
+                             "candidate": (c.strip()[:24]
+                                           if _looks_like_smiles(c)
+                                           else c.strip()),
+                             **({"smiles": c.strip()}
+                                if _looks_like_smiles(c) else {}),
                              "assay_type": exp.readout.assay
                              if exp.readout.assay != "user" else "binding",
                              "predicted": f"IC50 <= {thr_s}",

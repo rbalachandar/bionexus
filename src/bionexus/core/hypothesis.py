@@ -258,6 +258,8 @@ class HypothesisTracker:
             h.problem_id = problem.problem_id
             h.portfolio_rank = i
             h.family = spec.get("family")
+            if spec.get("smiles"):
+                h.metadata["smiles"] = spec["smiles"]
             h.branch_id = f"problem/{problem.problem_id}"
             self.hypotheses[h.hypothesis_id] = h
             proposed.append(h)

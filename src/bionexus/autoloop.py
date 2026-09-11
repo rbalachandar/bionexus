@@ -112,6 +112,19 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         gateway = LabGateway(lab, safety, store, actor)
 
     # 0. problem + portfolio + filter
+    from bionexus.adapters.bio.tox_alerts import durc_screen
+    durc_hits = durc_screen(" ".join([cfg.problem.objective,
+                                      cfg.problem.context or ""]))
+    if durc_hits:
+        store.append(record_for(
+            Envelope(experiment_branch_id=f"problem/{cfg.problem.problem_id or 'unnamed'}"),
+            EventType.gate_decision, actor,
+            decision={"kind": "durc_refusal", "agents": durc_hits,
+                      "action": "campaign refused before hypothesis work"}))
+        raise ValueError(
+            f"DURC: campaign names a select agent / regulated toxin family "
+            f"({', '.join(durc_hits)}) — refused and recorded; requires "
+            f"institutional review before BioNexus will run it")
     problem = tracker.define_problem(cfg.problem)
     family_scores: dict[str, float] = {}
     if cfg.hypothesis_source == "agent":
@@ -174,8 +187,12 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             title=f"screen-{h.candidate}" if adaptive else f"test-{h.candidate}",
             assay_type=h.assay_type,
             steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense, params={"volume_ul": 50})],
-            samples=[SampleSpec(sample_id=h.candidate, kind=SampleKind.compound,
-                                concentration=c)
+            samples=[SampleSpec(
+                sample_id=h.candidate, kind=SampleKind.compound,
+                concentration=c,
+                metadata={"smiles": (h.metadata or {}).get("smiles", ""),
+                          "intent": ("covalent" if "covalent" in
+                                      (h.mechanism or "").lower() else "")})
                      for c in ([screen_conc] if adaptive else cfg.concentrations)]
             + [SampleSpec(sample_id=f"ctrl-neg{i}", kind=SampleKind.buffer,
                           concentration="10uM") for i in (1, 2)],

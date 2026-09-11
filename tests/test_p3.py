@@ -1,6 +1,8 @@
 """T3 polish tests — ELN export, Merkle anchoring, instrument versioning."""
 import json
 
+import pytest
+
 from bionexus.anchor import merkle_root, store_hashes
 from bionexus.eln import branch_to_rows, export_eln
 from bionexus.adapters.store.sqlite import SqliteProvenanceStore
@@ -82,3 +84,47 @@ def test_fixtures_freeze_verify_materialize(tmp_path):
         (__import__("gzip").compress(b"a,b\n9,9\n")))
     ok, problems = fixtures.verify(study)
     assert not ok and "MISMATCH" in problems[0]
+
+
+def test_safety_engine_molecule_gates():
+    from bionexus.core.contracts import (
+        Envelope, ProtocolOp, ProtocolStep, ProtocolSubmission, ReagentSpec,
+        SampleKind, SampleSpec,
+    )
+    from bionexus.core.safety import SafetyEngine
+
+    pytest.importorskip("rdkit", reason="toxicophore SMARTS need rdkit")
+
+    def proto(smi, intent=""):
+        return ProtocolSubmission(
+            envelope=Envelope(experiment_branch_id="t"), title="screen",
+            assay_type="binding",
+            steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense,
+                                params={"volume_ul": 50})],
+            samples=[SampleSpec(sample_id="X", kind=SampleKind.compound,
+                                concentration="10uM",
+                                metadata={"smiles": smi, "intent": intent})],
+            reagents=[ReagentSpec(name="buffer", amount="5 mL", bsl_level=1)])
+
+    eng = SafetyEngine()
+    ok, why = eng.check(proto("O=[N+]([O-])c1ccccc1"))       # nitrobenzene
+    assert not ok and "aromatic_nitro" in why
+    ok, _ = eng.check(proto("C=CC(=O)N"))                     # bare acrylamide
+    assert not ok
+    ok, _ = eng.check(proto("C=CC(=O)N", intent="covalent"))  # declared warhead
+    assert ok
+    ok, _ = eng.check(proto("CC(=O)Oc1ccccc1C(=O)O"))        # aspirin
+    assert ok
+
+
+def test_durc_campaign_refusal(tmp_path):
+    import pytest
+    from bionexus.autoloop import CampaignConfig, run_campaign
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.hypothesis import ProblemStatement
+    problem = ProblemStatement(objective="Screen inhibitors of Bacillus anthracis lethal factor")
+    with pytest.raises(ValueError, match="DURC"):
+        run_campaign(CampaignConfig(problem=problem, hypotheses=[],
+                                    autonomy="act", inbox=str(tmp_path)),
+                     SimulatorLab(), SqliteProvenanceStore())

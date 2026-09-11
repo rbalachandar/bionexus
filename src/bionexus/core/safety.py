@@ -69,6 +69,50 @@ class MaxStepsRule:
         return None
 
 
+class ToxicophoreRule:
+    """Molecule-level safety: samples carrying a SMILES in
+    metadata['smiles'] are screened against curated structural alerts.
+    Hard alerts always refuse; medium alerts refuse unless the sample
+    declares matching intent (metadata['intent'], e.g. 'covalent warhead').
+    Without RDKit the rule reports 'unverified' honestly and does not block
+    (installation-gated depth, P1)."""
+
+    name = "toxicophores"
+
+    def check(self, protocol: ProtocolSubmission) -> str | None:
+        from bionexus.adapters.bio.tox_alerts import screen_smiles
+        for sample in protocol.samples:
+            smi = (sample.metadata or {}).get("smiles")
+            if not smi:
+                continue
+            out = screen_smiles(smi, (sample.metadata or {}).get("intent", ""))
+            if out["refuse"]:
+                first = out["refuse"][0]
+                return (f"sample '{sample.sample_id}' carries "
+                        f"{len(out['refuse'])} toxicophore alert(s): "
+                        + "; ".join(f"{h['alert']} ({h['note']})"
+                                    for h in out["refuse"][:3]))
+        return None
+
+
+class DurcTargetRule:
+    """Dual-use screen on everything a protocol names: title, samples,
+    reagents. Text-level, always on, no dependencies."""
+
+    name = "durc_screen"
+
+    def check(self, protocol: ProtocolSubmission) -> str | None:
+        from bionexus.adapters.bio.tox_alerts import durc_screen
+        blob = " ".join([protocol.title]
+                        + [s.sample_id for s in protocol.samples]
+                        + [r.name for r in protocol.reagents])
+        hits = durc_screen(blob)
+        if hits:
+            return ("names a select agent / regulated toxin family: "
+                    + ", ".join(hits) + " — dual-use review required")
+        return None
+
+
 class SafetyEngine:
     """Evaluates rules in order; first rejection wins. Operators compose rules;
     agents can only ever receive (approved, reason)."""
@@ -77,6 +121,8 @@ class SafetyEngine:
         self.rules: list[Any] = list(rules) if rules else [
             MaxBslRule(max_bsl=2),
             MaxStepsRule(max_steps=100),
+            DurcTargetRule(),
+            ToxicophoreRule(),
         ]
 
     def add_rule(self, rule: Any) -> None:
