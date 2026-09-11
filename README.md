@@ -15,9 +15,16 @@ the experiment ran.
 Two properties make it suitable for real laboratory work rather than
 demonstrations:
 
-- **Safety is structural.** Agents never address instruments directly. Every
-  physical action passes through a policy engine that sits outside the agent's
-  trust boundary, and a resource budget caps what a campaign may consume.
+- **Safety is structural, and it looks at molecules.** Agents never address
+  instruments directly: every physical action passes a policy engine outside
+  the agent's trust boundary, budgets cap consumption — and the gate screens
+  *structures* (versioned toxicophore rules, intent-aware) and *targets*
+  (dual-use/DURC refusal), not just paperwork.
+- **Trust is tiered, and the tiers are asymmetric.** Deterministic rules hold
+  the floor; AI may only tighten a gate, never loosen one; humans adjudicate,
+  and their decisions — not the model's — promote new rules. Every citation a
+  hypothesis leans on is verified against PubMed; a fabricated reference ranks
+  worse than none.
 - **Every step is auditable.** Problem, hypotheses, decisions, submissions,
   results, and verdicts are recorded in a hash-chained, tamper-evident
   provenance store that renders as a shareable report.
@@ -55,6 +62,7 @@ bn diary <branch>                      # campaign as a lab-notebook narrative
 bn prove <branch> --html out.html      # tamper-evident provenance + shareable report
 bn prove <branch> --eln out.csv        # ELN-ready export (Benchling/SISSYO-friendly)
 bn anchor [--publish-cmd CMD]          # Merkle-root the store; publish the root
+bn reproduce <branch>                  # replay a recorded experiment, diff verdicts
 bn sim                                 # reference design round on the virtual lab
 bn run examples/workflow.yml           # tournament + assay on the configured lab
 bn mcp                                 # MCP server: drive BioNexus from Claude/Cursor
@@ -98,6 +106,21 @@ The suite has already earned its keep: it caught an observed-max fit bias,
 per-run ground-truth instability, confirmation labels that overrode the
 gate, and non-hermetic tests. `evals/leaderboard.md` is regenerated on
 every run; the CI job fails if any score drops below the pass bar.
+
+### What keeps it trustworthy
+
+| Mechanism | What it guarantees |
+|---|---|
+| Molecular safety gate | 18+ curated toxicophore SMARTS (versioned data file — refusals cite the rule version); hard classes always refuse; electrophilic warheads pass **only** with declared covalent intent in the hypothesis |
+| DURC screening | campaigns naming select agents / regulated toxins are refused before any work, and the refusal is recorded |
+| Citation enforcement | PMIDs/DOIs resolved against PubMed; a fabricated reference scores below silence; offline checks never falsely accuse |
+| `bn reproduce` | the execution environment (lab, version, seed, concentrations) is in the provenance root — replay a branch, diff verdicts |
+| Fault tolerance | junk/adversarial instrument files degrade to honest "unreadable, no verdicts changed" — never crashes, never false confidence |
+| Input trust boundary | instrument labels are sanitized data; injection-shaped sample names provably cannot reach the gate as instructions |
+| Verdict stability | same ground truth, N noise draws — verdicts that flip are flagged borderline, not averaged away |
+| Attribution | per-prediction "why": exact n-gram contributions, importance-weighted RF bits (with hashed-bit caveats stated), triggered ADMET rules, AVI feature attributions |
+| Retrieval traces | every generation records prompt hash, model, injected flywheel negatives — "what shaped this hypothesis" is answerable from the chain |
+| Anchoring | Merkle root over the whole store; publish it anywhere you don't control for external tamper-evidence |
 
 ## Using BioNexus
 
@@ -308,7 +331,7 @@ step, and which BioNexus layer is responsible at each point:
 | 2. Hypothesis proposal | **Hypothesis agent** using the `rdkit` **skill** | Generates analogs with SAR rationale | Validates schema, dedupes, records rationale |
 | 3. Portfolio filter | **Portfolio selector** | Scores + ranks, applies diversity cap | Records every accept/reject with reason |
 | 4. Readiness review | **ExperimentDefinition** | Checks: is the readout capable? denominator present? synthesis feasible? | **Blocks** if result would be uninterpretable |
-| 5. Safety gate | **SafetyEngine** | Checks reagent compatibility, BSL, step count | **Refuses** unsafe protocols with a machine-readable reason |
+| 5. Safety gate | **SafetyEngine** | Checks reagents, BSL, step count, **toxicophores in sample structures**, dual-use text | **Refuses** with machine-readable reason + rule-set version |
 | 6. Lab execution | **LabAdapter** (simulator, Opentrons, PlateReaderShare) | Runs the assay, produces raw evidence | Records run ID, parameters, and raw output |
 | 7. Device event | **DeviceMonitor** | Notices the export appeared | Triggers agent analysis automatically |
 | 8. Analysis | **Analysis agent** + `labread` | Fits IC50s, checks QC, flags artifacts | Records measurements + QC flags as provenance |
@@ -463,6 +486,9 @@ Deeper design docs: [`docs/architecture.md`](docs/architecture.md) (blocks A–F
    outside any agent's trust boundary.
 6. **Claims are measured** — every capability claim has a scored eval task behind
    it; uncertainty is reported, not rounded away.
+7. **AI can only tighten the gate** — deterministic rules hold the safety floor,
+   model judgment may add flags or demand review but never clear a refusal,
+   and humans — not the model — promote adjudications into rules.
 
 ## Contributing
 
