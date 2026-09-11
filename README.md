@@ -14,22 +14,27 @@ execute them on simulated or real laboratory equipment, observe the results as
 they arrive, and deliver verdicts against criteria that were registered before
 the experiment ran.
 
-Two properties make it suitable for real laboratory work rather than
-demonstrations:
+Most agent demos stop at talking. BioNexus is built so you can let it act in a
+lab. Three reasons why:
 
-- **Safety is structural, and it looks at molecules.** Agents never address
-  instruments directly: every physical action passes a policy engine outside
-  the agent's trust boundary, budgets cap consumption — and the gate screens
-  *structures* (versioned toxicophore rules, intent-aware) and *targets*
-  (dual-use/DURC refusal), not just paperwork.
-- **Trust is tiered, and the tiers are asymmetric.** Deterministic rules hold
-  the floor; AI may only tighten a gate, never loosen one; humans adjudicate,
-  and their decisions — not the model's — promote new rules. Every citation a
-  hypothesis leans on is verified against PubMed; a fabricated reference ranks
-  worse than none.
-- **Every step is auditable.** Problem, hypotheses, decisions, submissions,
-  results, and verdicts are recorded in a hash-chained, tamper-evident
-  provenance store that renders as a shareable report.
+- **Safety is built in, not bolted on.** Agents never touch instruments
+  directly. Every physical action passes through a policy engine that sits
+  outside the agent's control, and budgets cap what a campaign may consume.
+  The gate also looks at molecules: structures are screened against versioned
+  toxicophore rules, so a declared covalent warhead can pass while an
+  undeclared one does not. Campaigns that name a regulated pathogen or toxin
+  are refused, and the refusal is recorded.
+- **AI can only make the rules stricter.** Deterministic checks hold the
+  floor. A model may add a flag or demand a human review, but it can never
+  clear a refusal. Humans settle the edge cases, and it is their judgment,
+  not the model's confidence, that writes new rules. Citations are checked
+  against PubMed: a hypothesis that cites a fake paper ranks below one that
+  cites nothing.
+- **Everything is auditable.** The problem, the hypotheses, every decision,
+  submission, result and verdict go into a hash-chained provenance store.
+  One command renders the whole story as a report. Another seals it with a
+  checksum you can publish somewhere you do not control, so anyone can check
+  that the record has not been edited.
 
 **Contents:** [Installation](#installation) · [CLI](#cli) ·
 [Case studies](#bionexus-case-studies-on-published-papers) ·
