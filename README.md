@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo/bionexus-banner.png" alt="BioNexus — agentic lab framework" width="640">
+  <img src="assets/logo/bionexus-banner.png" alt="BioNexus — agentic science framework" width="640">
 </p>
 
 [![ci](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml/badge.svg)](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml)
