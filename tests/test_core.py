@@ -238,7 +238,14 @@ def test_mechanistic_fields_flow_and_bonus():
     a, b = hs
     assert a.mechanism == "covalent-Cys" and a.citation == "PMID:12345"
     assert a.predicted_observables == ["mass adduct on peptide"]
-    assert explanatory_bonus(a) == 0.2 and explanatory_bonus(b) == 0.0
+    # a: mechanism + refutation + UNVERIFIED citation = 0.15 (citation adds 0)
+    # verified citation: +0.05 -> 0.20; invalid citation: -0.10 -> 0.05
+    assert abs(explanatory_bonus(a) - 0.15) < 1e-9
+    assert explanatory_bonus(b) == 0.0
+    a.citation_status = "verified"
+    assert abs(explanatory_bonus(a) - 0.2) < 1e-9
+    a.citation_status = "invalid"
+    assert abs(explanatory_bonus(a) - 0.05) < 1e-9
     sel = t.select_portfolio(p, hs, lambda h: 0.5, k=1)
     assert sel == [a]                       # explanatory power broke the tie
     recs = t.store.branch_records(f"problem/{p.problem_id}")
@@ -263,3 +270,27 @@ def test_dose_designer_posterior_converges():
     assert abs(est - true) / true < 0.5
     assert len(seen) >= 3          # actually explored distinct doses
     assert d.entropy() < math.log(len(d.grid))   # posterior shrank
+
+
+def test_citation_parsing_and_verification(tmp_path, monkeypatch):
+    from bionexus import citations
+    monkeypatch.setattr(citations, "CACHE", tmp_path / "citations.json")
+    assert citations.parse("PMID:35377565") == ("pmid", "35377565")
+    assert citations.parse("10.1021/acs.jmedchem.4c02631") == \
+        ("doi", "10.1021/acs.jmedchem.4c02631")
+    assert citations.parse("see Smith 2020 for details") is None
+
+    def fake_fetch(url):
+        if "esummary" in url:
+            return b'{"result": {"35377565": {"title": "HPK1 inhibitors",' \
+                    b'"pubdate": "2025 Jan 1", "source": "J Med Chem"}}}'
+        return b'{"esearchresult": {"idlist": []}}'
+    v = citations.verify("PMID:35377565", fetch=fake_fetch)
+    assert v["status"] == "verified" and "J Med Chem" in v["detail"]
+    v2 = citations.verify("10.9999/nonexistent.2099", fetch=fake_fetch)
+    assert v2["status"] == "invalid"
+
+    def dead_fetch(url):
+        raise OSError("offline")
+    v3 = citations.verify("PMID:99999999", fetch=dead_fetch)
+    assert v3["status"] == "check-failed"      # network != fake

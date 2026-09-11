@@ -178,6 +178,23 @@ def propose_families_with_agent(
         kept_specs.append(s_)
     specs = kept_specs
 
+    # verify every cited reference — the "never invent" clause, enforced
+    cited = sorted({s.get("citation") for s in specs if s.get("citation")})
+    if cited:
+        from bionexus import citations
+        results = {c: citations.verify(c) for c in cited}
+        for s in specs:
+            c = s.get("citation")
+            if c and c in results:
+                s["citation_status"] = results[c]["status"]
+                s["citation_detail"] = results[c]["detail"]
+        summary = ", ".join(f"{c}={results[c]['status']}" for c in cited)
+        say(f"citation check: {summary}")
+        bad = [c for c in cited if results[c]["status"] == "invalid"]
+        if bad:
+            say(f"WARNING: {len(bad)} fabricated/unresolvable citation(s) "
+                "penalized in portfolio scoring")
+
     variants = tracker.propose_families(problem, [
         {**{k: f[k] for k in ("family", "parent_statement", "kind", "rationale")
             if k in f}, "variants": [s for s in specs if s["family"] == f.get("family")]}

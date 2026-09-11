@@ -117,10 +117,19 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                             f"{hp.get('statement', '')}")
                 c2.caption(stage)
                 crit = hp.get("criteria") or {}
+                _cit = ""
+                if hp.get("citation"):
+                    _st = hp.get("citation_status", "unverified")
+                    _icon = {"verified": "📚✓", "invalid": "📚⚠️ FABRICATED",
+                             "check-failed": "📚?",
+                             "unverified": "📚"}.get(_st, "📚")
+                    _cit = f" · {_icon} {hp['citation']}" + (
+                        f" ({hp['citation_detail']})"
+                        if hp.get("citation_detail") else "")
                 if hp.get("mechanism"):
-                    st.caption(f"⚙️ mechanism: {hp['mechanism']}"
-                               + (f" · 📚 {hp['citation']}"
-                                  if hp.get("citation") else ""))
+                    st.caption(f"⚙️ mechanism: {hp['mechanism']}{_cit}")
+                elif _cit:
+                    st.caption(_cit[3:])
                 if hp.get("refutation_condition"):
                     st.caption(f"☠️ refuted if: {hp['refutation_condition']}")
                 meta_bits = [f"predicted: {hp.get('predicted', '—')}"]

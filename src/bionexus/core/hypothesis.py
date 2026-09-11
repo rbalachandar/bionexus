@@ -125,6 +125,8 @@ class Hypothesis(BaseModel):
     predicted_observables: list[str] = Field(default_factory=list)
     refutation_condition: str = ""      # what observation KILLS this hypothesis
     citation: str = ""                  # PMID/DOI grounding the rationale
+    citation_status: str = "unverified"  # unverified|verified|invalid|check-failed
+    citation_detail: str = ""
     candidate: str                      # molecule/sample id under test
     assay_type: str = ""
     predicted: str                      # human-readable prediction
@@ -146,16 +148,20 @@ class Hypothesis(BaseModel):
 def explanatory_bonus(h: "Hypothesis") -> float:
     """Explanatory power is worth a portfolio edge: a hypothesis that says
     WHY (mechanism), HOW IT COULD DIE (refutation condition), and WHERE IT
-    COMES FROM (citation) is more testable science than a bare prediction.
-    Capped at 0.2 so it breaks ties, never overrides real scores."""
+    COMES FROM (a VERIFIED citation) is more testable science than a bare
+    prediction. Capped at 0.2 so it breaks ties, never overrides real
+    scores. An INVALID citation is penalized below a bare hypothesis —
+    fabricated grounding is worse than none ("never invent" enforced)."""
     bonus = 0.0
     if h.mechanism:
         bonus += 0.10
     if h.refutation_condition:
         bonus += 0.05
-    if h.citation:
+    if h.citation_status == "verified":
         bonus += 0.05
-    return min(bonus, 0.2)
+    elif h.citation_status == "invalid":
+        bonus -= 0.10
+    return max(-0.1, min(bonus, 0.2))
 
 
 class HypothesisTracker:
@@ -243,6 +249,8 @@ class HypothesisTracker:
                 refutation_condition=spec.get("refutation_condition", ""),
                 predicted_observables=spec.get("predicted_observables"),
                 citation=spec.get("citation", ""),
+                citation_status=spec.get("citation_status", "unverified"),
+                citation_detail=spec.get("citation_detail", ""),
                 round_no=0,
                 criteria=spec.get("criteria"),
                 design=spec.get("design"),
@@ -297,6 +305,8 @@ class HypothesisTracker:
                     refutation_condition=spec.get("refutation_condition", ""),
                     predicted_observables=spec.get("predicted_observables"),
                     citation=spec.get("citation", ""),
+                    citation_status=spec.get("citation_status", "unverified"),
+                    citation_detail=spec.get("citation_detail", ""),
                     round_no=0,
                     criteria=spec.get("criteria"),
                     design=spec.get("design"),
@@ -356,7 +366,8 @@ class HypothesisTracker:
                 rationale: str = "", round_no: int = 1,
                 mechanism: str = "", refutation_condition: str = "",
                 predicted_observables: list[str] | None = None,
-                citation: str = "",
+                citation: str = "", citation_status: str = "unverified",
+                citation_detail: str = "",
                 criteria: SuccessCriteria | None = None,
                 design: ExperimentDesign | None = None,
                 branch_id: str | None = None, **meta: Any) -> Hypothesis:
@@ -377,6 +388,8 @@ class HypothesisTracker:
             refutation_condition=refutation_condition,
             predicted_observables=predicted_observables or [],
             citation=citation,
+            citation_status=citation_status,
+            citation_detail=citation_detail,
             candidate=candidate,
             assay_type=assay_type,
             predicted=predicted,
@@ -397,6 +410,10 @@ class HypothesisTracker:
                                                  "refutation_condition":
                                                      refutation_condition,
                                                  "citation": citation,
+                                                 "citation_status":
+                                                     citation_status,
+                                                 "citation_detail":
+                                                     citation_detail,
                                                  "predicted_observables":
                                                      h.predicted_observables}))
         return h
@@ -480,7 +497,9 @@ class HypothesisTracker:
             metadata={"candidate": h.candidate, "assay": h.assay_type,
                       "statement": h.statement,
                       **({"mechanism": h.mechanism} if h.mechanism else {}),
-                      **({"citation": h.citation} if h.citation else {})},
+                      **({"citation": h.citation,
+                          "citation_status": h.citation_status}
+                         if h.citation else {})},
         )
 
     def record_outcome(self, h: Hypothesis, extra: dict | None = None) -> Hypothesis:

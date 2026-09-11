@@ -520,6 +520,16 @@ def wizard_view() -> None:
             extras = {"mechanism": st.session_state.get("w_mech", ""),
                       "refutation_condition": st.session_state.get("w_refute", ""),
                       "citation": st.session_state.get("w_cite", "")}
+            if extras["citation"]:
+                from bionexus import citations
+                res = citations.verify(extras["citation"])
+                extras["citation_status"] = res["status"]
+                extras["citation_detail"] = res["detail"]
+                if res["status"] == "verified":
+                    st.toast(f"Citation verified: {res['detail']}", icon="📚")
+                elif res["status"] == "invalid":
+                    st.toast("Citation does not resolve — hypothesis penalized",
+                             icon="⚠️")
             _save("designing", design_extras=extras,
                   exp_def=exp.model_dump(mode="json"),
                   readiness={"verdict": review.verdict.value,

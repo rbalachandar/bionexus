@@ -84,7 +84,12 @@ def build_diary_html(records: list[Any], branch: str) -> str:
             if d.get("rationale"):
                 bits.append(f"rationale: {d['rationale']}")
             if d.get("citation"):
-                bits.append(f"citation: {d['citation']}")
+                _cs = d.get("citation_status", "unverified")
+                _tag = {"verified": "✓ verified",
+                        "invalid": "⚠ UNVERIFIABLE — penalized",
+                        "check-failed": "? check failed (offline)"}.get(_cs, "")
+                bits.append(f"citation: {d['citation']}"
+                            + (f" ({_tag})" if _tag else ""))
             if d.get("predicted"):
                 bits.append(f"prediction: {d['predicted']}")
             if d.get("refutation_condition"):

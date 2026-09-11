@@ -149,10 +149,17 @@ rendering), `core/hypothesis.py` (verdict logic), `watch.py` (agent loop),
 Positioning bet: trustworthiness as architecture, not marketing. Priority order:
 
 ### Trust-T0 — credibility gates
-- [ ] **Citation verification**: every PMID/DOI on a hypothesis checked against
-  PubMed (`adapters/databases/pubmed.py` exists); unverifiable → hypothesis
-  flagged `citation-unverified` and prior-bonus revoked; recorded in provenance.
-  The "never invent" clause needs an enforcement mechanism, not a plea.
+- [x] **Citation verification** (`src/bionexus/citations.py`) — PMID/DOI
+  resolved against PubMed E-utilities with a local cache; statuses
+  verified/invalid/check-failed (offline ≠ fake). Enforced: verified +0.05,
+  invalid −0.10 (below a bare hypothesis), unverified 0 — so a fabricated
+  reference ranks worse than no reference. Wired into the agent generation
+  path (batch check + warning), the wizard (toast + provenance decision),
+  artifact metadata, pipeline cards (📚✓ / 📚⚠️ FABRICATED) and diary lines.
+  Live-validated: PMID 35377565 → verified "2025 · J Med Chem"; fake DOI →
+  invalid; k=1 portfolio picked the verified-citation hypothesis.
+  [ ] next step: verify the CITED WORK actually supports the claim (title/
+  abstract relevance check), not just existence
 - [ ] **Molecular safety gate**: toxicophore screen (structural alerts:
   mutagenicity, reactive-warhead liability beyond declared intent, PAINS
   escalation) as a hard SafetyEngine check at submission — today it inspects
