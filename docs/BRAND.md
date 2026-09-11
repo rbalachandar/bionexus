@@ -23,7 +23,8 @@ favicon, single-colour etching, dark mode, embroidery.
 | `assets/logo/bionexus-mark-mono.svg` | single-colour (print, etching) |
 | `assets/logo/bionexus-mark-dark.svg` | dark backgrounds |
 | `assets/logo/favicon.svg` | app/browser icons |
-| `assets/logo/bionexus-lockup[-dark].svg` | wordmark lockups |
+| `assets/logo/bionexus-lockup[-dark].svg` | wordmark lockups (source) |
+| `assets/logo/*.png` | web/README renders (GitHub won't inline SVG `<img>`) |
 
 ## Palette (shared with the workbench theme)
 
