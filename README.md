@@ -16,12 +16,13 @@ the experiment ran.
 
 BioNexus is built on three principles:
 
-- **Safety first, and it looks at molecules.** Agents never touch instruments
-  directly. Every physical action passes through a policy engine that sits
-  outside the agent's control, and budgets cap what a campaign may consume.
-  Structures are screened against versioned toxicophore rules, so a declared
-  covalent warhead can pass while an undeclared one does not. Campaigns that
-  name a regulated pathogen or toxin are refused, and the refusal is recorded.
+- **Safety first, and it checks molecules too.** The only path from an agent
+  to a lab is the gateway: every submission passes a policy engine the agent
+  cannot modify or approve itself, and budgets cap what a campaign may
+  consume. When experiments declare structures, those are screened against
+  versioned toxicophore rules, so a declared covalent warhead can pass while
+  an undeclared one does not. Campaigns that name a regulated pathogen or
+  toxin are refused, and the refusal is recorded.
 - **Tiered trust.** Deterministic rules hold the floor. A model may add a
   flag or demand a human review, but it can never clear a refusal. Humans
   settle the edge cases, and it is their judgment, not the model's
