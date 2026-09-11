@@ -11,6 +11,13 @@ Three shapes, one argument:
 - **Nexus dot** — the centre where verified evidence becomes recorded
   knowledge; also the period in `bionexus.`
 
+## The wordmark: the mark hides in the word
+
+`bionexus.` is drawn as a custom geometric monoline (same stroke weight and
+round caps as the mark) — and the **o is the gated loop**: ring, gate bar
+rising like an ascender, nexus dot at its center. The i-dot and the final
+period are teal: three accents, one system. The word *is* the argument.
+
 Deliberately *not*: helices, molecules, lightning bolts, gradients, or
 any emoji-adjacent biology stock vocabulary. The mark survives: 16px
 favicon, single-colour etching, dark mode, embroidery.
@@ -23,7 +30,8 @@ favicon, single-colour etching, dark mode, embroidery.
 | `assets/logo/bionexus-mark-mono.svg` | single-colour (print, etching) |
 | `assets/logo/bionexus-mark-dark.svg` | dark backgrounds |
 | `assets/logo/favicon.svg` | app/browser icons |
-| `assets/logo/bionexus-lockup[-dark].svg` | wordmark lockups (source) |
+| `assets/logo/bionexus-wordmark[-dark].svg` | wordmark — primary horizontal logo (source) |
+| `assets/logo/bionexus-lockup[-dark].svg` | mark+word lockup (where the mark must stand alone) |
 | `assets/logo/*.png` | web/README renders (GitHub won't inline SVG `<img>`) |
 
 ## Palette (shared with the workbench theme)
