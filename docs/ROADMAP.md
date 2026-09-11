@@ -143,3 +143,35 @@ Key files: `Overview.py` (router UI), `src/bionexus/webview.py` (shared
 rendering), `core/hypothesis.py` (verdict logic), `watch.py` (agent loop),
 `autoloop.py` (campaign flow), `diary.py` (narrative), `program.py` (TPP),
 `adapters/databases/chembl_gates.py` (evidence-based gates).
+
+
+## Trust Initiative — safety · reliability · mechanistic interpretability
+Positioning bet: trustworthiness as architecture, not marketing. Priority order:
+
+### Trust-T0 — credibility gates
+- [ ] **Citation verification**: every PMID/DOI on a hypothesis checked against
+  PubMed (`adapters/databases/pubmed.py` exists); unverifiable → hypothesis
+  flagged `citation-unverified` and prior-bonus revoked; recorded in provenance.
+  The "never invent" clause needs an enforcement mechanism, not a plea.
+- [ ] **Molecular safety gate**: toxicophore screen (structural alerts:
+  mutagenicity, reactive-warhead liability beyond declared intent, PAINS
+  escalation) as a hard SafetyEngine check at submission — today it inspects
+  protocols, never molecules. DURC awareness pass on targets/sequences with
+  refusal + provenance record.
+
+### Trust-T1 — reproducibility & honesty under fault
+- [ ] `bn reproduce <branch>` — replay from recorded seeds/prompts/model
+  versions; verdict-diff report. Reproducibility as a command.
+- [ ] Fault-injection suite: malformed/missing/adversarial instrument exports
+  (wrong units, duplicate wells, prompt-injection strings in sample names) —
+  pipeline must degrade to honest inconclusive, never false confidence.
+- [ ] **Input trust boundary**: instrument outputs & literature text sanitized
+  as data-only; executable instructions originate from code, never payloads.
+- [ ] Model-variance reporting: verdicts across N seeds shown as spread on the
+  card, not a single number.
+
+### Trust-T2 — mechanistic interpretability
+- [ ] Attribution panel per prediction: Morgan-RF → top contributing fingerprint
+  features; CharRidge → top n-grams; rendered beside verdicts ("why").
+- [ ] Retrieval traces in provenance: which flywheel negatives, skill blocks,
+  and ChEMBL context entered each generation prompt (currently only sizes).
