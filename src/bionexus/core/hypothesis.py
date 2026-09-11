@@ -213,8 +213,12 @@ class HypothesisTracker:
 
     # ------------------------------------------- stage 0: problem & portfolio
 
-    def define_problem(self, problem: ProblemStatement) -> ProblemStatement:
-        """Record the problem + constraints. Root of the provenance tree."""
+    def define_problem(self, problem: ProblemStatement,
+                       environment: dict | None = None) -> ProblemStatement:
+        """Record the problem + constraints + execution environment.
+        The environment block (lab adapter name/version/seed, concentrations,
+        autonomy) is what makes `bn reproduce` possible — without it recorded,
+        reproducibility would be a claim, not a command."""
         self.store.append(self._record(
             Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
             EventType.problem_defined, None,
@@ -223,6 +227,7 @@ class HypothesisTracker:
                 "objective": problem.objective,
                 "constraints": [c.model_dump() for c in problem.constraints],
                 "success_metric": problem.success_metric,
+                "environment": environment or {},
             },
         ))
         return problem

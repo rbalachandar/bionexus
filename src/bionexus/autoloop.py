@@ -68,6 +68,8 @@ class CampaignConfig:
     concentrations: tuple[str, ...] = ("0.5uM", "2uM", "10uM", "40uM")
     dose_design: str = "fixed"          # "fixed" | "adaptive" (Bayesian
                                         # sequential dosing, 3 wells)
+    noise_variant: int = 0              # measurement-noise offset: varies
+                                        # noise, never the ground truth
     inbox: str | Path = ".data/inbox"
     flywheel: Any = None                # shared Flywheel (default: local db)
     autonomy: Autonomy = "gate"
@@ -125,7 +127,15 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             f"DURC: campaign names a select agent / regulated toxin family "
             f"({', '.join(durc_hits)}) — refused and recorded; requires "
             f"institutional review before BioNexus will run it")
-    problem = tracker.define_problem(cfg.problem)
+    problem = tracker.define_problem(cfg.problem, environment={
+        "lab": getattr(lab, "name", "unknown"),
+        "lab_version": getattr(lab, "version", None),
+        "lab_seed": getattr(lab, "seed", None),
+        "concentrations": list(cfg.concentrations),
+        "autonomy": cfg.autonomy,
+        "dose_design": cfg.dose_design,
+        "k": cfg.k,
+    })
     family_scores: dict[str, float] = {}
     if cfg.hypothesis_source == "agent":
         from bionexus.hypothesis_agent import propose_families_with_agent
@@ -212,7 +222,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         h.design.run_id = run_id
         _export_instrument_file(inbox, run_id, h.candidate,
                                 [screen_conc] if adaptive else cfg.concentrations,
-                                lab=lab)
+                                lab=lab, noise_variant=cfg.noise_variant)
 
     if cfg.autonomy == "observe":
         return CampaignReport(problem_id=problem.problem_id,
@@ -224,7 +234,8 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     def _export(run_id: str, candidate: str,
                 concs: list[str] | None = None) -> None:
         _export_instrument_file(inbox, run_id, candidate,
-                                concs or list(cfg.concentrations), lab=lab)
+                                concs or list(cfg.concentrations), lab=lab,
+                                noise_variant=cfg.noise_variant)
 
     agent = AutoAnalysisAgent(notify=(lambda m: (messages.append(m), say(f"[agent] {m}"))),
                               tracker=tracker, gateway=gateway,
@@ -261,14 +272,15 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
 
 
 def _export_instrument_file(inbox: Path, run_id: str, candidate: str,
-                            concentrations: tuple[str, ...], lab: Any = None) -> None:
+                            concentrations: tuple[str, ...], lab: Any = None,
+                            noise_variant: int = 0) -> None:
     """Stand-in for the instrument finishing: it drops its export in the
     outbox. Uses the lab's per-compound ground truth when available so the
     fitted IC50 reflects simulated pharmacology, not a fixed pattern."""
     import random
 
     time.sleep(0.1)
-    rng = random.Random(f"{run_id}:{candidate}")
+    rng = random.Random(f"{run_id}:{candidate}:v{noise_variant}")
     n_rep = getattr(lab, "replicates", 3) if lab is not None else 3
     lines = ["Well ID,Compound,Conc (uM),RFU", "A1,ctrl,10,100", "A2,ctrl,10,104"]
     true_ic50 = None

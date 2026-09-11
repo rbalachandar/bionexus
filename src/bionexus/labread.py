@@ -118,7 +118,8 @@ def _parse_long(rows: list[list[str]]) -> list[dict[str, Any]]:
         well = row[mapping["well"]].strip() if "well" in mapping else ""
         if well and not WELL_RE.match(well):
             continue
-        sample = row[mapping["sample"]].strip() if "sample" in mapping else (well or "")
+        sample = (sanitize_label(row[mapping["sample"]]) if "sample" in
+                  mapping else (well or ""))
         value = row[mapping["value"]].strip() if "value" in mapping else ""
         if not _is_number(value):
             continue
@@ -288,6 +289,15 @@ def z_factor(values: list[float]) -> float:
     mean = sum(values) / len(values)
     var = sum((v - mean) ** 2 for v in values) / (len(values) - 1)
     return math.sqrt(var)
+
+
+def sanitize_label(text: Any, cap: int = 60) -> str:
+    """Instrument-file labels are UNTRUSTED data: strip control characters,
+    collapse whitespace, cap length. They flow into logs, prompts and table
+    keys — they must never carry structure or instructions."""
+    s = "".join(ch for ch in str(text) if ch.isprintable())
+    s = " ".join(s.split())
+    return s[:cap]
 
 
 def analyze_records(records: list[dict[str, Any]],

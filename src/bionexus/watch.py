@@ -118,13 +118,21 @@ class AutoAnalysisAgent:
             return None
         from bionexus.labread import read_plate
 
-        if self.adaptive:
-            return self._handle_adaptive(event)
-        conf = self._confirmations.get(event.path.stem)
-        if conf:
-            return self._handle_confirmation(event, conf)
-        self.notify(f"noticed device output: {event.path.name} — reading it")
-        result = read_plate(event.path, max_response=self.max_response)
+        try:
+            if self.adaptive:
+                return self._handle_adaptive(event)
+            conf = self._confirmations.get(event.path.stem)
+            if conf:
+                return self._handle_confirmation(event, conf)
+            self.notify(f"noticed device output: {event.path.name} — reading it")
+            result = read_plate(event.path, max_response=self.max_response)
+        except Exception as exc:
+            # a broken instrument file is a DATA problem, never a crash:
+            # report honestly, leave hypotheses untouched, keep running
+            self.notify(f"⚠ instrument output unreadable ({event.path.name}): "
+                        f"{str(exc)[:120]} — flagged for review, no verdicts "
+                        f"changed")
+            return {"error": str(exc)[:200], "file": event.path.name}
         self.notify(f"analyzed: {len(result.analysis['compounds'])} compound(s), "
                     f"Z'={result.z_prime}")
 

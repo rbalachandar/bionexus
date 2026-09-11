@@ -274,3 +274,24 @@ def _t_flywheel():
                        "ruled_out_campaign1": sorted(ruled_out),
                        "family_A_prior": fw.family_prior("scaffold-A")},
                       "the dead family must get zero lab slots")
+
+
+@register("verdict-stability",
+          "same hypotheses across 3 lab seeds: what fraction of verdicts "
+          "are stable? (unstable = borderline evidence, honestly reported)")
+def _t_stability():
+    from bionexus.evals.harness import TaskResult
+    from bionexus.reliability import verdict_spread
+    specs = [{"statement": f"S-{i} binds", "candidate": f"S-{i}",
+              "assay_type": "binding", "predicted": "<=20",
+              "predicted_value": 20.0} for i in (1, 2, 3, 4)]
+    out = verdict_spread(specs, 20.0, k=4, lab_seed=5,
+                         noise_variants=(0, 1, 2),
+                         inbox=INBOX.parent / "variance")
+    score = out["stability"]
+    return TaskResult("verdict-stability",
+                      "verdicts stable across lab seeds", score,
+                      score >= 0.5,
+                      {"stability": score, "per_candidate": out["per_candidate"]},
+                      "unstable verdicts flag borderline evidence — reported, "
+                      "not hidden")

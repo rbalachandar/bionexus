@@ -1,15 +1,15 @@
 [
  {
   "task": "hit-recovery",
-  "score": 0.833,
+  "score": 0.917,
   "passed": true,
   "metrics": {
    "judged": 6,
    "calls": {
     "E-01": {
-     "verdict": "refuted",
+     "verdict": "inconclusive",
      "true_ic50": 26.74,
-     "credit": 1.0
+     "credit": 0.5
     },
     "E-03": {
      "verdict": "confirmed",
@@ -17,9 +17,9 @@
      "credit": 1.0
     },
     "E-02": {
-     "verdict": "inconclusive",
+     "verdict": "refuted",
      "true_ic50": 21.04,
-     "credit": 0.5
+     "credit": 1.0
     },
     "E-06": {
      "verdict": "confirmed",
@@ -27,9 +27,9 @@
      "credit": 1.0
     },
     "E-05": {
-     "verdict": "inconclusive",
+     "verdict": "confirmed",
      "true_ic50": 15.4,
-     "credit": 0.5
+     "credit": 1.0
     },
     "E-04": {
      "verdict": "confirmed",
@@ -46,11 +46,11 @@
   "score": 1.0,
   "passed": true,
   "metrics": {
-   "straddling_ci": 3,
+   "straddling_ci": 2,
    "violations": 0,
    "duration_s": 10.1
   },
-  "notes": "bar at E-03's true IC50 (10.75 uM); 3 borderline CIs, 0 overconfident verdicts"
+  "notes": "bar at E-03's true IC50 (10.75 uM); 2 borderline CIs, 0 overconfident verdicts"
  },
  {
   "task": "confirmation-coverage",
@@ -59,7 +59,7 @@
   "metrics": {
    "confirmed": 1,
    "with_agreement": 1,
-   "duration_s": 5.3
+   "duration_s": 6.4
   },
   "notes": "no confirmations at all -> 0 (mechanism unused)"
  },
@@ -82,7 +82,7 @@
     "E-09",
     "E-11"
    ],
-   "duration_s": 3.6
+   "duration_s": 4.3
   },
   "notes": "all k picks must be mechanistic+cited"
  },
@@ -115,5 +115,37 @@
    "duration_s": 3.6
   },
   "notes": "the dead family must get zero lab slots"
+ },
+ {
+  "task": "verdict-stability",
+  "score": 1.0,
+  "passed": true,
+  "metrics": {
+   "stability": 1.0,
+   "per_candidate": {
+    "S-1": [
+     "invalidated",
+     "invalidated",
+     "invalidated"
+    ],
+    "S-2": [
+     "inconclusive",
+     "inconclusive",
+     "inconclusive"
+    ],
+    "S-3": [
+     "inconclusive",
+     "inconclusive",
+     "inconclusive"
+    ],
+    "S-4": [
+     "confirmed",
+     "confirmed",
+     "confirmed"
+    ]
+   },
+   "duration_s": 9.5
+  },
+  "notes": "unstable verdicts flag borderline evidence \u2014 reported, not hidden"
  }
 ]

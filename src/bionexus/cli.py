@@ -396,6 +396,27 @@ def cmd_fixtures(args: argparse.Namespace) -> int:
     return 2
 
 
+def cmd_reproduce(args: argparse.Namespace) -> int:
+    from bionexus.reproduce import reproduce
+    res = reproduce(args.branch, db_path=args.db)
+    status = res["status"]
+    icon = {"match": "✅", "differs": "⚠️", "not-reproducible": "⏭",
+            "error": "❌"}.get(status, "•")
+    print(f"{icon} {status}", end="")
+    if status in ("match", "differs"):
+        print(f" — {res['matched']}/{res['recorded_verdicts']} verdicts "
+              f"reproduced identically")
+        for d in res["diffs"]:
+            print(f"   Δ {d['candidate']}: recorded={d['recorded']} "
+                  f"replayed={d['replayed']}")
+        print(f"   env: {res['environment'].get('lab')} "
+              f"seed={res['environment'].get('lab_seed')} "
+              f"conc={res['environment'].get('concentrations')}")
+    else:
+        print(f" — {res.get('reason', '')}")
+    return 0 if status == "match" else 1
+
+
 def cmd_templates(args: argparse.Namespace) -> int:
     from bionexus.templates import list_templates, load_template
 
@@ -581,6 +602,11 @@ def main(argv: list[str] | None = None) -> int:
     anc.add_argument("--publish-cmd",
                      help="shell command receiving the anchor JSON on stdin "
                           "(e.g. 'gh gist create - && …', 'git commit …')")
+    rep = sub.add_parser("reproduce",
+                         help="replay a recorded experiment; diff verdicts")
+    rep.add_argument("branch")
+    rep.add_argument("--db", default="bionexus.db")
+    rep.set_defaults(func=cmd_reproduce)
     ev = sub.add_parser("eval", help="run the eval suite (tasks, scores, leaderboard)")
     ev.add_argument("--task", help="run a single task by id")
     ev.add_argument("--suite", help="comma list: epistemics,models,reproductions "

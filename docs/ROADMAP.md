@@ -171,17 +171,31 @@ Positioning bet: trustworthiness as architecture, not marketing. Priority order:
   warhead passed, aspirin clean; 57 tests.
 
 ### Trust-T1 — reproducibility & honesty under fault
-- [ ] `bn reproduce <branch>` — replay from recorded seeds/prompts/model
-  versions; verdict-diff report. Reproducibility as a command.
-- [ ] Fault-injection suite: malformed/missing/adversarial instrument exports
-  (wrong units, duplicate wells, prompt-injection strings in sample names) —
-  pipeline must degrade to honest inconclusive, never false confidence.
-- [ ] **Input trust boundary**: instrument outputs & literature text sanitized
-  as data-only; executable instructions originate from code, never payloads.
-- [ ] Model-variance reporting: verdicts across N seeds shown as spread on the
-  card, not a single number.
+- [x] `bn reproduce <branch>` — the execution ENVIRONMENT (lab adapter,
+  version, seed, concentrations, k, dose design) is now recorded in
+  problem_defined; reproduce replays it and diffs verdicts. Live: 2/2
+  verdicts identical from seed 42. Legacy branches with no environment
+  report `not-reproducible` honestly. Live labs: recording playback, not
+  simulated replay. [ ] model/prompt version pinning for LLM paths
+- [x] Fault suite (`tests/test_faults.py`): junk CSVs return error summaries
+  with hypotheses untouched (agent.handle is now exception-safe); garbage
+  SMILES are inert at the gate; empty/partial plates never invent fits
+- [x] **Input trust boundary**: `labread.sanitize_label` (control chars
+  stripped, capped) on every instrument-file label; proven by test that an
+  injection-shaped sample name is inert dict-key data, never policy
+- [x] Model-variance reporting: `reliability.verdict_spread` — same ground
+  truth (one lab seed), N measurement-noise draws (`CampaignConfig.
+  noise_variant`); flips = borderline evidence. Eval task
+  `verdict-stability` (7-task suite, mean 0.970). [ ] surface spread on
+  the pipeline card in the UI (currently eval-level only)
 
 ### Trust-T2 — mechanistic interpretability
+- [ ] **Scalable safety (tiered)**: alerts/DURC lists move from code to
+  versioned JSON data (ingest Benigni/Bosa + Toxtree/OpenAlerts rulebooks);
+  AI tox reviewer joins as ADVISORY tier with the **tighten-only
+  invariant** — model output may add flags or demand review, never clear a
+  deterministic refusal; human adjudications feed flywheel → candidate
+  rules (humans promote, not the model)
 - [ ] Attribution panel per prediction: Morgan-RF → top contributing fingerprint
   features; CharRidge → top n-grams; rendered beside verdicts ("why").
 - [ ] Retrieval traces in provenance: which flywheel negatives, skill blocks,
