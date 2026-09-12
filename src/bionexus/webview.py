@@ -36,7 +36,6 @@ def _pipeline_body(logf: Path, problem_id: str | None,
     run_map: dict[str, list[str]] = {}   # hypothesis_id -> run ids (provenance)
     tested: dict[str, dict] = {}
     gates = 0
-    problem_info: dict = {}
     run_ts: dict[str, float] = {}
     for r in recs:
         d = r.decision or {}
@@ -44,8 +43,6 @@ def _pipeline_body(logf: Path, problem_id: str | None,
         art_id = r.artifact.artifact_id if r.artifact else None
         art_meta = r.artifact.metadata if r.artifact else {}
         ts = getattr(getattr(r, "envelope", None), "created_at", None)
-        if et == "problem_defined":
-            problem_info = d
         if et == "lab_run" and d.get("run_id"):
             run_ts[d["run_id"]] = ts or 0
         if et == "hypothesis_proposed":
