@@ -110,9 +110,56 @@ def render_verdicts(recs) -> None:
                    "each abstention is a CI that straddled the gate.")
 
 
+def render_trust(recs, log_lines=()) -> None:
+    """Per-run trust summary: what was checked, refused, flagged, abstained."""
+    props = _proposed(recs)
+    cstates = [(r.decision or {}).get("citation_status")
+               for r in props if (r.decision or {}).get("citation")]
+    refusals = [l for l in log_lines if "rejected" in l]
+    durc = [r for r in recs
+            if (r.decision or {}).get("kind") == "durc_refusal"]
+    advs = [r for r in recs if (r.decision or {}).get("kind") == "advisory"]
+    n_flags = sum(len((a.decision or {}).get("flags", [])) for a in advs)
+    last: dict[str, dict] = {}
+    for r in recs:
+        if r.event_type.value.startswith("hypothesis_"):
+            d = r.decision or {}
+            cand = _candidate(r)
+            if cand and d.get("verdict"):
+                last[cand] = d
+    abstained = sum(1 for d in last.values()
+                    if d.get("verdict") in ("inconclusive", "proposed"))
+    rules = "—"
+    for l in refusals:
+        if "safety-rules-" in l:
+            rules = l.split("[rules ")[1].split("]")[0]
+            break
+    st.markdown("### Trust summary for this run")
+    c1, c2, c3, c4 = st.columns(4)
+    ver = cstates.count("verified")
+    c1.metric("Citations verified", f"{ver}/{len(cstates)}" if cstates
+              else "none cited")
+    c2.metric("Gate refusals", len(refusals) + len(durc))
+    c3.metric("Advisory flags", n_flags)
+    c4.metric("Verdicts abstained", abstained)
+    st.caption(f"rule set: {rules} · a fabricated citation costs portfolio "
+               "score · a CI straddling the gate abstains — "
+               "abstention is a verdict, not a failure")
+    with st.expander("Evidence panel: what a verdict is made of"):
+        from bionexus import figures
+        st.markdown(figures.get("evidence"), unsafe_allow_html=True)
+        st.caption("A 3-parameter Hill fit (plateau profiled, not assumed), "
+                   "residual-bootstrap 95% CI shown as the shaded band, Z′ "
+                   "QC from the plate. The verdict reads the band against the "
+                   "pre-registered gate — left panel passes, middle "
+                   "abstains, right fails. Same rendering as the "
+                   "instrument-output blocks in the pipeline above.")
+
+
 def render(recs, log_lines=()) -> None:
     st.markdown("### The record of this run")
     render_hypotheses(recs)
     render_portfolio(recs)
     render_gates(recs, log_lines)
     render_verdicts(recs)
+    render_trust(recs, log_lines)
