@@ -40,30 +40,41 @@ class Flywheel:
                     outcome TEXT NOT NULL,
                     observed REAL,
                     ci_low REAL,
-                    ci_high REAL
+                    ci_high REAL,
+                    threshold REAL,
+                    evidence_run TEXT
                 )""")
+            for col in ("threshold REAL", "evidence_run TEXT"):
+                try:      # migrate pre-existing stores
+                    self._conn.execute(f"ALTER TABLE outcomes ADD COLUMN {col}")
+                except sqlite3.OperationalError:
+                    pass
             self._conn.commit()
 
     # -- write side -----------------------------------------------------------
 
     def submit(self, candidate: str, family: str | None, assay: str,
                outcome: str, observed: float | None = None,
-               ci: tuple | None = None, problem_id: str | None = None) -> None:
+               ci: tuple | None = None, problem_id: str | None = None,
+               threshold: float | None = None,
+               evidence_run: str | None = None) -> None:
         if self._conn is None or outcome == "tested":
             return
         with self._lock:
             self._conn.execute(
-                "INSERT INTO outcomes VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO outcomes VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 (time.time(), problem_id, candidate, family or "unassigned",
                  assay, outcome, observed,
-                 ci[0] if ci else None, ci[1] if ci else None))
+                 ci[0] if ci else None, ci[1] if ci else None,
+                 threshold, evidence_run))
             self._conn.commit()
 
     # -- read side --------------------------------------------------------------
 
     def negative_summary(self, problem_id: str | None = None,
                          limit: int = 20) -> list[dict[str, Any]]:
-        q = ("SELECT candidate, family, assay, outcome, observed, ts "
+        q = ("SELECT candidate, family, assay, outcome, observed, ts, "
+             "ci_low, ci_high, threshold, evidence_run "
              "FROM outcomes WHERE outcome IN ('invalidated','refuted')")
         args: list = []
         if problem_id:
@@ -73,7 +84,9 @@ class Flywheel:
         args.append(limit)
         rows = self._conn.execute(q, args).fetchall()
         return [{"candidate": c, "family": f, "assay": a, "outcome": o,
-                 "observed": obs, "ts": ts} for c, f, a, o, obs, ts in rows]
+                 "observed": obs, "ts": ts, "ci_low": clo, "ci_high": chi,
+                 "threshold": thr, "evidence_run": run}
+                for c, f, a, o, obs, ts, clo, chi, thr, run in rows]
 
     def family_prior(self, family: str | None) -> float:
         """Multiplicative prior in [0.5, 1.5]: what does history say about

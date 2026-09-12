@@ -95,8 +95,13 @@ def render_verdicts(recs) -> None:
         {"candidate": c, "verdict": d.get("verdict"),
          "observed IC50 (µM)": d.get("observed"),
          "95% CI": "–".join(str(x) for x in d.get("observed_ci") or []) or "—",
+         "gate (pre-registered)": d.get("threshold"),
          "evidence run": d.get("evidence_run_id") or "never ran"}
         for c, d in sorted(last.items())], hide_index=True)
+    st.caption("Decided by: the analysis agent fitted the curve (Hill + "
+               "bootstrap CI from the instrument's raw wells); the verdict is "
+               "the pre-registered criteria applied to that fit — not the "
+               "agent's opinion. 'never ran' = refused upstream by a gate.")
     claimed = sum(1 for d in last.values()
                   if d.get("verdict") in ("validated", "confirmed"))
     abstained = sum(1 for d in last.values()

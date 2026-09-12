@@ -419,12 +419,23 @@ def overview_view() -> None:
         if _negs:
             with st.expander(f"🚫 Ruled out ({len(_negs)} recent negatives — "
                              f"steers future portfolios)"):
+                st.caption("Ruled out by measurement against pre-registered "
+                           "criteria (gate refusals live on each experiment's "
+                           "gates section).")
                 for n in _negs:
+                    how = ""
+                    if n.get("observed") is not None:
+                        how = f" — observed {n['observed']:.1f} µM"
+                        if n.get("ci_low") is not None:
+                            how += (f" (95% CI {n['ci_low']:.1f}"
+                                    f"–{n['ci_high']:.1f})")
+                        if n.get("threshold") is not None:
+                            how += f" vs gate {n['threshold']:g} µM"
+                        if n.get("evidence_run"):
+                            how += f" · evidence {n['evidence_run']}"
                     st.caption(f"- **{n['candidate']}** ({n['family']}, "
-                               f"{n['assay']}): {n['outcome']}"
-                               + (f" — observed {n['observed']:.1f} µM"
-                                  if n.get("observed") else "")
-                               + f" · {ago(n['ts'])}")
+                               f"{n['assay']}): {n['outcome']}{how} "
+                               f"· {ago(n['ts'])}")
     except Exception:
         pass
 
@@ -849,6 +860,18 @@ def experiment_view() -> None:
                        f"{pdef.get('success_metric', '—')} · branch "
                        f"`problem/{problem_id}` · {len(recs)} hash-chained "
                        f"records")
+        lr = next((r.decision or {} for r in recs
+                   if r.event_type.value == "lab_run"), None)
+        if lr:
+            concs = "–".join(str(x) for x in (lr.get("concentrations") or
+                                              [])[:1] +
+                             (lr.get("concentrations") or [])[-1:]) or "?"
+            st.caption(f"🔬 instrument: **{lr.get('instrument', 'lab')}**"
+                       f"{f' ({lr['instrument_version']})' if lr.get('instrument_version') else ''}"
+                       f" · measurement: {lr.get('assay', '?')} dose–response"
+                       f" · {concs} µM × {lr.get('replicates', '?')} replicates"
+                       f" · {lr.get('n_controls', 0)} controls"
+                       f" · {n_runs} run(s)")
 
         render_experiment_pipeline(logf, problem_id,
                                    running=(status == "running"),

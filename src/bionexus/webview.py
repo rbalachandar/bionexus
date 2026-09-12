@@ -37,6 +37,7 @@ def _pipeline_body(logf: Path, problem_id: str | None,
     tested: dict[str, dict] = {}
     gates = 0
     run_ts: dict[str, float] = {}
+    run_instr: dict[str, str] = {}
     for r in recs:
         d = r.decision or {}
         et = r.event_type.value
@@ -55,7 +56,8 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                 if dec.get("hypothesis_id"):
                     filtered[dec["hypothesis_id"]] = dec
         elif et == "lab_run" and d.get("run_id"):
-            pass
+            run_ts[d["run_id"]] = ts or 0
+            run_instr[d["run_id"]] = d.get("instrument", "")
         elif et == "hypothesis_tested" and d.get("run_id"):
             hid = d.get("hypothesis_id") or art_id
             if hid:
@@ -158,7 +160,8 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                     for rid in run_map[hid]:
                         t = run_ts.get(rid)
                         when = time.strftime("%H:%M", time.localtime(t)) if t else "?"
-                        run_bits.append(f"`{rid}` ({when})")
+                        inst = run_instr.get(rid) or "lab"
+                        run_bits.append(f"`{rid}` ({when} · {inst})")
                     st.caption("🧪 runs: " + " · ".join(run_bits))
         unlinked = [r for r in recs if r.event_type.value == "lab_run"
                     and r.decision and r.decision.get("run_id")

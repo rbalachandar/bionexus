@@ -104,7 +104,9 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     def _on_verdict(h) -> None:
         flywheel.submit(h.candidate, h.family, h.assay_type, h.status,
                         h.observed_value, h.observed_ci,
-                        problem_id=(cfg.problem.problem_id or None))
+                        problem_id=(cfg.problem.problem_id or None),
+                        threshold=(h.criteria.threshold if h.criteria else None),
+                        evidence_run=h.evidence_run_id)
 
     tracker = HypothesisTracker(store, actor, on_verdict=_on_verdict)
     safety = SafetyEngine()
