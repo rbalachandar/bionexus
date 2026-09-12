@@ -886,6 +886,15 @@ def experiment_view() -> None:
 
 
 # --------------------------------------------------------------------------
+# VIEW: story (rendering lives in bionexus.story — importable and testable)
+# --------------------------------------------------------------------------
+def story_view() -> None:
+    _consume_goto("story")
+    from bionexus.story import render
+    render()
+
+
+# --------------------------------------------------------------------------
 # router
 # --------------------------------------------------------------------------
 PAGES = {
@@ -895,6 +904,8 @@ PAGES = {
                       url_path="wizard"),
     "experiment": st.Page(experiment_view, title="Experiment", icon="🔬",
                           url_path="experiment"),
+    "story": st.Page(story_view, title="Story", icon="📖",
+                     url_path="story"),
 }
 
 

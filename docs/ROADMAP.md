@@ -122,6 +122,14 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] optional extra: `bn eval --task hit-recovery --policy assayformer`
   once torch deps are an extra
 
+## Story surface
+- [x] Static `site/` dropped (private-repo Pages is dead weight). The
+  narrative lives in the workbench: 📖 Story page (`bionexus/story.py`) —
+  thesis / framework / does-it-work (live leaderboard + run button) / trust
+  (rules rendered from safety_rules.json) / start. Figures computed by
+  `bionexus/figures.py` from the same math as the eval tasks, cached to
+  assets/fig/. One artifact, one voice, no hosting dependency.
+
 ## Follow-up: agent path from the CLI
 - [x] `hypothesis_source: "agent"` in a `bn auto` config now auto-wires the
       Anthropic provider from env (live-validated: agent proposed → lab →
