@@ -1,0 +1,546 @@
+{
+ "log": [
+  "round 1: testing ['BB-1', 'BX-1'] (2 candidates remain)",
+  "submission for BX-1 rejected: [toxicophores] sample 'BX-1' carries 3 toxicophore alert(s) [rules safety-rules-v1]: aromatic_nitro (mutagenicity (DNA adducts after reduction)); aromatic_amine_vic (p-phenylenediamine: methemoglobinemia/redox); azo (azo: reductive cleavage to aromatic amines)",
+  "[agent] noticed device output: sim-2-001.csv \u2014 reading it",
+  "[agent] analyzed: 1 compound(s), Z'=0.925",
+  "[agent] hypothesis hyp-79260656 (BB-1): INCONCLUSIVE (preliminary \u2014 pending orthogonal confirmation) \u2014 IC50 20.339 uM (95% CI 16.909\u201322.014) vs threshold 20.0",
+  "[agent] recommendation: best binder so far is BB-1 (IC50 20.339 uM) \u2014 next: confirm with orthogonal assay",
+  "[agent] loop closed: confirmation assay for BB-1 auto-submitted (safety-approved) -> run sim-2-002",
+  "[agent] gate honesty: BB-1 methods agree but a borderline CI straddles threshold 20.0 -> inconclusive",
+  "[agent] orthogonal confirmation for BB-1: primary 20.34 vs secondary 25.79 \u00b5M (ratio 1.3x) -> INCONCLUSIVE",
+  "policy picked ['AA-2'] from 1 observations",
+  "round 2: testing ['AA-2'] (1 candidates remain)",
+  "[agent] noticed device output: sim-2-003.csv \u2014 reading it",
+  "[agent] analyzed: 1 compound(s), Z'=0.929",
+  "[agent] hypothesis hyp-39748241 (AA-2): VALIDATED (preliminary \u2014 pending orthogonal confirmation) \u2014 IC50 16.469 uM (95% CI 10.798\u201318.302) vs threshold 20.0",
+  "[agent] recommendation: best binder so far is AA-2 (IC50 16.469 uM) \u2014 next: confirm with orthogonal assay",
+  "[agent] loop closed: confirmation assay for AA-2 auto-submitted (safety-approved) -> run sim-2-004",
+  "[agent] gate honesty: AA-2 methods agree but a borderline CI straddles threshold 20.0 -> inconclusive",
+  "[agent] orthogonal confirmation for AA-2: primary 16.47 vs secondary 16.47 \u00b5M (ratio 1.0x) -> INCONCLUSIVE",
+  "CAMPAIGN COMPLETE prob-story: BB-1=inconclusive, BX-1=proposed, AA-2=inconclusive"
+ ],
+ "records": [
+  {
+   "event": "problem_defined",
+   "ts": 1789239344.033489,
+   "decision": {
+    "problem_id": "prob-story",
+    "objective": "Find MAP4K1 inhibitors with IC50 <= 20 uM",
+    "constraints": [
+     {
+      "name": "potency",
+      "description": "IC50 <= 20 uM",
+      "kind": "hard",
+      "limit": 20.0,
+      "unit": "uM"
+     }
+    ],
+    "success_metric": "orthogonally confirmed binder",
+    "environment": {
+     "lab": "simulator",
+     "lab_version": "sim-v1",
+     "lab_seed": 2,
+     "concentrations": [
+      "0.5uM",
+      "2uM",
+      "10uM",
+      "40uM"
+     ],
+     "autonomy": "act",
+     "dose_design": "fixed",
+     "k": 2,
+     "model": null
+    }
+   },
+   "candidate": null
+  },
+  {
+   "event": "hypothesis_proposed",
+   "ts": 1789239344.034025,
+   "decision": {
+    "statement": "AA-1 inhibits MAP4K1 with IC50 <= 20 uM",
+    "predicted": "IC50 <= 20",
+    "criteria": {
+     "metric": "ic50_um",
+     "direction": "min",
+     "threshold": 20.0,
+     "min_replicates": 1,
+     "inconclusive_if_qc_failed": true
+    },
+    "design": {
+     "assay_type": "binding",
+     "concentrations": [],
+     "replicates": 1,
+     "controls": [],
+     "design_notes": "",
+     "protocol_id": null,
+     "run_id": null,
+     "definition": null,
+     "readiness_verdict": null
+    },
+    "rationale": "",
+    "mechanism": "type-I hinge binder occupying the ATP pocket of MAP4K1's active conformation",
+    "refutation_condition": "no dose-response in enzymatic assay despite confirmed binding",
+    "citation": "PMID:35377565",
+    "citation_status": "verified",
+    "citation_detail": "",
+    "predicted_observables": []
+   },
+   "candidate": "AA-1"
+  },
+  {
+   "event": "hypothesis_proposed",
+   "ts": 1789239344.034219,
+   "decision": {
+    "statement": "AA-2 inhibits MAP4K1 with IC50 <= 20 uM",
+    "predicted": "IC50 <= 20",
+    "criteria": {
+     "metric": "ic50_um",
+     "direction": "min",
+     "threshold": 20.0,
+     "min_replicates": 1,
+     "inconclusive_if_qc_failed": true
+    },
+    "design": {
+     "assay_type": "binding",
+     "concentrations": [],
+     "replicates": 1,
+     "controls": [],
+     "design_notes": "",
+     "protocol_id": null,
+     "run_id": null,
+     "definition": null,
+     "readiness_verdict": null
+    },
+    "rationale": "",
+    "mechanism": "amide-linked aza-biaryl, same hinge geometry",
+    "refutation_condition": "activity lost when hinge gatekeeper mutated",
+    "citation": "PMID:99999999",
+    "citation_status": "invalid",
+    "citation_detail": "",
+    "predicted_observables": []
+   },
+   "candidate": "AA-2"
+  },
+  {
+   "event": "hypothesis_proposed",
+   "ts": 1789239344.034323,
+   "decision": {
+    "statement": "BB-1 inhibits MAP4K1 with IC50 <= 20 uM",
+    "predicted": "IC50 <= 20",
+    "criteria": {
+     "metric": "ic50_um",
+     "direction": "min",
+     "threshold": 20.0,
+     "min_replicates": 1,
+     "inconclusive_if_qc_failed": true
+    },
+    "design": {
+     "assay_type": "binding",
+     "concentrations": [],
+     "replicates": 1,
+     "controls": [],
+     "design_notes": "",
+     "protocol_id": null,
+     "run_id": null,
+     "definition": null,
+     "readiness_verdict": null
+    },
+    "rationale": "",
+    "mechanism": "covalent warhead (acrylamide) targeting Cys433 \u2014 declared intent",
+    "refutation_condition": "selectivity lost in C433S mutant",
+    "citation": "PMID:35377565",
+    "citation_status": "verified",
+    "citation_detail": "",
+    "predicted_observables": []
+   },
+   "candidate": "BB-1"
+  },
+  {
+   "event": "hypothesis_proposed",
+   "ts": 1789239344.0344179,
+   "decision": {
+    "statement": "BX-1 inhibits MAP4K1 with IC50 <= 20 uM",
+    "predicted": "IC50 <= 20",
+    "criteria": {
+     "metric": "ic50_um",
+     "direction": "min",
+     "threshold": 20.0,
+     "min_replicates": 1,
+     "inconclusive_if_qc_failed": true
+    },
+    "design": {
+     "assay_type": "binding",
+     "concentrations": [],
+     "replicates": 1,
+     "controls": [],
+     "design_notes": "",
+     "protocol_id": null,
+     "run_id": null,
+     "definition": null,
+     "readiness_verdict": null
+    },
+    "rationale": "",
+    "mechanism": "aromatic nitro with azo link \u2014 flagged by structural alerts",
+    "refutation_condition": "any activity at all (expected toxicophore liability)",
+    "citation": "",
+    "citation_status": "unverified",
+    "citation_detail": "",
+    "predicted_observables": []
+   },
+   "candidate": "BX-1"
+  },
+  {
+   "event": "hypotheses_filtered",
+   "ts": 1789239344.035376,
+   "decision": {
+    "problem_id": "prob-story",
+    "k": 2,
+    "decisions": [
+     {
+      "hypothesis_id": "hyp-79260656",
+      "selected": true,
+      "score": 0.7,
+      "reason": "top-k by score (+0.20 explanatory power)"
+     },
+     {
+      "hypothesis_id": "hyp-87381752",
+      "selected": true,
+      "score": 0.65,
+      "reason": "top-k by score (+0.15 explanatory power)"
+     },
+     {
+      "hypothesis_id": "hyp-14142840",
+      "selected": false,
+      "score": 0.5875,
+      "reason": "top-k by score (+0.20 explanatory power)"
+     },
+     {
+      "hypothesis_id": "hyp-39748241",
+      "selected": false,
+      "score": 0.4375,
+      "reason": "top-k by score (+0.05 explanatory power)"
+     }
+    ]
+   },
+   "candidate": null
+  },
+  {
+   "event": "gate_decision",
+   "ts": 1789239344.035519,
+   "decision": {
+    "kind": "advisory",
+    "advisory": true,
+    "flags": [
+     {
+      "sample": "BB-1",
+      "alert": "acrylamide",
+      "note": "soft thiol electrophile",
+      "declared_intent": "covalent"
+     },
+     {
+      "sample": "BB-1",
+      "alert": "acrylamide",
+      "note": "soft thiol electrophile",
+      "declared_intent": "covalent"
+     },
+     {
+      "sample": "BB-1",
+      "alert": "acrylamide",
+      "note": "soft thiol electrophile",
+      "declared_intent": "covalent"
+     },
+     {
+      "sample": "BB-1",
+      "alert": "acrylamide",
+      "note": "soft thiol electrophile",
+      "declared_intent": "covalent"
+     }
+    ],
+    "escalated": false
+   },
+   "candidate": null
+  },
+  {
+   "event": "lab_run",
+   "ts": 1789239344.035519,
+   "decision": {
+    "run_id": "sim-2-001",
+    "protocol_id": "574d8542-7bad-4b07-9d5b-701285958bc4",
+    "title": "test-BB-1",
+    "assay": "binding",
+    "instrument": "simulator",
+    "instrument_version": "sim-v1",
+    "n_samples": 4,
+    "n_controls": 2,
+    "replicates": 3,
+    "concentrations": [
+     0.5,
+     2.0,
+     10.0,
+     40.0
+    ]
+   },
+   "candidate": null
+  },
+  {
+   "event": "hypothesis_tested",
+   "ts": 1789239344.2824588,
+   "decision": {
+    "run_id": "sim-2-001",
+    "protocol_id": "574d8542-7bad-4b07-9d5b-701285958bc4",
+    "assay": "binding"
+   },
+   "candidate": "BB-1"
+  },
+  {
+   "event": "hypothesis_tested",
+   "ts": 1789239345.002927,
+   "decision": {
+    "metric": "ic50_um",
+    "threshold": 20.0,
+    "observed": 20.339,
+    "observed_ci": [
+     16.909,
+     22.014
+    ],
+    "qc_passed": true,
+    "evidence_run_id": "sim-2-001",
+    "verdict": "inconclusive"
+   },
+   "candidate": "BB-1"
+  },
+  {
+   "event": "lab_run",
+   "ts": 1789239345.003988,
+   "decision": {
+    "run_id": "sim-2-002",
+    "protocol_id": "d398b9e0-c8f2-4080-aaf8-eaa268d2b516",
+    "title": "auto-confirmation-BB-1",
+    "assay": "enzymatic",
+    "instrument": "simulator",
+    "instrument_version": "sim-v1",
+    "n_samples": 1,
+    "n_controls": 1,
+    "replicates": 3,
+    "concentrations": [
+     10.0
+    ]
+   },
+   "candidate": null
+  },
+  {
+   "event": "hypothesis_tested",
+   "ts": 1789239345.107656,
+   "decision": {
+    "run_id": "sim-2-002",
+    "protocol_id": "d398b9e0-c8f2-4080-aaf8-eaa268d2b516",
+    "assay": "enzymatic"
+   },
+   "candidate": "BB-1"
+  },
+  {
+   "event": "hypothesis_tested",
+   "ts": 1789239345.5681942,
+   "decision": {
+    "metric": "ic50_um",
+    "threshold": 20.0,
+    "observed": 25.79,
+    "observed_ci": [
+     16.469,
+     27.188
+    ],
+    "qc_passed": true,
+    "evidence_run_id": "sim-2-002",
+    "verdict": "inconclusive",
+    "confirmation": {
+     "run_id": "sim-2-002",
+     "primary_ic50": 20.339,
+     "primary_ci": [
+      16.909,
+      22.014
+     ],
+     "secondary_ic50": 25.79,
+     "secondary_ci": [
+      16.469,
+      27.188
+     ],
+     "ratio": 1.27,
+     "agreed": true,
+     "rule": "ci-overlap"
+    }
+   },
+   "candidate": "BB-1"
+  },
+  {
+   "event": "stage_transition",
+   "ts": 1789239350.595504,
+   "decision": {
+    "stage": "round-1-complete",
+    "picked": [
+     "BB-1",
+     "BX-1"
+    ],
+    "verdicts": {
+     "BB-1": "inconclusive",
+     "BX-1": "proposed"
+    }
+   },
+   "candidate": null
+  },
+  {
+   "event": "lab_run",
+   "ts": 1789239350.5956979,
+   "decision": {
+    "run_id": "sim-2-003",
+    "protocol_id": "943cb813-c9eb-42ec-b441-740fdafdbe0a",
+    "title": "test-AA-2",
+    "assay": "binding",
+    "instrument": "simulator",
+    "instrument_version": "sim-v1",
+    "n_samples": 4,
+    "n_controls": 2,
+    "replicates": 3,
+    "concentrations": [
+     0.5,
+     2.0,
+     10.0,
+     40.0
+    ]
+   },
+   "candidate": null
+  },
+  {
+   "event": "hypothesis_tested",
+   "ts": 1789239350.597499,
+   "decision": {
+    "run_id": "sim-2-003",
+    "protocol_id": "943cb813-c9eb-42ec-b441-740fdafdbe0a",
+    "assay": "binding"
+   },
+   "candidate": "AA-2"
+  },
+  {
+   "event": "hypothesis_validated",
+   "ts": 1789239351.31146,
+   "decision": {
+    "metric": "ic50_um",
+    "threshold": 20.0,
+    "observed": 16.469,
+    "observed_ci": [
+     10.798,
+     18.302
+    ],
+    "qc_passed": true,
+    "evidence_run_id": "sim-2-003",
+    "verdict": "validated"
+   },
+   "candidate": "AA-2"
+  },
+  {
+   "event": "lab_run",
+   "ts": 1789239351.3126059,
+   "decision": {
+    "run_id": "sim-2-004",
+    "protocol_id": "06791a52-edf5-41b1-b519-9ade3ad98bb7",
+    "title": "auto-confirmation-AA-2",
+    "assay": "enzymatic",
+    "instrument": "simulator",
+    "instrument_version": "sim-v1",
+    "n_samples": 1,
+    "n_controls": 1,
+    "replicates": 3,
+    "concentrations": [
+     10.0
+    ]
+   },
+   "candidate": null
+  },
+  {
+   "event": "hypothesis_tested",
+   "ts": 1789239351.418139,
+   "decision": {
+    "run_id": "sim-2-004",
+    "protocol_id": "06791a52-edf5-41b1-b519-9ade3ad98bb7",
+    "assay": "enzymatic"
+   },
+   "candidate": "AA-2"
+  },
+  {
+   "event": "hypothesis_tested",
+   "ts": 1789239351.880555,
+   "decision": {
+    "metric": "ic50_um",
+    "threshold": 20.0,
+    "observed": 16.469,
+    "observed_ci": [
+     15.622,
+     26.48
+    ],
+    "qc_passed": true,
+    "evidence_run_id": "sim-2-004",
+    "verdict": "inconclusive",
+    "confirmation": {
+     "run_id": "sim-2-004",
+     "primary_ic50": 16.469,
+     "primary_ci": [
+      10.798,
+      18.302
+     ],
+     "secondary_ic50": 16.469,
+     "secondary_ci": [
+      15.622,
+      26.48
+     ],
+     "ratio": 1.0,
+     "agreed": true,
+     "rule": "ci-overlap"
+    }
+   },
+   "candidate": "AA-2"
+  },
+  {
+   "event": "stage_transition",
+   "ts": 1789239351.8817291,
+   "decision": {
+    "stage": "round-2-complete",
+    "picked": [
+     "AA-2"
+    ],
+    "verdicts": {
+     "AA-2": "inconclusive"
+    }
+   },
+   "candidate": null
+  }
+ ],
+ "rounds_run": 2,
+ "history": [
+  {
+   "round": 1,
+   "picked": [
+    "BB-1",
+    "BX-1"
+   ],
+   "verdicts": {
+    "BB-1": "inconclusive",
+    "BX-1": "proposed"
+   }
+  },
+  {
+   "round": 2,
+   "picked": [
+    "AA-2"
+   ],
+   "verdicts": {
+    "AA-2": "inconclusive"
+   }
+  }
+ ],
+ "verdicts": {
+  "BB-1": "inconclusive",
+  "BX-1": "proposed",
+  "AA-2": "inconclusive"
+ }
+}

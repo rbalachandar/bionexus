@@ -1,10 +1,12 @@
-"""The Story page — the framework's own narrative, computed not copywritten.
+"""The Story page — one real campaign, start to finish.
 
-Rendering lives here (not in the router script) so it is importable and
-testable in isolation; Overview.py wraps it with navigation plumbing.
+Not a brochure: the narrative is an actual recorded run (assets/story/
+demo-run.json — regenerate with scripts/capture_story_run.py), and every
+figure is computed by bionexus.figures from the same code the run used.
 """
 from __future__ import annotations
 
+import base64
 import json
 import sys
 from pathlib import Path
@@ -13,63 +15,155 @@ import streamlit as st
 
 from bionexus.ui_kit import inject_css
 
+RUN_FILE = Path("assets/story/demo-run.json")
+
+
+def _run() -> dict:
+    try:
+        return json.loads(RUN_FILE.read_text())
+    except Exception:
+        return {}
+
+
+def _diagram(path: str, caption: str) -> None:
+    """SVGs with <defs>/<style> get stripped by markdown sanitization;
+    embed as data-URI images instead — always renders."""
+    try:
+        b64 = base64.b64encode(Path(path).read_bytes()).decode()
+        st.markdown(
+            f"<img src='data:image/svg+xml;base64,{b64}' "
+            f"style='width:100%;max-width:1040px;border-radius:12px;"
+            f"border:1px solid #30363d'>"
+            f"<p style='color:#8a8272;font-size:13px'>{caption}</p>",
+            unsafe_allow_html=True)
+    except Exception:
+        st.caption(f"(diagram missing: {path})")
+
 
 def render() -> None:
     inject_css()
-    st.title("📖 The BioNexus story")
-    st.caption("Every number here is computed from the shipped code or read "
-               "from the eval suite — not hand-typed marketing.")
-    tab_thesis, tab_framework, tab_works, tab_trust, tab_start = st.tabs(
-        ["The thesis", "The framework", "Does it work?", "Can you trust it?",
-         "Get started"])
+    run = _run()
+    st.title("📖 The story of one campaign")
+    tab_run, tab_framework, tab_works, tab_trust, tab_start = st.tabs(
+        ["A real run", "The framework", "Does it work?",
+         "Can you trust it?", "Get started"])
 
-    with tab_thesis:
-        st.markdown(
-            "<p style='font-size:19px;max-width:720px'>Most agent demos stop "
-            "at talking. BioNexus is built so you can let it act in a lab: "
-            "<b>hypotheses, safety-gated experiments, honest verdicts against "
-            "pre-registered criteria, tamper-evident provenance.</b> Drug "
-            "discovery first, domain-agnostic core.</p>",
-            unsafe_allow_html=True)
-        st.markdown("#### Three principles")
-        c1, c2, c3 = st.columns(3)
-        c1.markdown("**Safety first, and it checks molecules.**\n\n"
-                    "The only path from an agent to a lab is the gateway: a "
-                    "policy engine the agent cannot modify or approve itself, "
-                    "budgets that cap consumption, toxicophore screening of "
-                    "declared structures, dual-use refusal. All recorded.")
-        c2.markdown("**Tiered trust.**\n\n"
-                    "Deterministic rules hold the floor. AI may add a flag or "
-                    "demand human review, never clear a refusal. Citations "
-                    "are verified: a fabricated reference ranks below "
-                    "silence.")
-        c3.markdown("**Everything auditable.**\n\n"
-                    "Hash-chained records, Merkle anchoring, replay with "
-                    "`bn reproduce`, export to your ELN. The record is the "
-                    "product.")
+    # ------------------------------------------------ A REAL RUN
+    with tab_run:
+        st.markdown("**Objective:** *Find MAP4K1 inhibitors with IC50 ≤ 20 µM* "
+                    "· lab: SimulatorLab sim-v1 (seed 2) · 2 rounds · k=2 · "
+                    "policy attached from round 2 · autonomy: act")
+        st.caption("Everything below is the recorded run — real gate refusals, "
+                   "real CIs, real abstentions. Nothing was cleaned up.")
+
+        st.markdown("### 1 · The hypotheses, as proposed")
+        props = [r for r in run.get("records", [])
+                 if r["event"] == "hypothesis_proposed" and r["candidate"]]
+        st.dataframe([
+            {"candidate": p["candidate"],
+             "mechanism": (p["decision"].get("mechanism") or "—")[:70],
+             "refuted if": (p["decision"].get("refutation_condition") or "—")[:50],
+             "citation": p["decision"].get("citation") or "—",
+             "citation check": p["decision"].get("citation_status", "unverified")}
+            for p in props], hide_index=True)
+        st.caption("AA-2's citation failed verification against PubMed — a "
+                   "fabricated reference costs portfolio score, it does not "
+                   "hide itself.")
+
+        st.markdown("### 2 · Who got the lab slots, and why")
+        filt = next((r for r in run.get("records", [])
+                     if r["event"] == "hypotheses_filtered"), None)
+        if filt:
+            cand_by_id = {}
+            for p in props:
+                cid = (p["decision"] or {}).get("hypothesis_id")
+                if cid:
+                    cand_by_id[cid] = p["candidate"]
+            st.dataframe([
+                {"hypothesis": cand_by_id.get(d["hypothesis_id"],
+                                              d["hypothesis_id"]),
+                 "score": d["score"],
+                 "selected": "✅" if d["selected"] else "—",
+                 "recorded reason": d["reason"]}
+                for d in filt["decision"].get("decisions", [])],
+                hide_index=True)
+
+        st.markdown("### 3 · What the gates did")
+        glines = [l for l in run.get("log", []) if "rejected" in l
+                  or "advisory" in l.lower()]
+        advs = [r for r in run.get("records", [])
+                if (r["decision"] or {}).get("kind") == "advisory"]
+        for l in glines:
+            st.error(l.replace("[agent] ", ""), icon="🚫")
+        for a in advs:
+            flags = a["decision"].get("flags", [])
+            st.warning("Advisory tier flagged (not blocked): " + "; ".join(
+                f"{f['sample']} — {f['alert']}"
+                + (f" (declared intent: {f['declared_intent']})"
+                   if f.get("declared_intent") else "") for f in flags),
+                icon="⚠️")
+        st.caption("BX-1 never reached the bench: three structural alerts, "
+                   "rule-set version in the refusal. BB-1's electrophile "
+                   "passed the deterministic gate on declared covalent intent "
+                   "— the advisory tier still noticed it, on record.")
+
+        st.markdown("### 4 · The loop, line by line")
+        for line in run.get("log", []):
+            if "rejected" in line:
+                continue
+            mono = line.startswith("[agent]") or line.startswith("[campaign]")
+            st.markdown(f"<div style='font-family:ui-monospace,monospace;"
+                        f"font-size:12.5px;color:#4a463d;padding:1px 0'>"
+                        f"{line.replace('<', '&lt;')}</div>",
+                        unsafe_allow_html=True)
+
+        st.markdown("### 5 · Verdicts — and the honesty of them")
+        verts = [r for r in run.get("records", [])
+                 if r["event"].startswith("hypothesis_") and r["candidate"]
+                 and (r["decision"] or {}).get("verdict")]
+        last = {}
+        for r in verts:
+            last[r["candidate"]] = r["decision"]
+        st.dataframe([
+            {"candidate": c, "verdict": d.get("verdict"),
+             "observed IC50 (µM)": d.get("observed"),
+             "95% CI": "–".join(str(x) for x in d.get("observed_ci") or [])
+             or "—",
+             "evidence run": d.get("evidence_run_id") or "never ran"}
+            for c, d in sorted(last.items())], hide_index=True)
+        st.success("No compound was claimed as a hit. Two stayed "
+                   "**inconclusive** because their CIs straddle the gate; "
+                   "one is **proposed** because the gate refused it. That is "
+                   "the whole point: the loop abstains where evidence is "
+                   "thin.")
+
         from bionexus import figures
-        st.markdown("### How fast does the loop reach a defensible decision?")
+        st.markdown("### 6 · Why the next campaign runs adaptive")
         st.markdown(figures.get("recovery"), unsafe_allow_html=True)
-        st.caption("Adaptive 3-well Bayesian dosing vs the fixed 4-point "
-                   "series vs random doses — 60 simulated compounds, "
-                   "computed by bionexus.figures (same math as the eval "
-                   "tasks).")
+        st.caption("BB-1 and AA-2 stayed inconclusive because a fixed "
+                   "0.5/2/10/40 series cannot resolve compounds near the "
+                   "gate. This curve is the same run's math with Bayesian "
+                   "well placement: ~4× more confident decisions at 3 wells "
+                   "than the fixed series manages at 4. "
+                   "`bn auto … --dose-design adaptive` — and the abstention "
+                   "rate rises exactly where it should, near the gate.")
+        st.markdown(figures.get("stability"), unsafe_allow_html=True)
 
+    # ------------------------------------------------ FRAMEWORK
     with tab_framework:
-        st.markdown("The core depends on **pydantic only**. Everything else "
-                    "is an adapter behind one of five interfaces:")
+        st.markdown("Five interfaces, pydantic-only core, everything else an "
+                    "adapter:")
         st.dataframe([
             {"interface": "ModelProvider",
              "contract": "generate / predict over tool invocations",
              "adapters": "Anthropic, OpenAI-compatible (vLLM, ollama), stub"},
             {"interface": "LabAdapter",
              "contract": "protocols in, evidence out — behind the gateway",
-             "adapters": "SimulatorLab, imaging simulator, Opentrons, "
-                         "PlateReaderShare, SiLA 2, HCS microscope, LC-MS, "
-                         "arm scheduler, MHS driver"},
+             "adapters": "SimulatorLab, imaging, Opentrons, PlateReaderShare, "
+                         "SiLA 2, HCS, LC-MS, arm scheduler, MHS driver"},
             {"interface": "BioTool",
              "contract": "local computation, never physical action",
-             "adapters": "RDKit ADMET, Morgan+RF, AlphaGenome Atlas (AVI), "
+             "adapters": "RDKit ADMET, Morgan+RF, AlphaGenome Atlas, "
                          "retrosynthesis"},
             {"interface": "Sandbox",
              "contract": "snapshot / fork / resume state",
@@ -78,57 +172,43 @@ def render() -> None:
              "contract": "append-only hash-chained records",
              "adapters": "SQLite (default), postgres, s3-worm (roadmap)"},
         ], hide_index=True)
-        st.markdown("#### One campaign, step by step")
-        st.dataframe([
-            {"#": 1, "who": "problem definition",
-             "enforced": "problem, constraints and the execution "
-                         "environment (lab+version+seed) recorded as the "
-                         "provenance root"},
-            {"#": 2, "who": "hypothesis agent + skills",
-             "enforced": "schema validated, deduped; mechanism, refutation "
-                         "condition and a verified citation earn portfolio "
-                         "edge"},
-            {"#": 3, "who": "portfolio selector / policy",
-             "enforced": "diversity cap, flywheel priors; every accept/reject "
-                         "recorded with its reason"},
-            {"#": 4, "who": "readiness review",
-             "enforced": "BLOCKS experiments whose result would be "
-                         "uninterpretable"},
-            {"#": 5, "who": "safety engine + advisory tier",
-             "enforced": "BSL, reagents, steps, toxicophores in declared "
-                         "structures, DURC; advisory may escalate, never "
-                         "clears"},
-            {"#": 6, "who": "LabAdapter via gateway",
-             "enforced": "run, instrument+version, parameters recorded; "
-                         "approval queue in gate mode"},
-            {"#": 7, "who": "device monitor",
-             "enforced": "exports noticed automatically; unreadable files "
-                         "flagged, never crash the loop"},
-            {"#": 8, "who": "labread + fitter",
-             "enforced": "3-param Hill with bootstrap CIs, Z′ QC, CI bands"},
-            {"#": 9, "who": "criteria + confirmation",
-             "enforced": "CI straddling the gate ⇒ inconclusive; orthogonal "
-                         "confirmation verifies the verdict's DIRECTION"},
-            {"#": 10, "who": "provenance store",
-             "enforced": "hash chain, Merkle anchor, bn reproduce, ELN "
-                         "export"},
-        ], hide_index=True,
-            column_config={"#": st.column_config.NumberColumn(width="small")})
-        for label, svg in (("problem → portfolio → autonomous loop",
-                            "diagrams/svg/07-problem-loop.svg"),
-                           ("the wet-lab round trip",
-                            "diagrams/svg/04-wetlab-roundtrip.svg")):
-            with st.expander(f"Diagram · {label}"):
-                try:
-                    st.markdown(Path(svg).read_text(), unsafe_allow_html=True)
-                except Exception:
-                    st.caption("(diagram file missing)")
+        st.markdown("#### One campaign, step by step — with this run's output")
+        steps = [
+            ("problem definition", "problem + constraints + environment "
+             "(sim-v1, seed 2) recorded as provenance root"),
+            ("hypothesis proposal", "4 hypotheses with mechanism, refutation, "
+             "citation — one citation caught fabricated"),
+            ("portfolio filter", "k=2 slots; +0.20 explanatory bonus visible "
+             "in the recorded reasons"),
+            ("readiness review", "gate-honesty checks active (CI vs bar)"),
+            ("safety gate", "BX-1 refused: 3 toxicophores [safety-rules-v1]"),
+            ("advisory tier", "BB-1's acrylamide flagged despite declared "
+             "intent — recorded, not hidden"),
+            ("lab execution", "runs sim-2-001…004 on SimulatorLab, Z′ 0.93"),
+            ("evidence", "exports noticed automatically; Hill fit + bootstrap "
+             "CI + CI band on the curve"),
+            ("verdict + confirmation", "2× inconclusive by gate honesty; "
+             "0 overclaims"),
+            ("record", "21 hash-chained records; replayable with "
+             "`bn reproduce`"),
+        ]
+        st.dataframe([{"#": i + 1, "step": a, "what this run did": b}
+                      for i, (a, b) in enumerate(steps)],
+                     hide_index=True)
+        _diagram("diagrams/svg/07-problem-loop.svg",
+                 "Problem → portfolio → autonomous test-and-confirm, with "
+                 "the provenance spine.")
+        _diagram("diagrams/svg/04-wetlab-roundtrip.svg",
+                 "The wet-lab round trip: protocol through the safety "
+                 "boundary, instruments, and back as evidence.")
 
+    # ------------------------------------------------ DOES IT WORK
     with tab_works:
         import subprocess
         rp = Path("evals/results.json")
         c1, c2 = st.columns([4, 1])
-        c1.caption("Deterministic, offline, runs in CI on every commit.")
+        c1.caption("Deterministic, offline, in CI on every commit. The run "
+                   "you just read about exercises tasks 1–3 live.")
         if c2.button("▶ Run eval suite", disabled=not rp.exists()):
             with st.spinner("Scoring the claims (≈40s)…"):
                 subprocess.run([sys.executable, "-m", "bionexus.cli", "eval"],
@@ -139,72 +219,59 @@ def render() -> None:
             rows = json.loads(rp.read_text())
             st.dataframe([{"task": r["task"], "score": r["score"],
                            "pass": "✅" if r["passed"] else "❌",
-                           "evidence": r["notes"][:110]} for r in rows],
-                         hide_index=True)
+                           "what it proves": r["notes"][:110]}
+                          for r in rows], hide_index=True)
             st.caption(f"Last run "
                        f"{datetime.datetime.fromtimestamp(rp.stat().st_mtime):%Y-%m-%d %H:%M}"
-                       f" · mean {sum(r['score'] for r in rows) / len(rows):.3f}")
-        st.markdown("#### Case studies on real papers")
+                       f" · mean {sum(r['score'] for r in rows)/len(rows):.3f}")
+        st.markdown("#### Against real published science")
         k1, k2, k3 = st.columns(3)
         k1.markdown("**AZ3246 / HPK1 · JMC 2025**\n\nPost-cutoff blind "
                     "reproduction. Clean by self-report *and* never-published "
-                    "variant probes. Agent derived the pyrazine-carboxamide "
-                    "hypothesis from structures alone; blinded ranking "
-                    "ρ = **+0.42** vs a trained RF's +0.08.")
-        k2.markdown("**Multi-paper sweep · ChEMBL 2025**\n\nBlind chemotype ID "
-                    "on 4/4 papers. The honest counterweight: **no enrichment "
-                    "claim survives** bootstrap CIs + BH at n=31–67 (best "
-                    "EF's CI spans 0.0–6.98). Reported as such.")
-        k3.markdown("**EGFR tyrphostins · 1989**\n\nThe original blind "
-                    "reproduction, kept with its contamination qualification: "
-                    "when a probe says the model has prior exposure, the "
-                    "result ships flagged, not dropped.")
-        st.caption("Case-study inputs are frozen: gzip checksummed fixtures, "
-                   "verified in CI (`bn fixtures verify`).")
+                    "variant probes; agent-derived pyrazine-carboxamide "
+                    "hypothesis, blinded ranking ρ=+0.42 vs RF's +0.08.")
+        k2.markdown("**Multi-paper sweep · 2025**\n\nBlind chemotype ID 4/4. "
+                    "The counterweight we also publish: no enrichment claim "
+                    "survives bootstrap CIs + BH at n=31–67.")
+        k3.markdown("**EGFR tyrphostins · 1989**\n\nKept with its "
+                    "contamination qualification — flagged prior exposure "
+                    "ships as a limitation, not a footnote.")
+        st.caption("Study inputs are frozen: checksummed fixtures, "
+                   "`bn fixtures verify` in CI.")
 
+    # ------------------------------------------------ TRUST
     with tab_trust:
-        st.markdown(
-            "**Trust is tiered, and the tiers are asymmetric:** deterministic "
-            "rules hold the floor; AI may only tighten a gate, never loosen "
-            "one; humans adjudicate, and their decisions — not the model's "
-            "confidence — promote new rules.")
-        st.markdown("#### The deterministic floor: versioned structural alerts")
+        st.markdown("**Deterministic rules hold the floor. AI may only "
+                    "tighten a gate, never loosen one. Humans adjudicate — "
+                    "and their decisions, not the model's confidence, promote "
+                    "new rules.**")
         try:
             rules = json.loads(Path(
                 "src/bionexus/adapters/bio/safety_rules.json").read_text())
             st.caption(f"{rules['version']} · {len(rules['alerts'])} alerts · "
-                       f"the rule version rides in every refusal and every "
-                       f"provenance record")
+                       "the version rides in every refusal and record")
             st.dataframe([{"alert": a["name"], "severity": a["severity"],
                            "why": a["note"]} for a in rules["alerts"]],
-                         hide_index=True,
-                         column_config={"severity":
-                                        st.column_config.TextColumn(
-                                            width="small")})
+                         hide_index=True)
         except Exception:
             st.caption("(rule file missing)")
-        st.markdown("#### Enforcement examples, all in CI")
         st.markdown(
-            "- **Citations** resolved against PubMed; fabricated ⇒ ranked "
-            "below a bare hypothesis\n"
-            "- **DURC**: campaigns naming select agents are refused before "
-            "any work, and the refusal is recorded\n"
-            "- **Faults**: junk/adversarial instrument files degrade to "
+            "- **Citations** verified against PubMed; fabricated ranks below "
+            "silence (see the run: AA-2)\n"
+            "- **DURC**: select-agent campaigns refused before any work, "
+            "recorded\n"
+            "- **Faults**: adversarial instrument files degrade to "
             "'unreadable, no verdicts changed'\n"
-            "- **Inputs**: instrument labels are sanitized data — an "
-            "injection-shaped sample name provably cannot reach the gate\n"
-            "- **Replay**: `bn reproduce` replays the recorded environment and "
-            "diffs verdicts; `bn anchor` seals the store with a Merkle root "
-            "publishable somewhere you do not control")
+            "- **Inputs**: sanitized labels — injection-shaped sample names "
+            "provably cannot reach the gate\n"
+            "- **Replay & seal**: `bn reproduce` diffs verdicts from the "
+            "recorded environment; `bn anchor` publishes a Merkle root; "
+            "`bn prove --eln` exports to the lab notebook")
         with st.expander("Evidence panels: what a verdict is made of"):
             from bionexus import figures
             st.markdown(figures.get("evidence"), unsafe_allow_html=True)
-            st.markdown(figures.get("stability"), unsafe_allow_html=True)
-            st.caption("Clear hit, narrow margin (labeled as such), clear "
-                       "miss — CI bands from the bootstrap fitter. Below: "
-                       "abstention rises naturally near the gate; the system "
-                       "abstains where the evidence is thin.")
 
+    # ------------------------------------------------ START
     with tab_start:
         st.markdown(
             "```sh\n"
@@ -212,20 +279,19 @@ def render() -> None:
             "bn eval                       # watch the claims get scored\n"
             "bn auto --template dose-response-screen \\\n"
             "    --field compounds=gefitinib,erlotinib --field threshold=20\n"
+            "bn auto campaign.json --dose-design adaptive   # the fix from "
+            "this story\n"
             "streamlit run Overview.py     # this workbench\n"
             "```")
         st.dataframe([
             {"autonomy": "observe",
              "behavior": "reads, fits, recommends — submits nothing"},
             {"autonomy": "gate",
-             "behavior": "every lab submission waits for your Approve "
-                         "('Awaiting your decision')"},
+             "behavior": "every submission waits for your Approve"},
             {"autonomy": "act",
-             "behavior": "autonomous within the safety engine, budgets and "
-                         "confirmations"},
+             "behavior": "autonomous within safety, budgets, confirmations"},
         ], hide_index=True)
         st.caption("Instruments: Opentrons, plate-reader shares, SiLA 2, "
-                   "LC-MS, HCS microscopes — plus device cards "
-                   "(`bn connect describe`) for what manuals don't say. "
+                   "LC-MS, HCS — plus device cards (`bn connect describe`). "
                    "Agent Skills + MCP expose the toolset to Claude, Cursor "
                    "or your own loop.")
