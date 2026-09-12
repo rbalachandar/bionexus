@@ -108,6 +108,7 @@ def reproduce(branch: str, db_path: str = "bionexus.db",
         "diffs": diffs,
         "environment": env,
         "note": ("simulated replay: identical seeds & structures; "
-                 "LLM-proposed portfolios are NOT replayed (hypothesis set "
-                 "taken from provenance as recorded)"),
+                 "generation model "
+                 f"{env.get('model') or 'n/a'} is NOT re-invoked — the "
+                 "hypothesis set is replayed exactly as recorded"),
     }

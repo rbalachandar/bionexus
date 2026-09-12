@@ -70,6 +70,11 @@ class CampaignConfig:
                                         # sequential dosing, 3 wells)
     noise_variant: int = 0              # measurement-noise offset: varies
                                         # noise, never the ground truth
+    rounds: int = 1                     # sequential rounds; each round's
+                                        # results feed the next selection
+    policy: Any = None                  # assaybench-style ranker (e.g.
+                                        # AssayLoopRanker): from round 2 it
+                                        # picks the batch, gates still decide
     inbox: str | Path = ".data/inbox"
     flywheel: Any = None                # shared Flywheel (default: local db)
     autonomy: Autonomy = "gate"
@@ -83,6 +88,8 @@ class CampaignReport:
     selected: list[str]
     verdicts: dict[str, str] = field(default_factory=dict)   # candidate -> status
     recommendations: list[str] = field(default_factory=list)
+    rounds_run: int = 1
+    history: list[dict] = field(default_factory=list)
 
 
 def run_campaign(cfg: CampaignConfig, lab: Any,
@@ -111,7 +118,9 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             lab, safety, store, actor,
             lambda t: approver(f"{t} {branch_hint}"), say)
     else:
-        gateway = LabGateway(lab, safety, store, actor)
+        from bionexus.advisory import AdvisoryReviewer
+        gateway = LabGateway(lab, safety, store, actor,
+                             advisory=AdvisoryReviewer())
 
     # 0. problem + portfolio + filter
     from bionexus.adapters.bio.tox_alerts import durc_screen
@@ -135,6 +144,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         "autonomy": cfg.autonomy,
         "dose_design": cfg.dose_design,
         "k": cfg.k,
+        "model": getattr(cfg.model, "model", None),
     })
     family_scores: dict[str, float] = {}
     if cfg.hypothesis_source == "agent":
@@ -161,20 +171,15 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         portfolio = tracker.propose_portfolio(problem, cfg.hypotheses or [])
         base_fn = cfg.score_fn or (lambda h: 0.5)
         score_fn = lambda h: base_fn(h) + flywheel.prior_bonus(h.family)
-    selected = tracker.select_portfolio(problem, portfolio, score_fn, k=cfg.k,
-                                        max_per_family=1)
-    say(f"problem {problem.problem_id}: {len(portfolio)} hypotheses -> {len(selected)} selected")
-    say("PHASE design+submit")
-
-    # 1. design + submit for each selected hypothesis
+    # 1. rounds: select -> design+submit -> analyze; each round feeds the next
     _submit = gateway.submit
 
     def gateway_submit(protocol):  # budget-enforced submission
         if cfg.budget is not None:
             used = cfg.budget.lab_runs_used(store, cfg.problem.problem_id or "")
             if used >= cfg.budget.max_total_runs:
-                say(f"BUDGET EXHAUSTED: {used}/{cfg.budget.max_total_runs} lab runs "
-                    "used — submission refused (recorded)")
+                say(f"BUDGET EXHAUSTED: {used}/{cfg.budget.max_total_runs} lab "
+                    "runs used — submission refused (recorded)")
                 store.append(record_for(
                     Envelope(experiment_branch_id=f"problem/{cfg.problem.problem_id}"),
                     EventType.tool_invocation, actor,
@@ -191,52 +196,14 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     adaptive = cfg.dose_design == "adaptive"
     screen_conc = cfg.concentrations[len(cfg.concentrations) // 2] \
         if adaptive else None
-    for h in selected:
-        protocol = ProtocolSubmission(
-            envelope=Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
-            title=f"screen-{h.candidate}" if adaptive else f"test-{h.candidate}",
-            assay_type=h.assay_type,
-            steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense, params={"volume_ul": 50})],
-            samples=[SampleSpec(
-                sample_id=h.candidate, kind=SampleKind.compound,
-                concentration=c,
-                metadata={"smiles": (h.metadata or {}).get("smiles", ""),
-                          "intent": ("covalent" if "covalent" in
-                                      (h.mechanism or "").lower() else "")})
-                     for c in ([screen_conc] if adaptive else cfg.concentrations)]
-            + [SampleSpec(sample_id=f"ctrl-neg{i}", kind=SampleKind.buffer,
-                          concentration="10uM") for i in (1, 2)],
-            reagents=[ReagentSpec(name="assay-buffer", amount="5 mL", bsl_level=1)],
-        )
-        h.design = ExperimentDesign(
-            assay_type=h.assay_type, concentrations=list(cfg.concentrations),
-            replicates=3, controls=["negative"], protocol_id=protocol.protocol_id)
-        if cfg.autonomy == "observe":
-            say(f"observe-only: would test {h.candidate} — stopping")
-            continue
-        run_id, rejection = gateway.submit(protocol)
-        if rejection:
-            say(f"submission for {h.candidate} rejected: {rejection}")
-            continue
-        tracker.attach_test(h, protocol, run_id)
-        h.design.run_id = run_id
-        _export_instrument_file(inbox, run_id, h.candidate,
-                                [screen_conc] if adaptive else cfg.concentrations,
-                                lab=lab, noise_variant=cfg.noise_variant)
 
-    if cfg.autonomy == "observe":
-        return CampaignReport(problem_id=problem.problem_id,
-                              selected=[h.candidate for h in selected])
-
-    # 2. agent notices the outputs, verdicts, confirms
-    say("PHASE analyze")
-    messages: list[str] = []
     def _export(run_id: str, candidate: str,
                 concs: list[str] | None = None) -> None:
         _export_instrument_file(inbox, run_id, candidate,
                                 concs or list(cfg.concentrations), lab=lab,
                                 noise_variant=cfg.noise_variant)
 
+    messages: list[str] = []
     agent = AutoAnalysisAgent(notify=(lambda m: (messages.append(m), say(f"[agent] {m}"))),
                               tracker=tracker, gateway=gateway,
                               branch_id=f"problem/{problem.problem_id}",
@@ -247,29 +214,132 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                                   float(str(c).rstrip("uM"))
                                   for c in cfg.concentrations) + (80.0,))
     monitor = DeviceMonitor(inbox, poll_secs=cfg.poll_secs)
-    time.sleep(0.2)
-    n_expected = sum(1 for h in selected if h.design and h.design.run_id)
-    # primary runs + their orthogonal confirmations (guarded, <= 1 per candidate)
     # "validated" is PRELIMINARY in fixed mode (confirmation pending), so it
-    # must NOT count as terminal here or the loop exits before confirmations
-    # are processed. Adaptive mode has no confirmation step: its verdicts
-    # arrive as confirmed/refuted/inconclusive directly.
+    # must NOT count as terminal or the loop exits before confirmations run.
     terminal = {"confirmed", "refuted", "invalidated", "inconclusive"}
-    budget = n_expected * (4 if adaptive else 2) + 1
-    for i, ev in enumerate(monitor.events(stop_after=budget,
-                                          idle_timeout=max(5.0, cfg.poll_secs * 30))):
-        agent.handle(ev)
-        if all(h.status in terminal for h in selected) and i + 1 >= n_expected:
+
+    remaining = list(portfolio)
+    history: list[dict] = []
+    tested: list = []
+    for round_no in range(1, max(1, cfg.rounds) + 1):
+        if not remaining:
+            say(f"round {round_no}: no untested candidates remain — stopping")
             break
+        if cfg.policy is not None and round_no > 1:
+            selected = _policy_select(cfg, remaining, tracker, say)
+        else:
+            selected = tracker.select_portfolio(problem, remaining, score_fn,
+                                                k=cfg.k, max_per_family=1)
+        remaining = [h for h in remaining if h not in selected]
+        if not selected:
+            say(f"round {round_no}: nothing selected — stopping")
+            break
+        say(f"round {round_no}: testing "
+            f"{[h.candidate for h in selected]} "
+            f"({len(remaining)} candidates remain)")
+        if cfg.autonomy == "observe":
+            say("observe-only: nothing submitted")
+            return CampaignReport(problem_id=problem.problem_id,
+                                  selected=[h.candidate for h in selected])
 
-    verdicts = {h.candidate: h.status for h in selected}
+        # design + submit this round
+        for h in selected:
+            protocol = ProtocolSubmission(
+                envelope=Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
+                title=f"screen-{h.candidate}" if adaptive else f"test-{h.candidate}",
+                assay_type=h.assay_type,
+                steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense,
+                                    params={"volume_ul": 50})],
+                samples=[SampleSpec(
+                    sample_id=h.candidate, kind=SampleKind.compound,
+                    concentration=c,
+                    metadata={"smiles": (h.metadata or {}).get("smiles", ""),
+                              "intent": ("covalent" if "covalent" in
+                                         (h.mechanism or "").lower() else "")})
+                         for c in ([screen_conc] if adaptive
+                                   else cfg.concentrations)]
+                + [SampleSpec(sample_id=f"ctrl-neg{i}", kind=SampleKind.buffer,
+                              concentration="10uM") for i in (1, 2)],
+                reagents=[ReagentSpec(name="assay-buffer", amount="5 mL",
+                                      bsl_level=1)],
+            )
+            h.design = ExperimentDesign(
+                assay_type=h.assay_type, concentrations=list(cfg.concentrations),
+                replicates=3, controls=["negative"],
+                protocol_id=protocol.protocol_id)
+            run_id, rejection = gateway.submit(protocol)
+            if rejection:
+                say(f"submission for {h.candidate} rejected: {rejection}")
+                continue
+            tracker.attach_test(h, protocol, run_id)
+            h.design.run_id = run_id
+            _export(run_id, h.candidate,
+                    [screen_conc] if adaptive else None)
+
+        # analyze this round's outputs
+        n_expected = sum(1 for h in selected if h.design and h.design.run_id)
+        time.sleep(0.2)
+        cap = n_expected * (4 if adaptive else 2) + 1
+        for i, ev in enumerate(monitor.events(
+                stop_after=cap,
+                idle_timeout=max(5.0, cfg.poll_secs * 30))):
+            agent.handle(ev)
+            if all(h.status in terminal for h in selected) and i + 1 >= n_expected:
+                break
+        verdicts_r = {h.candidate: h.status for h in selected}
+        store.append(record_for(
+            Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
+            EventType.stage_transition, actor,
+            decision={"stage": f"round-{round_no}-complete",
+                      "picked": sorted(verdicts_r), "verdicts": verdicts_r}))
+        history.append({"round": round_no,
+                        "picked": sorted(verdicts_r),
+                        "verdicts": verdicts_r})
+        tested.extend(selected)
+
+    verdicts = {h.candidate: h.status for h in tested}
     say(f"CAMPAIGN COMPLETE {problem.problem_id}: "
-        + ", ".join(f"{c}={s}" for c, s in verdicts.items()))
+        + (", ".join(f"{c}={s}" for c, s in verdicts.items()) or "nothing tested"))
     return CampaignReport(problem_id=problem.problem_id,
-                          selected=[h.candidate for h in selected],
+                          selected=[h.candidate for h in tested],
                           verdicts=verdicts,
-                          recommendations=[m for m in messages if "recommendation" in m])
+                          recommendations=[m for m in messages
+                                           if "recommendation" in m],
+                          rounds_run=len(history), history=history)
 
+
+def _policy_select(cfg, remaining, tracker, say):
+    """Round r>1 batch choice by an assaybench-style policy. The policy ranks
+    candidates from prior observations; BioNexus keeps every veto: diversity
+    cap here, safety + budget + approval at the gate."""
+    obs = [{"candidate": h.candidate,
+            "hit": h.status in ("validated", "confirmed"),
+            "relevance_score": (-(h.observed_value or 0.0))
+            if h.observed_value is not None else 0.0}
+           for h in tracker.hypotheses.values()
+           if h.status not in ("proposed", "designed")]
+    cands = [h.candidate for h in remaining]
+    if hasattr(cfg.policy, "pick_batch"):
+        picks = list(cfg.policy.pick_batch(cands, obs, cfg.k))
+    elif hasattr(cfg.policy, "rank"):
+        picks = [c for c, _ in cfg.policy.rank(cands, obs)[:cfg.k]]
+    else:
+        say("policy has neither pick_batch nor rank — falling back to scores")
+        return tracker.select_portfolio(cfg.problem, remaining,
+                                        cfg.score_fn or (lambda h: 0.5),
+                                        k=cfg.k, max_per_family=1)
+    by_cand = {h.candidate: h for h in remaining}
+    out, fam = [], set()
+    for c in picks:
+        h = by_cand.get(c)
+        if h is None or (h.family or "") in fam and h.family:
+            continue
+        if h.family:
+            fam.add(h.family)
+        out.append(h)
+    say(f"policy picked {[h.candidate for h in out]} from "
+        f"{len(obs)} observations")
+    return out
 
 def _export_instrument_file(inbox: Path, run_id: str, candidate: str,
                             concentrations: tuple[str, ...], lab: Any = None,

@@ -52,8 +52,115 @@
      "E-12"
     ]
    },
-   "duration_s": 6.5
+   "duration_s": 6.4
   },
   "notes": "1.0 confident-correct \u00b7 0.5 honest abstain \u00b7 0 wrong"
+ },
+ {
+  "task": "verdict-honesty",
+  "score": 1.0,
+  "passed": true,
+  "metrics": {
+   "straddling_ci": 2,
+   "violations": 0,
+   "duration_s": 10.1
+  },
+  "notes": "bar at E-03's true IC50 (10.75 uM); 2 borderline CIs, 0 overconfident verdicts"
+ },
+ {
+  "task": "confirmation-coverage",
+  "score": 1.0,
+  "passed": true,
+  "metrics": {
+   "confirmed": 1,
+   "with_agreement": 1,
+   "duration_s": 6.4
+  },
+  "notes": "no confirmations at all -> 0 (mechanism unused)"
+ },
+ {
+  "task": "falsifiability-tiebreak",
+  "score": 1.0,
+  "passed": true,
+  "metrics": {
+   "selected": [
+    "E-01",
+    "E-03",
+    "E-05",
+    "E-07"
+   ],
+   "rich_candidates": [
+    "E-01",
+    "E-03",
+    "E-05",
+    "E-07",
+    "E-09",
+    "E-11"
+   ],
+   "duration_s": 4.4
+  },
+  "notes": "all k picks must be mechanistic+cited"
+ },
+ {
+  "task": "adaptive-dose-design",
+  "score": 0.875,
+  "passed": true,
+  "metrics": {
+   "wins": "14/16",
+   "mean_err_adaptive_3well": 0.024,
+   "mean_err_fixed_4well": 0.09,
+   "ci_coverage": "15/16",
+   "duration_s": 2.5
+  },
+  "notes": "3 wells beat 4: err 0.024 vs 0.090; CI coverage 15/16 (nominal 15.2)"
+ },
+ {
+  "task": "flywheel-memory",
+  "score": 1.0,
+  "passed": true,
+  "metrics": {
+   "selected": [
+    "Y-1",
+    "Z-1"
+   ],
+   "ruled_out_campaign1": [
+    "X-1"
+   ],
+   "family_A_prior": 0.5,
+   "duration_s": 3.5
+  },
+  "notes": "the dead family must get zero lab slots"
+ },
+ {
+  "task": "verdict-stability",
+  "score": 1.0,
+  "passed": true,
+  "metrics": {
+   "stability": 1.0,
+   "per_candidate": {
+    "S-1": [
+     "invalidated",
+     "invalidated",
+     "invalidated"
+    ],
+    "S-2": [
+     "inconclusive",
+     "inconclusive",
+     "inconclusive"
+    ],
+    "S-3": [
+     "inconclusive",
+     "inconclusive",
+     "inconclusive"
+    ],
+    "S-4": [
+     "confirmed",
+     "confirmed",
+     "confirmed"
+    ]
+   },
+   "duration_s": 9.5
+  },
+  "notes": "unstable verdicts flag borderline evidence \u2014 reported, not hidden"
  }
 ]

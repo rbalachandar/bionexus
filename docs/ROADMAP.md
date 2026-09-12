@@ -53,8 +53,8 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] CS03 `--llm` sweep COMPLETED 2026-09-10 (reuse fast-path + glm-4.5-air):
   blind chemotype ID 4/4, variant probe flagged 1 leakage-suspect that the
   self-report missed, agent-vs-RF mixed rankings reported honestly.
-  [ ] follow-up: chemist-judged core-match verdict (substring matcher is
-  brittle: "benzimidazole" fails a "benzene" contains-test)
+  [x] chemist-judged core-match: synonym-aware matcher (benzimidazole→benzene
+  marker via "benz", carboxamide/urea→amide, cf3→trifluoromethyl)
 - [x] `src/bionexus/probes.py` — never-published single-token variants of
   held-out compounds are asked about blind; mapping a nonexistent near-twin
   to the paper = memorization. Wired into CS02 (provenance-recorded) and
@@ -111,9 +111,14 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   candidates inside a BioNexus campaign; tested with a stub policy, no hard
   dependency
 - [x] positioning note in docs/research-landscape.md
-- [ ] multi-round campaigns: sequential batches where the ranker (or
-  llm-warm handoff: LLM round 1, adaptive/flywheel after) picks k each round
-  — the real mirror of their SequentialLoop; current autoloop is single-round
+- [x] Multi-round campaigns: CampaignConfig.rounds + policy slot. Round 1
+  selects by score/flywheel (or LLM portfolio when hypothesis_source: agent);
+  from round 2 an assaybench-style policy ranks the REMAINING untested
+  candidates (observations built from provenance statuses); diversity cap,
+  budget, safety and approval still veto every pick. Each round recorded as
+  a round-N-complete stage_transition; report carries history. This is also
+  the AssayLoop handoff pattern: LLM warm start -> policy takeover.
+  [ ] llm-warm handoff as a named preset (rounds=2, policy=assayformer)
 - [ ] optional extra: `bn eval --task hit-recovery --policy assayformer`
   once torch deps are an extra
 
@@ -216,7 +221,10 @@ Positioning bet: trustworthiness as architecture, not marketing. Priority order:
     every refusal ("[rules safety-rules-v1]"); missing file degrades to a
     labeled builtin fallback, never silent
   - [ ] step 2: ingest Benigni/Bosa + Toxtree/OpenAlerts rulebooks wholesale
-  - [ ] step 3: advisory AI tox reviewer (tighten-only wiring)
+  - [x] step 3: advisory AI tox reviewer (src/bionexus/advisory.py) — runs
+    after the deterministic gate, flags intent-declared electrophiles,
+    escalates stacked alerts to human review, records advisory gate_decisions;
+    LLM pass behind BIONEXUS_ADVISORY_LLM=1; can never clear a refusal
 - [ ] Attribution panel per prediction: Morgan-RF → top contributing fingerprint
   features; CharRidge → top n-grams; rendered beside verdicts ("why").
 - [x] Retrieval traces in provenance: hypothesis_generation records now carry

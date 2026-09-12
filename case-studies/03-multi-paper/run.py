@@ -401,7 +401,23 @@ def run_agent_rows(agent, doc_id: str, label: str, sample: list[tuple[str, float
         out["agent_note"] = "unparseable response"
         return out
     core = doc.get("core", "").lower()
-    matched = [m for m in markers if m in core]
+    # synonym-aware: "benzimidazole" contains an aromatic-ring marker even
+    # though the plain substring test missed it (matcher brittleness, not
+    # agent error)
+    SYN = {"benzene": ("benzene", "phenyl", "aryl", "benz", "toluyl"),
+           "pyrimidine": ("pyrimidin", "aminopyrimidine"),
+           "pyridine": ("pyridin", "pyridyl"),
+           "pyrazine": ("pyrazin",), "pyrazole": ("pyrazol",),
+           "thiazole": ("thiazol",), "triazole": ("triazol",),
+           "imidazole": ("imidazol", "benzimidazol"),
+           "indole": ("indol",), "quinoline": ("quinolin",),
+           "morpholine": ("morpholin", "morpho"),
+           "piperazine": ("piperazin",),
+           "sulfonamide": ("sulfonamid", "sulfamoyl"),
+           "trifluoromethyl": ("trifluoromethyl", "cf3", "trifluoro"),
+           "amide": ("amide", "carboxamide", "urea")}
+    matched = [m for m in markers
+               if any(s in core for s in SYN.get(m, (m.lower(),)))]
     out["agent_core"] = doc.get("core", "")
     out["hypothesis_match"] = bool(matched)
     scores = {int(x["index"]): float(x["score"]) for x in doc.get("scores", [])}

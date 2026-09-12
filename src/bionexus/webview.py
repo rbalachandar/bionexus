@@ -89,20 +89,33 @@ def _pipeline_body(logf: Path, problem_id: str | None,
             v = (verd.get("verdict") or "").lower()
             ci = verd.get("ci")
             ci_txt = (f" (95% CI {ci[0]}–{ci[1]})" if ci else "")
+            _margin = ""
+            _thr = (hp.get("criteria") or {}).get("threshold")
+            if ci and _thr and None not in ci and ci[1] > ci[0]:
+                width = ci[1] - ci[0]
+                edge = min(abs(ci[0] - _thr), abs(ci[1] - _thr))
+                _margin = (" · ⚠ borderline: CI spans the gate"
+                           if ci[0] <= _thr <= ci[1] else
+                           (" · narrow margin" if edge < width else " · clear margin"))
             if v == "confirmed":
                 icon, stage = "✅", ("confirmed by orthogonal assay"
                                      + (f" — observed {verd.get('observed')} µM{ci_txt}"
-                                        if verd.get("observed") is not None else ""))
+                                        if verd.get("observed") is not None else "")
+                                     + _margin)
             elif v == "validated":
                 icon, stage = "✅", ("validated (preliminary)"
                                      + (f" — observed {verd.get('observed')} µM{ci_txt}"
-                                        if verd.get("observed") is not None else ""))
+                                        if verd.get("observed") is not None else "")
+                                     + _margin)
             elif v == "inconclusive":
                 icon, stage = "❔", ("inconclusive — CI straddles the threshold"
                                      + (f" ({verd.get('observed')} µM{ci_txt})"
                                         if verd.get("observed") is not None else ""))
             elif v in ("refuted", "invalidated"):
-                icon, stage = "❌", "refuted"
+                icon, stage = "❌", ("refuted"
+                                     + (f" ({verd.get('observed')} µM{ci_txt})"
+                                        if verd.get("observed") is not None else "")
+                                     + _margin)
             elif run_map.get(hid):
                 icon, stage = "🔬", "in lab"
             elif sel and sel.get("selected"):

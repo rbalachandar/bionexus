@@ -1800,3 +1800,84 @@ def test_assay_selection_metrics():
     assert fraction_of_hits(hits[:4], hits) == 0.4
     assert percent_essential(hits[:4] + ["z"], hits) == 0.8
     assert shortfall(hits[:4], hits) == 0.6
+
+
+def test_advisory_tier_tightens_only():
+    from bionexus.advisory import AdvisoryReviewer
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
+                                         ProtocolSubmission, ReagentSpec,
+                                         SampleKind, SampleSpec)
+    from bionexus.core.safety import LabGateway, SafetyEngine
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.core.interfaces import system_actor
+
+    rev = AdvisoryReviewer()          # heuristic backend (no LLM env)
+
+    def proto(smiles, intent=""):
+        return ProtocolSubmission(
+            envelope=Envelope(experiment_branch_id="adv"), title="t",
+            assay_type="binding",
+            steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense,
+                                params={"volume_ul": 50})],
+            samples=[SampleSpec(sample_id="X", kind=SampleKind.compound,
+                                concentration="10uM",
+                                metadata={"smiles": smiles, "intent": intent})],
+            reagents=[ReagentSpec(name="b", amount="5 mL", bsl_level=1)])
+
+    # clean molecule: no flags, passes
+    gw = LabGateway(SimulatorLab(), SafetyEngine(), SqliteProvenanceStore(),
+                    system_actor(), advisory=rev)
+    run_id, rej = gw.submit(proto("CC(=O)Oc1ccccc1C(=O)O"))
+    assert run_id and rej is None
+
+    # intent-declared warhead: deterministic gate passes it, advisory FLAGS it
+    run_id, rej = gw.submit(proto("C=CC(=O)Nc1ccccc1", intent="covalent"))
+    assert run_id                                   # not blocked (1 alert)
+    store = gw.store
+    adv = [r for r in store.branch_records("adv")
+           if (r.decision or {}).get("kind") == "advisory"]
+    assert adv and adv[-1].decision["advisory"] is True
+    assert adv[-1].decision["flags"]
+
+    # advisory can never clear: hard alert still refused even with advisory
+    ok, why = SafetyEngine().check(proto("O=[N+]([O-])c1ccccc1"))
+    assert not ok
+
+
+def test_multi_round_policy_campaign(tmp_path):
+    from bionexus.autoloop import CampaignConfig, run_campaign
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.hypothesis import Constraint, ProblemStatement
+
+    calls = []
+
+    class FirstCandidatePolicy:
+        def predict(self, observations, candidates, task_context=None):
+            calls.append(sorted(candidates))
+            class P: scores = {c: 1.0 / (i + 1)
+                               for i, c in enumerate(sorted(candidates))}
+            return P
+
+    from bionexus.adapters.models.assayloop_ranker import AssayLoopRanker
+    problem = ProblemStatement(
+        objective="r", problem_id="prob-mr",
+        constraints=[Constraint(name="potency", description="d", kind="hard",
+                                limit=20.0, unit="uM")])
+    cfg = CampaignConfig(
+        problem=problem,
+        hypotheses=[{"statement": f"{c} b", "candidate": c,
+                     "assay_type": "binding", "predicted": "<=20",
+                     "predicted_value": 20.0, "family": c[:2]}
+                    for c in ("AA-1", "AA-2", "BB-1")],
+        k=1, rounds=2, autonomy="act", inbox=str(tmp_path / "in"),
+        poll_secs=0.05,
+        policy=AssayLoopRanker(policy=FirstCandidatePolicy()))
+    report = run_campaign(cfg, SimulatorLab(seed=2), SqliteProvenanceStore())
+    assert report.rounds_run == 2
+    assert [h["round"] for h in report.history] == [1, 2]
+    p1, p2 = report.history[0]["picked"][0], report.history[1]["picked"][0]
+    assert p1 != p2                                  # no re-testing
+    assert calls and calls[0] == sorted(            # policy saw the REMAINING
+        c for c in ("AA-1", "AA-2", "BB-1") if c != p1)   # candidates only

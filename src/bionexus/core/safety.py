@@ -141,17 +141,35 @@ class LabGateway:
     """The ONLY path from agents to a LabAdapter. Enforces safety (P6), records
     provenance for every run (P5). Agents see this, never the raw adapter."""
 
-    def __init__(self, lab: Any, safety: SafetyEngine, store: Any, actor: Any):
+    def __init__(self, lab: Any, safety: SafetyEngine, store: Any, actor: Any,
+                 advisory: Any = None):
         self.lab = lab
         self.safety = safety
         self.store = store
         self.actor = actor
+        self.advisory = advisory
 
     def submit(self, protocol: ProtocolSubmission) -> tuple[str | None, str | None]:
         """Returns (run_id, rejection_reason). run_id is None when rejected."""
         approved, reason = self.safety.check(protocol)
         if not approved:
             return None, reason
+        # tighten-only advisory tier: runs solely on gate-passed protocols;
+        # may add flags or escalate to human review, never clears a refusal
+        if self.advisory is not None:
+            from bionexus.core.contracts import EventType
+            from bionexus.core.interfaces import record_for
+            adv = self.advisory.review(protocol)
+            if adv.get("flags") or adv.get("escalate"):
+                self.store.append(record_for(
+                    protocol.envelope, EventType.gate_decision, self.actor,
+                    decision={"kind": "advisory", "advisory": True,
+                              "flags": adv["flags"],
+                              "escalated": bool(adv.get("escalate"))}))
+            if adv.get("escalate"):
+                return None, ("[advisory] escalated to human review: "
+                              + "; ".join(f"{f['sample']}: {f['alert']}"
+                                          for f in adv["flags"][:2]))
         run_id = self.lab.submit_protocol(protocol)
         from bionexus.core.contracts import EventType, InstrumentInfo
         from bionexus.core.interfaces import record_for
