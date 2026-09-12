@@ -43,111 +43,10 @@ def _diagram(path: str, caption: str) -> None:
 def render() -> None:
     inject_css()
     run = _run()
-    st.title("📖 The story of one campaign")
-    tab_run, tab_framework, tab_works, tab_trust, tab_start = st.tabs(
-        ["A real run", "The framework", "Does it work?",
-         "Can you trust it?", "Get started"])
-
-    # ------------------------------------------------ A REAL RUN
-    with tab_run:
-        st.markdown("**Objective:** *Find MAP4K1 inhibitors with IC50 ≤ 20 µM* "
-                    "· lab: SimulatorLab sim-v1 (seed 2) · 2 rounds · k=2 · "
-                    "policy attached from round 2 · autonomy: act")
-        st.caption("Everything below is the recorded run — real gate refusals, "
-                   "real CIs, real abstentions. Nothing was cleaned up.")
-
-        st.markdown("### 1 · The hypotheses, as proposed")
-        props = [r for r in run.get("records", [])
-                 if r["event"] == "hypothesis_proposed" and r["candidate"]]
-        st.dataframe([
-            {"candidate": p["candidate"],
-             "mechanism": (p["decision"].get("mechanism") or "—")[:70],
-             "refuted if": (p["decision"].get("refutation_condition") or "—")[:50],
-             "citation": p["decision"].get("citation") or "—",
-             "citation check": p["decision"].get("citation_status", "unverified")}
-            for p in props], hide_index=True)
-        st.caption("AA-2's citation failed verification against PubMed — a "
-                   "fabricated reference costs portfolio score, it does not "
-                   "hide itself.")
-
-        st.markdown("### 2 · Who got the lab slots, and why")
-        filt = next((r for r in run.get("records", [])
-                     if r["event"] == "hypotheses_filtered"), None)
-        if filt:
-            cand_by_id = {}
-            for p in props:
-                cid = (p["decision"] or {}).get("hypothesis_id")
-                if cid:
-                    cand_by_id[cid] = p["candidate"]
-            st.dataframe([
-                {"hypothesis": cand_by_id.get(d["hypothesis_id"],
-                                              d["hypothesis_id"]),
-                 "score": d["score"],
-                 "selected": "✅" if d["selected"] else "—",
-                 "recorded reason": d["reason"]}
-                for d in filt["decision"].get("decisions", [])],
-                hide_index=True)
-
-        st.markdown("### 3 · What the gates did")
-        glines = [l for l in run.get("log", []) if "rejected" in l
-                  or "advisory" in l.lower()]
-        advs = [r for r in run.get("records", [])
-                if (r["decision"] or {}).get("kind") == "advisory"]
-        for l in glines:
-            st.error(l.replace("[agent] ", ""), icon="🚫")
-        for a in advs:
-            flags = a["decision"].get("flags", [])
-            st.warning("Advisory tier flagged (not blocked): " + "; ".join(
-                f"{f['sample']} — {f['alert']}"
-                + (f" (declared intent: {f['declared_intent']})"
-                   if f.get("declared_intent") else "") for f in flags),
-                icon="⚠️")
-        st.caption("BX-1 never reached the bench: three structural alerts, "
-                   "rule-set version in the refusal. BB-1's electrophile "
-                   "passed the deterministic gate on declared covalent intent "
-                   "— the advisory tier still noticed it, on record.")
-
-        st.markdown("### 4 · The loop, line by line")
-        for line in run.get("log", []):
-            if "rejected" in line:
-                continue
-            mono = line.startswith("[agent]") or line.startswith("[campaign]")
-            st.markdown(f"<div style='font-family:ui-monospace,monospace;"
-                        f"font-size:12.5px;color:#4a463d;padding:1px 0'>"
-                        f"{line.replace('<', '&lt;')}</div>",
-                        unsafe_allow_html=True)
-
-        st.markdown("### 5 · Verdicts — and the honesty of them")
-        verts = [r for r in run.get("records", [])
-                 if r["event"].startswith("hypothesis_") and r["candidate"]
-                 and (r["decision"] or {}).get("verdict")]
-        last = {}
-        for r in verts:
-            last[r["candidate"]] = r["decision"]
-        st.dataframe([
-            {"candidate": c, "verdict": d.get("verdict"),
-             "observed IC50 (µM)": d.get("observed"),
-             "95% CI": "–".join(str(x) for x in d.get("observed_ci") or [])
-             or "—",
-             "evidence run": d.get("evidence_run_id") or "never ran"}
-            for c, d in sorted(last.items())], hide_index=True)
-        st.success("No compound was claimed as a hit. Two stayed "
-                   "**inconclusive** because their CIs straddle the gate; "
-                   "one is **proposed** because the gate refused it. That is "
-                   "the whole point: the loop abstains where evidence is "
-                   "thin.")
-
-        from bionexus import figures
-        st.markdown("### 6 · Why the next campaign runs adaptive")
-        st.markdown(figures.get("recovery"), unsafe_allow_html=True)
-        st.caption("BB-1 and AA-2 stayed inconclusive because a fixed "
-                   "0.5/2/10/40 series cannot resolve compounds near the "
-                   "gate. This curve is the same run's math with Bayesian "
-                   "well placement: ~4× more confident decisions at 3 wells "
-                   "than the fixed series manages at 4. "
-                   "`bn auto … --dose-design adaptive` — and the abstention "
-                   "rate rises exactly where it should, near the gate.")
-        st.markdown(figures.get("stability"), unsafe_allow_html=True)
+    st.title("📖 Documentation")
+    tab_framework, tab_works, tab_trust, tab_start = st.tabs(
+        ["The framework", "Does it work?", "Can you trust it?",
+         "Get started"])
 
     # ------------------------------------------------ FRAMEWORK
     with tab_framework:
@@ -238,6 +137,17 @@ def render() -> None:
                     "ships as a limitation, not a footnote.")
         st.caption("Study inputs are frozen: checksummed fixtures, "
                    "`bn fixtures verify` in CI.")
+        from bionexus import figures
+        st.markdown("#### Why adaptive dosing exists")
+        st.markdown(figures.get("recovery"), unsafe_allow_html=True)
+        st.caption("A fixed 0.5/2/10/40 series cannot resolve compounds near "
+                   "the gate — they stay inconclusive (as they should). "
+                   "Bayesian well placement reaches ~4× more confident "
+                   "decisions at 3 wells: `bn auto … --dose-design adaptive`.")
+        st.markdown(figures.get("stability"), unsafe_allow_html=True)
+        st.caption("Abstention rises exactly where evidence is thin — "
+                   "near the gate. An agent that never says 'inconclusive' "
+                   "is not more useful; it is lying.")
 
     # ------------------------------------------------ TRUST
     with tab_trust:

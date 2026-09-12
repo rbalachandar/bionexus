@@ -844,6 +844,12 @@ def experiment_view() -> None:
         render_experiment_pipeline(logf, problem_id,
                                    running=(status == "running"),
                                    store=store, eid=row["id"])
+        from bionexus import narrative
+        _logtail = (logf.read_text(errors="replace").splitlines()[-200:]
+                    if logf.exists() else [])
+        _live = (SqliteProvenanceStore("bionexus.db").branch_records(branch)
+                 if branch and Path("bionexus.db").exists() else recs)
+        narrative.render(_live or recs, _logtail)
     else:
         p = row["payload"]
         st.title(f"🧑 {row['question'][:70]}")
@@ -904,8 +910,8 @@ PAGES = {
                       url_path="wizard"),
     "experiment": st.Page(experiment_view, title="Experiment", icon="🔬",
                           url_path="experiment"),
-    "story": st.Page(story_view, title="Story", icon="📖",
-                     url_path="story"),
+    "story": st.Page(story_view, title="Documentation", icon="📖",
+                     url_path="documentation"),
 }
 
 

@@ -124,7 +124,10 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## Story surface
 - [x] Static `site/` dropped (private-repo Pages is dead weight). The
-  narrative lives in the workbench: 📖 Story page (`bionexus/story.py`) —
+  narrative lives in the workbench: 📖 Documentation page (`bionexus/story.py`)
+  — the "real run" narrative moved to LIVE experiment pages via
+  `bionexus/narrative.py` (hypotheses as proposed / lab slots and reasons /
+  gate refusals + advisory flags / verdicts and abstention summary) —
   thesis / framework / does-it-work (live leaderboard + run button) / trust
   (rules rendered from safety_rules.json) / start. Figures computed by
   `bionexus/figures.py` from the same math as the eval tasks, cached to
