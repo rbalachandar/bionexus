@@ -287,6 +287,11 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                 continue
             tracker.attach_test(h, protocol, run_id)
             h.design.run_id = run_id
+            say(f"started lab run {run_id} for {h.candidate} on "
+                f"{getattr(lab, 'name', 'instrument')} "
+                f"({len(cfg.concentrations) if not adaptive else 1} dose"
+                f"{'s' if (len(cfg.concentrations) if not adaptive else 1) > 1 else ''}"
+                f" × 3 replicates)")
             _export(run_id, h.candidate,
                     [screen_conc] if adaptive else None)
 

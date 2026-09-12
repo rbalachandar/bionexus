@@ -177,6 +177,33 @@ def render() -> None:
             "- **Replay & seal**: `bn reproduce` diffs verdicts from the "
             "recorded environment; `bn anchor` publishes a Merkle root; "
             "`bn prove --eln` exports to the lab notebook")
+        try:
+            from bionexus.flywheel import Flywheel
+            _negs = Flywheel().negative_summary(limit=50)
+            _latest: dict[str, dict] = {}
+            for n in sorted(_negs, key=lambda x: x["ts"]):
+                _latest[n["candidate"]] = n
+            if _latest:
+                with st.expander(f"Flywheel memory — {len(_latest)} candidates "
+                                 "this node has ruled out"):
+                    for nm in sorted(_latest):
+                        n = _latest[nm]
+                        how = ""
+                        if n.get("observed") is not None:
+                            how = (f" — observed {n['observed']:.1f} µM"
+                                   + (f" (95% CI {n['ci_low']:.1f}"
+                                      f"–{n['ci_high']:.1f})"
+                                      if n.get("ci_low") is not None else "")
+                                   + (f" vs gate {n['threshold']:g} µM"
+                                      if n.get("threshold") is not None else "")
+                                   + (f" · evidence {n['evidence_run']}"
+                                      if n.get("evidence_run") else ""))
+                        st.caption(f"- **{nm}** ({n['family']}, "
+                                   f"{n['assay']}): {n['outcome']}{how}")
+                    st.caption("Later campaigns discount these families and "
+                               "the agent is shown this list before proposing.")
+        except Exception:
+            pass
         with st.expander("Evidence panels: what a verdict is made of"):
             from bionexus import figures
             st.markdown(figures.get("evidence"), unsafe_allow_html=True)

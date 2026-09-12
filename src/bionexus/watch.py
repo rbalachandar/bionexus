@@ -124,7 +124,8 @@ class AutoAnalysisAgent:
             conf = self._confirmations.get(event.path.stem)
             if conf:
                 return self._handle_confirmation(event, conf)
-            self.notify(f"noticed device output: {event.path.name} — reading it")
+            self.notify(f"reading instrument output {event.path.name} "
+                        "(device finished the measurement)")
             result = read_plate(event.path, max_response=self.max_response)
         except Exception as exc:
             # a broken instrument file is a DATA problem, never a crash:
@@ -384,7 +385,7 @@ class AutoAnalysisAgent:
                 if hyp.candidate == candidate and self.tracker.hypotheses.get(hyp.hypothesis_id):
                     self.tracker.attach_test(hyp, protocol, run_id)
                     break
-        self.notify(f"loop closed: confirmation assay for {candidate} auto-submitted "
+        self.notify(f"sending orthogonal confirmation assay for {candidate} "
                     f"(safety-approved) -> run {run_id}")
         return run_id
 

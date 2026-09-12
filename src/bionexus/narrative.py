@@ -90,7 +90,7 @@ def render_verdicts(recs) -> None:
                 last[cand] = d
     if not last:
         return
-    st.markdown("Verdicts — and the honesty of them")
+    st.markdown("Verdicts")
     st.dataframe([
         {"candidate": c, "verdict": d.get("verdict"),
          "observed IC50 (µM)": d.get("observed"),
@@ -139,17 +139,7 @@ def render_trust(recs, log_lines=()) -> None:
         if "safety-rules-" in l:
             rules = l.split("[rules ")[1].split("]")[0]
             break
-    st.markdown("### Trust summary for this run")
-    c1, c2, c3, c4 = st.columns(4)
-    ver = cstates.count("verified")
-    c1.metric("Citations verified", f"{ver}/{len(cstates)}" if cstates
-              else "none cited")
-    c2.metric("Gate refusals", len(refusals) + len(durc))
-    c3.metric("Advisory flags", n_flags)
-    c4.metric("Verdicts abstained", abstained)
-    st.caption(f"rule set: {rules} · a fabricated citation costs portfolio "
-               "score · a CI straddling the gate abstains — "
-               "abstention is a verdict, not a failure")
+    st.markdown("### Trust summary")
     with st.expander("Evidence panel: what a verdict is made of"):
         from bionexus import figures
         st.markdown(figures.get("evidence"), unsafe_allow_html=True)

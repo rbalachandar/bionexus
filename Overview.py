@@ -411,6 +411,102 @@ def overview_view() -> None:
                         resume_wizard(e)
                         st.switch_page(PAGES["wizard"])
 
+    # ---------------------------------------------------- Program & TPP
+    doc = program_cfg.load()
+    st.header("🎯 Program")
+    st.markdown(f"**{doc['program']}** · target **{doc['target']}** · "
+                f"screening gate: **{doc['gate']}** at IC50 ≤ "
+                f"{program_cfg.gate_threshold_um(doc):g} µM")
+    with st.expander("Program & target product profile — what winning looks like"):
+        st.markdown("*Hierarchy:* 🎯 Program (TPP) ▸ Problem ▸ Hypothesis ▸ "
+                    "Experiment. The gate below sets the potency bar that "
+                    "wizard hypotheses and agent experiments inherit.")
+        # apply a pending ChEMBL suggestion before the widgets instantiate
+        sp = st.session_state.pop("suggest_profile", None)
+        if sp:
+            st.session_state["tpp_hit"] = sp["hit_ic50_nm"]
+            st.session_state["tpp_lead"] = sp["lead_ic50_nm"]
+            if sp["source"] == "chembl":
+                st.session_state["tpp_gate"] = "hit"
+        tp1, tp2 = st.columns(2)
+        prog = tp1.text_input("Program", doc["program"], key="tpp_prog")
+        tgt = tp2.text_input("Target", doc["target"], key="tpp_tgt")
+        tp3, tp4, tp5 = st.columns(3)
+        gate = tp3.selectbox("Screening gate", ["hit", "lead", "candidate",
+                                                "clinical"],
+                             index=["hit", "lead", "candidate", "clinical"]
+                             .index(doc["gate"]), key="tpp_gate")
+        if "suggest_basis" in st.session_state:
+            st.caption("🧪 " + st.session_state.pop("suggest_basis"))
+        hit = tp4.number_input("Hit IC50 (nM)", 1.0, 100000.0,
+                               float(doc["hit_ic50_nm"]), key="tpp_hit")
+        lead = tp5.number_input("Lead IC50 (nM)", 1.0, 100000.0,
+                                float(doc["lead_ic50_nm"]), key="tpp_lead")
+        sb1, sb2 = st.columns(2)
+        if sb1.button("💾 Save program", type="primary"):
+            program_cfg.save({"program": prog, "target": tgt, "gate": gate,
+                              "hit_ic50_nm": hit, "lead_ic50_nm": lead})
+            st.toast(f"Program saved — {gate} gate at IC50 ≤ "
+                     f"{(hit if gate == 'hit' else lead) / 1000:g} µM",
+                     icon="🎯")
+            st.rerun()
+        if sb2.button("✨ Suggest gates from ChEMBL published data"):
+            from bionexus.adapters.databases.chembl_gates import suggest
+            with st.spinner(f"Querying ChEMBL for {tgt}…"):
+                prof = suggest(tgt)
+            st.session_state["suggest_profile"] = prof.as_dict()
+            st.session_state["suggest_basis"] = (
+                f"suggested from {prof.n_activities} published activities — "
+                f"{prof.basis}" if prof.source == "chembl"
+                else f"using conventional defaults — {prof.basis}")
+            st.rerun()
+        st.markdown("**Full criteria by phase** (cumulative; required = "
+                    "hard gate)")
+        for phase in CriterionPhase:
+            crs = program_cfg.tpp().criteria_for_phase(phase)
+            if crs:
+                st.markdown(f"**{phase.value.title()}**")
+                for c in crs:
+                    direction = "≤" if c.direction == "min" else "≥"
+                    req = "required" if c.required else "optional"
+                    st.caption(f"- {c.name}: {direction} {c.threshold} "
+                               f"{c.unit} ({req})")
+
+
+
+    # ---------------------------------------------------- experiments
+    all_rows = store.ongoing() + store.finished(50)
+    st.header("Experiments")
+    if not all_rows:
+        st.info("Nothing yet.")
+        if st.button("🧪 Start your first experiment", type="primary"):
+            start_dialog()
+    for e in all_rows:
+        ag = e["payload"].get("agent")
+        if ag:
+            status, _ = agent_row_status(e)
+            icon, action = "🤖", "View pipeline"
+        else:
+            status = e["status"].replace("_", " ")
+            icon, action = "🧑", "Resume →"
+        with st.container(border=True):
+            c1, c2 = st.columns([5, 4])
+            c1.markdown(f"{icon} **{e['question'][:78]}**")
+            c2.markdown(f"{chip_html(status)}  "
+                        f"<span style='color:#6b6558;font-size:13px'>"
+                        f"· {ago(e['updated_at'])}</span>",
+                        unsafe_allow_html=True)
+            c3, _ = st.columns([2, 6])
+            with c3:
+                if st.button(action, key=f"v_{e['id']}",
+                             disabled=(status == "verdict recorded")):
+                    if ag:
+                        st.session_state["view_experiment"] = e["id"]
+                        st.switch_page(PAGES["experiment"])
+                    else:
+                        resume_wizard(e)
+                        st.switch_page(PAGES["wizard"])
+
     # ---------------------------------------------------- flywheel memory
     try:
         from bionexus.flywheel import Flywheel

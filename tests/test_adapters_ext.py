@@ -446,7 +446,7 @@ def test_agent_notices_device_output(tmp_path):
 
     summary = agent.handle(events[0])
     assert summary["compounds"] == 1 and summary["z_prime"] > 0.5
-    assert any("noticed device output" in m for m in messages)
+    assert any("reading instrument output" in m for m in messages)
 
 
 def test_agent_closes_loop_with_safety_gated_confirmation(tmp_path):
@@ -467,7 +467,7 @@ def test_agent_closes_loop_with_safety_gated_confirmation(tmp_path):
         "A3,C1,0.5,110\nA4,C1,2,145\nA5,C1,10,289\nA6,C1,40,540\n")
     ev = list(monitor.events(once=True))[0]
     agent.handle(ev)
-    assert any("loop closed" in m for m in messages), "confirmation auto-submitted"
+    assert any("sending orthogonal" in m for m in messages), "confirmation auto-submitted"
 
     # a strict safety policy still blocks the agent's auto-submitted protocol
     strict_gw = LabGateway(SimulatorLab(seed=1),
