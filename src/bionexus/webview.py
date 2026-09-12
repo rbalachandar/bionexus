@@ -73,14 +73,6 @@ def _pipeline_body(logf: Path, problem_id: str | None,
         elif et == "gate_decision":
             gates += 1
 
-    if problem_info:
-        st.markdown(f"**Objective:** {problem_info.get('objective', '')}")
-        cons = ", ".join(
-            f"{c.get('name')}: {c.get('description', '')}"
-            for c in problem_info.get("constraints", []))
-        st.caption(f"constraints — {cons} · success: "
-                   f"{problem_info.get('success_metric', '—')}")
-
     if proposed:
         st.markdown("**Hypothesis pipeline**")
         for hid, hp in proposed.items():
