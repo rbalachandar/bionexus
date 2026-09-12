@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BioNexus — AI agents run the scientific method end to end</title>
+<meta name="description" content="Open-source agentic science framework: hypotheses, safety-gated lab experiments, honest verdicts, tamper-evident provenance.">
+<style>
+:root{--bg:#0d1117;--card:#161b22;--line:#30363d;--ink:#f0f6fc;--dim:#8b949e;
+--teal:#5ec4d0;--coral:#f9826c;--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+--sans:-apple-system,'Segoe UI',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6}
+.wrap{max-width:960px;margin:0 auto;padding:0 24px}
+header{padding:72px 0 40px;text-align:center}
+.hero-mark{height:56px;margin-bottom:20px}
+h1{font-size:clamp(28px,5vw,44px);font-weight:800;letter-spacing:-.5px}
+h1 .t{color:var(--teal)}
+.sub{color:var(--dim);font-size:18px;max-width:640px;margin:14px auto 28px}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+a.btn{font-family:var(--mono);font-size:14px;padding:10px 18px;border-radius:8px;
+text-decoration:none;border:1px solid var(--line)}
+a.primary{background:var(--teal);color:#04161a;border-color:var(--teal);font-weight:700}
+a.ghost{color:var(--ink)}
+a.ghost:hover{border-color:var(--dim)}
+section{padding:56px 0;border-top:1px solid var(--line)}
+h2{font-size:24px;margin-bottom:8px}
+.lede{color:var(--dim);margin-bottom:28px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px}
+.card h3{font-size:16px;margin-bottom:8px}
+.card h3 .n{color:var(--coral);font-family:var(--mono)}
+.card p{color:var(--dim);font-size:14.5px}
+pre{background:var(--card);border:1px solid var(--line);border-radius:10px;
+padding:18px;font-family:var(--mono);font-size:13.5px;overflow-x:auto;color:#c9d1d9}
+pre .c{color:#7ee787}pre .p{color:var(--dim)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{color:var(--dim);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
+td.mono,th.mono{font-family:var(--mono)}
+.pass{color:#7ee787}.num{color:var(--teal);font-weight:700}
+figure{margin:28px 0;text-align:center}
+figcaption{color:var(--dim);font-size:13px;margin-top:10px}
+footer{padding:40px 0;border-top:1px solid var(--line);color:var(--dim);font-size:13.5px;
+display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+a{color:var(--teal)}
+.stat{font-family:var(--mono)}
+</style>
+</head>
+<body>
+<header class="wrap">
+<svg class="hero-mark" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+<path d="M 39.5 12.9 A 20.5 20.5 0 1 1 24.5 12.9" fill="none" stroke="#f0f6fc" stroke-width="5.5" stroke-linecap="round" transform="rotate(0 32 32)"/>
+<line x1="32" y1="7.5" x2="32" y2="16.5" stroke="#5ec4d0" stroke-width="5.5" stroke-linecap="round"/>
+<circle cx="32" cy="32" r="4.4" fill="#5ec4d0"/></svg>
+<h1>bio<span class="t">nexus</span>.</h1>
+<p class="sub">AI agents that run the scientific method end to end — hypotheses,
+safety-gated lab experiments, honest verdicts against pre-registered criteria,
+tamper-evident provenance. Drug discovery first, domain-agnostic core.</p>
+<div class="cta">
+<a class="primary" href="https://github.com/rbalachandar/bionexus">GitHub</a>
+<a class="ghost" href="https://pypi.org/project/bionexuslab/">pip install bionexuslab</a>
+<a class="ghost" href="https://github.com/rbalachandar/bionexus/blob/main/docs/QUICKSTART.md">Quickstart</a>
+</div>
+</header>
+
+<section><div class="wrap">
+<h2>Built on three principles</h2>
+<p class="lede">Most agent demos stop at talking. BioNexus is built so you can let it act.</p>
+<div class="grid">
+<div class="card"><h3><span class="n">01</span> · Safety first, and it checks molecules</h3>
+<p>The only path from an agent to a lab is the gateway: a policy engine the
+agent cannot modify or approve itself, budgets that cap consumption,
+versioned toxicophore screening of declared structures, and refusal of
+dual-use campaigns — recorded, not silent.</p></div>
+<div class="card"><h3><span class="n">02</span> · Tiered trust</h3>
+<p>Deterministic rules hold the floor. AI may add a flag or demand human
+review — never clear a refusal. Citations are verified against PubMed: a
+hypothesis that fabricates a reference ranks below one that admits it has none.</p></div>
+<div class="card"><h3><span class="n">03</span> · Everything auditable</h3>
+<p>Problems, hypotheses, decisions, submissions, results, verdicts — hash-chained.
+Replay any experiment with <span class="mono">bn reproduce</span>, seal the store with a
+Merkle root, export to your ELN.</p></div>
+</div>
+</div></section>
+
+<section><div class="wrap">
+<h2>Claims, not vibes</h2>
+<p class="lede">Every capability has a scored eval task behind it. Current leaderboard —
+deterministic, runs in CI on every commit:</p>
+<table>
+<tr><th>task</th><th>what it proves</th><th class="mono">score</th></tr>
+<tr><td class="mono">hit-recovery</td><td>validated sets match seeded ground truth; honest abstention credited</td><td class="mono num pass">0.917</td></tr>
+<tr><td class="mono">verdict-honesty</td><td>CI straddling the gate ⇒ abstain, always</td><td class="mono num pass">1.000</td></tr>
+<tr><td class="mono">confirmation-coverage</td><td>nothing is CONFIRMED without a recorded agreement check</td><td class="mono num pass">1.000</td></tr>
+<tr><td class="mono">falsifiability-tiebreak</td><td>mechanistic, refutable, cited hypotheses win lab slots</td><td class="mono num pass">1.000</td></tr>
+<tr><td class="mono">adaptive-dose-design</td><td>3 Bayesian wells beat a fixed 4-point series, ~4× lower error</td><td class="mono num pass">0.875</td></tr>
+<tr><td class="mono">flywheel-memory</td><td>families ruled out get zero slots in the next campaign</td><td class="mono num pass">1.000</td></tr>
+<tr><td class="mono">verdict-stability</td><td>verdicts that flip under noise are flagged borderline</td><td class="mono num pass">1.000</td></tr>
+</table>
+<figure>
+<pre><span class="c">$</span> bn auto --template dose-response-screen --field compounds=C1,C2,C3
+<span class="p">[campaign]</span> round 1: testing ['C-101'] (2 candidates remain)
+<span class="p">[agent]</span> hypothesis (C-101): VALIDATED (preliminary) — IC50 1.83 µM (95% CI 1.5–2.4)
+<span class="p">[agent]</span> orthogonal confirmation: primary 1.83 vs secondary 2.10 µM → CONFIRMED
+<span class="p">$</span> bn prove problem/prob-89fd · <span class="p">chain intact: True (17 records)</span></pre>
+</div></section>
+
+<section><div class="wrap">
+<h2>Tested against real science</h2>
+<p class="lede">Blind reproductions of published papers, held out post-cutoff, with
+contamination probes that can actually fail:</p>
+<div class="grid">
+<div class="card"><h3>AZ3246 / HPK1 · J. Med. Chem. 2025</h3>
+<p>Contamination-free by self-report <em>and</em> never-published variant probes.
+The agent derived the pyrazine-carboxamide hypothesis from structures alone;
+blinded ranking ρ&nbsp;=&nbsp;+0.42 vs a trained RF's +0.08.</p></div>
+<div class="card"><h3>Multi-paper sweep · ChEMBL 2025</h3>
+<p>Blind chemotype identification on 4/4 papers. And the honest part:
+no enrichment claim survives bootstrap CIs + BH correction at n=31–67 — reported as such.</p></div>
+<div class="card"><h3>Interoperable by design</h3>
+<p>Five interfaces, pluggable adapters: Opentrons, plate readers, SiLA&nbsp;2, LC-MS,
+AlphaGenome Atlas, and Genentech's AssayLoop policies — their brain picks,
+our gates execute, the chain records.</p></div>
+</div>
+</div></section>
+
+<section><div class="wrap">
+<h2>Start in sixty seconds</h2>
+<pre><span class="c">$</span> pip install bionexuslab
+<span class="c">$</span> bn eval                    <span class="p"># watch the claims get scored</span>
+<span class="c">$</span> bn auto --template confirmatory-followup --field compounds=C-101 --field lead=C-101
+<span class="c">$</span> streamlit run Overview.py  <span class="p"># the workbench: approvals, live pipelines, diary</span></pre>
+</div></section>
+
+<footer class="wrap">
+<span>Apache-2.0 · Genentech/AssayLoop &amp; DeepMind/Anthropic work cited in docs/research-landscape.md</span>
+<span class="mono">bionexus · gated loops, recorded science</span>
+</footer>
+</body>
+</html>
