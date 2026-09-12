@@ -822,8 +822,9 @@ def experiment_view() -> None:
         branch = f"problem/{problem_id}" if problem_id else None
         recs = (SqliteProvenanceStore("bionexus.db").branch_records(branch)
                 if branch and Path("bionexus.db").exists() else [])
-        n_hyp = sum(1 for r in recs
-                    if r.event_type.value == "hypothesis_proposed")
+        n_hyp = len({((r.artifact.metadata if r.artifact else {}) or {})
+                     .get("candidate") for r in recs
+                     if r.event_type.value == "hypothesis_proposed"} - {None})
         n_dec = sum(1 for r in recs if r.event_type.value in
                     ("hypothesis_validated", "hypothesis_invalidated"))
         n_runs = sum(1 for r in recs if r.event_type.value == "lab_run")
@@ -831,15 +832,22 @@ def experiment_view() -> None:
         m1.metric("Hypotheses", n_hyp)
         m2.metric("Decided", n_dec)
         m3.metric("Lab runs", n_runs)
-        st.caption(f"🎯 {program_cfg.gate_summary()} ▸ problem ▸ "
-                   f"{n_hyp} hypotheses ▸ experiment `{row['id']}`")
+        st.caption(f"🎯 {program_cfg.gate_summary()} ▸ problem "
+                   f"`{problem_id or '—'}` ▸ {n_hyp} hypotheses ▸ experiment "
+                   f"`{row['id']}`")
 
-        with st.expander("Lab narrative (hash-chained)", expanded=False):
-            if branch and recs:
-                import streamlit.components.v1 as components
-                from bionexus.diary import build_diary_html
-                components.html(build_diary_html(recs, branch),
-                                height=640, scrolling=True)
+        # the problem, as registered at the root of the chain
+        pdef = next((r.decision or {} for r in recs
+                     if r.event_type.value == "problem_defined"), None)
+        if pdef:
+            cons = " · ".join(
+                f"{c.get('name')}: {c.get('description', '')}"
+                for c in pdef.get("constraints", [])) or "—"
+            st.markdown(f"**Objective:** {pdef.get('objective', '—')}")
+            st.caption(f"constraints: {cons} · success: "
+                       f"{pdef.get('success_metric', '—')} · branch "
+                       f"`problem/{problem_id}` · {len(recs)} hash-chained "
+                       f"records")
 
         render_experiment_pipeline(logf, problem_id,
                                    running=(status == "running"),
@@ -854,9 +862,8 @@ def experiment_view() -> None:
         p = row["payload"]
         st.title(f"🧑 {row['question'][:70]}")
         chip(row["status"].replace("_", " "))
-        st.caption(f"🎯 {program_cfg.gate_summary()} ▸ problem ▸ "
-                   f"experiment `{row['id']}` · wizard-defined · updated "
-                   f"{ago(row['updated_at'])}")
+        st.caption(f"🎯 {program_cfg.gate_summary()} ▸ wizard "
+                   f"`{row['id']}` · updated {ago(row['updated_at'])}")
         exp_d = p.get("exp_def")
         if exp_d:
             exp = (exp_d if isinstance(exp_d, ExperimentDefinition)
