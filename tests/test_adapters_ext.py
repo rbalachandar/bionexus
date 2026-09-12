@@ -1803,6 +1803,7 @@ def test_assay_selection_metrics():
 
 
 def test_advisory_tier_tightens_only():
+    pytest.importorskip("rdkit", reason="advisory flags come from SMARTS screens")
     from bionexus.advisory import AdvisoryReviewer
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
     from bionexus.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
