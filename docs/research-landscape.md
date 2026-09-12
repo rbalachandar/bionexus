@@ -113,3 +113,23 @@ planned TDC benchmark adapter.
 
 Sources: https://github.com/K-Dense-AI/scientific-agent-skills ·
 https://agentskills.io/
+
+
+## Genentech — AssayLoop / AssayFormer (arXiv 2609.11877, Sep 2026)
+
+"Biology-in-the-loop": sequential hit discovery in CRISPR screens. An LLM runs
+the first rounds from priors; AssayFormer, a transformer trained on 1,349
+historical screens, takes over with those observations as context, choosing
+the next 100 genes per round. Recovers 27.7% of hits after 5% of the library.
+`assaybench` (PyPI, MIT) ships the Task/Model/Acquisition/Metric abstractions.
+
+Relation to BioNexus: complementary layers, not competitors. AssayLoop is a
+decision policy (which candidate next, retrospective eval on historical
+screens). BioNexus is the execution and trust layer (safety-gated submissions
+to real or simulated instruments, pre-registered criteria, hash-chained
+provenance, human approval, evals in CI). The bridge is
+`adapters/models/assayloop_ranker.py`: any assaybench-style policy can rank
+candidates inside a BioNexus campaign; their loop ends at metrics, ours
+continues to the lab and the record. We adopted their metric vocabulary
+(adjusted nAUC, fraction-of-hits, shortfall, %essential) into the
+`hit-recovery` eval task.

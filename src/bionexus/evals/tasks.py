@@ -18,12 +18,27 @@ def _t_hit_recovery():
     threshold, seed = 20.0, 11
     report, lab, recs = run_offline_campaign(COMPOUNDS, threshold, 6, seed, INBOX)
     verdicts = verdict_records(recs)
-    truth = {}
-    for c, d in verdicts.items():
-        run_id = d.get("evidence_run_id")
-        if run_id:
-            truth[c] = lab.true_ic50_um(run_id, c)
-    return score_hit_recovery(verdicts, truth, threshold)
+    # potency is compound-stable: the full library's truth is computable
+    truth = {c: lab.true_ic50_um("x", c) for c in COMPOUNDS}
+    result = score_hit_recovery(verdicts, {c: truth[c] for c in verdicts}, threshold)
+    # assay-selection metrics (assaybench vocabulary) over the tested set,
+    # ranked by measured IC50, against the full 12-compound library
+    from bionexus.benchmark import (adjusted_nauc, enrichment_factor,
+                                    fraction_of_hits, percent_essential,
+                                    shortfall)
+    hits = [c for c, v in truth.items() if v <= threshold]
+    tested = [c for c in verdicts
+              if verdicts[c].get("observed") is not None]
+    ranked = sorted(tested, key=lambda c: verdicts[c]["observed"])
+    result.metrics["library"] = {
+        "ef": round(enrichment_factor(ranked, COMPOUNDS, hits, len(ranked) or 1), 2),
+        "fraction_of_hits": round(fraction_of_hits(ranked, hits), 3),
+        "percent_essential": round(percent_essential(ranked, hits), 3),
+        "shortfall": round(shortfall(ranked, hits), 3),
+        "adjusted_nauc": adjusted_nauc([[c] for c in tested], COMPOUNDS, hits),
+        "true_actives": sorted(hits),
+    }
+    return result
 
 
 @register("verdict-honesty",

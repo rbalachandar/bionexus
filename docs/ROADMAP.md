@@ -102,6 +102,21 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] MorganFingerprintRF (sklearn) is unseeded — ρ drifted −0.200 → −0.193
       across two runs today. Pass `random_state` derived from the study seed.
 
+## AssayLoop (Genentech) alignment — Sep 2026
+- [x] assaybench metric vocabulary in `benchmark.py` (adjusted_nauc,
+  fraction_of_hits, percent_essential, shortfall, generic
+  enrichment_factor); `hit-recovery` eval now reports library-level metrics
+- [x] `adapters/models/assayloop_ranker.py`: duck-typed bridge — any
+  assaybench-style Model (incl. the released AssayFormer checkpoint) can rank
+  candidates inside a BioNexus campaign; tested with a stub policy, no hard
+  dependency
+- [x] positioning note in docs/research-landscape.md
+- [ ] multi-round campaigns: sequential batches where the ranker (or
+  llm-warm handoff: LLM round 1, adaptive/flywheel after) picks k each round
+  — the real mirror of their SequentialLoop; current autoloop is single-round
+- [ ] optional extra: `bn eval --task hit-recovery --policy assayformer`
+  once torch deps are an extra
+
 ## Follow-up: agent path from the CLI
 - [x] `hypothesis_source: "agent"` in a `bn auto` config now auto-wires the
       Anthropic provider from env (live-validated: agent proposed → lab →

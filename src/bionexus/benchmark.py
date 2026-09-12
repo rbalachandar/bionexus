@@ -338,3 +338,66 @@ def benjamini_hochberg(pvals: list[float], fdr: float = 0.10) -> list[bool]:
         for i in order[:k_max]:
             flags[i] = True
     return flags
+
+
+# ------------------------------------------- assay-selection metrics
+# Shared vocabulary with assaybench (Genentech/AssayLoop): a method ranks or
+# sequentially acquires from a universe; these score how early the hits show.
+
+def fraction_of_hits(picked, hits) -> float:
+    picked = set(picked)
+    return len(picked & set(hits)) / len(hits) if hits else float("nan")
+
+
+def percent_essential(picked, hits) -> float:
+    """Fraction of what you spent budget on that actually was a hit."""
+    return len(set(picked) & set(hits)) / len(picked) if picked else 0.0
+
+
+def enrichment_factor(picked, universe, hits, budget: int | None = None) -> float:
+    base = len(set(hits)) / len(set(universe))
+    top = list(picked)[: budget or len(picked)]
+    if not top or base <= 0:
+        return float("nan")
+    return (len(set(top) & set(hits)) / len(top)) / base
+
+
+def shortfall(picked, hits) -> float:
+    """Fraction of true hits still missing after the picks."""
+    return 1.0 - fraction_of_hits(picked, hits)
+
+
+def adjusted_nauc(rounds: list[list], universe, hits) -> float:
+    """Cumulative hit-recall vs fraction-of-library assayed, rescaled so a
+    random policy scores 0 and the oracle ordering (all hits first) scores 1.
+    Same convention as assaybench's adjusted_nauc."""
+    hits = set(hits)
+    U = len(list(universe)) or 1
+    if not hits:
+        return float("nan")
+    seen: set = set()
+    xs, cum, found = [], [], 0
+    for rnd in rounds:
+        new = [g for g in rnd if g not in seen]
+        seen.update(new)
+        found += len(set(new) & hits)
+        xs.append(len(seen) / U)
+        cum.append(found / len(hits))
+    if not xs or xs[-1] <= 0:
+        return float("nan")
+
+    def auc(xs_, ys_):
+        a, px, py = 0.0, 0.0, 0.0
+        for x, y in zip(xs_, ys_):
+            a += (y + py) / 2 * (x - px)
+            px, py = x, y
+        return a
+
+    xf = xs[-1]
+    A = auc(xs, cum)
+    xo = min(len(hits) / U, xf)
+    oracle = xo / 2 + max(0.0, xf - xo)
+    random_ = xf ** 2 / 2
+    if oracle <= random_:
+        return float("nan")
+    return round((A - random_) / (oracle - random_), 4)

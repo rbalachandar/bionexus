@@ -1771,3 +1771,32 @@ def test_confirmation_verifies_direction_not_relabels(tmp_path):
                                      "primary_ci": (20.3, 31.0)}
     agent.handle(FakeEvent())
     assert h.status == "refuted", h.status   # NOT "confirmed"
+
+
+def test_assayloop_ranker_bridge_with_stub_policy():
+    from bionexus.adapters.models.assayloop_ranker import AssayLoopRanker
+
+    class PrefixPolicy:  # their README's toy example, duck-typed
+        def predict(self, observations, candidates, task_context=None):
+            prefixes = {o.candidate[:3] for o in observations if o.label["hit"]}
+            class P: scores = {g: float(g[:3] in prefixes) for g in candidates}
+            return P
+
+    r = AssayLoopRanker(policy=PrefixPolicy())
+    obs = [{"candidate": "NDUFA1", "hit": True}]
+    ranked = r.rank(["XYZ", "NDUFA2", "AAA"], obs)
+    assert ranked[0][0] == "NDUFA2"
+    assert r.pick_batch(["XYZ", "NDUFA2", "AAA"], obs, 1) == ["NDUFA2"]
+
+
+def test_assay_selection_metrics():
+    from bionexus.benchmark import (adjusted_nauc, enrichment_factor,
+                                    fraction_of_hits, percent_essential,
+                                    shortfall)
+    uni = [f"g{i}" for i in range(100)]
+    hits = [f"g{i}" for i in range(10)]
+    assert adjusted_nauc([hits[:5], hits[5:]], uni, hits) == 1.0
+    assert enrichment_factor(hits[:5], uni, hits, 5) == 10.0
+    assert fraction_of_hits(hits[:4], hits) == 0.4
+    assert percent_essential(hits[:4] + ["z"], hits) == 0.8
+    assert shortfall(hits[:4], hits) == 0.6
