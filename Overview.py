@@ -106,7 +106,8 @@ def _spawn_agent_experiment(cfg: dict, objective: str) -> str:
     from bionexus.paths import ensure_dirs
     from bionexus.serve import save_campaign_index
     ensure_dirs()
-    cid = f"cmp-{int(time.time())}"
+    import uuid as _uuid
+    cid = f"cmp-{int(time.time())}-{_uuid.uuid4().hex[:4]}"
     cfgpath = CAMPAIGN_DIR / f"{cid}.json"
     cfgpath.write_text(json.dumps(cfg, indent=1))
     logf = CAMPAIGN_DIR / f"{cid}.log"

@@ -74,9 +74,14 @@ def reproduce(branch: str, db_path: str = "bionexus.db",
                 "reason": f"no replay adapter for lab '{env.get('lab')}' "
                           "(live labs replay via recording playback, not here)"}
 
+    _replay_base = (problem_doc.get("problem_id") or "prob") + "-replay"
+    _replay_id, _k = _replay_base, 1
+    while store.branch_records(f"problem/{_replay_id}"):
+        _k += 1
+        _replay_id = f"{_replay_base}-{_k}"
     problem = ProblemStatement(
         objective=problem_doc.get("objective", ""),
-        problem_id=(problem_doc.get("problem_id") or "") + "-replay",
+        problem_id=_replay_id,
         constraints=[Constraint(**c)
                      for c in problem_doc.get("constraints", [])])
     cfg = CampaignConfig(

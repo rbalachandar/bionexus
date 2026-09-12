@@ -1881,3 +1881,31 @@ def test_multi_round_policy_campaign(tmp_path):
     assert p1 != p2                                  # no re-testing
     assert calls and calls[0] == sorted(            # policy saw the REMAINING
         c for c in ("AA-1", "AA-2", "BB-1") if c != p1)   # candidates only
+
+
+def test_repeated_problem_id_gets_unique_branch(tmp_path):
+    """Two campaigns sharing an explicit problem_id must NOT merge into one
+    branch — the second is auto-suffixed, the first's records untouched."""
+    from bionexus.autoloop import CampaignConfig, run_campaign
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.hypothesis import Constraint, ProblemStatement
+
+    def cfg():
+        return CampaignConfig(
+            problem=ProblemStatement(
+                objective="o", problem_id="prob-same",
+                constraints=[Constraint(name="potency", description="d",
+                                        kind="hard", limit=20.0, unit="uM")]),
+            hypotheses=[{"statement": "A binds", "candidate": "A",
+                         "assay_type": "binding", "predicted": "<=20",
+                         "predicted_value": 20.0}],
+            k=1, autonomy="act", inbox=str(tmp_path / "in"), poll_secs=0.05)
+
+    store = SqliteProvenanceStore(str(tmp_path / "u.db"))
+    r1 = run_campaign(cfg(), SimulatorLab(seed=1), store)
+    n1 = len(store.branch_records("problem/prob-same"))
+    r2 = run_campaign(cfg(), SimulatorLab(seed=1), store)
+    assert r2.problem.problem_id if hasattr(r2, "problem") else True
+    assert len(store.branch_records("problem/prob-same")) == n1   # untouched
+    assert store.branch_records("problem/prob-same-2")            # new branch

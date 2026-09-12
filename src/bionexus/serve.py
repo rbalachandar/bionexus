@@ -312,7 +312,8 @@ class Handler(BaseHTTPRequestHandler):
         cfg = build_campaign(fill(load_template(tpl), fields, prompt_missing=False))
         cfg["autonomy"] = autonomy
         ensure_dirs()
-        cid = f"cmp-{int(time.time())}"
+        import uuid as _uuid
+        cid = f"cmp-{int(time.time())}-{_uuid.uuid4().hex[:4]}"
         cfgpath = CAMPAIGN_DIR / f"{cid}.json"
         cfgpath.write_text(json.dumps(cfg, indent=1))
         log = open(CAMPAIGN_DIR / f"{cid}.log", "ab", buffering=0)

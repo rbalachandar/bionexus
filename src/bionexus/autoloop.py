@@ -136,6 +136,16 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             f"DURC: campaign names a select agent / regulated toxin family "
             f"({', '.join(durc_hits)}) — refused and recorded; requires "
             f"institutional review before BioNexus will run it")
+    # every run gets its own branch: an explicit problem_id reused from a
+    # previous campaign is auto-suffixed rather than merging records
+    _base_pid = cfg.problem.problem_id
+    _n = 1
+    while store.branch_records(f"problem/{cfg.problem.problem_id}"):
+        _n += 1
+        cfg.problem.problem_id = f"{_base_pid}-{_n}"
+    if cfg.problem.problem_id != _base_pid:
+        say(f"branch '{_base_pid}' already holds a previous run — this "
+            f"campaign recorded separately as '{cfg.problem.problem_id}'")
     problem = tracker.define_problem(cfg.problem, environment={
         "lab": getattr(lab, "name", "unknown"),
         "lab_version": getattr(lab, "version", None),
@@ -191,7 +201,9 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
 
     gateway.submit = gateway_submit  # confirmations flow through the same gate
 
-    inbox = Path(cfg.inbox)
+    # per-experiment outbox: two campaigns on one inbox would collide on
+    # run ids (sim-N-001) and the monitor's seen-set would swallow the second
+    inbox = Path(cfg.inbox) / problem.problem_id
     inbox.mkdir(parents=True, exist_ok=True)
     adaptive = cfg.dose_design == "adaptive"
     screen_conc = cfg.concentrations[len(cfg.concentrations) // 2] \
