@@ -1,0 +1,33 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Get Started — BioNexus</title><link rel="stylesheet" href="assets/site.css"></head>
+<body><nav><div class="wrap"><a class="logo" href="index.html">bio<b>nexus</b>.</a>
+<a class="tab" href="index.html">Overview</a><a class="tab" href="method.html">Method</a><a class="tab" href="results.html">Results</a><a class="tab" href="recovery.html">Recovery</a><a class="tab" href="evidence.html">Evidence</a><a class="tab" href="analysis.html">Analysis</a><a class="tab on" href="start.html">Get Started</a></div></nav>
+<header class="wrap hero" style="text-align:left;padding-top:48px">
+<h1>Get started</h1><p class="sub" style="margin:8px 0 0">Sixty seconds to a scored claim,
+a running campaign and a workbench. Python 3.10+, core dependency: pydantic.</p></header>
+<section><div class="wrap">
+<pre><span class="c">$</span> pip install bionexuslab
+<span class="c">$</span> bn eval                       <span class="p"># watch the claims get scored (~30s, offline)</span>
+<span class="c">$</span> bn auto --template dose-response-screen \
+      --field compounds=gefitinib,erlotinib --field threshold=20
+<span class="c">$</span> streamlit run Overview.py     <span class="p"># the workbench: approvals, live pipelines, diary</span></pre>
+<h3>Then, when you trust it</h3>
+<table><tr><th>level</th><th>what changes</th></tr>
+<tr><td class="mono">--autonomy observe</td><td>reads, fits, recommends — submits nothing</td></tr>
+<tr><td class="mono">--autonomy gate</td><td>every lab submission waits for your Approve in the workbench</td></tr>
+<tr><td class="mono">--autonomy act</td><td>autonomous within the safety engine, budgets and confirmations</td></tr></table>
+<h3>Connect the real world</h3>
+<p class="dim">Opentrons robots, plate-reader shares, SiLA 2 instruments, LC-MS, HCS
+microscopes — adapters behind the same gateway, plus device cards
+(<span class="mono">bn connect describe</span>) that teach agents what your instruments'
+manuals don't say. Agent Skills and an MCP server expose the whole toolset to Claude,
+Cursor or your own loop.</p>
+<h3>Read on</h3>
+<p><a href="https://github.com/rbalachandar/bionexus/blob/main/docs/QUICKSTART.md">Quickstart</a> ·
+<a href="https://github.com/rbalachandar/bionexus/blob/main/docs/ADAPTERS.md">Adapter guide</a> ·
+<a href="https://github.com/rbalachandar/bionexus/blob/main/docs/SAFETY.md">Safety</a> ·
+<a href="https://github.com/rbalachandar/bionexus/blob/main/docs/ROADMAP.md">Roadmap (T0–T3 + Trust Initiative)</a> ·
+<a href="https://github.com/rbalachandar/bionexus">Repository</a></p>
+</div></section>
+<div class="wrap"><div class="pager"><a href="analysis.html">← Analysis</a><span></span></div></div></body></html>
