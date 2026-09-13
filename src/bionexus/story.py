@@ -190,7 +190,7 @@ def render() -> None:
                         n = _latest[nm]
                         how = ""
                         if n.get("observed") is not None:
-                            how = (f" — observed {n['observed']:.1f} µM"
+                            how = (f" — fitted {n['observed']:.1f} µM"
                                    + (f" (95% CI {n['ci_low']:.1f}"
                                       f"–{n['ci_high']:.1f})"
                                       if n.get("ci_low") is not None else "")

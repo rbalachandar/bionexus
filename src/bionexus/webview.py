@@ -96,12 +96,12 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                            (" · narrow margin" if edge < width else " · clear margin"))
             if v == "confirmed":
                 icon, stage = "✅", ("confirmed by orthogonal assay"
-                                     + (f" — observed {verd.get('observed')} µM{ci_txt}"
+                                     + (f" — fitted {verd.get('observed')} µM{ci_txt}"
                                         if verd.get("observed") is not None else "")
                                      + _margin)
             elif v == "validated":
                 icon, stage = "✅", ("validated (preliminary)"
-                                     + (f" — observed {verd.get('observed')} µM{ci_txt}"
+                                     + (f" — fitted {verd.get('observed')} µM{ci_txt}"
                                         if verd.get("observed") is not None else "")
                                      + _margin)
             elif v == "inconclusive":
@@ -154,7 +154,7 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                 if sel and sel.get("selected"):
                     meta_bits.append(f"selected: {sel.get('reason', '')}")
                 if verd:
-                    bits = [f"observed: {verd.get('observed')} µM"
+                    bits = [f"fitted: {verd.get('observed')} µM"
                             if verd.get("observed") is not None else ""]
                     if verd.get("evidence"):
                         bits.append(f"evidence: `{verd['evidence']}`")
