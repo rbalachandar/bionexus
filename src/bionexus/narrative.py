@@ -64,7 +64,7 @@ def render_gates(recs, log_lines=()) -> None:
     durc = [r for r in recs if (r.decision or {}).get("kind") == "durc_refusal"]
     if not (refusals or advs or durc):
         return
-    st.markdown("What the gates did")
+    st.markdown("Hypotheses at the gates")
     for l in refusals:
         st.error(l.replace("[campaign] ", "").replace("[agent] ", ""),
                  icon="🚫")
