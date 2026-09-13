@@ -158,7 +158,8 @@ class LabGateway:
             self.store.append(record_for(
                 protocol.envelope, EventType.gate_decision, self.actor,
                 decision={"kind": "safety_refusal", "reason": reason,
-                          "samples": [s.sample_id for s in protocol.samples]}))
+                          "samples": sorted({sp.sample_id
+                                             for sp in protocol.samples})}))
             return None, reason
         # tighten-only advisory tier: runs solely on gate-passed protocols;
         # may add flags or escalate to human review, never clears a refusal
@@ -177,8 +178,8 @@ class LabGateway:
                     protocol.envelope, EventType.gate_decision, self.actor,
                     decision={"kind": "advisory_escalation",
                               "reason": "escalated to human review",
-                              "samples": [f.get("sample", "?")
-                                          for f in adv["flags"]]}))
+                              "samples": sorted({f.get("sample", "?")
+                                                  for f in adv["flags"]})}))
                 return None, ("[advisory] escalated to human review: "
                               + "; ".join(f"{f['sample']}: {f['alert']}"
                                           for f in adv["flags"][:2]))
