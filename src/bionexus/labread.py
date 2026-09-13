@@ -108,9 +108,13 @@ def _is_number(s: str) -> bool:
 
 # ------------------------------------------------------------------- parsing
 
-def _parse_long(rows: list[list[str]]) -> list[dict[str, Any]]:
+def _parse_long(rows: list[list[str]], unit_out: dict | None = None
+                ) -> list[dict[str, Any]]:
     ((_, mapping), header_i) = max(((_header_score(r), i) for i, r in enumerate(rows[:20])),
                                    key=lambda t: (t[0][0], -t[1]))
+    if unit_out is not None and "value" in mapping:
+        hdr = rows[header_i][mapping["value"]].strip()
+        unit_out["unit"] = sanitize_label(hdr, 24) or "instrument response"
     records: list[dict[str, Any]] = []
     for row in rows[header_i + 1:]:
         if len(row) <= max(mapping.values(), default=0):
@@ -352,11 +356,15 @@ def analyze_records(records: list[dict[str, Any]],
 class PlateResult:
     """Scientist-facing result of read_plate: records + fits + QC + table."""
 
-    def __init__(self, path: Path, fmt: str, records: list[dict], analysis: dict):
+    def __init__(self, path: Path, fmt: str, records: list[dict], analysis: dict,
+                 response_unit: str | None = None):
         self.source = str(path)
         self.format = fmt
         self.records = records
         self.analysis = analysis
+        self.response_unit = response_unit or {
+            "npy": "mean pixel intensity", "grid": "well value",
+            "xlsx-grid": "well value"}.get(fmt, "instrument response")
 
     @property
     def z_prime(self) -> float | None:
@@ -423,8 +431,9 @@ def read_plate(path: str | Path, max_response: float | None = None) -> PlateResu
     if not path.exists():
         raise FileNotFoundError(path)
     fmt = detect_format(path)
+    _unit: dict = {}
     if fmt == "long":
-        records = _parse_long(_rows_from_csv(path))
+        records = _parse_long(_rows_from_csv(path), _unit)
     elif fmt == "grid":
         records = _parse_grid(_rows_from_csv(path))
     elif fmt == "npy":
@@ -450,11 +459,12 @@ def read_plate(path: str | Path, max_response: float | None = None) -> PlateResu
         grid_hit = any(r and WELL_RE.match(r[0] + "1") and
                        all(_is_number(c) for c in r[1:] if c.strip())
                        for r in rows)
-        records = (_parse_long(rows) if long_score >= 3 else
+        records = (_parse_long(rows, _unit) if long_score >= 3 else
                    _parse_grid(rows) if grid_hit else [])
         fmt = "xlsx-long" if long_score >= 3 else "xlsx-grid"
     else:
         raise ValueError(f"unrecognized plate format: {path}")
 
     analysis = analyze_records(records, max_response)
-    return PlateResult(path, fmt, records, analysis)
+    return PlateResult(path, fmt, records, analysis,
+                       response_unit=_unit.get("unit"))

@@ -488,11 +488,27 @@ class HypothesisTracker:
             "invalidated": EventType.hypothesis_invalidated,
         }.get(h.status, EventType.hypothesis_tested)
         env = Envelope(experiment_branch_id=h.branch_id)
+        from bionexus.derivation import build
+        meas = next((m for m in result.measurements
+                     if m.sample_id == h.candidate), None)
+        inst = getattr(result, "instrument", None)
         self.store.append(self._record(env, event, h, decision={
             "metric": criteria.metric, "threshold": criteria.threshold,
             "observed": value, "qc_passed": qc_ok,
             "evidence_run_id": result.run_id,
             "verdict": h.status,
+            "derivation": build(
+                instrument=(inst.adapter if inst else None),
+                version=(getattr(inst, "instrument_id", None)
+                         if inst else None),
+                quantity=(meas.unit if meas else None),
+                counts=({"replicates": meas.replicate}
+                        if meas and meas.replicate else None),
+                metric=criteria.metric,
+                method=("assay pipeline derived" if meas and
+                        meas.derived_metrics else "reported value"),
+                criteria=f"{criteria.metric} {criteria.direction} "
+                         f"{criteria.threshold}"),
         }))
         return h
 

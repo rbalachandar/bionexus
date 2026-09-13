@@ -98,12 +98,11 @@ def render_verdicts(recs) -> None:
          "gate (pre-registered)": d.get("threshold"),
          "evidence run": d.get("evidence_run_id") or "never ran"}
         for c, d in sorted(last.items())], hide_index=True)
-    st.caption("How each number was made: the instrument measures raw well "
-               "readings (RFU per dose) → the fitter computes IC50 as a Hill "
-               "fit with a bootstrap 95% CI (an inference, never a direct "
-               "observation) → the verdict is the pre-registered criteria "
-               "applied to that fit, not the agent's opinion. "
-               "'never ran' = refused upstream by a gate.")
+    from bionexus.derivation import describe
+    st.caption("'never ran' = refused upstream by a gate. How each number "
+               "was made, as recorded by the analysis path that made it:")
+    for c, d in sorted(last.items()):
+        st.caption(f"- **{c}**: {describe(d.get('derivation'))}")
     claimed = sum(1 for d in last.values()
                   if d.get("verdict") in ("validated", "confirmed"))
     abstained = sum(1 for d in last.values()

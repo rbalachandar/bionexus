@@ -152,7 +152,20 @@ class AutoAnalysisAgent:
                         hyp.status = hyp.criteria.classify(
                             match["ic50_um"], match.get("ic50_ci"))
                     if hasattr(self.tracker, "record_outcome"):
-                        self.tracker.record_outcome(hyp)
+                        from bionexus.derivation import build
+                        inst, ver = self._instrument()
+                        crit = hyp.criteria
+                        self.tracker.record_outcome(hyp, extra={
+                            "derivation": build(
+                                instrument=inst, version=ver,
+                                quantity=getattr(result, "response_unit", None),
+                                counts={"wells": len(result.records)},
+                                metric=crit.metric if crit else None,
+                                method=match.get("fit_method"),
+                                ci="residual bootstrap 95%"
+                                   if match.get("ic50_ci") else None,
+                                criteria=(f"{crit.metric} {crit.direction} "
+                                          f"{crit.threshold}") if crit else None)})
                     verdicts.append((hyp.hypothesis_id, hyp.candidate, hyp.status,
                                      match["ic50_um"]))
                     ci_txt = (f" (95% CI {match['ic50_ci'][0]}–{match['ic50_ci'][1]})"
@@ -177,6 +190,13 @@ class AutoAnalysisAgent:
 
     _TERMINAL = ("validated", "confirmed", "invalidated", "refuted",
                  "inconclusive")
+
+    def _instrument(self) -> tuple[str | None, str | None]:
+        lab = getattr(self.gateway, "lab", None) or \
+            getattr(getattr(self.gateway, "_gw", None), "lab", None)
+        if lab is None:
+            return None, None
+        return getattr(lab, "name", None), getattr(lab, "version", None)
 
     def _handle_adaptive(self, event) -> None:
         """Bayesian sequential dosing: each well updates the posterior over
@@ -228,9 +248,21 @@ class AutoAnalysisAgent:
             hyp.status = (hyp.criteria.classify(est, ci) if hyp.criteria
                           else "tested")
             if self.tracker and hasattr(self.tracker, "record_outcome"):
+                from bionexus.derivation import build
+                inst, ver = self._instrument()
                 self.tracker.record_outcome(hyp, extra={
                     "design": {"mode": "adaptive-bayesian",
-                               "wells": [round(x, 3) for x in d.used]}})
+                               "wells": [round(x, 3) for x in d.used]},
+                    "derivation": build(
+                        instrument=inst, version=ver,
+                        quantity=getattr(result, "response_unit", None),
+                        counts={"wells": len(d.used)},
+                        metric=hyp.criteria.metric if hyp.criteria else None,
+                        method="Bayesian grid posterior (adaptive dose series)",
+                        ci="posterior 95% credible interval",
+                        criteria=(f"{hyp.criteria.metric} {hyp.criteria.direction} "
+                                  f"{hyp.criteria.threshold}")
+                        if hyp.criteria else None)})
             self.notify(f"adaptive verdict {cand}: IC50 {est:.2f} µM "
                         f"(95% CrI {ci[0]:.2f}–{ci[1]:.2f}) after "
                         f"{len(d.used)} wells -> {hyp.status.upper()}")
@@ -330,7 +362,21 @@ class AutoAnalysisAgent:
                     hyp.status = status
                     hyp.observed_ci = secondary_ci
                     if hasattr(self.tracker, "record_outcome"):
+                        from bionexus.derivation import build
+                        inst, ver = self._instrument()
+                        _der = build(
+                            instrument=inst, version=ver,
+                            quantity=getattr(result, "response_unit", None),
+                            counts={"wells": len(result.records)},
+                            metric=hyp_tmp.criteria.metric if hyp_tmp and hyp_tmp.criteria else None,
+                            method="orthogonal re-measurement + fit",
+                            ci="residual bootstrap 95%" if secondary_ci else None,
+                            criteria=(f"{hyp_tmp.criteria.metric} "
+                                      f"{hyp_tmp.criteria.direction} "
+                                      f"{hyp_tmp.criteria.threshold}")
+                            if hyp_tmp and hyp_tmp.criteria else None)
                         self.tracker.record_outcome(hyp, extra={
+                            "derivation": _der,
                             "confirmation": {
                                 "run_id": event.path.stem,
                                 "primary_ic50": primary,

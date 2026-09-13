@@ -69,6 +69,7 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                 tested[hid] = {"verdict": d.get("verdict", et),
                                "observed": d.get("observed") or d.get("ic50_um"),
                                "ci": d.get("observed_ci"),
+                               "derivation": d.get("derivation"),
                                "evidence": d.get("evidence_run_id")}
         elif et == "gate_decision":
             if d.get("kind") in ("safety_refusal", "operator_declined",
@@ -159,6 +160,10 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                     if verd.get("evidence"):
                         bits.append(f"evidence: `{verd['evidence']}`")
                     meta_bits.append(" · ".join(b for b in bits if b))
+                _m = ((verd.get("derivation") or {}).get("derived")
+                      or {}).get("method")
+                if _m:
+                    meta_bits.append(f"method: {_m}")
                 if hp.get("ts"):
                     meta_bits.append("proposed "
                                      + time.strftime("%m-%d %H:%M",
