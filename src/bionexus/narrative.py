@@ -91,13 +91,23 @@ def render_verdicts(recs) -> None:
     if not last:
         return
     st.markdown("Verdicts")
-    st.dataframe([
-        {"candidate": c, "verdict": d.get("verdict"),
-         "fitted IC50 (µM)": d.get("observed"),
-         "95% CI": "–".join(str(x) for x in d.get("observed_ci") or []) or "—",
-         "gate (pre-registered)": d.get("threshold"),
-         "evidence run": d.get("evidence_run_id") or "never ran"}
-        for c, d in sorted(last.items())], hide_index=True)
+    from bionexus.derivation import criteria_label, metric_label
+    _metrics = [d.get("metric") for d in last.values() if d.get("metric")]
+    mlabel = metric_label(_metrics[0] if _metrics else None)
+    has_ci = any(d.get("observed_ci") for d in last.values())
+    rows = []
+    for c, d in sorted(last.items()):
+        row: dict = {"candidate": c, "verdict": d.get("verdict"),
+                     f"estimated {mlabel}": d.get("observed")}
+        if has_ci:
+            row["95% CI"] = ("–".join(str(x) for x in d["observed_ci"])
+                             if d.get("observed_ci") else "—")
+        if d.get("threshold") is not None:
+            row["gate (pre-registered)"] = criteria_label(
+                d.get("metric"), None, d.get("threshold")).replace("= ", "")
+        row["evidence run"] = d.get("evidence_run_id") or "never ran"
+        rows.append(row)
+    st.dataframe(rows, hide_index=True)
     from bionexus.derivation import describe
     st.caption("'never ran' = refused upstream by a gate. How each number "
                "was made, as recorded by the analysis path that made it:")

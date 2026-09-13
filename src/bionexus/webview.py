@@ -87,6 +87,9 @@ def _pipeline_body(logf: Path, problem_id: str | None,
             v = (verd.get("verdict") or "").lower()
             ci = verd.get("ci")
             ci_txt = (f" (95% CI {ci[0]}–{ci[1]})" if ci else "")
+            from bionexus.derivation import metric_label as _mlbl
+            _unit_lbl = _mlbl(((verd.get("derivation") or {}).get("derived")
+                               or {}).get("metric"))
             _margin = ""
             _thr = (hp.get("criteria") or {}).get("threshold")
             if ci and _thr and None not in ci and ci[1] > ci[0]:
@@ -97,21 +100,21 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                            (" · narrow margin" if edge < width else " · clear margin"))
             if v == "confirmed":
                 icon, stage = "✅", ("confirmed by orthogonal assay"
-                                     + (f" — fitted {verd.get('observed')} µM{ci_txt}"
+                                     + (f" — {_unit_lbl} {verd.get('observed')}{ci_txt}"
                                         if verd.get("observed") is not None else "")
                                      + _margin)
             elif v == "validated":
                 icon, stage = "✅", ("validated (preliminary)"
-                                     + (f" — fitted {verd.get('observed')} µM{ci_txt}"
+                                     + (f" — {_unit_lbl} {verd.get('observed')}{ci_txt}"
                                         if verd.get("observed") is not None else "")
                                      + _margin)
             elif v == "inconclusive":
                 icon, stage = "❔", ("inconclusive — CI straddles the threshold"
-                                     + (f" ({verd.get('observed')} µM{ci_txt})"
+                                     + (f" ({_unit_lbl} {verd.get('observed')}{ci_txt})"
                                         if verd.get("observed") is not None else ""))
             elif v in ("refuted", "invalidated"):
                 icon, stage = "❌", ("refuted"
-                                     + (f" ({verd.get('observed')} µM{ci_txt})"
+                                     + (f" ({_unit_lbl} {verd.get('observed')}{ci_txt})"
                                         if verd.get("observed") is not None else "")
                                      + _margin)
             elif refused.get(str(hp.get("candidate"))):
@@ -131,6 +134,7 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                             f"{hp.get('statement', '')}")
                 c2.caption(stage)
                 crit = hp.get("criteria") or {}
+                from bionexus.derivation import criteria_label, metric_label
                 _cit = ""
                 if hp.get("citation"):
                     _st = hp.get("citation_status", "unverified")
@@ -148,14 +152,19 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                     st.caption(f"☠️ refuted if: {hp['refutation_condition']}")
                 meta_bits = [f"predicted: {hp.get('predicted', '—')}"]
                 if crit.get("threshold") is not None:
-                    meta_bits.append(f"threshold: {crit['threshold']} µM "
-                                     f"({crit.get('metric', '?')})")
+                    meta_bits.append(
+                        "gate: " + criteria_label(crit.get("metric"),
+                                                  crit.get("direction"),
+                                                  crit["threshold"]))
                 if hp.get("rationale"):
                     meta_bits.append(f"rationale: {hp['rationale']}")
                 if sel and sel.get("selected"):
                     meta_bits.append(f"selected: {sel.get('reason', '')}")
                 if verd:
-                    bits = [f"fitted: {verd.get('observed')} µM"
+                    _ml = metric_label(((verd.get("derivation") or {})
+                                        .get("derived") or {}).get("metric")
+                                       or crit.get("metric"))
+                    bits = [f"{_ml}: {verd.get('observed')}"
                             if verd.get("observed") is not None else ""]
                     if verd.get("evidence"):
                         bits.append(f"evidence: `{verd['evidence']}`")

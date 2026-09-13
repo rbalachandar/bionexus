@@ -164,8 +164,9 @@ class AutoAnalysisAgent:
                                 method=match.get("fit_method"),
                                 ci="residual bootstrap 95%"
                                    if match.get("ic50_ci") else None,
-                                criteria=(f"{crit.metric} {crit.direction} "
-                                          f"{crit.threshold}") if crit else None)})
+                                criteria_metric=crit.metric if crit else None,
+                                criteria_direction=crit.direction if crit else None,
+                                criteria_threshold=crit.threshold if crit else None)})
                     verdicts.append((hyp.hypothesis_id, hyp.candidate, hyp.status,
                                      match["ic50_um"]))
                     ci_txt = (f" (95% CI {match['ic50_ci'][0]}–{match['ic50_ci'][1]})"
@@ -260,9 +261,9 @@ class AutoAnalysisAgent:
                         metric=hyp.criteria.metric if hyp.criteria else None,
                         method="Bayesian grid posterior (adaptive dose series)",
                         ci="posterior 95% credible interval",
-                        criteria=(f"{hyp.criteria.metric} {hyp.criteria.direction} "
-                                  f"{hyp.criteria.threshold}")
-                        if hyp.criteria else None)})
+                        criteria_metric=hyp.criteria.metric if hyp.criteria else None,
+                        criteria_direction=hyp.criteria.direction if hyp.criteria else None,
+                        criteria_threshold=hyp.criteria.threshold if hyp.criteria else None)})
             self.notify(f"adaptive verdict {cand}: IC50 {est:.2f} µM "
                         f"(95% CrI {ci[0]:.2f}–{ci[1]:.2f}) after "
                         f"{len(d.used)} wells -> {hyp.status.upper()}")
@@ -371,9 +372,11 @@ class AutoAnalysisAgent:
                             metric=hyp_tmp.criteria.metric if hyp_tmp and hyp_tmp.criteria else None,
                             method="orthogonal re-measurement + fit",
                             ci="residual bootstrap 95%" if secondary_ci else None,
-                            criteria=(f"{hyp_tmp.criteria.metric} "
-                                      f"{hyp_tmp.criteria.direction} "
-                                      f"{hyp_tmp.criteria.threshold}")
+                            criteria_metric=hyp_tmp.criteria.metric
+                            if hyp_tmp and hyp_tmp.criteria else None,
+                            criteria_direction=hyp_tmp.criteria.direction
+                            if hyp_tmp and hyp_tmp.criteria else None,
+                            criteria_threshold=hyp_tmp.criteria.threshold
                             if hyp_tmp and hyp_tmp.criteria else None)
                         self.tracker.record_outcome(hyp, extra={
                             "derivation": _der,

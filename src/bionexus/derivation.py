@@ -15,48 +15,81 @@ Shape (all keys optional, so any domain can fill what it knows):
 from __future__ import annotations
 
 
+_UNIT_SUFFIX = {"um": "µM", "nm": "nM", "us": "µs", "ct": "Ct"}
+
+
+def metric_label(metric: str | None) -> str:
+    """ic50_um -> 'IC50 (µM)'; fold_change -> 'fold change'."""
+    if not metric:
+        return "value"
+    parts = metric.split("_")
+    if len(parts) > 1 and parts[-1].lower() in _UNIT_SUFFIX:
+        return (f"{'_'.join(parts[:-1]).upper()} "
+                f"({_UNIT_SUFFIX[parts[-1].lower()]})")
+    return metric.replace("_", " ")
+
+
+def criteria_label(metric: str | None, direction: str | None,
+                   threshold) -> str:
+    if metric is None or threshold is None:
+        return ""
+    op = "≤" if direction == "min" else "≥" if direction == "max" else "="
+    return f"{metric_label(metric)} {op} {threshold:g}"
+
+
 def describe(der: dict | None) -> str:
     """One generic line from a derivation dict. Unknown => says so."""
     if not der:
         return "derivation not recorded for this verdict"
     parts = []
     raw = der.get("raw") or {}
-    seg = []
+    obs = []
     if raw.get("quantity"):
-        q = f"measured {raw['quantity']}"
-        for unit_key, label in (("wells", "wells"), ("reads", "reads"),
-                                ("images", "images"), ("peaks", "peaks"),
-                                ("records", "records"), ("replicates", "replicates")):
-            if raw.get(unit_key):
-                q += f" · {raw[unit_key]} {label}"
-        seg.append(q)
-    if der.get("measured_by"):
-        seg.append(f"on {der['measured_by']}")
-    if seg:
-        parts.append(" · ".join(seg))
+        obs.append(f"measured {raw['quantity']}")
+    for unit_key, label in (("wells", "wells"), ("reads", "reads"),
+                            ("images", "images"), ("peaks", "peaks"),
+                            ("records", "records"), ("replicates", "replicates")):
+        if raw.get(unit_key):
+            obs.append(f"{raw[unit_key]} {label}")
+    clause = " ".join(obs)
+    if clause and der.get("measured_by"):
+        clause += f" on {der['measured_by']}"
+    if clause:
+        parts.append(clause)
     d = der.get("derived") or {}
-    if d:
-        line = f"derived {d.get('metric', 'value')}"
-        if d.get("method"):
-            line += f" via {d['method']}"
+    if d.get("metric") or d.get("method"):
+        line = f"{metric_label(d.get('metric'))}"
+        line += f" by {d['method']}" if d.get("method") else "derived"
         if d.get("ci"):
-            line += f" · CI: {d['ci']}"
+            line += f", {d['ci']}"
         parts.append(line)
     dec = der.get("decided_by") or {}
-    if dec.get("criteria"):
-        parts.append(f"decided by pre-registered criteria: {dec['criteria']}")
-    return " → ".join(p for p in parts if p) or "derivation not recorded"
+    crit = (criteria_label(dec.get("metric"), dec.get("direction"),
+                           dec.get("threshold"))
+            or dec.get("criteria") or "")
+    if crit:
+        parts.append(f"gate: {crit}")
+    return "  →  ".join(p for p in parts if p) or "derivation not recorded"
 
 
 def build(instrument: str | None = None, version: str | None = None,
           quantity: str | None = None, counts: dict | None = None,
           metric: str | None = None, method: str | None = None,
-          ci: str | None = None, criteria: str | None = None) -> dict:
-    """Convenience builder used by the analysis paths."""
+          ci: str | None = None, criteria: str | None = None,
+          criteria_metric: str | None = None,
+          criteria_direction: str | None = None,
+          criteria_threshold=None) -> dict:
+    """Convenience builder used by the analysis paths. Pass criteria as
+    structured parts when available (renders humanely); a plain string still
+    works for legacy callers."""
     return {
         "measured_by": (f"{instrument} ({version})" if instrument and version
                         else instrument),
         "raw": {"quantity": quantity, **(counts or {})},
         "derived": {"metric": metric, "method": method, "ci": ci},
-        "decided_by": {"criteria": criteria},
+        "decided_by": ({"metric": criteria_metric,
+                        "direction": criteria_direction,
+                        "threshold": criteria_threshold}
+                       if criteria_metric is not None
+                       else {"criteria": criteria}),
     }

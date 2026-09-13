@@ -507,8 +507,9 @@ class HypothesisTracker:
                 metric=criteria.metric,
                 method=("assay pipeline derived" if meas and
                         meas.derived_metrics else "reported value"),
-                criteria=f"{criteria.metric} {criteria.direction} "
-                         f"{criteria.threshold}"),
+                criteria_metric=criteria.metric,
+                criteria_direction=criteria.direction,
+                criteria_threshold=criteria.threshold),
         }))
         return h
 
