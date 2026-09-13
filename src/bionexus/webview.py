@@ -35,6 +35,7 @@ def _pipeline_body(logf: Path, problem_id: str | None,
     filtered: dict[str, dict] = {}
     run_map: dict[str, list[str]] = {}   # hypothesis_id -> run ids (provenance)
     tested: dict[str, dict] = {}
+    refused: dict[str, str] = {}
     gates = 0
     run_ts: dict[str, float] = {}
     run_instr: dict[str, str] = {}
@@ -70,7 +71,12 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                                "ci": d.get("observed_ci"),
                                "evidence": d.get("evidence_run_id")}
         elif et == "gate_decision":
-            gates += 1
+            if d.get("kind") in ("safety_refusal", "operator_declined",
+                                  "advisory_escalation"):
+                for sm in d.get("samples", []):
+                    refused[sm] = d.get("reason", "refused")
+            else:
+                gates += 1
 
     if proposed:
         st.markdown("**Hypothesis pipeline**")
@@ -107,10 +113,13 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                                      + (f" ({verd.get('observed')} µM{ci_txt})"
                                         if verd.get("observed") is not None else "")
                                      + _margin)
+            elif refused.get(str(hp.get("candidate"))):
+                icon, stage = "🚫", ("refused by gate — "
+                                      + refused[str(hp.get("candidate"))][:70])
             elif run_map.get(hid):
                 icon, stage = "🔬", "in lab"
             elif sel and sel.get("selected"):
-                icon, stage = "🔬", "in lab"
+                icon, stage = "⏳", "selected — awaiting submission"
             elif sel:
                 icon, stage = "✂️", "not selected"
             else:

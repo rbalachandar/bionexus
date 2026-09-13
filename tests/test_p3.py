@@ -163,3 +163,31 @@ def test_safety_rules_data_file_versioned():
     from bionexus.adapters.bio import tox_alerts
     assert tox_alerts.RULES_VERSION == "safety-rules-v1"
     assert len(tox_alerts.ALERTS) >= 18
+
+
+def test_gate_refusals_are_recorded_in_provenance():
+    import pytest
+    pytest.importorskip("rdkit")
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
+                                         ProtocolSubmission, ReagentSpec,
+                                         SampleKind, SampleSpec)
+    from bionexus.core.interfaces import system_actor
+    from bionexus.core.safety import LabGateway, SafetyEngine
+    store = SqliteProvenanceStore()
+    gw = LabGateway(SimulatorLab(), SafetyEngine(), store, system_actor())
+    proto = ProtocolSubmission(
+        envelope=Envelope(experiment_branch_id="problem/p-ref"),
+        title="t", assay_type="binding",
+        steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense,
+                            params={"volume_ul": 50})],
+        samples=[SampleSpec(sample_id="BAD-1", kind=SampleKind.compound,
+                            concentration="10uM",
+                            metadata={"smiles": "O=[N+]([O-])c1ccccc1"})],
+        reagents=[ReagentSpec(name="b", amount="5 mL", bsl_level=1)])
+    run_id, reason = gw.submit(proto)
+    assert run_id is None
+    refusals = [r for r in store.branch_records("problem/p-ref")
+                if (r.decision or {}).get("kind") == "safety_refusal"]
+    assert refusals and "BAD-1" in refusals[-1].decision["samples"]

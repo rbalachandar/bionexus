@@ -401,6 +401,11 @@ class _GatedGateway:
         title = getattr(protocol, "title", str(protocol))
         if not self._approver(title):
             self._say(f"operator declined: '{title}' — submission cancelled")
+            self._gw.store.append(record_for(
+                protocol.envelope, EventType.gate_decision, self._gw.actor,
+                decision={"kind": "operator_declined", "title": title,
+                          "reason": "declined by operator",
+                          "samples": [s.sample_id for s in protocol.samples]}))
             return None, "declined by operator"
         return self._gw.submit(protocol)
 
