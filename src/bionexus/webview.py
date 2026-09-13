@@ -183,7 +183,7 @@ def _pipeline_body(logf: Path, problem_id: str | None,
     if gates:
         st.caption(f"🚦 {gates} gate decision(s)")
 
-    with st.expander("Raw agent log", expanded=True):
+    with st.expander("Trace log", expanded=True):
         if logf.exists():
             tail = logf.read_text(errors="replace").splitlines()[-30:]
             st.code("\n".join(tail) or "(waiting for output...)", language=None)

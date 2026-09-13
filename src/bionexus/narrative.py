@@ -47,7 +47,7 @@ def render_portfolio(recs) -> None:
         if hid:
             id2cand[hid] = _candidate(r)
         id2cand[r.artifact.artifact_id] = _candidate(r)
-    st.markdown("Who got the lab slots, and why")
+    st.markdown("Hypothesis scores")
     st.dataframe([
         {"hypothesis": id2cand.get(d.get("hypothesis_id"),
                                    d.get("hypothesis_id", "?")),
@@ -139,8 +139,8 @@ def render_trust(recs, log_lines=()) -> None:
         if "safety-rules-" in l:
             rules = l.split("[rules ")[1].split("]")[0]
             break
-    st.markdown("### Trust summary")
-    with st.expander("Evidence panel: what a verdict is made of"):
+    st.markdown("### Evidence")
+    with st.expander("Results"):
         from bionexus import figures
         st.markdown(figures.get("evidence"), unsafe_allow_html=True)
         st.caption("A 3-parameter Hill fit (plateau profiled, not assumed), "
