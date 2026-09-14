@@ -242,3 +242,30 @@ Positioning bet: trustworthiness as architecture, not marketing. Priority order:
   prompt_sha256, model name, skill-guidance size, flywheel negatives
   injected (as candidate list), and candidate count — "what shaped this
   hypothesis" is answerable from the chain
+
+## Adopted from Bender & Cortés-Ciriano et al., "AI in Drug Discovery — Where
+## We Stand and the Path Forward" (Nat Rev Drug Discov, Aug 2026)
+The paper is an external audit of this project's thesis. Gap analysis mapped
+model-vs-process validation, ligand≠drug, local models, proxy-clinical links,
+Goodhart, and spurious XAI against our evals/TPP/problem-trees/attribution.
+
+- [ ] **Applicability domain (T0 of this section)**: nearest-neighbour
+  Tanimoto on Morgan/char features at predict time; below a declared
+  similarity floor the prediction is stamped `extrapolation`, abstention
+  rules widen, cards show it. Answers "every model is a local model"
+- [ ] **`proxy_of` on SuccessCriteria/TPP criteria**: explicit proxy ladder
+  (ic50_um → target_engagement → cellular_efficacy → clinical); verdict and
+  tree roll-up print evidence distance from the clinical question
+- [ ] **Decision-utility eval**: fixed-budget, cost-aware expected value for
+  selection; NNPV-style metric for deselection; label every eval task with
+  its Box-2 decision context (selection|deselection|quantification)
+- [ ] **Shortcut-learning attribution task**: train on a confounded set
+  (sugar-ring ≈ active), prove the attribution panel surfaces the spurious
+  n-gram — the paper's bitterness example, as a CI-checked test
+- [ ] **`bn feedback <outcomes.csv>`**: external results (assay/tox/clinical
+  outcomes) flow into flywheel priors — their clinical→preclinical loop at
+  node scale
+- [x] Already aligned: pre-registration + CI-abstention (decision-relevant
+  validation), post-cutoff case studies + BH correction (anti-Goodhart),
+  TPP/problem-tree decomposition (ligand≠drug), tighten-only AI (spurious-XAI
+  defense), provenance chain-of-custody for numbers
