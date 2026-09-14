@@ -310,3 +310,57 @@ def _t_stability():
                       {"stability": score, "per_candidate": out["per_candidate"]},
                       "unstable verdicts flag borderline evidence — reported, "
                       "not hidden")
+
+
+@register("decomposition-integrity",
+          "compound objectives split into bounded sub-problems; budgets "
+          "allocate down; roll-up records on the root branch")
+def _t_decomposition():
+    import json
+    import shutil
+
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.evals.harness import TaskResult
+    from bionexus.problem_tree import (ProblemTree, TreeLimits,
+                                       decompose_with_agent, run_tree)
+
+    class OvereagerModel:  # proposes MORE than allowed — caps must truncate
+        def generate(self, inv, prompt):
+            subs = [{"objective": f"sub {i}", "metric": "ic50_um",
+                     "direction": "min", "gate": 20.0, "priority": 1.0}
+                    for i in range(6)]
+
+            class R:
+                output = {"text": json.dumps({"sub_problems": subs})}
+            return R()
+
+    limits = TreeLimits(max_children=3, max_depth=2, max_nodes=12)
+    tree = decompose_with_agent(OvereagerModel(), "compound objective",
+                                limits=limits, say=lambda m: None)
+    truncated = len(tree.children(tree.root.id)) == 3
+
+    box = INBOX.parent / "decomp"
+    shutil.rmtree(box, ignore_errors=True)
+    store = SqliteProvenanceStore()
+    run_tree(tree, lambda: SimulatorLab(seed=2), store,
+             candidates=[{"sample_id": f"D-{i}"} for i in range(1, 4)],
+             inbox=str(box), notify=lambda m: None)
+    n_runs = 0
+    for leaf in tree.leaves():
+        n_runs += sum(1 for r in
+                      store.branch_records(leaf.branch(tree.root.id))
+                      if r.event_type.value == "lab_run")
+    budget_kept = n_runs <= tree.run_budget
+    rolled = any((r.decision or {}).get("kind") == "tree-rollup"
+                 for r in store.branch_records(f"problem/{tree.root.id}"))
+    root_status = tree.rollup()[tree.root.id]
+    ok = truncated and budget_kept and rolled and root_status != "open"
+    return TaskResult("decomposition-integrity",
+                      "bounded decomposition, budget allocation, roll-up",
+                      1.0 if ok else 0.0, ok,
+                      {"truncated_to_max_children": truncated,
+                       "runs": n_runs, "budget": tree.run_budget,
+                       "rollup_recorded": rolled, "root": root_status},
+                      "over-eager decomposition capped; leaves could not "
+                      "overspend the tree")

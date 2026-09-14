@@ -67,6 +67,8 @@ bn diary <branch>                      # campaign as a lab-notebook narrative
 bn prove <branch> --html out.html      # tamper-evident provenance + shareable report
 bn prove <branch> --eln out.csv        # ELN-ready export (Benchling/SISSYO-friendly)
 bn anchor [--publish-cmd CMD]          # Merkle-root the store; publish the root
+bn plan --objective "potent AND selective AND soluble" \
+        --model anthropic --run-budget 20   # decompose into a guarded problem tree
 bn reproduce <branch>                  # replay a recorded experiment, diff verdicts
 bn sim                                 # reference design round on the virtual lab
 bn run examples/workflow.yml           # tournament + assay on the configured lab

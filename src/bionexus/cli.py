@@ -417,6 +417,43 @@ def cmd_reproduce(args: argparse.Namespace) -> int:
     return 0 if status == "match" else 1
 
 
+def cmd_plan(args: argparse.Namespace) -> int:
+    from bionexus.problem_tree import (ProblemTree, TreeLimits,
+                                       decompose_with_agent, run_tree)
+
+    limits = TreeLimits(max_children=args.max_children,
+                        max_depth=args.max_depth, max_nodes=args.max_nodes)
+    model = None
+    if args.model == "anthropic":
+        from bionexus.adapters.models.anthropic_provider import \
+            AnthropicProvider
+        model = AnthropicProvider()
+        tree = decompose_with_agent(model, args.objective,
+                                    context=args.context or "",
+                                    limits=limits, say=print)
+    else:
+        tree = ProblemTree.create(args.objective, limits=limits,
+                                  metric=None, gate=None)
+    tree.run_budget = args.run_budget
+    print(tree.render())
+    print("run allocation:", tree.allocation())
+    if not args.run:
+        print("(dry plan — add --run to execute the leaves)")
+        return 0
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    cands = [{"sample_id": x.strip()} for x in args.candidates.split(",")
+             if x.strip()]
+    if not cands:
+        print("--run needs --candidates", file=sys.stderr)
+        return 2
+    summary = run_tree(tree, lambda: SimulatorLab(seed=args.seed),
+                       SqliteProvenanceStore(args.db), candidates=cands,
+                       model=model, autonomy=args.autonomy, notify=print)
+    print("root status:", summary[tree.root.id])
+    return 0
+
+
 def cmd_templates(args: argparse.Namespace) -> int:
     from bionexus.templates import list_templates, load_template
 
@@ -602,6 +639,23 @@ def main(argv: list[str] | None = None) -> int:
     anc.add_argument("--publish-cmd",
                      help="shell command receiving the anchor JSON on stdin "
                           "(e.g. 'gh gist create - && …', 'git commit …')")
+    pl = sub.add_parser("plan", help="decompose a compound objective into a "
+                        "guarded problem tree (dry plan, or --run the leaves)")
+    pl.add_argument("--objective", required=True)
+    pl.add_argument("--context", default="")
+    pl.add_argument("--model", choices=("anthropic", "none"), default="none",
+                    help="anthropic = LLM-assisted decomposition (env-configured)")
+    pl.add_argument("--max-children", type=int, default=4)
+    pl.add_argument("--max-depth", type=int, default=2)
+    pl.add_argument("--max-nodes", type=int, default=12)
+    pl.add_argument("--run-budget", type=int, default=20,
+                    help="total lab runs the whole tree may spend")
+    pl.add_argument("--run", action="store_true")
+    pl.add_argument("--candidates", default="", help="comma list for leaf hypotheses")
+    pl.add_argument("--seed", type=int, default=7)
+    pl.add_argument("--db", default="bionexus.db")
+    pl.add_argument("--autonomy", choices=("act", "gate", "observe"), default="act")
+    pl.set_defaults(func=cmd_plan)
     rep = sub.add_parser("reproduce",
                          help="replay a recorded experiment; diff verdicts")
     rep.add_argument("branch")

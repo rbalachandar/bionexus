@@ -52,7 +52,7 @@
      "E-12"
     ]
    },
-   "duration_s": 6.4
+   "duration_s": 6.5
   },
   "notes": "1.0 confident-correct \u00b7 0.5 honest abstain \u00b7 0 wrong"
  },
@@ -127,7 +127,7 @@
     "X-1"
    ],
    "family_A_prior": 0.5,
-   "duration_s": 3.5
+   "duration_s": 3.6
   },
   "notes": "the dead family must get zero lab slots"
  },
@@ -162,5 +162,19 @@
    "duration_s": 9.5
   },
   "notes": "unstable verdicts flag borderline evidence \u2014 reported, not hidden"
+ },
+ {
+  "task": "decomposition-integrity",
+  "score": 1.0,
+  "passed": true,
+  "metrics": {
+   "truncated_to_max_children": true,
+   "runs": 0,
+   "budget": 20,
+   "rollup_recorded": true,
+   "root": "failed",
+   "duration_s": 2.5
+  },
+  "notes": "over-eager decomposition capped; leaves could not overspend the tree"
  }
 ]
