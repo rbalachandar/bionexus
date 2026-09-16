@@ -814,6 +814,7 @@ def experiment_view() -> None:
         if problem_id and problem_id != ag.get("problem_id"):
             store.link_problem(row["id"], problem_id)
         st.title(f"{row['question'][:70]}")
+        st.caption(f"experiment `{row['id']}`")
         _crumb = _wv.lineage_caption(ag.get("problem_id"))
         if _crumb:
             st.caption(_crumb)
@@ -828,14 +829,7 @@ def experiment_view() -> None:
         branch = f"problem/{problem_id}" if problem_id else None
         recs = (SqliteProvenanceStore("bionexus.db").branch_records(branch)
                 if branch and Path("bionexus.db").exists() else [])
-        n_hyp = len({((r.artifact.metadata if r.artifact else {}) or {})
-                     .get("candidate") for r in recs
-                     if r.event_type.value == "hypothesis_proposed"} - {None})
         n_runs = sum(1 for r in recs if r.event_type.value == "lab_run")
-        st.caption(f"{program_cfg.gate_summary()} ▸ problem "
-                   f"`{problem_id or '—'}` ▸ {n_hyp} hypotheses ▸ experiment "
-                   f"`{row['id']}`")
-
         # the problem, as registered at the root of the chain
         pdef = next((r.decision or {} for r in recs
                      if r.event_type.value == "problem_defined"), None)
@@ -871,6 +865,13 @@ def experiment_view() -> None:
         _live = (SqliteProvenanceStore("bionexus.db").branch_records(branch)
                  if branch and Path("bionexus.db").exists() else recs)
         narrative.render(_live or recs, _logtail)
+        with st.expander("Trace log", expanded=False):
+            if logf.is_file():
+                tail = logf.read_text(errors="replace").splitlines()[-30:]
+                st.code("\n".join(tail) or "(waiting for output...)",
+                        language=None)
+            else:
+                st.caption("(no log written yet)")
     else:
         p = row["payload"]
         st.title(f"{row['question'][:70]}")

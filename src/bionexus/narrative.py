@@ -83,6 +83,10 @@ def render_make(recs) -> None:
     st.markdown("### Make — what the gate allowed")
     synth = [r for r in recs
              if r.event_type.value == "synthesis_complete"]
+    if runs and not synth:
+        st.caption("No synthesis batches recorded — this run predates "
+                   "Make-synthesis; submissions went straight to the "
+                   "gate.")
     if synth:
         st.dataframe([
             {"candidate": (r.decision or {}).get("candidate", "?"),

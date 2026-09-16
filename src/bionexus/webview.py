@@ -143,6 +143,11 @@ def _pipeline_body(logf: Path, problem_id: str | None,
         for hid, hp in proposed.items():
             sel = filtered.get(hid)
             cand = str(hp.get("candidate", hid))
+            # statements embed their own "{cid} ({src}) — " label; the
+            # card header already shows the candidate — strip it
+            stmt = str(hp.get("statement", ""))
+            stmt = re.sub(rf"^{re.escape(cand)}\s*(\([^)]*\))?\s*[—-]\s*",
+                          "", stmt)
             verd = tested.get(hid) or tested_by_cand.get(cand, {})
             v = (verd.get("verdict") or "").lower()
             ci = verd.get("ci")
@@ -196,8 +201,8 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                 icon, stage = ui.icon("hypothesis", 15, "teal"), "proposed"
             with st.container(border=True):
                 c1, c2 = st.columns([4, 2])
-                c1.markdown(f"{icon} **{hp.get('candidate', hid)}** — "
-                            f"{hp.get('statement', '')}",
+                c1.markdown(f"{icon} <b>{hp.get('candidate', hid)}"
+                            f"</b> \u2014 {stmt}",
                             unsafe_allow_html=True)
                 c2.caption(stage, unsafe_allow_html=True)
                 crit = hp.get("criteria") or {}
@@ -331,13 +336,6 @@ def _pipeline_body(logf: Path, problem_id: str | None,
     if gates:
         st.caption(f"{ui.icon('gate-open', 13, 'provenance')} {gates} gate "
                    "decision(s)", unsafe_allow_html=True)
-
-    with st.expander("Trace log", expanded=True):
-        if logf.is_file():
-            tail = logf.read_text(errors="replace").splitlines()[-30:]
-            st.code("\n".join(tail) or "(waiting for output...)", language=None)
-        else:
-            st.caption("(no log written yet)")
 
 
 
