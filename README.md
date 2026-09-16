@@ -123,6 +123,8 @@ every run; the CI job fails if any score drops below the pass bar.
 | Mechanism | What it guarantees |
 |---|---|
 | Molecular safety gate | 18+ curated toxicophore SMARTS (versioned data file — refusals cite the rule version); hard classes always refuse; electrophilic warheads pass **only** with declared covalent intent in the hypothesis |
+| Execution governance | enforced in gateway code, outside the agent's tool surface: an operator halt switch it cannot lift (`bn halt`), a three-column authorization matrix (autonomous / human-approved / never — DURC and BSL-3+ default to never), and SOP sign-off before anything recurring runs unattended; every decision is a provenance record |
+| Physical-fault honesty | saturated plates, dark reads, negative values, and device errors are classified as **physical** failures before the retry reflex — flagged for operator inspection, never re-queried blindly and never turned into verdicts |
 | DURC screening | campaigns naming select agents / regulated toxins are refused before any work, and the refusal is recorded |
 | Citation enforcement | PMIDs/DOIs resolved against PubMed; a fabricated reference scores below silence; offline checks never falsely accuse |
 | `bn reproduce` | the execution environment (lab, version, seed, concentrations) is in the provenance root — replay a branch, diff verdicts |
@@ -132,6 +134,8 @@ every run; the CI job fails if any score drops below the pass bar.
 | Attribution | per-prediction "why": exact n-gram contributions, importance-weighted RF bits (with hashed-bit caveats stated), triggered ADMET rules, AVI feature attributions |
 | Retrieval traces | every generation records prompt hash, model, injected flywheel negatives — "what shaped this hypothesis" is answerable from the chain |
 | Anchoring | Merkle root over the whole store; publish it anywhere you don't control for external tamper-evidence |
+| Evidence is the data | the Evidence section re-renders each branch's **recorded plate files** — the same curves and fits the verdicts were read from; a missing file renders as an honest gap, never a stock figure |
+| Retirement, not deletion | archived experiments leave the working set but their hash-chained records stay intact and auditable — consistent with the append-only provenance store |
 
 ## Using BioNexus
 
