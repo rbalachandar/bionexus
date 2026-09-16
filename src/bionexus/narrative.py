@@ -79,12 +79,11 @@ def render_make(recs) -> None:
                 and (r.decision or {}).get("column") != "autonomous"]
     if not runs and not refusals:
         return
-    st.markdown("Make — through the gate, into the lab")
+    st.markdown("Make — what the gate allowed")
     if runs:
         st.dataframe([
-            {"run": (r.decision or {}).get("run_id", "?"),
-             "protocol": ((r.decision or {}).get("title") or "—")[:48],
-             "assay": (r.decision or {}).get("assay", "—"),
+            {"submission": ((r.decision or {}).get("title") or "—")[:48],
+             "protocol": (r.decision or {}).get("assay", "—"),
              "samples": (r.decision or {}).get("n_samples", "—"),
              "doses (µM)": ", ".join(
                  str(c) for c in
@@ -93,8 +92,25 @@ def render_make(recs) -> None:
              "controls": (r.decision or {}).get("n_controls", "—")}
             for r in runs], hide_index=True)
         st.caption("Every submission passed the SafetyEngine and the "
-                   "governance gate before the lab saw it. The lab "
-                   "produced the raw evidence analyzed below.")
+                   "governance gate — the lab executes these in the "
+                   "Test section below.")
+
+    # Test: the lab's side — device, time, raw evidence
+    if runs:
+        st.markdown("Test — the lab executes")
+        import time as _t
+        rows = []
+        for r in runs:
+            d = r.decision or {}
+            ts = getattr(getattr(r, "envelope", None), "created_at", None)
+            rows.append({
+                "run": d.get("run_id", "?"),
+                "device": d.get("instrument", "—")
+                          + (f" ({d.get('instrument_version')})"
+                             if d.get("instrument_version") else ""),
+                "submitted": _t.strftime("%m-%d %H:%M", _t.localtime(ts))
+                             if ts else "—"})
+        st.dataframe(rows, hide_index=True)
     if refusals:
         st.caption(f"{len(refusals)} further submission(s) were refused "
                    "at the gate — see Hypotheses at the gates above.")
