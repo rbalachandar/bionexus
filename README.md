@@ -267,13 +267,17 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
 ### The scientist's workbench
 
 - **`streamlit run Overview.py`** — the single portal, all local, no accounts,
-  no cloud: pending approvals with Approve/Deny, start agent experiments from
-  templates (or your own custom problem), a readiness-gated step-by-step
-  wizard for experiments you define yourself, a live hypothesis pipeline per
-  experiment (stage, runs, instrument output with fitted curves and Z′,
-  evidence-linked verdicts), the target product profile, and the hash-chained
-  lab narrative. Wizard experiments are provenance-chained too —
-  `bn prove wizard/<id>`.
+  no cloud. The Experiments section is a **Problem workspace**: your problem
+  trees as an interactive hierarchy (every node shows its roll-up status and
+  run budget; clicking a leaf opens its experiment page under a lineage
+  breadcrumb). Each experiment page shows a live hypothesis pipeline (stage,
+  runs, harness decisions, verdicts with CI and margin), harness decisions
+  the code made (halts, authorization column, SOP sign-offs, physical-fault
+  classification), the hash-chained record of the run with verdicts and
+  evidence plots re-rendered from that branch's recorded plate files, and
+  the raw trace log. Experiments are archived (retired from the working
+  set, provenance intact), never silently deleted. Wizard experiments are
+  provenance-chained too — `bn prove wizard/<id>`.
 - **`bn serve`** — a headless alternative cockpit (stdlib HTTP, no
   dependencies) for approval queues and diaries on machines without a
   browser; useful for remote/headless boxes.
@@ -295,10 +299,11 @@ BioNexus structures the Design-Make-Test-Analyze cycle as first-class objects:
   experiment, if successful, would produce an interpretable result (denominators
   present, authentic modification distinguishable, delivery variance controlled,
   synthesis feasible)
-- **Program hierarchy** — 🎯 Program (TPP) ▸ Problem ▸ Hypothesis ▸ Experiment:
-  the program's screening gate sets the potency bar that hypotheses inherit
-  (and `✨ Suggest gates from ChEMBL` derives it from published activities
-  for your target, not folklore)
+- **Program hierarchy** — Program ▸ Problem ▸ Hypothesis ▸ Experiment: you
+  define the problem in your own terms — objective in plain words, any
+  metric, unit, and direction (`pathogenicity_score ≥ 0.8`, `fold_change`
+  `≤ 2`, IC50 in µM — anything). That gate is what wizard hypotheses and
+  agent experiments inherit; it is not decoration
 - **Flywheel** — every verdict is remembered: mechanistic families that fail
   are discounted in later portfolios, and the hypothesis agent is shown what
   the lab already ruled out
