@@ -556,6 +556,24 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
             tooltip=root_name, children=root_children,
             disabled=root_gone))
 
+    # standalone experiments (wizard/manual, single agent runs) appear
+    # as their own top-level nodes: the workspace shows auto AND manual
+    tree_leaf_pids = {f"{t.root.id}-{lf.id}"
+                      for t, _a, _l, _r, _rr in trees
+                      for lf in t.leaves()}
+    for e in (all_rows or []):
+        ag = e["payload"].get("agent") or {}
+        pid = ag.get("problem_id")
+        if pid in tree_leaf_pids:
+            continue
+        label = e["question"][:60] or e["id"]
+        status = _row_status(e)
+        i = reserve()
+        idx2eid[i] = e["id"]
+        items.append(sac.TreeItem(
+            label, icon="smart_toy" if ag else "person",
+            description=status, tooltip=label))
+
     if not items:
         st.info("No problem trees yet — create one with "
                 "`bn plan --objective ...` or the agent experiment wizard.")
