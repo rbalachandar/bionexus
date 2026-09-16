@@ -365,7 +365,8 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
         say(f"leaf {leaf.id}: '{leaf.objective[:50]}' — "
             f"{budget.max_total_runs} runs allocated")
         # per-leaf log: the leaf's Trace log is its own campaign diary
-        from bionexus.paths import CAMPAIGN_DIR
+        from bionexus.paths import CAMPAIGN_DIR, ensure_dirs
+        ensure_dirs()
         leaf_log = CAMPAIGN_DIR / f"{tree.root.id}-{leaf.id}.log"
         leaf_log.write_text("")
         def _tee(msg, _f=leaf_log):
