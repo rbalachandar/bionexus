@@ -19,7 +19,8 @@ DB_PATH = DATA_DIR / "wizard.db"
 
 # ordered; index = wizard step to resume from (1-based, +2 for steps 3..6)
 STATUSES = ["defining", "designing", "readiness_ok", "ready_blocked",
-            "executing", "results_uploaded", "verdict_recorded"]
+            "executing", "results_uploaded", "verdict_recorded",
+            "completed", "failed", "interrupted"]
 
 
 class WizardStore:
