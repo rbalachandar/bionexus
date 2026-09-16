@@ -1,10 +1,11 @@
-"""Virtual synthesis — Make as a first-class DMTA step.
+"""Virtual production — Make as a first-class, modality-agnostic step.
 
-Design decides the molecule; Make synthesizes and purifies it. The
-virtual synthesizer is deterministic (seeded from candidate + structure)
-so the same hypothesis always produces the same batch — reproducible
-like everything else. Low-purity or low-yield batches are refused into
-Test: a gate on the physical step, same as the assay gate.
+Design decides the intervention; Make produces it. For small molecules
+that is chemical synthesis; for biologics, expression and purification;
+for other modalities, whatever production means. The QC semantics are
+shared: every batch gets a yield, a purity, and a lot id, and batches
+below spec are refused into Test. Deterministic (seeded from candidate
++ structure/sequence) so the same design always produces the same batch.
 """
 from __future__ import annotations
 
@@ -27,7 +28,15 @@ class VirtualSynthesizer:
         self.min_purity = min_purity
         self.min_yield = min_yield
 
-    def synthesize(self, candidate: str, smiles: str | None = None) -> dict:
+    # how each modality words its production step
+    ACTIONS = {"small molecule": "synthesized",
+               "": "synthesized",
+               "biologic": "expressed and purified",
+               "cell therapy": "engineered and expanded",
+               "mRNA": "transcribed and encapsulated"}
+
+    def synthesize(self, candidate: str, smiles: str | None = None,
+                   modality: str = "") -> dict:
         seed = hashlib.sha256(
             f"{candidate}|{smiles or ''}".encode()).hexdigest()
         rng = random.Random(seed)
@@ -44,6 +53,9 @@ class VirtualSynthesizer:
         ok = purity >= self.min_purity and yield_pct >= self.min_yield
         lot = "lot-" + seed[:8]
         return {"candidate": candidate, "smiles": smiles or "",
+                "modality": modality,
+                "action": self.ACTIONS.get(modality.lower().strip(),
+                                           "produced"),
                 "yield_pct": yield_pct, "purity": purity, "ok": ok,
                 "lot": lot,
                 "note": "" if ok else

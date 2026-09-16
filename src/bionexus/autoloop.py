@@ -292,7 +292,8 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                 from bionexus.adapters.lab.synthesis import \
                     VirtualSynthesizer
                 synth = VirtualSynthesizer().synthesize(
-                    h.candidate, (h.metadata or {}).get("smiles"))
+                    h.candidate, (h.metadata or {}).get("smiles"),
+                    modality=(h.metadata or {}).get("modality", ""))
                 synth_cache[h.candidate] = synth
                 store.append(record_for(
                     protocol.envelope, EventType.synthesis_complete,
@@ -304,7 +305,8 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                               "yield_pct": synth["yield_pct"],
                               "purity": synth["purity"], "ok": synth["ok"],
                               "lot": synth["lot"]}))
-                say(f"synthesized {h.candidate}: lot {synth['lot']} "
+                say(f"{synth.get('action', 'synthesized')} "
+                    f"{h.candidate}: lot {synth['lot']} "
                     f"yield {synth['yield_pct']}% purity "
                     f"{synth['purity']}%")
             if not synth["ok"]:

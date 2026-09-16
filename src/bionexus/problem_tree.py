@@ -53,6 +53,7 @@ class ProblemTree(BaseModel):
     nodes: dict[str, ProblemNode]      # includes root, keyed by id
     limits: TreeLimits = Field(default_factory=TreeLimits)
     run_budget: int = 20               # total lab runs across all leaves
+    modality: str = ""                 # small molecule | biologic | ... free text
 
     # ------------------------------------------------------------ building
 
@@ -296,6 +297,10 @@ def default_hypotheses(tree: "ProblemTree", candidates: list[str]) -> dict[str, 
                 "predicted_value": leaf.gate,
                 "family": leaf.id,
                 "rationale": leaf.rationale or ""})
+        for sp in specs:
+            sp.setdefault("metadata", {})
+            if tree.modality:
+                sp["metadata"].setdefault("modality", tree.modality)
         out[leaf.id] = specs
     return out
 

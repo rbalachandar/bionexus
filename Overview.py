@@ -326,10 +326,15 @@ def overview_view() -> None:
                     "Experiment. Define the problem in your own terms — "
                     "any metric, any unit. The gate below is what wizard "
                     "hypotheses and agent experiments inherit.")
-        tp1, tp2 = st.columns(2)
+        tp1, tp2, tp3 = st.columns([2, 2, 1])
         prog = tp1.text_input("Program", doc["program"], key="tpp_prog")
         obj = tp2.text_input("Objective — the problem, in plain words",
                              doc.get("objective") or "", key="tpp_obj")
+        modality = tp3.text_input(
+            "Modality", doc.get("modality", ""), key="tpp_modality",
+            help="optional, free text: small molecule, biologic, cell "
+                 "therapy, agrochemical, material — words the Make step "
+                 "and reports use")
         mt1, mt2, mt3, mt4 = st.columns(4)
         metric = mt1.text_input("Metric", doc.get("metric", "ic50"),
                                 key="tpp_metric",
@@ -348,7 +353,7 @@ def overview_view() -> None:
         if st.button("Save program", type="primary",
                      icon=":material/save:"):
             program_cfg.save({"program": prog, "custom": True,
-                              "objective": obj,
+                              "objective": obj, "modality": modality,
                               "metric": metric or "ic50", "unit": unit,
                               "direction": direction,
                               "gate_value": float(gval)})

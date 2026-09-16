@@ -26,6 +26,9 @@ DEFAULT = {
     # is (metric, direction, gate_value, unit) with a free-text objective.
     "custom": False,
     "objective": "",
+    "modality": "",                # e.g. small molecule, biologic, cell
+                                   # therapy, agrochemical, material —
+                                   # free text; the flow is modality-agnostic
     "metric": "ic50",
     "unit": "µM",
     "direction": "min",            # min = lower is better
@@ -86,7 +89,8 @@ def gate_summary(doc: dict | None = None) -> str:
     doc = doc or load()
     if doc.get("custom"):
         obj = doc.get("objective") or doc.get("target")
-        return (f"{doc['program']} · {obj} · gate: {doc['metric']} "
+        mod = f"[{doc['modality']}] " if doc.get("modality") else ""
+        return (f"{doc['program']} · {mod}{obj} · gate: {doc['metric']} "
                 f"{gate_symbol(doc)} {float(doc.get('gate_value', 20.0)):g} "
                 f"{doc.get('unit', '')}").rstrip()
     return (f"{doc['program']} · {doc['target']} · gate: {doc['gate']} "

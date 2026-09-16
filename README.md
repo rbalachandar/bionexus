@@ -140,7 +140,12 @@ every run; the CI job fails if any score drops below the pass bar.
 ## Using BioNexus
 
 BioNexus supports two working styles, backed by the same engine and the same
-five interfaces. A scientist can use it manually, step by step, as a daily
+five interfaces. The loop itself is **modality-agnostic**: the program defines
+the objective in your own terms (any metric, unit, direction), the Make step
+words production per modality (chemical synthesis, bioprocessing, engineered
+cells), Test adapters supply the assay, and Analyze reads the registered
+metric against its gate — small-molecule, biologic, agrochemical, or
+materials programs differ in adapters, not in the framework. A scientist can use it manually, step by step, as a daily
 analysis tool — and hand stages of the loop to an agent as trust grows.
 
 ### As a daily analysis tool — reading lab instrument exports

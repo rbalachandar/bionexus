@@ -247,6 +247,20 @@ Positioning bet: trustworthiness as architecture, not marketing. Priority order:
 - [ ] Test properties panel: ADME/physical-property screening alongside
   efficacy (ADMET rules exist for attribution; not as assays)
 
+### Modality packs — DMTA across therapeutic modalities
+The flow is modality-agnostic (program = any metric; Make production
+step is modality-worded; Analyze derivation is metric-generic). What a
+new modality actually needs is a pack:
+- [ ] **Biologics (Bio-DMTA)**: Design = sequences + structure models
+  (AlphaFold-style scoring via BioTool); Make = bioprocessing production
+  adapter (transfect/express/purify batches); Test = immunogenicity,
+  aggregation, structural-stability assays; Safety = sequence-based
+  screening (toxicophore SMARTS only fire on SMILES)
+- [ ] **Agrochemicals / materials**: same chemical DMTA; Test adapters
+  for organism/property assays; Analyze derivation already metric-generic
+- [ ] Modality pack = registry entry: {program template, Make adapter,
+  Test assays, safety screen, Analyze derivation} — one import
+
 ### Trust-T2 — mechanistic interpretability
 - [ ] **Scalable safety (tiered)**: alerts/DURC lists move from code to
   versioned JSON data (ingest Benigni/Bosa + Toxtree/OpenAlerts rulebooks);
