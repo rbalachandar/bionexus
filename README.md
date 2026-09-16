@@ -284,7 +284,8 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
   classification), the hash-chained record of the run with verdicts and
   evidence plots re-rendered from that branch's recorded plate files, and
   the raw trace log. Experiments are archived (retired from the working
-  set, provenance intact), never silently deleted. Wizard experiments are
+  set, provenance intact), never silently deleted, and every experiment
+  page is deep-linkable: `/experiment?exp=<id>`. Wizard experiments are
   provenance-chained too — `bn prove wizard/<id>`.
 - **`bn serve`** — a headless alternative cockpit (stdlib HTTP, no
   dependencies) for approval queues and diaries on machines without a
@@ -298,8 +299,11 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
 
 BioNexus structures the Design-Make-Test-Analyze cycle as first-class objects:
 
-- **Target Product Profile (TPP)** — phased criteria (hit → lead → candidate →
-  clinical) that persist across rounds and are evaluated after every experiment
+- **Target Product Profile (TPP)** — the workbench program defines winning
+  in your own terms (objective, metric, unit, direction, gate — see the
+  Program hierarchy below); for small-molecule programs, phased criteria
+  (hit → lead → candidate → clinical) are available in the engine
+  (`bionexus.tpp`) and evaluated after every experiment
 - **Experiment Definition** — the full scientific manifest: intervention,
   biological system, delivery conditions, readout capabilities, denominators,
   and expected intermediates (not just protocol steps)
@@ -356,6 +360,7 @@ step, and which BioNexus layer is responsible at each point:
 | 3. Portfolio filter | **Portfolio selector** | Scores + ranks, applies diversity cap | Records every accept/reject with reason |
 | 4. Readiness review | **ExperimentDefinition** | Checks: is the readout capable? denominator present? synthesis feasible? | **Blocks** if result would be uninterpretable |
 | 5. Safety gate | **SafetyEngine** | Checks reagents, BSL, step count, **toxicophores in sample structures**, dual-use text | **Refuses** with machine-readable reason + rule-set version |
+| 5b. Governance gate | **HaltSwitch + AuthorizationMatrix + SOP registry** — code the agent cannot reach | Checks the operator halt, the autonomous/human/never column, and SOP sign-off for recurring work | Refuses outside the agent's reach; every decision recorded as provenance |
 | 6. Lab execution | **LabAdapter** (simulator, Opentrons, PlateReaderShare) | Runs the assay, produces raw evidence | Records run ID, parameters, and raw output |
 | 7. Device event | **DeviceMonitor** | Notices the export appeared | Triggers agent analysis automatically |
 | 8. Analysis | **Analysis agent** + `labread` | Fits IC50s, checks QC, flags artifacts | Records measurements + QC flags as provenance |
