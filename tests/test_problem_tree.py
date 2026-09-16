@@ -110,3 +110,18 @@ def test_subtree_leaves_nesting():
     c = t.add(t.root.id, objective="solubility")
     assert {n.id for n in t.subtree_leaves(pot.id)} == {a.id, b.id}
     assert {n.id for n in t.subtree_leaves(t.root.id)} == {a.id, b.id, c.id}
+
+
+def test_synthesis_deterministic_and_gated():
+    """Make is first-class: same structure -> same batch; failed batches
+    are deterministic and gateable."""
+    from bionexus.adapters.lab.synthesis import VirtualSynthesizer
+    s = VirtualSynthesizer()
+    a = s.synthesize("X-1", "c1ccccc1")
+    b = s.synthesize("X-1", "c1ccccc1")
+    assert a == b and a["ok"] is True            # clean structures pass
+    fails = [i for i in range(50)
+             if not s.synthesize(f"F-{i}", "CC(=O)Oc1ccccc1C")["ok"]]
+    assert 0 < len(fails) < 50                   # real, but not universal
+    again = s.synthesize(f"F-{fails[0]}", "CC(=O)Oc1ccccc1C")
+    assert again["ok"] is False                  # failures are deterministic

@@ -237,6 +237,16 @@ Positioning bet: trustworthiness as architecture, not marketing. Priority order:
   `failure-mode` gate_decision; eval task `harness-governance`
   (9-task suite, mean 0.977)
 
+### Trust-T1c — Make depth (DMTA gap)
+- [ ] **Synthesis as first-class Make**: today Make = gate + assay
+  submission; the DMTA definition expects synthesize \u2192 purify \u2192 QC
+  before Test. Needs a synthesis LabAdapter (virtual first: seeded
+  yield/purity, QC gate refusing low-purity batches into Test) and a
+  real-robot path (Opentrons chemistry steps). Retrosynthesis stays a
+  feasibility check in the wizard
+- [ ] Test properties panel: ADME/physical-property screening alongside
+  efficacy (ADMET rules exist for attribution; not as assays)
+
 ### Trust-T2 — mechanistic interpretability
 - [ ] **Scalable safety (tiered)**: alerts/DURC lists move from code to
   versioned JSON data (ingest Benigni/Bosa + Toxtree/OpenAlerts rulebooks);

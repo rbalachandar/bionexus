@@ -843,7 +843,7 @@ def experiment_view() -> None:
             cons = " · ".join(
                 f"{c.get('name')}: {c.get('description', '')}"
                 for c in pdef.get("constraints", [])) or "—"
-            st.markdown(f"**Objective:** {pdef.get('objective', '—')}")
+            st.markdown(f"#### Objective: {pdef.get('objective', '—')}")
             st.caption(f"constraints: {cons} · success: "
                        f"{pdef.get('success_metric', '—')} · branch "
                        f"`problem/{problem_id}` · {len(recs)} hash-chained "

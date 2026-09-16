@@ -139,8 +139,7 @@ def _pipeline_body(logf: Path, problem_id: str | None,
     tested_by_cand = {v.get("candidate"): v for v in tested.values()
                       if v.get("candidate")}
     if proposed:
-        st.markdown(f"{ui.icon('hypothesis', 16, 'teal')} "
-                    "### Hypothesis pipeline", unsafe_allow_html=True)
+        st.markdown("### Hypothesis pipeline")
         for hid, hp in proposed.items():
             sel = filtered.get(hid)
             cand = str(hp.get("candidate", hid))

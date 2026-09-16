@@ -19,8 +19,8 @@ from pathlib import Path
 from typing import Any, Callable
 
 from bionexus.core.contracts import (
-    Envelope, EventType, ProtocolOp, ProtocolStep, ProtocolSubmission,
-    ReagentSpec, SampleKind, SampleSpec,
+    Artifact, ArtifactKind, Envelope, EventType, ProtocolOp, ProtocolStep,
+    ProtocolSubmission, ReagentSpec, SampleKind, SampleSpec,
 )
 from bionexus.core.hypothesis import (
     Constraint, ExperimentDesign, HypothesisTracker, PortfolioDecision,
@@ -187,6 +187,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         base_fn = cfg.score_fn or (lambda h: 0.5)
         score_fn = lambda h: base_fn(h) + flywheel.prior_bonus(h.family)
     # 1. rounds: select -> design+submit -> analyze; each round feeds the next
+    synth_cache: dict[str, dict] = {}
     _submit = gateway.submit
 
     def gateway_submit(protocol):  # budget-enforced submission
@@ -284,6 +285,40 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                 assay_type=h.assay_type, concentrations=list(cfg.concentrations),
                 replicates=3, controls=["negative"],
                 protocol_id=protocol.protocol_id)
+            # Make: synthesize & purify before Test — a failed batch
+            # never reaches the lab (deterministic per candidate)
+            synth = synth_cache.get(h.candidate)
+            if synth is None:
+                from bionexus.adapters.lab.synthesis import \
+                    VirtualSynthesizer
+                synth = VirtualSynthesizer().synthesize(
+                    h.candidate, (h.metadata or {}).get("smiles"))
+                synth_cache[h.candidate] = synth
+                store.append(record_for(
+                    protocol.envelope, EventType.synthesis_complete,
+                    system_actor("synthesis"),
+                    artifact=Artifact(artifact_id=f"syn-{synth['lot']}",
+                                      kind=ArtifactKind.other, uri="",
+                                      metadata=dict(synth)),
+                    decision={"candidate": h.candidate,
+                              "yield_pct": synth["yield_pct"],
+                              "purity": synth["purity"], "ok": synth["ok"],
+                              "lot": synth["lot"]}))
+                say(f"synthesized {h.candidate}: lot {synth['lot']} "
+                    f"yield {synth['yield_pct']}% purity "
+                    f"{synth['purity']}%")
+            if not synth["ok"]:
+                say(f"batch for {h.candidate} refused into Test: "
+                    f"{synth['note']}")
+                store.append(record_for(
+                    protocol.envelope, EventType.gate_decision,
+                    system_actor("synthesis"),
+                    decision={"kind": "synthesis_failed",
+                              "candidate": h.candidate,
+                              "lot": synth["lot"],
+                              "reason": synth["note"],
+                              "samples": [h.candidate]}))
+                continue
             run_id, rejection = gateway.submit(protocol)
             if rejection:
                 say(f"submission for {h.candidate} rejected: {rejection}")

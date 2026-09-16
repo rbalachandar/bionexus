@@ -75,11 +75,23 @@ def render_make(recs) -> None:
     refusals = [r for r in recs if r.event_type.value == "gate_decision"
                 and (r.decision or {}).get("kind") in
                 ("safety_refusal", "halt_refusal", "authorization",
-                 "durc_refusal", "operator_declined")
+                 "durc_refusal", "operator_declined",
+                 "synthesis_failed")
                 and (r.decision or {}).get("column") != "autonomous"]
     if not runs and not refusals:
         return
     st.markdown("### Make — what the gate allowed")
+    synth = [r for r in recs
+             if r.event_type.value == "synthesis_complete"]
+    if synth:
+        st.dataframe([
+            {"candidate": (r.decision or {}).get("candidate", "?"),
+             "lot": (r.decision or {}).get("lot", "—"),
+             "yield %": (r.decision or {}).get("yield_pct", "—"),
+             "purity %": (r.decision or {}).get("purity", "—"),
+             "batch": "passed" if (r.decision or {}).get("ok")
+                      else "REFUSED into Test"}
+            for r in synth], hide_index=True)
     if runs:
         st.dataframe([
             {"submission": ((r.decision or {}).get("title") or "—")[:48],
