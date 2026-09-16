@@ -126,7 +126,7 @@ def render_verdicts(recs) -> None:
                 last[cand] = d
     if not last:
         return
-    st.markdown("Verdicts")
+    st.markdown("### Analyze \u2014 verdicts")
     from bionexus.derivation import criteria_label, metric_label
     _metrics = [d.get("metric") for d in last.values() if d.get("metric")]
     mlabel = metric_label(_metrics[0] if _metrics else None)
@@ -163,7 +163,7 @@ def render_verdicts(recs) -> None:
 
 
 def render_trust(recs, log_lines=()) -> None:
-    """Per-run trust summary: what was checked, refused, flagged, abstained."""
+    """Analyze, part 2 support: trust checks behind the verdicts."""
     props = _proposed(recs)
     cstates = [(r.decision or {}).get("citation_status")
                for r in props if (r.decision or {}).get("citation")]
@@ -186,7 +186,29 @@ def render_trust(recs, log_lines=()) -> None:
         if "safety-rules-" in l:
             rules = l.split("[rules ")[1].split("]")[0]
             break
-    st.markdown("### Evidence")
+    st.markdown("### Trust checks")
+    checks = []
+    if cstates:
+        ok = sum(1 for c in cstates if c == "verified")
+        bad = sum(1 for c in cstates if c == "invalid")
+        checks.append(f"citations: {ok} verified, {bad} invalid, "
+                      f"{len(cstates) - ok - bad} unverified")
+    if durc:
+        checks.append("dual-use screening refused this branch's work")
+    if n_flags:
+        checks.append(f"advisory flags raised (non-blocking): {n_flags}")
+    if abstained:
+        checks.append(f"{abstained} verdict(s) abstained \u2014 CI "
+                      "straddled the gate; abstention is reported, not "
+                      "hidden")
+    checks.append(f"safety rules: {rules}")
+    for c in checks:
+        st.caption("\u2022 " + c)
+
+
+def render_evidence(recs) -> None:
+    """Analyze, part 1: the curves the verdicts will be read against."""
+    st.markdown("### Analyze \u2014 evidence")
     with st.expander("Results"):
         from bionexus import figures
         # REAL evidence: re-plot this branch's recorded plate files,
@@ -221,6 +243,13 @@ def render_trust(recs, log_lines=()) -> None:
                                  recursive=True))
             if hits:
                 run2file[rid] = str(Path(".data") / hits[0])
+        last: dict[str, dict] = {}
+        for r in recs:
+            if r.event_type.value.startswith("hypothesis_"):
+                d = r.decision or {}
+                cand = _candidate(r)
+                if cand and d.get("verdict"):
+                    last[cand] = d
         items = [{"path": run2file[rid],
                   "label": run2cand.get(rid, rid),
                   "verdict": (last.get(run2cand.get(rid, ""), {})
@@ -255,5 +284,6 @@ def render(recs, log_lines=()) -> None:
     render_portfolio(recs)
     render_gates(recs, log_lines)
     render_make(recs)
+    render_evidence(recs)
     render_verdicts(recs)
     render_trust(recs, log_lines)
