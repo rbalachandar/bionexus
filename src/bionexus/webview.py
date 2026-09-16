@@ -518,12 +518,18 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                     f"{n.gate:g}") if n.metric else ""
             children = [build(k.id) for k in kids]
             if kids:
-                sub = sum(alloc.get(l.id, 0)
-                          for l in tree.subtree_leaves(nid))
+                sub_leaves = tree.subtree_leaves(nid)
+                sub = sum(alloc.get(l.id, 0) for l in sub_leaves)
+                # a group is as clickable as its subtree: if every leaf
+                # beneath it is archived, the group retires with them
+                all_gone = all(f"{tree.root.id}-{l.id}" not in eid_by_pid
+                               for l in sub_leaves)
                 return sac.TreeItem(
                     n.objective, icon="diagram-2",
-                    description=f"{st_word} \u00b7 budget {sub} runs",
-                    tooltip=f"{lineage}{gate}", children=children)
+                    description=f"{st_word} \u00b7 budget {sub} runs"
+                                + (" \u00b7 archived" if all_gone else ""),
+                    tooltip=f"{lineage}{gate}", children=children,
+                    disabled=all_gone)
             pid = f"{tree.root.id}-{nid}"
             ls = leaf_stats.get(nid, {})
             if pid in eid_by_pid:
@@ -540,10 +546,15 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         root_i = reserve()
         root_children = [build(k.id)
                          for k in tree.children(tree.root.id)]
+        root_leaves = tree.leaves()
+        root_gone = all(f"{tree.root.id}-{l.id}" not in eid_by_pid
+                        for l in root_leaves)
         items.append(sac.TreeItem(
             root_name, icon="activity",
-            description=f"{rstatus} \u00b7 budget {total} runs",
-            tooltip=root_name, children=root_children))
+            description=f"{rstatus} \u00b7 budget {total} runs"
+                        + (" \u00b7 archived" if root_gone else ""),
+            tooltip=root_name, children=root_children,
+            disabled=root_gone))
 
     if not items:
         st.info("No problem trees yet — create one with "
