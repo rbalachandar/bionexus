@@ -838,7 +838,14 @@ def experiment_view() -> None:
             cons = " · ".join(
                 f"{c.get('name')}: {c.get('description', '')}"
                 for c in pdef.get("constraints", [])) or "—"
-            st.markdown(f"#### Objective: {pdef.get('objective', '—')}")
+            # a leaf's registered objective is often just its own name —
+            # when it duplicates the title or breadcrumb, don't re-print it
+            _obj = str(pdef.get("objective", "")).strip().lower()
+            _leaf_name = row["question"].strip().lower()
+            _crumb_tail = _crumb.rsplit("▸", 1)[-1].strip().lower() \
+                if _crumb else ""
+            if _obj and _obj not in (_leaf_name, _crumb_tail):
+                st.markdown(f"#### Objective: {pdef.get('objective', '—')}")
             st.caption(f"constraints: {cons} · success: "
                        f"{pdef.get('success_metric', '—')} · "
                        f"{len(recs)} hash-chained records")
