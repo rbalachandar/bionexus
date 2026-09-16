@@ -37,8 +37,8 @@ from bionexus.readiness import review_experiment
 from bionexus.serve import CAMPAIGN_DIR, campaign_index, campaign_running
 from bionexus.tpp import CriterionPhase, standard_small_molecule_tpp
 from bionexus.ui_kit import ago, chip, chip_html, inject_css
-from bionexus.webview import (halt_banner, render_experiment_pipeline,
-                              resume_wizard)
+from bionexus.webview import (collect_problem_trees, halt_banner,
+                              render_experiment_pipeline, resume_wizard)
 from bionexus.wizard_store import WizardStore
 from bionexus import webview as _wv
 
@@ -368,6 +368,36 @@ def overview_view() -> None:
             start_dialog()
         return
     _wv.render_experiment_navigator(all_rows)
+
+    # wizard/manual experiments are not tree leaves: they need a home too
+    # (resumable ones matter most — a paused wizard is otherwise stranded)
+    trees, leaf_pids = collect_problem_trees()
+    others = [e for e in all_rows
+              if (e["payload"].get("agent") or {}).get("problem_id")
+              not in leaf_pids]
+    if others:
+        resumable = [e for e in others
+                     if e["status"] not in ("verdict_recorded", "failed",
+                                            "completed")]
+        done = [e for e in others if e not in resumable]
+        with st.expander(f"Manual & standalone experiments ({len(others)})",
+                          expanded=bool(resumable)):
+            for e in resumable:
+                r1, r2 = st.columns([6, 1])
+                r1.markdown(f"**{e['question'][:70]}** · "
+                            f"{e['status'].replace('_', ' ')}")
+                if r2.button("Resume", key=f"res_{e['id']}"):
+                    resume_wizard(e)
+                    st.switch_page(PAGES["wizard"])
+            for e in done:
+                ag = e["payload"].get("agent")
+                if ag:
+                    r1, r2 = st.columns([6, 1])
+                    r1.markdown(f"**{e['question'][:70]}** · "
+                                f"{e['status'].replace('_', ' ')}")
+                    if r2.button("Open", key=f"open_{e['id']}"):
+                        st.session_state["view_experiment"] = e["id"]
+                        st.switch_page(PAGES["experiment"])
     _archived = store.archived(50)
     if _archived:
         with st.expander(f"Archived ({len(_archived)}) — retired from "
