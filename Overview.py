@@ -763,7 +763,8 @@ def experiment_view() -> None:
     inject_css()
     b1, b2 = st.columns([1, 1])
     b1.button("← All experiments", on_click=_go("overview"))
-    eid = st.session_state.get("view_experiment")
+    eid = st.session_state.get("view_experiment") \
+        or st.query_params.get("exp")
     _row0 = store.get(eid) if eid else None
     if _row0 and not (_row0["payload"].get("archived")):
         if b2.button("Archive", icon=":material/archive:"):

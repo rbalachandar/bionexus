@@ -266,6 +266,10 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
 
 ### The scientist's workbench
 
+| Problem workspace | An experiment's record |
+|---|---|
+| ![Problem workspace](assets/screenshots/workspace.png) | ![Experiment record](assets/screenshots/experiment.png) |
+
 - **`streamlit run Overview.py`** — the single portal, all local, no accounts,
   no cloud. The Experiments section is a **Problem workspace**: your problem
   trees as an interactive hierarchy (every node shows its roll-up status and
