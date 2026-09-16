@@ -142,25 +142,59 @@ class LabGateway:
     provenance for every run (P5). Agents see this, never the raw adapter."""
 
     def __init__(self, lab: Any, safety: SafetyEngine, store: Any, actor: Any,
-                 advisory: Any = None):
+                 advisory: Any = None, governance: Any = None,
+                 approver: Any = None):
         self.lab = lab
         self.safety = safety
         self.store = store
         self.actor = actor
         self.advisory = advisory
+        self.governance = governance   # {"matrix":..., "halt":...}
+        self.approver = approver
 
     def submit(self, protocol: ProtocolSubmission) -> tuple[str | None, str | None]:
         """Returns (run_id, rejection_reason). run_id is None when rejected."""
+        from bionexus.core.contracts import EventType
+        from bionexus.core.interfaces import record_for
+        # halts are checked FIRST, before anything the agent can influence
+        if self.governance is not None:
+            halt = self.governance["halt"].engaged()
+            if halt:
+                self.store.append(record_for(
+                    protocol.envelope, EventType.gate_decision, self.actor,
+                    decision={"kind": "halt_refusal", "halt": halt,
+                              "title": protocol.title}))
+                return None, ("[halt] operator stop-condition engaged: "
+                              f"{halt.get('reason', '')} — all submissions "
+                              "refused until cleared by a human")
         approved, reason = self.safety.check(protocol)
         if not approved:
-            from bionexus.core.contracts import EventType
-            from bionexus.core.interfaces import record_for
             self.store.append(record_for(
                 protocol.envelope, EventType.gate_decision, self.actor,
                 decision={"kind": "safety_refusal", "reason": reason,
                           "samples": sorted({sp.sample_id
                                              for sp in protocol.samples})}))
             return None, reason
+        # authorization matrix: three columns, enforced in code
+        if self.governance is not None:
+            column, why = self.governance["matrix"].classify(protocol)
+            if column != "autonomous" or "SOP" in why:
+                self.store.append(record_for(
+                    protocol.envelope, EventType.gate_decision, self.actor,
+                    decision={"kind": "authorization", "column": column,
+                              "reason": why, "title": protocol.title,
+                              "samples": sorted({sp.sample_id
+                                                 for sp in protocol.samples})}))
+            if column == "never":
+                return None, f"[authorization: NEVER] {why}"
+            if column == "human":
+                ok = bool(self.approver(protocol.title)) if self.approver \
+                    else False
+                if not ok:
+                    return None, ("[authorization: HUMAN required] "
+                                  + (f"declined: {why}" if ok is False and
+                                     self.approver else
+                                     f"no approver configured: {why}"))
         # tighten-only advisory tier: runs solely on gate-passed protocols;
         # may add flags or escalate to human review, never clears a refusal
         if self.advisory is not None:

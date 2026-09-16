@@ -55,18 +55,27 @@ class WizardStore:
         return eid
 
     def register_agent(self, eid: str, objective: str, log: str,
-                       autonomy: str = "act", pid: int | None = None) -> str:
+                       autonomy: str = "act", pid: int | None = None,
+                       status: str = "executing") -> str:
         """One registry: agent-driven experiments live in the same table as
         wizard-defined ones, tagged by origin."""
         with self._lock:
             now = time.time()
             self._conn.execute(
                 "INSERT OR REPLACE INTO experiments VALUES (?,?,?,?,?,?)",
-                (eid, now, now, "executing", objective,
+                (eid, now, now, status, objective,
                  json.dumps({"agent": {"log": log, "autonomy": autonomy,
                                        "pid": pid, "problem_id": None}})))
             self._conn.commit()
         return eid
+
+    def set_question(self, eid: str, question: str) -> None:
+        """Retitle: question is a column, not payload fields."""
+        with self._lock:
+            self._conn.execute(
+                "UPDATE experiments SET question=?, updated_at=? "
+                "WHERE id=?", (question, time.time(), eid))
+            self._conn.commit()
 
     def link_problem(self, eid: str, problem_id: str) -> None:
         with self._lock:
@@ -101,14 +110,32 @@ class WizardStore:
             "SELECT * FROM experiments WHERE id=?", (eid,)).fetchone()
         return self._row(r) if r else None
 
+    def _visible(self, where: str, limit: int | None = None) -> list[dict]:
+        sql = (f"SELECT * FROM experiments WHERE {where} "
+               "AND (payload NOT LIKE '%\"archived\": true%') "
+               "ORDER BY updated_at DESC")
+        args = ()
+        if limit is not None:
+            sql += " LIMIT ?"
+            args = (limit,)
+        return [self._row(r) for r in
+                self._conn.execute(sql, args).fetchall()]
+
     def ongoing(self) -> list[dict]:
-        rows = self._conn.execute(
-            "SELECT * FROM experiments WHERE status != 'verdict_recorded' "
-            "ORDER BY updated_at DESC").fetchall()
-        return [self._row(r) for r in rows]
+        return self._visible("status != 'verdict_recorded'")
 
     def finished(self, limit: int = 20) -> list[dict]:
+        return self._visible("status = 'verdict_recorded'", limit)
+
+    def archived(self, limit: int = 100) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT * FROM experiments WHERE status = 'verdict_recorded' "
+            "SELECT * FROM experiments "
+            "WHERE payload LIKE '%\"archived\": true%' "
             "ORDER BY updated_at DESC LIMIT ?", (limit,)).fetchall()
         return [self._row(r) for r in rows]
+
+    def set_archived(self, eid: str, archived: bool = True) -> None:
+        """Archive = out of the working set, but never deleted: the
+        provenance record is WORM, so experiments are retired, not
+        erased."""
+        self.update(eid, self.get(eid)["status"], archived=archived)

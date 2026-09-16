@@ -81,6 +81,10 @@ bn anchor --verify                     # Merkle root: prove the whole store's st
 bn fixtures verify <study-dir>         # byte-reproducible case-study data
 bn connect describe <device>           # interview you into an agent-readable device card
 bn auto --dose-design adaptive ...     # Bayesian sequential dosing (3 wells, not 4)
+bn halt --engage --reason "spill"      # operator stop-condition the agent cannot reach
+bn halt --clear                        # only a human clears it
+bn sop list                            # agent-proposed recurring procedures awaiting sign-off
+bn sop approve <sop-id> --by "lab lead"  # sign-off turns a procedure into standing policy
 ```
 
 ## BioNexus case studies on published papers

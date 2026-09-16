@@ -454,6 +454,41 @@ def cmd_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_halt(args: argparse.Namespace) -> int:
+    from bionexus.governance import HaltSwitch
+    hs = HaltSwitch(path=args.path)
+    if args.clear:
+        print("halt cleared" if hs.clear() else "no halt was engaged")
+        return 0
+    if args.engage:
+        entry = hs.engage(args.reason)
+        print(f"HALT ENGAGED ({entry['id']}): {entry['reason']}")
+        print("all submissions refused until `bn halt --clear` by an operator")
+        return 0
+    state = hs.engaged()
+    print(f"HALTED: {state}" if state else "not halted")
+    return 1 if state else 0
+
+
+def cmd_sop(args: argparse.Namespace) -> int:
+    from bionexus.governance import SopRegistry
+    reg = SopRegistry()
+    if args.command == "list":
+        pend = reg.pending()
+        for p in pend:
+            print(f"pending {p['id']}: {p['objective'][:50]} "
+                  f"(assay {p['assay']})")
+        if not pend:
+            print("no SOPs awaiting sign-off")
+        return 0
+    if args.command == "approve":
+        ok = reg.approve(args.sop_id, by=args.by)
+        print(f"approved {args.sop_id} — recurring runs of this procedure "
+              "are now authorized" if ok else f"unknown SOP {args.sop_id}")
+        return 0 if ok else 1
+    return 2
+
+
 def cmd_templates(args: argparse.Namespace) -> int:
     from bionexus.templates import list_templates, load_template
 
@@ -639,6 +674,22 @@ def main(argv: list[str] | None = None) -> int:
     anc.add_argument("--publish-cmd",
                      help="shell command receiving the anchor JSON on stdin "
                           "(e.g. 'gh gist create - && …', 'git commit …')")
+    ht = sub.add_parser("halt", help="operator stop-condition outside the "
+                        "agent's reach: engage/status/clear")
+    ht.add_argument("--engage", action="store_true")
+    ht.add_argument("--clear", action="store_true")
+    ht.add_argument("--reason", default="operator halt")
+    ht.add_argument("--path", default=None,
+                    help="halt file path (default .data/HALT)")
+    ht.set_defaults(func=cmd_halt)
+    so = sub.add_parser("sop", help="sign off agent-proposed recurring "
+                        "procedures (SOPs) before they run unattended")
+    sosub = so.add_subparsers(dest="command", required=True)
+    sosub.add_parser("list")
+    ap = sosub.add_parser("approve")
+    ap.add_argument("sop_id")
+    ap.add_argument("--by", default="operator")
+    so.set_defaults(func=cmd_sop)
     pl = sub.add_parser("plan", help="decompose a compound objective into a "
                         "guarded problem tree (dry plan, or --run the leaves)")
     pl.add_argument("--objective", required=True)

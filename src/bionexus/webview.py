@@ -7,6 +7,37 @@ from pathlib import Path
 
 import streamlit as st
 
+def halt_banner() -> None:
+    """Operator stop-condition banner. This is a HUMAN decision recorded
+    via `bn halt` (or the button below) — deliberately not an instrument
+    or agent event, and the copy must keep that distinction clear."""
+    import time as _time
+    from bionexus.governance import HaltSwitch
+    hs = HaltSwitch()
+    halt = hs.engaged()
+    if not halt:
+        return
+    age = _time.time() - halt.get("ts", _time.time())
+    _when = (f"{age / 60:.0f} min ago" if age < 86400
+             else f"{age / 86400:.1f} days ago")
+    from bionexus import ui
+    col_txt, col_btn = st.columns([6, 1])
+    with col_txt:
+        st.markdown(
+            f"{ui.icon('halt', 14, 'refused')} "
+            f"{ui.small(f'<b>Halted by operator</b> — a human pressed '
+                       'stop (not an instrument error; the lab may be '
+                       'fine). New lab submissions are refused · reason: '
+                       f"{halt.get('reason', chr(8212))} · engaged "
+                       f"{_when}")}",
+            unsafe_allow_html=True)
+    if col_btn.button("Clear halt", key="aenv-halt-clear"):
+        hs.clear()
+        st.toast("Halt cleared — lab submissions flow again",
+                 icon=":material/check_circle:")
+        st.rerun()
+
+
 def render_experiment_pipeline(logf: Path, problem_id: str | None,
                                 running: bool, store, eid: str) -> None:
     """Live view: when the experiment is running the whole block refreshes
@@ -37,6 +68,7 @@ def _pipeline_body(logf: Path, problem_id: str | None,
     tested: dict[str, dict] = {}
     refused: dict[str, str] = {}
     gates = 0
+    gov_events: list[tuple] = []
     run_ts: dict[str, float] = {}
     run_instr: dict[str, str] = {}
     for r in recs:
@@ -59,14 +91,32 @@ def _pipeline_body(logf: Path, problem_id: str | None,
         elif et == "lab_run" and d.get("run_id"):
             run_ts[d["run_id"]] = ts or 0
             run_instr[d["run_id"]] = d.get("instrument", "")
-        elif et == "hypothesis_tested" and d.get("run_id"):
+        elif et == "hypothesis_tested":
             hid = d.get("hypothesis_id") or art_id
-            if hid:
+            if d.get("run_id"):
                 run_map.setdefault(hid, []).append(d["run_id"])
+            # verdict-bearing reads (confirmation analyses) carry no
+            # hypothesis_id: identity lives in the artifact metadata
+            if d.get("verdict"):
+                cand = (d.get("candidate") or art_meta.get("candidate")
+                        or "")
+                key = hid or cand
+                if key:
+                    tested.setdefault(key, {
+                        "verdict": d["verdict"],
+                        "candidate": cand,
+                        "observed": d.get("observed"),
+                        "ci": d.get("observed_ci"),
+                        "derivation": d.get("derivation"),
+                        "evidence": d.get("evidence_run_id")
+                        or d.get("run_id")})
         elif et in ("hypothesis_validated", "hypothesis_invalidated"):
             hid = d.get("hypothesis_id") or d.get("id") or art_id
+            cand = (d.get("candidate") or art_meta.get("candidate")
+                    or "")
             if hid:
                 tested[hid] = {"verdict": d.get("verdict", et),
+                               "candidate": cand,
                                "observed": d.get("observed") or d.get("ic50_um"),
                                "ci": d.get("observed_ci"),
                                "derivation": d.get("derivation"),
@@ -78,12 +128,20 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                     refused[sm] = d.get("reason", "refused")
             else:
                 gates += 1
+                if d.get("kind") in ("halt_refusal", "authorization",
+                                     "failure-mode"):
+                    gov_events.append((ts or 0, d))
 
+    from bionexus import ui
+    tested_by_cand = {v.get("candidate"): v for v in tested.values()
+                      if v.get("candidate")}
     if proposed:
-        st.markdown("**Hypothesis pipeline**")
+        st.markdown(f"{ui.icon('hypothesis', 16, 'teal')} "
+                    "**Hypothesis pipeline**", unsafe_allow_html=True)
         for hid, hp in proposed.items():
             sel = filtered.get(hid)
-            verd = tested.get(hid, {})
+            cand = str(hp.get("candidate", hid))
+            verd = tested.get(hid) or tested_by_cand.get(cand, {})
             v = (verd.get("verdict") or "").lower()
             ci = verd.get("ci")
             ci_txt = (f" (95% CI {ci[0]}–{ci[1]})" if ci else "")
@@ -95,61 +153,75 @@ def _pipeline_body(logf: Path, problem_id: str | None,
             if ci and _thr and None not in ci and ci[1] > ci[0]:
                 width = ci[1] - ci[0]
                 edge = min(abs(ci[0] - _thr), abs(ci[1] - _thr))
-                _margin = (" · ⚠ borderline: CI spans the gate"
+                _margin = (" · borderline: CI spans the gate"
                            if ci[0] <= _thr <= ci[1] else
                            (" · narrow margin" if edge < width else " · clear margin"))
             if v == "confirmed":
-                icon, stage = "✅", ("confirmed by orthogonal assay"
+                icon, stage = ui.icon("verdict", 15, "confirmed"), (
+                    "confirmed by orthogonal assay"
                                      + (f" — {_unit_lbl} {verd.get('observed')}{ci_txt}"
                                         if verd.get("observed") is not None else "")
                                      + _margin)
             elif v == "validated":
-                icon, stage = "✅", ("validated (preliminary)"
+                icon, stage = ui.icon("verdict", 15, "confirmed"), (
+                    "validated (preliminary)"
                                      + (f" — {_unit_lbl} {verd.get('observed')}{ci_txt}"
                                         if verd.get("observed") is not None else "")
                                      + _margin)
             elif v == "inconclusive":
-                icon, stage = "❔", ("inconclusive — CI straddles the threshold"
+                icon, stage = ui.icon("verdict", 15, "resolved"), (
+                    "inconclusive — CI straddles the threshold"
                                      + (f" ({_unit_lbl} {verd.get('observed')}{ci_txt})"
                                         if verd.get("observed") is not None else ""))
             elif v in ("refuted", "invalidated"):
-                icon, stage = "❌", ("refuted"
+                icon, stage = ui.icon("verdict", 15, "resolved"), ("refuted"
                                      + (f" ({_unit_lbl} {verd.get('observed')}{ci_txt})"
                                         if verd.get("observed") is not None else "")
                                      + _margin)
             elif refused.get(str(hp.get("candidate"))):
-                icon, stage = "🚫", ("refused by gate — "
+                icon, stage = ui.icon("gate-closed", 15, "refused"), (
+                    "refused by gate — "
                                       + refused[str(hp.get("candidate"))][:70])
             elif run_map.get(hid):
-                icon, stage = "🔬", "in lab"
+                icon, stage = ui.icon("instrument", 15, "progress"), "in lab"
             elif sel and sel.get("selected"):
-                icon, stage = "⏳", "selected — awaiting submission"
+                icon, stage = ui.icon("clock", 15, "human-action"), (
+                    "selected — awaiting submission")
             elif sel:
-                icon, stage = "✂️", "not selected"
+                icon, stage = ui.icon("gate-closed", 15, "provenance"), (
+                    "not selected")
             else:
-                icon, stage = "💡", "proposed"
+                icon, stage = ui.icon("hypothesis", 15, "teal"), "proposed"
             with st.container(border=True):
                 c1, c2 = st.columns([4, 2])
                 c1.markdown(f"{icon} **{hp.get('candidate', hid)}** — "
-                            f"{hp.get('statement', '')}")
-                c2.caption(stage)
+                            f"{hp.get('statement', '')}",
+                            unsafe_allow_html=True)
+                c2.caption(stage, unsafe_allow_html=True)
                 crit = hp.get("criteria") or {}
                 from bionexus.derivation import criteria_label, metric_label
                 _cit = ""
                 if hp.get("citation"):
                     _st = hp.get("citation_status", "unverified")
-                    _icon = {"verified": "📚✓", "invalid": "📚⚠️ FABRICATED",
-                             "check-failed": "📚?",
-                             "unverified": "📚"}.get(_st, "📚")
+                    _ci = {"verified": (ui.icon("evidence", 13, "autonomous"), ""),
+                           "invalid": (ui.icon("evidence", 13, "refused"),
+                                       " FABRICATED"),
+                           "check-failed": (ui.icon("evidence", 13,
+                                                    "provenance"), "?"),
+                           "unverified": (ui.icon("evidence", 13,
+                                                  "provenance"),
+                                          "")}.get(_st)
+                    _icon = (_ci[0] + _ci[1]) if _ci else _st
                     _cit = f" · {_icon} {hp['citation']}" + (
                         f" ({hp['citation_detail']})"
                         if hp.get("citation_detail") else "")
                 if hp.get("mechanism"):
-                    st.caption(f"⚙️ mechanism: {hp['mechanism']}{_cit}")
+                    st.caption(f"mechanism: {hp['mechanism']}{_cit}",
+                               unsafe_allow_html=True)
                 elif _cit:
-                    st.caption(_cit[3:])
+                    st.caption(_cit[3:], unsafe_allow_html=True)
                 if hp.get("refutation_condition"):
-                    st.caption(f"☠️ refuted if: {hp['refutation_condition']}")
+                    st.caption(f"refuted if: {hp['refutation_condition']}")
                 meta_bits = [f"predicted: {hp.get('predicted', '—')}"]
                 if crit.get("threshold") is not None:
                     meta_bits.append(
@@ -185,20 +257,81 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                         when = time.strftime("%H:%M", time.localtime(t)) if t else "?"
                         inst = run_instr.get(rid) or "lab"
                         run_bits.append(f"`{rid}` ({when} · {inst})")
-                    st.caption("🧪 runs: " + " · ".join(run_bits))
+                    st.caption(f"{ui.icon('instrument', 13, 'provenance')} "
+                               "runs: " + " · ".join(run_bits),
+                               unsafe_allow_html=True)
         unlinked = [r for r in recs if r.event_type.value == "lab_run"
                     and r.decision and r.decision.get("run_id")
                     and r.decision["run_id"] not in
                     {x for v in run_map.values() for x in v}]
         if unlinked:
-            st.caption(f"🧪 {len(unlinked)} run(s) awaiting result analysis: "
-                       + ", ".join(f"`{u.decision['run_id']}`" for u in unlinked[-4:]))
+            st.caption(f"{ui.icon('instrument', 13, 'human-action')} "
+                       f"{len(unlinked)} run(s) awaiting result analysis: "
+                       + ", ".join(f"`{u.decision['run_id']}`" for u in unlinked[-4:]),
+                       unsafe_allow_html=True)
 
+    from bionexus.governance import HaltSwitch as _HS
+    _halt_hist = _HS().history(limit=3)
+    _had_halt = any(d.get("kind") == "halt_refusal" for _, d in gov_events)
+    if gov_events or (_halt_hist and _had_halt):
+        # attribution: gate lines must name their subject (docs/UX.md §6)
+        _samp2cand = {str(hp.get("candidate")): hp for hp in proposed.values()}
+        with st.expander(f"Harness decisions — what the code allowed or "
+                         f"refused ({len(gov_events)})", expanded=_had_halt):
+            for _ts, d in sorted(gov_events)[-15:]:
+                k = d.get("kind")
+                _subj = (", ".join(_samp2cand[s].get("candidate", s)
+                                   for s in d.get("samples", [])
+                                   if s in _samp2cand)
+                         or ", ".join(d.get("samples", []))
+                         or d.get("title") or "")
+                _prefix = f"{_subj} · " if _subj else ""
+                if k == "halt_refusal":
+                    st.markdown(
+                        f"{ui.tagged('gate-closed', 'REFUSED', 'refused')} — {_prefix}"
+                        f"{(d.get('halt') or {}).get('reason', '')} — "
+                        "submission refused; a human must clear it",
+                        unsafe_allow_html=True)
+                elif k == "authorization":
+                    col = d.get("column")
+                    _icon = {"never": ("gate-closed", "refused"),
+                             "human": ("human", "human-action"),
+                             "autonomous": ("gate-open",
+                                            "autonomous")}.get(
+                        col, ("gate-open", "provenance"))
+                    st.markdown(
+                        f"{ui.icon(_icon[0], 14, _icon[1])} "
+                        f"<b style=\"color:{ui.COLORS[_icon[1]]}\">"
+                        f"{str(col).upper()}</b> — {_prefix}"
+                        f"{d.get('reason', '')}",
+                        unsafe_allow_html=True)
+                elif k == "failure-mode":
+                    st.markdown(
+                        f"{ui.tagged('fault', 'PHYSICAL FAULT', 'fault')} — "
+                        f"{_prefix}{d.get('evidence', '')} — "
+                        f"{d.get('action', '')}",
+                        unsafe_allow_html=True)
+            for _h in reversed(_halt_hist):
+                _mins = max(0, (_h.get("cleared_ts", 0)
+                                - _h.get("ts", 0)) / 60)
+                st.markdown(
+                    f"{ui.icon('history', 14, 'provenance')} "
+                    f"<b style=\"color:{ui.COLORS['provenance']}\">"
+                    f"Operator halt episode</b> — "
+                    f"{_h.get('reason', chr(8212))} — engaged and cleared "
+                    f"after {_mins:.0f} min by "
+                    f"{_h.get('cleared_by', 'operator')}",
+                    unsafe_allow_html=True)
+            if _had_halt and _HS().engaged() is None:
+                st.caption("the halt above has been cleared; submissions "
+                           "flow again — proposals above were refused "
+                           "while it was engaged and never ran")
     if gates:
-        st.caption(f"🚦 {gates} gate decision(s)")
+        st.caption(f"{ui.icon('gate-open', 13, 'provenance')} {gates} gate "
+                   "decision(s)", unsafe_allow_html=True)
 
     with st.expander("Trace log", expanded=True):
-        if logf.exists():
+        if logf.is_file():
             tail = logf.read_text(errors="replace").splitlines()[-30:]
             st.code("\n".join(tail) or "(waiting for output...)", language=None)
         else:
@@ -225,3 +358,237 @@ def resume_wizard(e: dict) -> None:
     st.session_state["selected"] = p.get("selected", [])
     st.session_state["plate_data"] = None
     st.session_state["step"] = STATUS_STEP.get(e["status"], 1)
+
+
+def collect_problem_trees():
+    """All serialized problem trees with live status, for the Overview.
+    Returns (trees, leaf_problem_ids) where trees is a list of
+    (tree, alloc, leaf_stats, rollup, rollup_recorded)."""
+    from pathlib import Path as _Path
+
+    if not _Path("bionexus.db").exists():
+        return [], set()
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.problem_tree import ProblemTree
+
+    full = SqliteProvenanceStore("bionexus.db")
+    roots = []
+    for br in full.branches():
+        if not br.startswith("problem/") or br.count("/") != 1:
+            continue
+        recs = full.branch_records(br)
+        for r in recs:
+            env = (r.decision or {}).get("environment") or {}
+            if env.get("kind") == "problem-tree":
+                roots.append((br, recs))
+                break
+    _status_color = {"achieved": "autonomous", "partial": "human-action",
+                     "failed": "refused", "open": "provenance"}
+    trees, leaf_pids = [], set()
+    for br, recs in roots:
+        tree = None
+        rollup_rec = None
+        for r in recs:
+            d = r.decision or {}
+            env = d.get("environment") or {}
+            if env.get("kind") == "problem-tree":
+                try:
+                    tree = ProblemTree.model_validate(env["tree"])
+                except Exception:
+                    continue
+            if d.get("kind") == "tree-rollup" and d.get("tree"):
+                rollup_rec = d
+        if tree is None:
+            continue
+        alloc = tree.allocation()
+        leaf_stats: dict[str, dict] = {}
+        for leaf in tree.leaves():
+            # campaigns run on problem/{root}-{leaf}; the slash form only
+            # carries the leaf-complete marker
+            lrecs = (full.branch_records(
+                f"problem/{tree.root.id}-{leaf.id}")
+                or full.branch_records(leaf.branch(tree.root.id)) or [])
+            runs = sum(1 for r in lrecs if r.event_type.value == "lab_run")
+            verdicts: dict[str, str] = {}
+            blocked = None
+            for r in lrecs:
+                d = r.decision or {}
+                v = d.get("verdict")
+                hid = (d.get("hypothesis_id")
+                       or (r.artifact.artifact_id if r.artifact else None))
+                if v and hid:
+                    verdicts[hid] = v
+                if d.get("kind") == "halt_refusal" or (
+                            d.get("kind") == "authorization"
+                            and d.get("column") != "autonomous"):
+                    blocked = d.get("kind")
+            statement = ""
+            for r in lrecs:
+                if r.event_type.value == "problem_defined" and r.decision:
+                    statement = (r.decision.get("success_metric")
+                                 or r.decision.get("objective") or "")
+                    break
+            if verdicts:
+                tree.set_leaf_status(leaf.id, verdicts)
+            leaf_stats[leaf.id] = {"runs": runs, "hyp": len(verdicts),
+                                   "statement": statement,
+                                   "ok": sum(1 for v in verdicts.values()
+                                             if v in ("validated",
+                                                      "confirmed")),
+                                   "blocked": blocked}
+            leaf_pids.add(f"{tree.root.id}-{leaf.id}")
+        trees.append((tree, alloc, leaf_stats, tree.rollup(),
+                      bool(rollup_rec)))
+    return trees, leaf_pids
+
+
+def _row_status(e: dict) -> str:
+    """Registry status for log-less runs (tree leaves), log/pid-derived
+    status for launched campaigns."""
+    ag = e["payload"].get("agent") or {}
+    if not ag:
+        return e["status"].replace("_", " ")
+    log = ag.get("log") or ""
+    from pathlib import Path as _P
+    logf = _P(log)
+    if log and logf.is_file() and "CAMPAIGN COMPLETE" in logf.read_text(
+            errors="replace"):
+        return "completed"
+    pid = ag.get("pid")
+    if pid:
+        import os
+        try:
+            os.kill(pid, 0)
+            return "running"
+        except OSError:
+            return "interrupted"
+    return e["status"]
+
+
+def render_experiment_navigator(all_rows: list | None = None) -> None:
+    """The Experiments view IS the navigator: problem trees as
+    hierarchies. Labels stay short and may repeat across trees — clicks
+    map by node POSITION (return_index), and tooltips carry lineage."""
+    try:
+        import streamlit_antd_components as sac
+    except ImportError:
+        st.info("streamlit-antd-components is not installed - "
+                "navigator unavailable (`pip install "
+                "streamlit-antd-components`)")
+        return
+    trees, _leaf_pids = collect_problem_trees()
+    items, idx2eid = [], {}
+    counter = {"i": 0}
+
+    def reserve() -> int:
+        i = counter["i"]
+        counter["i"] += 1
+        return i
+
+    for tree, alloc, leaf_stats, rollup, _rec in trees:
+        rstatus = rollup.get(tree.root.id, "open")
+        total = sum(alloc.get(l.id, 0) for l in tree.leaves())
+        eid_by_pid = {}
+        for e in (all_rows or []):
+            p = (e["payload"].get("agent") or {}).get("problem_id")
+            if p:
+                eid_by_pid[p] = e["id"]
+        root_name = tree.root.objective
+
+        def chain(nid):
+            """parent chain of objectives, root first."""
+            out, cur = [], nid
+            while cur:
+                out.append(tree.nodes[cur].objective)
+                cur = tree.nodes[cur].parent
+            return " \u25b8 ".join(reversed(out))
+
+        def build(nid) -> sac.TreeItem:
+            # reserve the index FIRST: widget positions are pre-order
+            # (parent before children), so must our mapping be
+            i = reserve()
+            n = tree.nodes[nid]
+            kids = tree.children(nid)
+            st_word = rollup.get(nid, n.status)
+            icon = {"achieved": "check-circle", "partial": "hourglass",
+                    "failed": "x-circle"}.get(st_word, "circle")
+            lineage = chain(nid)
+            gate = (f" \u00b7 gate {n.metric} "
+                    f"{'\u2264' if n.direction == 'min' else '\u2265'}"
+                    f"{n.gate:g}") if n.metric else ""
+            children = [build(k.id) for k in kids]
+            if kids:
+                sub = sum(alloc.get(l.id, 0)
+                          for l in tree.subtree_leaves(nid))
+                return sac.TreeItem(
+                    n.objective, icon="diagram-2",
+                    description=f"{st_word} \u00b7 budget {sub} runs",
+                    tooltip=f"{lineage}{gate}", children=children)
+            pid = f"{tree.root.id}-{nid}"
+            ls = leaf_stats.get(nid, {})
+            if pid in eid_by_pid:
+                idx2eid[i] = eid_by_pid[pid]
+            return sac.TreeItem(
+                n.objective, icon="droplet",
+                description=(f"{st_word} \u00b7 "
+                             f"{ls.get('runs', 0)}/"
+                             f"{alloc.get(nid, 0)} runs"),
+                tooltip=(f"{lineage}{gate} \u00b7 problem statement: "
+                         f"{ls.get('statement') or n.objective}"),
+                disabled=pid not in eid_by_pid)
+
+        root_i = reserve()
+        root_children = [build(k.id)
+                         for k in tree.children(tree.root.id)]
+        items.append(sac.TreeItem(
+            root_name, icon="activity",
+            description=f"{rstatus} \u00b7 budget {total} runs",
+            tooltip=root_name, children=root_children))
+
+    if not items:
+        st.info("No problem trees yet — create one with "
+                "`bn plan --objective ...` or the agent experiment wizard.")
+        return
+    st.subheader("Problem workspace")
+    picked = sac.tree(items=items, open_all=True, label="",
+                      return_index=True, show_line=True)
+    if picked is not None and idx2eid.get(picked):
+        st.session_state["view_experiment"] = idx2eid[picked]
+        st.switch_page(PAGES_EXP)
+
+def lineage_caption(problem_id: str | None) -> str:
+    """Breadcrumb for a tree leaf: root \u25b8 ... \u25b8 this node, plus
+    its gate. Sourced from provenance (the serialized tree), so it is
+    correct for old and new runs alike. Empty for non-tree branches."""
+    from pathlib import Path as _Path
+    if not problem_id or not _Path("bionexus.db").exists():
+        return ""
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.problem_tree import ProblemTree
+    full = SqliteProvenanceStore("bionexus.db")
+    for br in full.branches():
+        if not br.startswith("problem/") or br.count("/") != 1:
+            continue
+        for r in full.branch_records(br):
+            env = (r.decision or {}).get("environment") or {}
+            if env.get("kind") != "problem-tree":
+                continue
+            try:
+                tree = ProblemTree.model_validate(env["tree"])
+            except Exception:
+                continue
+            prefix = tree.root.id + "-"
+            if problem_id.startswith(prefix):
+                nid = problem_id[len(prefix):]
+                if nid not in tree.nodes:
+                    return ""
+                chain, cur = [], nid
+                while cur:
+                    chain.append(tree.nodes[cur].objective)
+                    cur = tree.nodes[cur].parent
+                n = tree.nodes[nid]
+                gate = (f" \u00b7 gate {n.metric} "
+                        f"{'\u2264' if n.direction == 'min' else '\u2265'}"
+                        f"{n.gate:g}") if n.metric else ""
+                return " \u25b8 ".join(reversed(chain)) + gate
+    return ""

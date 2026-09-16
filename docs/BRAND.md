@@ -22,28 +22,42 @@ Deliberately *not*: helices, molecules, lightning bolts, gradients, or
 any emoji-adjacent biology stock vocabulary. The mark survives: 16px
 favicon, single-colour etching, dark mode, embroidery.
 
-## Assets
+## Assets (all derived from the banner — never hand-edit)
+
+Source of truth: `assets/logo/bionexus-banner.png` (dark navy card,
+matrix-grid icon with coral path dots, "bionexus." wordmark).
+Regenerate everything with `python scripts/make_brand_assets.py`:
 
 | File | Use |
 |---|---|
-| `assets/logo/bionexus-mark.svg` | primary colour mark |
-| `assets/logo/bionexus-mark-mono.svg` | single-colour (print, etching) |
-| `assets/logo/bionexus-mark-dark.svg` | dark backgrounds |
-| `assets/logo/favicon.svg` | app/browser icons |
-| `assets/logo/bionexus-wordmark[-dark].svg` | wordmark — primary horizontal logo (source) |
-| `assets/logo/bionexus-lockup[-dark].svg` | mark+word lockup (where the mark must stand alone) |
-| `assets/logo/*.png` | web/README renders (GitHub won't inline SVG `<img>`) |
+| `bionexus-banner.png` | README / social — the canonical banner (icon + title + subtitle) |
+| `bionexus-mark.png` | icon only, transparent — light surfaces (workbench header) |
+| `bionexus-mark-tile.png` | icon on its navy panel — chips, avatars |
+| `bionexus-wordmark.png` | title only, ink recolor — light surfaces |
+| `bionexus-wordmark-onDark.png` | title only, original white + coral — dark surfaces |
+| `bionexus-lockup.png` | icon + title, light-surface recolor |
+| `bionexus-lockup-onDark.png` | icon + title, original colors |
+| `favicon.png` | browser tab — icon on a navy rounded square |
 
-## Palette (shared with the workbench theme)
+## Palette
+
+Brand (from the banner):
 
 | Token | Hex | Role |
 |---|---|---|
-| ink | `#2a2823` | type, ring, wordmark |
+| navy | `#0d1117` | deep background (icon panel, favicon) |
+| panel | `#191e26` | card background |
+| coral | `#f9826c` | the path dots, "nexus." — brand accent |
+| snow | `#f0f6fc` | "bio", path lines — dark-surface type |
+
+Workbench (light theme, status semantics in `docs/UX.md` §8):
+
+| Token | Hex | Role |
+|---|---|---|
+| ink | `#2a2823` | type, rules |
 | paper | `#f3f1ea` | background |
 | card | `#faf8f2` | surfaces |
-| teal | `#1f7a86` | the gate, the nexus, accents |
+| teal | `#1f7a86` | progress / autonomous accents |
 
-Wordmark: lowercase, geometric sans (Avenir Next / Futura stack,
-system fallback), weight 600, sentence-final teal period.
-
-Clear space: one nexus-dot radius on all sides. Minimum size: 16px.
+Wordmark: lowercase, geometric sans, weight 600; "bio" light,
+"nexus" coral, sentence-final coral period.

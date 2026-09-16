@@ -159,6 +159,53 @@ def evidence_panel_svg() -> str:
     return combo + "</svg>"
 
 
+def run_evidence_svg(items: list[dict]) -> str:
+    """REAL evidence panels: one per recorded plate file, fitted from the
+    actual readings — never synthetic. `items` = [{"path", "label",
+    "verdict"}]. Returns "" when nothing is plottable (honest empty)."""
+    from bionexus.labread import read_plate, fit_ic50_ci
+    from bionexus.plots import dose_response_svg
+    panels = []
+    for it in items:
+        try:
+            pr = read_plate(it["path"])
+        except Exception:
+            continue
+        pts = sorted({(r["conc_um"], r["value"]) for r in pr.records
+                      if not r.get("control") and r.get("conc_um")})
+        if len(pts) < 3:
+            continue
+        try:
+            f = fit_ic50_ci(pts, None)
+        except Exception:
+            continue
+        label = it.get("label") or Path(it["path"]).stem
+        title = (f"{label}: fit {f['ic50']:.1f} "
+                 f"{pr.response_unit or 'µM'}"
+                 f" (CI {f['ci_low']:.1f}\u2013{f['ci_high']:.1f})")
+        verdict = it.get("verdict")
+        if verdict in ("validated", "confirmed"):
+            title += " \u00b7 pass"
+        elif verdict == "inconclusive":
+            title += " \u00b7 abstain"
+        elif verdict in ("refuted", "invalidated"):
+            title += " \u00b7 fail"
+        svg = dose_response_svg(
+            pts, ic50=f["ic50"], ci=(f["ci_low"], f["ci_high"]),
+            title=title, width=360, height=230)
+        inner = svg[svg.index(">") + 1:svg.rindex("</svg>")]
+        panels.append(inner)
+    if not panels:
+        return ""
+    width = max(360, len(panels) * 364)
+    combo = (f'<svg xmlns="http://www.w3.org/2000/svg" '
+             f'viewBox="0 0 {width} 250" width="100%">'
+             f'<rect width="{width}" height="250" fill="#faf8f2"/>')
+    for i, inner in enumerate(panels):
+        combo += (f'<g transform="translate({i * 364},8)">{inner}</g>')
+    return combo + "</svg>"
+
+
 def get(name: str) -> str:
     """Cached figure: 'recovery' | 'stability' | 'evidence'."""
     FIG_DIR.mkdir(parents=True, exist_ok=True)

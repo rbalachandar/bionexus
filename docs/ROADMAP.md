@@ -220,6 +220,23 @@ Positioning bet: trustworthiness as architecture, not marketing. Priority order:
   `verdict-stability` (7-task suite, mean 0.970). [ ] surface spread on
   the pipeline card in the UI (currently eval-level only)
 
+### Trust-T1b — execution governance (the Run-Data-Run gap)
+- [x] `governance.py` + gateway wiring — code-level guarantees OUTSIDE the
+  agent's tool surface: `HaltSwitch` (filesystem kill switch, `bn halt`
+  engage/clear, gateway checks on EVERY submission, corrupt file still
+  halts); `AuthorizationMatrix` (three columns autonomous|human|never,
+  defaults: DURC and BSL>=3 never, BSL-2 human, recurring protocols need
+  SOP sign-off, operator rules via BIONEXUS_AUTHZ JSON); `SopRegistry`
+  (recurring = unattended future runs, so it gets review like code;
+  `bn sop list/approve`); every governance decision is a provenance
+  gate_decision. Defense in depth: SafetyEngine still runs first
+- [x] `physfail.py` — physical failure-mode classification before the
+  retry reflex: saturated/dark plates, negative readings, dynamic-range
+  spills, device-level errors are PHYSICAL (flag for operator, do not
+  retry), wired into `AutoAnalysisAgent.handle` with a recorded
+  `failure-mode` gate_decision; eval task `harness-governance`
+  (9-task suite, mean 0.977)
+
 ### Trust-T2 — mechanistic interpretability
 - [ ] **Scalable safety (tiered)**: alerts/DURC lists move from code to
   versioned JSON data (ingest Benigni/Bosa + Toxtree/OpenAlerts rulebooks);

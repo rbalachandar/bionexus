@@ -7,6 +7,8 @@ so the Experiment page tells YOUR run this way, not a canned one.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
 
 
@@ -18,22 +20,6 @@ def _proposed(recs):
 
 def _candidate(r):
     return ((r.artifact.metadata if r.artifact else {}) or {}).get("candidate")
-
-
-def render_hypotheses(recs) -> None:
-    props = _proposed(recs)
-    if not props:
-        return
-    st.markdown("The hypotheses, as proposed")
-    st.dataframe([
-        {"candidate": _candidate(r),
-         "mechanism": ((r.decision or {}).get("mechanism") or "—")[:70],
-         "refuted if": ((r.decision or {}).get("refutation_condition")
-                        or "—")[:48],
-         "citation": (r.decision or {}).get("citation") or "—",
-         "citation check": (r.decision or {}).get("citation_status")
-         or "unverified"}
-        for r in props], hide_index=True)
 
 
 def render_portfolio(recs) -> None:
@@ -52,7 +38,7 @@ def render_portfolio(recs) -> None:
         {"hypothesis": id2cand.get(d.get("hypothesis_id"),
                                    d.get("hypothesis_id", "?")),
          "score": d.get("score"),
-         "selected": "✅" if d.get("selected") else "—",
+         "selected": "yes" if d.get("selected") else "—",
          "recorded reason": d.get("reason", "")}
         for d in (filt.decision or {}).get("decisions", [])], hide_index=True)
 
@@ -67,17 +53,17 @@ def render_gates(recs, log_lines=()) -> None:
     st.markdown("Hypotheses at the gates")
     for l in refusals:
         st.error(l.replace("[campaign] ", "").replace("[agent] ", ""),
-                 icon="🚫")
+                 icon=":material/block:")
     for a in advs:
         flags = (a.decision or {}).get("flags", [])
         st.warning("Advisory tier flagged (not blocked): " + "; ".join(
             f"{f.get('sample')} — {f.get('alert')}"
             + (f" (declared intent: {f['declared_intent']})"
                if f.get("declared_intent") else "") for f in flags),
-            icon="⚠️")
+            icon=":material/report:")
     for d in durc:
         st.error("DURC refusal: " + ", ".join(
-            (d.decision or {}).get("agents", [])), icon="🚫")
+            (d.decision or {}).get("agents", [])), icon=":material/block:")
 
 
 def render_verdicts(recs) -> None:
@@ -153,18 +139,69 @@ def render_trust(recs, log_lines=()) -> None:
     st.markdown("### Evidence")
     with st.expander("Results"):
         from bionexus import figures
-        st.markdown(figures.get("evidence"), unsafe_allow_html=True)
-        st.caption("A 3-parameter Hill fit (plateau profiled, not assumed), "
-                   "residual-bootstrap 95% CI shown as the shaded band, Z′ "
-                   "QC from the plate. The verdict reads the band against the "
-                   "pre-registered gate — left panel passes, middle "
-                   "abstains, right fails. Same rendering as the "
-                   "instrument-output blocks in the pipeline above.")
+        # REAL evidence: re-plot this branch's recorded plate files,
+        # labeled by candidate and its verdict — never a stock figure
+        run2cand: dict[str, str] = {}
+        run2file: dict[str, str] = {}
+        for r in recs:
+            d = r.decision or {}
+            if r.event_type.value == "hypothesis_tested" and d.get("run_id"):
+                cand = (d.get("candidate")
+                        or (r.artifact.metadata or {}).get("candidate")
+                        if r.artifact else None) or d.get("candidate")
+                if cand:
+                    run2cand[d["run_id"]] = cand
+        import glob
+        branch = ""
+        if recs:
+            env = getattr(recs[0], "envelope", None)
+            branch = getattr(env, "experiment_branch_id", "") or ""
+        pid = branch.split("/", 1)[1] if "/" in branch else branch
+        run_ids = {d.get("run_id") for r in recs
+                   if (d := r.decision or {})
+                   and r.event_type.value == "lab_run"
+                   and d.get("run_id")}
+        for rid in run_ids:
+            # scope to THIS branch's files: run ids collide across leaves
+            hits = (glob.glob(f"**/{pid}/**/{rid}.csv", root_dir=".data",
+                              recursive=True)
+                    or glob.glob(f"**/{pid}/{rid}.csv", root_dir=".data",
+                                 recursive=True)
+                    or glob.glob(f"**/{rid}.csv", root_dir=".data",
+                                 recursive=True))
+            if hits:
+                run2file[rid] = str(Path(".data") / hits[0])
+        items = [{"path": run2file[rid],
+                  "label": run2cand.get(rid, rid),
+                  "verdict": (last.get(run2cand.get(rid, ""), {})
+                              .get("verdict"))}
+                 for rid in sorted(run2file)
+                 if run2file.get(rid)]
+        svg = figures.run_evidence_svg(items) if items else ""
+        if svg:
+            st.markdown(svg, unsafe_allow_html=True)
+        else:
+            st.caption("No recorded plate files found for these runs "
+                       "— evidence curves unavailable (honestly shown, "
+                       "not simulated).")
+        legend = ("A 3-parameter Hill fit (plateau profiled, not assumed), "
+                  "residual-bootstrap 95% CI shown as the shaded band, Z′ "
+                  "QC from the plate. The verdict reads the band against "
+                  "the pre-registered gate.")
+        counts: dict[str, int] = {}
+        for d in last.values():
+            v = d.get("verdict")
+            counts[v] = counts.get(v, 0) + 1
+        if counts:
+            tally = " · ".join(f"{n_} {v}" for v, n_ in sorted(counts.items()))
+            legend += f" This run: {tally}."
+        st.caption(legend)
 
 
 def render(recs, log_lines=()) -> None:
     st.markdown("### The record of this run")
-    render_hypotheses(recs)
+    # hypotheses-as-proposed is NOT repeated here: the Hypothesis pipeline
+    # cards above already carry candidate/mechanism/refutation/citation
     render_portfolio(recs)
     render_gates(recs, log_lines)
     render_verdicts(recs)

@@ -43,7 +43,10 @@ def _diagram(path: str, caption: str) -> None:
 def render() -> None:
     inject_css()
     run = _run()
-    st.title("📖 Documentation")
+    _lockup = Path("assets/logo/bionexus-lockup.png")
+    if _lockup.exists():
+        st.image(str(_lockup), width=300)
+    st.title("Documentation")
     tab_framework, tab_works, tab_trust, tab_start = st.tabs(
         ["The framework", "Does it work?", "Can you trust it?",
          "Get started"])
@@ -108,7 +111,8 @@ def render() -> None:
         c1, c2 = st.columns([4, 1])
         c1.caption("Deterministic, offline, in CI on every commit. The run "
                    "you just read about exercises tasks 1–3 live.")
-        if c2.button("▶ Run eval suite", disabled=not rp.exists()):
+        if c2.button("Run eval suite", icon=":material/play_arrow:",
+                 disabled=not rp.exists()):
             with st.spinner("Scoring the claims (≈40s)…"):
                 subprocess.run([sys.executable, "-m", "bionexus.cli", "eval"],
                                capture_output=True, timeout=300)
@@ -117,7 +121,7 @@ def render() -> None:
             import datetime
             rows = json.loads(rp.read_text())
             st.dataframe([{"task": r["task"], "score": r["score"],
-                           "pass": "✅" if r["passed"] else "❌",
+                           "pass": "yes" if r["passed"] else "no",
                            "what it proves": r["notes"][:110]}
                           for r in rows], hide_index=True)
             st.caption(f"Last run "

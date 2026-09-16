@@ -19,7 +19,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 import streamlit as st
 
-st.set_page_config(page_title="BioNexus", page_icon="🧬", layout="wide")
+st.set_page_config(page_title="BioNexus", layout="wide",
+                   page_icon="assets/logo/favicon.png")
 
 from bionexus.adapters.admet import get_admet_predictor
 from bionexus.adapters.retrosynthesis import SimulatedRetrosynthesis
@@ -36,8 +37,10 @@ from bionexus.readiness import review_experiment
 from bionexus.serve import CAMPAIGN_DIR, campaign_index, campaign_running
 from bionexus.tpp import CriterionPhase, standard_small_molecule_tpp
 from bionexus.ui_kit import ago, chip, chip_html, inject_css
-from bionexus.webview import render_experiment_pipeline, resume_wizard
+from bionexus.webview import (halt_banner, render_experiment_pipeline,
+                              resume_wizard)
 from bionexus.wizard_store import WizardStore
+from bionexus import webview as _wv
 
 store = WizardStore()
 
@@ -126,28 +129,13 @@ def _spawn_agent_experiment(cfg: dict, objective: str) -> str:
 
 
 def agent_row_status(e: dict) -> tuple[str, Path]:
-    ag = e["payload"].get("agent") or {}
-    logf = Path(ag.get("log", ""))
-    if logf.exists() and "CAMPAIGN COMPLETE" in logf.read_text(errors="replace"):
-        return "completed", logf
-    pid = ag.get("pid")
-    if pid:
-        import os
-        try:
-            os.kill(pid, 0)
-            return "running", logf
-        except OSError:
-            return "interrupted", logf
-    if e["status"] == "executing":
-        if logf.exists() and time.time() - logf.stat().st_mtime < 300:
-            return "running", logf
-        return "interrupted", logf
-    return e["status"].replace("_", " "), logf
-
+    """Thin wrapper: the single status implementation lives in webview."""
+    log = (e["payload"].get("agent") or {}).get("log") or ""
+    return _wv._row_status(e), (Path(log) if log else Path("."))
 
 def _resolve_problem(meta: dict, logf: Path) -> str | None:
     problem_id = meta.get("problem_id")
-    if logf.exists():
+    if logf and str(logf) != "." and logf.is_file():
         m = re.findall(r"problem (prob-\w+):", logf.read_text(errors="replace"))
         latest = m[-1] if m else None
         if latest and latest != problem_id:
@@ -163,7 +151,7 @@ def start_dialog() -> None:
     from bionexus.templates import (build_campaign, fill, load_template,
                                     list_templates, save_user_template)
 
-    tpl_names = [t["name"] for t in list_templates()] + ["✏️ Custom…"]
+    tpl_names = [t["name"] for t in list_templates()] + ["Custom…"]
     c1, c2 = st.columns(2)
     tpl = c1.selectbox("Template", tpl_names)
     autonomy = c2.selectbox(
@@ -172,7 +160,7 @@ def start_dialog() -> None:
          "gate — I approve each experiment",
          "observe — analysis only"])
 
-    custom = tpl == "✏️ Custom…"
+    custom = tpl == "Custom…"
     if custom:
         st.caption("No template — describe the problem yourself. Compounds "
                    "become one hypothesis each with your potency criterion.")
@@ -182,7 +170,7 @@ def start_dialog() -> None:
                               placeholder=objective_default,
                               disabled=not custom)
     pdoc = program_cfg.load()
-    st.caption(f"🎯 Inheriting program: {program_cfg.gate_summary(pdoc)}")
+    st.caption(f"Program gates: {program_cfg.gate_summary(pdoc)}")
     c3, c4 = st.columns(2)
     compounds = c3.text_input("Compounds (comma-separated)",
                               "gefitinib,erlotinib,lapatinib,osimertinib")
@@ -211,7 +199,8 @@ def start_dialog() -> None:
         save_as = st.text_input("Save as reusable template (optional name)",
                                 placeholder="my-kinase-screen")
 
-    if st.button("🚀 Start agent experiment", type="primary",
+    if st.button("Start agent experiment", type="primary",
+                 icon=":material/rocket_launch:",
                  disabled=not compounds.strip() or missing_required):
         thr_s = f"{threshold:g}"
         if custom:
@@ -255,10 +244,19 @@ def overview_view() -> None:
     _consume_goto("overview")
     inject_css()
     h1, h2, h3 = st.columns([5, 1.6, 1.6])
-    h1.title("🧬 BioNexus")
-    if h2.button("🤖 Agent experiment", type="primary"):
+    _mark = Path("assets/logo/bionexus-mark.png")
+    _word = Path("assets/logo/bionexus-wordmark.png")
+    if _mark.exists() and _word.exists():
+        lg1, lg2 = h1.columns([1, 3], gap="small", vertical_alignment="center")
+        lg1.image(str(_mark), width=58)
+        lg2.image(str(_word), width=230)
+    else:
+        h1.title("BioNexus")
+    halt_banner()
+    if h2.button("Agent experiment", type="primary",
+                    icon=":material/smart_toy:"):
         start_dialog()
-    if h3.button("🧑 Manual experiment"):
+    if h3.button("Manual experiment", icon=":material/person:"):
         st.session_state["step"] = 1
         st.switch_page(PAGES["wizard"])
 
@@ -272,7 +270,7 @@ def overview_view() -> None:
     # ---------------------------------------------------- approvals (only when
     # something is actually blocked — pinned at top while it lasts)
     if pending:
-        st.header(f"⏸ Awaiting your decision ({len(pending)})")
+        st.header(f"Awaiting your decision ({len(pending)})")
         for p in pending:
             with st.container(border=True):
                 st.markdown(f"**{p['title']}**")
@@ -294,18 +292,22 @@ def overview_view() -> None:
                             owner = e
                             break
                     if owner:
-                        if st.button(f"↗ {owner['question'][:40]}",
+                        if st.button(f"{owner['question'][:40]}",
+                                     icon=":material/north_east:",
                                      key=f"own_{p['id']}"):
                             st.session_state["view_experiment"] = owner["id"]
                             st.switch_page(PAGES["experiment"])
                 c1, c2, _ = st.columns([1, 1, 3])
-                if c1.button("✅ Approve", key=f"ok_{p['id']}", type="primary"):
+                if c1.button("Approve", key=f"ok_{p['id']}", type="primary",
+                        icon=":material/check:"):
                     inbox.decide(p["id"], True)
-                    st.toast(f"Approved — {p['title']} resumes", icon="✅")
+                    st.toast(f"Approved — {p['title']} resumes",
+                         icon=":material/check_circle:")
                     st.rerun()
-                if c2.button("❌ Deny", key=f"no_{p['id']}"):
+                if c2.button("Deny", key=f"no_{p['id']}",
+                        icon=":material/close:"):
                     inbox.decide(p["id"], False)
-                    st.toast(f"Denied — {p['title']}", icon="❌")
+                    st.toast(f"Denied — {p['title']}", icon=":material/cancel:")
                     st.rerun()
         st.caption("The experiment is paused until you decide.")
 
@@ -317,64 +319,42 @@ def overview_view() -> None:
 
     # ---------------------------------------------------- Program & TPP
     doc = program_cfg.load()
-    st.header("🎯 Program")
-    st.markdown(f"**{doc['program']}** · target **{doc['target']}** · "
-                f"screening gate: **{doc['gate']}** at IC50 ≤ "
-                f"{program_cfg.gate_threshold_um(doc):g} µM")
+    st.header("Program")
+    st.markdown(f"**{program_cfg.gate_summary(doc)}**")
     with st.expander("Program & target product profile — what winning looks like"):
-        st.markdown("*Hierarchy:* 🎯 Program (TPP) ▸ Problem ▸ Hypothesis ▸ "
-                    "Experiment. The gate below sets the potency bar that "
-                    "wizard hypotheses and agent experiments inherit.")
-        # apply a pending ChEMBL suggestion before the widgets instantiate
-        sp = st.session_state.pop("suggest_profile", None)
-        if sp:
-            st.session_state["tpp_hit"] = sp["hit_ic50_nm"]
-            st.session_state["tpp_lead"] = sp["lead_ic50_nm"]
-            if sp["source"] == "chembl":
-                st.session_state["tpp_gate"] = "hit"
+        st.markdown("*Hierarchy:* Program ▸ Problem ▸ Hypothesis ▸ "
+                    "Experiment. Define the problem in your own terms — "
+                    "any metric, any unit. The gate below is what wizard "
+                    "hypotheses and agent experiments inherit.")
         tp1, tp2 = st.columns(2)
         prog = tp1.text_input("Program", doc["program"], key="tpp_prog")
-        tgt = tp2.text_input("Target", doc["target"], key="tpp_tgt")
-        tp3, tp4, tp5 = st.columns(3)
-        gate = tp3.selectbox("Screening gate", ["hit", "lead", "candidate",
-                                                "clinical"],
-                             index=["hit", "lead", "candidate", "clinical"]
-                             .index(doc["gate"]), key="tpp_gate")
+        obj = tp2.text_input("Objective — the problem, in plain words",
+                             doc.get("objective") or "", key="tpp_obj")
+        mt1, mt2, mt3, mt4 = st.columns(4)
+        metric = mt1.text_input("Metric", doc.get("metric", "ic50"),
+                                key="tpp_metric",
+                                help="e.g. ic50_um, fold_change, ct, "
+                                     "rmsd, auc, error_rate")
+        unit = mt2.text_input("Unit", doc.get("unit", "µM"),
+                              key="tpp_unit")
+        direction = mt3.selectbox("Better is", ["min", "max"],
+                                  index=["min", "max"].index(
+                                      doc.get("direction", "min")),
+                                  key="tpp_dir")
+        gval = mt4.number_input("Gate value", value=float(
+            doc.get("gate_value", 20.0)), key="tpp_gval")
         if "suggest_basis" in st.session_state:
-            st.caption("🧪 " + st.session_state.pop("suggest_basis"))
-        hit = tp4.number_input("Hit IC50 (nM)", 1.0, 100000.0,
-                               float(doc["hit_ic50_nm"]), key="tpp_hit")
-        lead = tp5.number_input("Lead IC50 (nM)", 1.0, 100000.0,
-                                float(doc["lead_ic50_nm"]), key="tpp_lead")
-        sb1, sb2 = st.columns(2)
-        if sb1.button("💾 Save program", type="primary"):
-            program_cfg.save({"program": prog, "target": tgt, "gate": gate,
-                              "hit_ic50_nm": hit, "lead_ic50_nm": lead})
-            st.toast(f"Program saved — {gate} gate at IC50 ≤ "
-                     f"{(hit if gate == 'hit' else lead) / 1000:g} µM",
-                     icon="🎯")
+            st.caption(st.session_state.pop("suggest_basis"))
+        if st.button("Save program", type="primary",
+                     icon=":material/save:"):
+            program_cfg.save({"program": prog, "custom": True,
+                              "objective": obj,
+                              "metric": metric or "ic50", "unit": unit,
+                              "direction": direction,
+                              "gate_value": float(gval)})
+            st.toast(f"Program saved — {program_cfg.gate_summary()}",
+                     icon=":material/target:")
             st.rerun()
-        if sb2.button("✨ Suggest gates from ChEMBL published data"):
-            from bionexus.adapters.databases.chembl_gates import suggest
-            with st.spinner(f"Querying ChEMBL for {tgt}…"):
-                prof = suggest(tgt)
-            st.session_state["suggest_profile"] = prof.as_dict()
-            st.session_state["suggest_basis"] = (
-                f"suggested from {prof.n_activities} published activities — "
-                f"{prof.basis}" if prof.source == "chembl"
-                else f"using conventional defaults — {prof.basis}")
-            st.rerun()
-        st.markdown("**Full criteria by phase** (cumulative; required = "
-                    "hard gate)")
-        for phase in CriterionPhase:
-            crs = program_cfg.tpp().criteria_for_phase(phase)
-            if crs:
-                st.markdown(f"**{phase.value.title()}**")
-                for c in crs:
-                    direction = "≤" if c.direction == "min" else "≥"
-                    req = "required" if c.required else "optional"
-                    st.caption(f"- {c.name}: {direction} {c.threshold} "
-                               f"{c.unit} ({req})")
 
 
 
@@ -383,33 +363,22 @@ def overview_view() -> None:
     st.header("Experiments")
     if not all_rows:
         st.info("Nothing yet.")
-        if st.button("🧪 Start your first experiment", type="primary"):
+        if st.button("Start your first experiment", type="primary",
+                     icon=":material/science:"):
             start_dialog()
-    for e in all_rows:
-        ag = e["payload"].get("agent")
-        if ag:
-            status, _ = agent_row_status(e)
-            icon, action = "🤖", "View pipeline"
-        else:
-            status = e["status"].replace("_", " ")
-            icon, action = "🧑", "Resume →"
-        with st.container(border=True):
-            c1, c2 = st.columns([5, 4])
-            c1.markdown(f"{icon} **{e['question'][:78]}**")
-            c2.markdown(f"{chip_html(status)}  "
-                        f"<span style='color:#6b6558;font-size:13px'>"
-                        f"· {ago(e['updated_at'])}</span>",
-                        unsafe_allow_html=True)
-            c3, _ = st.columns([2, 6])
-            with c3:
-                if st.button(action, key=f"v_{e['id']}",
-                             disabled=(status == "verdict recorded")):
-                    if ag:
-                        st.session_state["view_experiment"] = e["id"]
-                        st.switch_page(PAGES["experiment"])
-                    else:
-                        resume_wizard(e)
-                        st.switch_page(PAGES["wizard"])
+        return
+    _wv.render_experiment_navigator(all_rows)
+    _archived = store.archived(50)
+    if _archived:
+        with st.expander(f"Archived ({len(_archived)}) — retired from "
+                         "the working set, provenance intact"):
+            for e in _archived:
+                ac1, ac2 = st.columns([6, 1])
+                ac1.markdown(f"**{e['question'][:70]}** · "
+                             f"{e['status'].replace('_', ' ')}")
+                if ac2.button("Unarchive", key=f"unarch_{e['id']}"):
+                    store.set_archived(e["id"], False)
+                    st.rerun()
 
 # --------------------------------------------------------------------------
 # VIEW: wizard (DMTA steps 1–6)
@@ -421,7 +390,7 @@ _STEPS = ["Define Problem", "Design Experiment", "Readiness", "Execute",
 def _nav(current: int) -> None:
     cols = st.columns(len(_STEPS))
     for i, (col, name) in enumerate(zip(cols, _STEPS), 1):
-        marker = "🟢" if i < current else "🔵" if i == current else "⚪"
+        marker = "●" if i < current else "◆" if i == current else "○"
         col.markdown(f"**{marker} {name}**" if i == current
                      else f"{marker} {name}")
 
@@ -437,7 +406,16 @@ def wizard_view() -> None:
     step = st.session_state.get("step", 1)
     if step == 0 or step not in range(1, 7):
         st.switch_page(PAGES["overview"])
-    st.title("🧬 BioNexus")
+    _mark = Path("assets/logo/bionexus-mark.png")
+    _word = Path("assets/logo/bionexus-wordmark.png")
+    if _mark.exists() and _word.exists():
+        lg1, lg2 = st.columns([1, 4], gap="small",
+                              vertical_alignment="center")
+        lg1.image(str(_mark), width=44)
+        lg2.image(str(_word), width=175)
+    else:
+        st.title("BioNexus")
+    halt_banner()
     _nav(step)
     st.button("← Overview", on_click=_go("overview"))
 
@@ -445,7 +423,7 @@ def wizard_view() -> None:
     if step == 1:
         st.header("1 · Define the problem")
         pdoc = program_cfg.load()
-        st.caption(f"🎯 {program_cfg.gate_summary(pdoc)} — your hypothesis "
+        st.caption(f"{program_cfg.gate_summary(pdoc)} — your hypothesis "
                    f"thresholds start from this program gate.")
         st.caption("What are you trying to show? A good claim is specific: "
                    "what intervention, in what system, measured how.")
@@ -517,10 +495,11 @@ def wizard_view() -> None:
                 extras["citation_status"] = res["status"]
                 extras["citation_detail"] = res["detail"]
                 if res["status"] == "verified":
-                    st.toast(f"Citation verified: {res['detail']}", icon="📚")
+                    st.toast(f"Citation verified: {res['detail']}",
+                     icon=":material/menu_book:")
                 elif res["status"] == "invalid":
                     st.toast("Citation does not resolve — hypothesis penalized",
-                             icon="⚠️")
+                             icon=":material/warning:")
             _save("designing", design_extras=extras,
                   exp_def=exp.model_dump(mode="json"),
                   readiness={"verdict": review.verdict.value,
@@ -544,17 +523,15 @@ def wizard_view() -> None:
             if st.button("← Back"):
                 _goto(2)
         else:
-            icon = {"ready": "✅", "ready_with_warnings": "⚠️",
-                    "blocked": "❌"}
-            st.markdown(f"### {icon.get(review.verdict.value, '—')} "
+            st.markdown(f"### "
                         f"{review.verdict.value.replace('_', ' ').title()}")
             for f in review.findings:
                 if f.severity == "blocker":
-                    st.error(f"❌ **{f.check}**: {f.message}")
+                    st.error(f"**{f.check}**: {f.message}")
                 elif f.severity == "warning":
-                    st.warning(f"⚠️ {f.check}: {f.message}")
+                    st.warning(f"{f.check}: {f.message}")
                 else:
-                    st.success(f"✅ {f.check}")
+                    st.success(f"{f.check}")
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("← Redesign"):
@@ -580,15 +557,15 @@ def wizard_view() -> None:
                 f"**Claim:** {exp.claim_type.value} · "
                 f"**Controls:** {len(exp.controls)}")
         route = st.radio("Execution route",
-                         ["🧑 I run it at the bench — bring back the export",
-                          "🤖 Agent executes — compounds go through the lab loop"],
+                         ["I run it at the bench — bring back the export",
+                          "Agent executes — compounds go through the lab loop"],
                          horizontal=True)
         col1, col2 = st.columns(2)
         with col1:
             if st.button("← Back"):
                 _goto(3)
         with col2:
-            if route.startswith("🧑"):
+            if route.startswith("I run"):
                 if st.button("I have results →", type="primary"):
                     _save("executing")
                     _wprove(EventType.stage_transition,
@@ -597,9 +574,12 @@ def wizard_view() -> None:
             else:
                 comps = st.text_input("Compounds for the agent to test",
                                       placeholder="compound-a,compound-b")
-                thr = st.number_input("Potency threshold (µM)", 0.001, 1000.0,
-                                      program_cfg.gate_threshold_um())
-                if st.button("🤖 Launch agent execution", type="primary",
+                thr = st.number_input(
+                    f"{program_cfg.gate_metric()} gate "
+                    f"({program_cfg.gate_unit()})",
+                    0.001, 1000.0, program_cfg.gate_threshold_um())
+                if st.button("Launch agent execution", type="primary",
+                             icon=":material/smart_toy:",
                              disabled=not comps.strip()):
                     thr_s = f"{thr:g}"
                     cfg = {
@@ -739,14 +719,14 @@ def wizard_view() -> None:
                             from bionexus.interpret import explain_admet
                             _why = explain_admet(s)
                             if _why["reasons"] != ["no flags"]:
-                                st.caption("🔎 why flagged: "
+                                st.caption("why flagged: "
                                            + " · ".join(_why["reasons"]))
                     with col2:
                         st.markdown("**Retrosynthesis**")
                         try:
                             rt = SimulatedRetrosynthesis().plan(smi)
                             st.markdown(f"- Feasible: "
-                                        f"{'✅' if rt.feasible else '❌'} · "
+                                        f"{'yes' if rt.feasible else 'no'} · "
                                         f"Steps: {rt.num_steps}")
                         except Exception as e:
                             st.caption(f"Retrosynthesis unavailable: {e}")
@@ -766,7 +746,7 @@ def wizard_view() -> None:
                              "verdict": obs,
                              "hits": st.session_state["selected"],
                              "evidence": "uploaded instrument export"})
-                st.toast(f"Verdict recorded — {obs}", icon="📓")
+                st.toast(f"Verdict recorded — {obs}", icon=":material/history_edu:")
                 st.success(f"Recorded: **{obs}** — hash-chained. Audit: "
                            f"`bn prove wizard/{st.session_state.get('exp_id')}`")
                 if st.button("← Back to overview", on_click=_go("overview")):
@@ -781,8 +761,16 @@ def wizard_view() -> None:
 def experiment_view() -> None:
     _consume_goto("experiment")
     inject_css()
-    st.button("← All experiments", on_click=_go("overview"))
+    b1, b2 = st.columns([1, 1])
+    b1.button("← All experiments", on_click=_go("overview"))
     eid = st.session_state.get("view_experiment")
+    _row0 = store.get(eid) if eid else None
+    if _row0 and not (_row0["payload"].get("archived")):
+        if b2.button("Archive", icon=":material/archive:"):
+            store.set_archived(eid, True)
+            st.toast(f"Archived — {_row0['question'][:50]}",
+                     icon=":material/archive:")
+            st.switch_page(PAGES["overview"])
     row = store.get(eid) if eid else None
     if not row:
         st.info("No experiment selected — pick one from the list.")
@@ -794,7 +782,10 @@ def experiment_view() -> None:
         problem_id = _resolve_problem(ag, logf)
         if problem_id and problem_id != ag.get("problem_id"):
             store.link_problem(row["id"], problem_id)
-        st.title(f"🤖 {row['question'][:70]}")
+        st.title(f"{row['question'][:70]}")
+        _crumb = _wv.lineage_caption(ag.get("problem_id"))
+        if _crumb:
+            st.caption(_crumb)
         st.markdown(chip_html(status), unsafe_allow_html=True)
         st.caption(f"agent-driven · autonomy: {ag.get('autonomy', 'act')} · "
                    f"updated {ago(row['updated_at'])}")
@@ -816,7 +807,7 @@ def experiment_view() -> None:
         m1.metric("Hypotheses", n_hyp)
         m2.metric("Decided", n_dec)
         m3.metric("Lab runs", n_runs)
-        st.caption(f"🎯 {program_cfg.gate_summary()} ▸ problem "
+        st.caption(f"{program_cfg.gate_summary()} ▸ problem "
                    f"`{problem_id or '—'}` ▸ {n_hyp} hypotheses ▸ experiment "
                    f"`{row['id']}`")
 
@@ -838,27 +829,28 @@ def experiment_view() -> None:
             concs = "–".join(str(x) for x in (lr.get("concentrations") or
                                               [])[:1] +
                              (lr.get("concentrations") or [])[-1:]) or "?"
-            st.caption(f"🔬 instrument: **{lr.get('instrument', 'lab')}**"
+            st.caption(f"device: **{lr.get('instrument', 'lab')}**"
                        f"{f' ({lr['instrument_version']})' if lr.get('instrument_version') else ''}"
                        f" · measurement: {lr.get('assay', '?')} dose–response"
                        f" · {concs} µM × {lr.get('replicates', '?')} replicates"
                        f" · {lr.get('n_controls', 0)} controls"
                        f" · {n_runs} run(s)")
 
+        halt_banner()
         render_experiment_pipeline(logf, problem_id,
                                    running=(status == "running"),
                                    store=store, eid=row["id"])
         from bionexus import narrative
         _logtail = (logf.read_text(errors="replace").splitlines()[-200:]
-                    if logf.exists() else [])
+                    if logf.is_file() else [])
         _live = (SqliteProvenanceStore("bionexus.db").branch_records(branch)
                  if branch and Path("bionexus.db").exists() else recs)
         narrative.render(_live or recs, _logtail)
     else:
         p = row["payload"]
-        st.title(f"🧑 {row['question'][:70]}")
+        st.title(f"{row['question'][:70]}")
         chip(row["status"].replace("_", " "))
-        st.caption(f"🎯 {program_cfg.gate_summary()} ▸ wizard "
+        st.caption(f"{program_cfg.gate_summary()} ▸ wizard "
                    f"`{row['id']}` · updated {ago(row['updated_at'])}")
         exp_d = p.get("exp_def")
         if exp_d:
@@ -869,8 +861,8 @@ def experiment_view() -> None:
                         f"{len(exp.controls)}")
         rd = p.get("readiness")
         if rd:
-            icon = {"ready": "✅", "ready_with_warnings": "⚠️",
-                    "blocked": "❌"}.get(rd.get("verdict"), "")
+            icon = {"ready": "pass", "ready_with_warnings": "warnings",
+                    "blocked": "blocked"}.get(rd.get("verdict"), "—")
             st.caption(f"readiness: {icon} {rd.get('verdict', '—')}")
         if p.get("verdict"):
             st.success(f"verdict: {p['verdict']}")
@@ -886,7 +878,7 @@ def experiment_view() -> None:
             srecs = SqliteProvenanceStore("bionexus.db").branch_records(
                 wizard_branch(row["id"]))
             if srecs:
-                st.subheader("📓 Lab narrative")
+                st.subheader("Lab narrative")
                 st.caption(f"{len(srecs)} provenance records · hash-chained")
                 for r in srecs:
                     d = r.decision or {}
@@ -907,15 +899,19 @@ def story_view() -> None:
 # router
 # --------------------------------------------------------------------------
 PAGES = {
-    "overview": st.Page(overview_view, title="Overview", icon="🧬",
-                        default=True, url_path="overview"),
-    "wizard": st.Page(wizard_view, title="Wizard", icon="🧪",
-                      url_path="wizard"),
-    "experiment": st.Page(experiment_view, title="Experiment", icon="🔬",
+    "overview": st.Page(overview_view, title="Overview",
+                        icon=":material/overview:", default=True,
+                        url_path="overview"),
+    "wizard": st.Page(wizard_view, title="Wizard",
+                      icon=":material/approval:", url_path="wizard"),
+    "experiment": st.Page(experiment_view, title="Experiment",
+                          icon=":material/science:",
                           url_path="experiment"),
-    "story": st.Page(story_view, title="Documentation", icon="📖",
+    "story": st.Page(story_view, title="Documentation",
+                     icon=":material/menu_book:",
                      url_path="documentation"),
 }
+_wv.PAGES_EXP = PAGES["experiment"]
 
 
 def _key_new() -> None:

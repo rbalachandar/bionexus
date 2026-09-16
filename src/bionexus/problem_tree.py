@@ -99,22 +99,52 @@ class ProblemTree(BaseModel):
     # ------------------------------------------------------------ budgets
 
     def allocation(self) -> dict[str, int]:
-        """Run budget splits across leaves by priority weight. A floor of 2
-        keeps any leaf meaningful; totals never exceed run_budget."""
-        lv = self.leaves()
-        if not lv:
-            return {}
-        weights = [max(0.1, n.priority) for n in lv]
-        total_w = sum(weights)
-        base = {n.id: max(2, int(self.run_budget * w / total_w))
-                for n, w in zip(lv, weights)}
-        # trim to the cap, largest shares first
-        while sum(base.values()) > self.run_budget:
-            biggest = max(base, key=lambda k: base[k])
-            if base[biggest] <= 2:
-                break
-            base[biggest] -= 1
-        return base
+        """Hierarchical run budget: the root's budget flows down the tree —
+        each intermediate node splits its OWN slice among its children by
+        priority weight, so a branch's share is protected from siblings
+        regardless of depth (a deep subtree cannot soak another branch's
+        budget). Leaves end up with concrete budgets; a floor of 2 keeps
+        any leaf meaningful; totals never exceed run_budget unless the
+        floors alone demand more."""
+        out: dict[str, int] = {}
+        if self.run_budget <= 0 or not self.leaves():
+            return out
+
+        def share(budget: int, nid: str) -> None:
+            kids = self.children(nid)
+            if not kids:
+                out[nid] = budget
+                return
+            weights = [max(0.1, k.priority) for k in kids]
+            total_w = sum(weights)
+            alloc = []
+            for k, w in zip(kids, weights):
+                floor = 0 if self.children(k.id) else 2
+                alloc.append(max(floor, int(budget * w / total_w)))
+            # trim to the parent's slice, largest first, honoring floors
+            while sum(alloc) > budget:
+                idx = max(range(len(kids)),
+                          key=lambda i: alloc[i]
+                          - (0 if self.children(kids[i].id) else 2))
+                floor = 0 if self.children(kids[idx].id) else 2
+                if alloc[idx] <= floor:
+                    break
+                alloc[idx] -= 1
+            for k, a in zip(kids, alloc):
+                share(a, k.id)
+
+        share(self.run_budget, self.root.id)
+        return out
+
+    def subtree_leaves(self, nid: str) -> list[ProblemNode]:
+        """Leaves beneath a node (the node itself if it is a leaf)."""
+        kids = self.children(nid)
+        if not kids:
+            return [self.nodes[nid]]
+        out: list[ProblemNode] = []
+        for k in kids:
+            out.extend(self.subtree_leaves(k.id))
+        return out
 
     # ------------------------------------------------------------ roll-up
 
@@ -249,14 +279,19 @@ def default_hypotheses(tree: "ProblemTree", candidates: list[str]) -> dict[str, 
     phrased against that leaf's own gate."""
     out: dict[str, list] = {}
     for leaf in tree.leaves():
+        # per-leaf prefix: SOL-1 / PKA-1 ... so each sub-problem's
+        # hypotheses are distinct records, not clones of each other
+        tag = "".join(w[0] for w in leaf.objective.split()[:3]).upper()
         specs = []
-        for c in candidates:
+        for i, c in enumerate(candidates, 1):
+            cid = f"{tag}-{i}"
             pred = (f"{leaf.metric} "
                     f"{'<=' if leaf.direction == 'min' else '>='} "
                     f"{leaf.gate:g}" if leaf.gate is not None else "meets bar")
             specs.append({
-                "statement": f"{c} — {leaf.objective} ({pred})",
-                "candidate": c, "assay_type": "binding",
+                "statement": f"{cid} ({c}) — {leaf.objective} ({pred})",
+                "candidate": cid, "assay_type": "binding",
+                "metadata": {"source_candidate": c},
                 "predicted": pred,
                 "predicted_value": leaf.gate,
                 "family": leaf.id,
@@ -329,8 +364,32 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
             budget=budget)
         say(f"leaf {leaf.id}: '{leaf.objective[:50]}' — "
             f"{budget.max_total_runs} runs allocated")
-        report = run_campaign(cfg, lab_factory(), store, notify=say)
+        # per-leaf log: the leaf's Trace log is its own campaign diary
+        from bionexus.paths import CAMPAIGN_DIR
+        leaf_log = CAMPAIGN_DIR / f"{tree.root.id}-{leaf.id}.log"
+        leaf_log.write_text("")
+        def _tee(msg, _f=leaf_log):
+            with open(_f, "a") as fh:
+                fh.write(str(msg) + "\n")
+            say(msg)
+        report = run_campaign(cfg, lab_factory(), store, notify=_tee)
         tree.set_leaf_status(leaf.id, report.verdicts)
+        # the leaf surfaces in the workbench Experiments list like any
+        # other agent run (one registry, tagged by origin)
+        try:
+            from bionexus.wizard_store import WizardStore
+            _ws = WizardStore()
+            _eid = f"tree-{tree.root.id}-{leaf.id}"
+            _root_name = tree.root.objective.split(":")[0].strip()[:40]
+            _ws.register_agent(
+                _eid, f"{leaf.objective} · sub-problem of {_root_name}",
+                log=str(leaf_log), autonomy=autonomy,
+                status="completed" if leaf.status == "achieved"
+                else ("failed" if leaf.status == "failed"
+                      else "verdict_recorded"))
+            _ws.link_problem(_eid, problem.problem_id)
+        except Exception:
+            pass
         store.append(record_for(
             Envelope(experiment_branch_id=leaf.branch(tree.root.id),
                      parent_branch_id=root_branch),

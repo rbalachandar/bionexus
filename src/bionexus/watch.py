@@ -127,13 +127,31 @@ class AutoAnalysisAgent:
             self.notify(f"reading instrument output {event.path.name} "
                         "(device finished the measurement)")
             result = read_plate(event.path, max_response=self.max_response)
+            from bionexus.physfail import classify as _fm
+            _phys = _fm([r["value"] for r in result.records])
+            if _phys["kind"] == "physical":
+                self.notify(f"⚠ PHYSICAL failure mode "
+                            f"({event.path.name}): {_phys['evidence']} — "
+                            f"{_phys['action']}; no verdicts derived")
+                self._record_failure_mode(event, _phys)
+                return {"failure_mode": _phys, "file": event.path.name}
         except Exception as exc:
-            # a broken instrument file is a DATA problem, never a crash:
-            # report honestly, leave hypotheses untouched, keep running
+            # classify BEFORE the retry reflex: physical failures must not be
+            # treated as software hiccups (the foam/retry trap)
+            from bionexus.physfail import classify as _fm
+            verdict = _fm([], error=str(exc))
+            if verdict["kind"] == "physical":
+                self.notify(f"⚠ PHYSICAL failure mode "
+                            f"({event.path.name}): {verdict['evidence']} — "
+                            f"{verdict['action']}")
+                self._record_failure_mode(event, verdict)
+                return {"error": str(exc)[:200], "file": event.path.name,
+                        "failure_mode": verdict}
             self.notify(f"⚠ instrument output unreadable ({event.path.name}): "
                         f"{str(exc)[:120]} — flagged for review, no verdicts "
                         f"changed")
-            return {"error": str(exc)[:200], "file": event.path.name}
+            return {"error": str(exc)[:200], "file": event.path.name,
+                    "failure_mode": verdict}
         self.notify(f"analyzed: {len(result.analysis['compounds'])} compound(s), "
                     f"Z'={result.z_prime}")
 
@@ -191,6 +209,21 @@ class AutoAnalysisAgent:
 
     _TERMINAL = ("validated", "confirmed", "invalidated", "refuted",
                  "inconclusive")
+
+    def _record_failure_mode(self, event, verdict: dict) -> None:
+        if self.store is None:
+            return
+        try:
+            from bionexus.core.contracts import Envelope, EventType
+            from bionexus.core.interfaces import record_for, system_actor
+            self.store.append(record_for(
+                Envelope(experiment_branch_id=self.branch_id),
+                EventType.gate_decision, system_actor("harness"),
+                decision={"kind": "failure-mode",
+                          "file": getattr(event.path, "name", "?"),
+                          **verdict}))
+        except Exception:
+            pass
 
     def _instrument(self) -> tuple[str | None, str | None]:
         lab = getattr(self.gateway, "lab", None) or \

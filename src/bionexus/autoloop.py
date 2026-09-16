@@ -110,6 +110,8 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
 
     tracker = HypothesisTracker(store, actor, on_verdict=_on_verdict)
     safety = SafetyEngine()
+    from bionexus.governance import AuthorizationMatrix, HaltSwitch
+    gov = {"matrix": AuthorizationMatrix(), "halt": HaltSwitch()}
     say = notify or (lambda m: print(f"[campaign] {m}"))
 
     if cfg.autonomy == "gate":
@@ -118,11 +120,12 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         branch_hint = f"[problem/{cfg.problem.problem_id or 'pending'}]"
         gateway = _GatedGateway(
             lab, safety, store, actor,
-            lambda t: approver(f"{t} {branch_hint}"), say)
+            lambda t: approver(f"{t} {branch_hint}"), say, governance=gov)
     else:
         from bionexus.advisory import AdvisoryReviewer
         gateway = LabGateway(lab, safety, store, actor,
-                             advisory=AdvisoryReviewer())
+                             advisory=AdvisoryReviewer(), governance=gov,
+                             approver=approver)
 
     # 0. problem + portfolio + filter
     from bionexus.adapters.bio.tox_alerts import durc_screen
@@ -392,8 +395,13 @@ class _GatedGateway:
     (autonomy='gate'). Rejection by the human is final; SafetyEngine still runs."""
 
     def __init__(self, lab: Any, safety: SafetyEngine, store: ProvenanceStore,
-                 actor: Any, approver: Callable[[str], bool], say: Callable[[str], None]):
-        self._gw = LabGateway(lab, safety, store, actor)
+                 actor: Any, approver: Callable[[str], bool], say: Callable[[str], None],
+                 governance: Any = None):
+        # operator already approved at THIS layer; inner human-column checks
+        # are satisfied; never-column and halts still bind below
+        self._gw = LabGateway(lab, safety, store, actor,
+                              governance=governance,
+                              approver=(lambda t: True) if governance else None)
         self._approver = approver
         self._say = say
 

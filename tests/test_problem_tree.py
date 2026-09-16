@@ -79,3 +79,34 @@ def test_run_tree_respects_budget(tmp_path):
     assert t.rollup()[t.root.id] in ("achieved", "partial", "failed")
     assert any((r.decision or {}).get("kind") == "tree-rollup"
                for r in store.branch_records(f"problem/{t.root.id}"))
+
+
+def test_hierarchical_allocation_protects_branch_shares():
+    """A deep subtree cannot soak a flat sibling's budget: potency's slice
+    is split among ITS children only, out of the root's sight."""
+    t = _tree(run_budget=12)
+    pot = t.add(t.root.id, objective="potency", priority=1.0)
+    t.add(pot.id, objective="PKA binding", priority=1.0)
+    t.add(pot.id, objective="off-target", priority=1.0)
+    sel = t.add(t.root.id, objective="selectivity", priority=1.0)
+    alloc = t.allocation()
+    assert sum(alloc.values()) <= 12
+    leaves = t.leaves()
+    assert all(alloc[l.id] >= 2 for l in leaves)
+    # potency's two children together get ~half the budget, same as
+    # selectivity — the root split is by priority among ITS children
+    pot_total = sum(alloc[l.id] for l in t.subtree_leaves(pot.id))
+    sel_total = alloc[sel.id]
+    assert abs(pot_total - sel_total) <= 2      # equal priorities, ~equal split
+    # intermediate nodes never appear in the allocation
+    assert pot.id not in alloc and t.root.id not in alloc
+
+
+def test_subtree_leaves_nesting():
+    t = _tree()
+    pot = t.add(t.root.id, objective="potency")
+    a = t.add(pot.id, objective="PKA")
+    b = t.add(pot.id, objective="off-target")
+    c = t.add(t.root.id, objective="solubility")
+    assert {n.id for n in t.subtree_leaves(pot.id)} == {a.id, b.id}
+    assert {n.id for n in t.subtree_leaves(t.root.id)} == {a.id, b.id, c.id}
