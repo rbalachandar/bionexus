@@ -831,13 +831,7 @@ def experiment_view() -> None:
         n_hyp = len({((r.artifact.metadata if r.artifact else {}) or {})
                      .get("candidate") for r in recs
                      if r.event_type.value == "hypothesis_proposed"} - {None})
-        n_dec = sum(1 for r in recs if r.event_type.value in
-                    ("hypothesis_validated", "hypothesis_invalidated"))
         n_runs = sum(1 for r in recs if r.event_type.value == "lab_run")
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Hypotheses", n_hyp)
-        m2.metric("Decided", n_dec)
-        m3.metric("Lab runs", n_runs)
         st.caption(f"{program_cfg.gate_summary()} ▸ problem "
                    f"`{problem_id or '—'}` ▸ {n_hyp} hypotheses ▸ experiment "
                    f"`{row['id']}`")

@@ -140,7 +140,7 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                       if v.get("candidate")}
     if proposed:
         st.markdown(f"{ui.icon('hypothesis', 16, 'teal')} "
-                    "**Hypothesis pipeline**", unsafe_allow_html=True)
+                    "### Hypothesis pipeline", unsafe_allow_html=True)
         for hid, hp in proposed.items():
             sel = filtered.get(hid)
             cand = str(hp.get("candidate", hid))
@@ -634,14 +634,23 @@ def render_dmta(recs, logf) -> None:
                  else "resolved"), "Analyze",
          f"{n_verdicts} verdict(s)"),
     ]
-    cols = st.columns(4)
-    for col, (icon, name, line) in zip(cols, cells):
-        with col:
-            st.markdown(f"{icon} <b>{name}</b><br>"
-                        f"{ui.small(line)}",
-                        unsafe_allow_html=True)
-            st.caption(decided_verbs if name == "Analyze"
-                       and n_verdicts else "")
+    accent = {"Design": "teal", "Make": "ink", "Test": "teal",
+              "Analyze": "confirmed" if outcomes["confirmed"]
+              else "resolved"}
+    chips = []
+    for icon, name, line in cells:
+        c = ui.COLORS[accent[name]]
+        chips.append(
+            f'<span style="display:inline-block;border:1px solid '
+            f'{ui.COLORS["provenance"]};border-left:3px solid {c};'
+            f'border-radius:6px;background:{ui.COLORS["card"]};'
+            f'padding:6px 14px;margin-right:10px">'
+            f'{icon} <b>{name}</b><br>'
+            f'<span style="color:{ui.COLORS["provenance"]}">{line}'
+            f"</span></span>")
+    st.markdown("".join(chips), unsafe_allow_html=True)
+    if n_verdicts:
+        st.caption(decided_verbs)
     if rounds:
         loop = " \u2192 ".join(f"round {n}: {p} tested"
                                 for n, p in rounds)

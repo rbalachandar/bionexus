@@ -79,7 +79,7 @@ def render_make(recs) -> None:
                 and (r.decision or {}).get("column") != "autonomous"]
     if not runs and not refusals:
         return
-    st.markdown("Make — what the gate allowed")
+    st.markdown("### Make — what the gate allowed")
     if runs:
         st.dataframe([
             {"submission": ((r.decision or {}).get("title") or "—")[:48],
@@ -97,7 +97,7 @@ def render_make(recs) -> None:
 
     # Test: the lab's side — device, time, raw evidence
     if runs:
-        st.markdown("Test — the lab executes")
+        st.markdown("### Test — the lab executes")
         import time as _t
         rows = []
         for r in runs:
@@ -181,11 +181,8 @@ def render_trust(recs, log_lines=()) -> None:
                 last[cand] = d
     abstained = sum(1 for d in last.values()
                     if d.get("verdict") in ("inconclusive", "proposed"))
-    rules = "—"
-    for l in refusals:
-        if "safety-rules-" in l:
-            rules = l.split("[rules ")[1].split("]")[0]
-            break
+    from bionexus.adapters.bio.tox_alerts import RULES_VERSION
+    rules = RULES_VERSION
     st.markdown("### Trust checks")
     checks = []
     if cstates:
@@ -278,7 +275,7 @@ def render_evidence(recs) -> None:
 
 
 def render(recs, log_lines=()) -> None:
-    st.markdown("### The record of this run")
+    st.markdown("## The record of this run")
     # hypotheses-as-proposed is NOT repeated here: the Hypothesis pipeline
     # cards above already carry candidate/mechanism/refutation/citation
     render_portfolio(recs)
