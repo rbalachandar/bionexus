@@ -62,6 +62,9 @@ def _pipeline_body(logf: Path, problem_id: str | None,
         except Exception:
             recs = []
 
+    render_dmta(recs, logf)
+    st.markdown("")
+
     proposed: dict[str, dict] = {}
     filtered: dict[str, dict] = {}
     run_map: dict[str, list[str]] = {}   # hypothesis_id -> run ids (provenance)
@@ -566,6 +569,87 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     if picked is not None and idx2eid.get(picked):
         st.session_state["view_experiment"] = idx2eid[picked]
         st.switch_page(PAGES_EXP)
+
+def render_dmta(recs, logf) -> None:
+    """The DMTA loop as structure, not decoration: each phase is counted
+    from provenance events, the active phase is marked, and multi-round
+    campaigns show one loop per round (docs/UX.md: honest, generic)."""
+    from bionexus import ui
+    n_proposed = n_filtered = n_decided = 0
+    n_made = n_refused = n_runs = n_verdicts = 0
+    outcomes = {"validated": 0, "confirmed": 0, "inconclusive": 0,
+                "refuted": 0, "invalidated": 0}
+    for r in recs:
+        d = r.decision or {}
+        et = r.event_type.value
+        if et == "hypothesis_proposed":
+            n_proposed += 1
+        elif et == "hypotheses_filtered":
+            n_filtered += sum(1 for x in d.get("decisions", [])
+                              if x.get("selected"))
+        elif et == "hypothesis_tested":
+            n_runs += 1
+        elif et == "lab_run" and d.get("run_id"):
+            n_made += 1
+        elif et == "gate_decision":
+            k = d.get("kind")
+            if k in ("halt_refusal", "safety_refusal", "authorization") \
+                    and d.get("column") != "autonomous":
+                n_refused += 1
+        elif et in ("hypothesis_validated", "hypothesis_invalidated"):
+            n_decided += 1
+            v = d.get("verdict")
+            if v in outcomes:
+                outcomes[v] += 1
+                n_verdicts += 1
+        elif et == "hypothesis_tested" and d.get("verdict"):
+            v = d["verdict"]
+            if v in outcomes:
+                outcomes[v] += 1
+                n_verdicts += 1
+    decided_verbs = (f"{outcomes['validated']} validated \u00b7 "
+                     f"{outcomes['confirmed']} confirmed \u00b7 "
+                     f"{outcomes['inconclusive']} inconclusive \u00b7 "
+                     f"{outcomes['refuted'] + outcomes['invalidated']} "
+                     "refuted")
+
+    # rounds: from the campaign diary, when a log exists
+    rounds = []
+    if logf.is_file():
+        import re as _re
+        for m in _re.finditer(r"round (\d+): testing \[([^\]]*)\]",
+                              logf.read_text(errors="replace")):
+            picks = [p for p in m.group(2).split(",") if p]
+            rounds.append((int(m.group(1)), len(picks)))
+
+    cells = [
+        (ui.icon("hypothesis", 15, "teal"), "Design",
+         f"{n_proposed} proposed \u00b7 {n_filtered} selected"),
+        (ui.icon("gate-open", 15, "ink"), "Make",
+         f"{n_made} submitted" + (f" \u00b7 {n_refused} refused"
+                                   if n_refused else "")),
+        (ui.icon("instrument", 15, "progress"), "Test",
+         f"{n_runs} run(s) analyzed"),
+        (ui.icon("verdict", 15, "confirmed" if outcomes["confirmed"]
+                 else "resolved"), "Analyze",
+         f"{n_verdicts} verdict(s)"),
+    ]
+    cols = st.columns(4)
+    for col, (icon, name, line) in zip(cols, cells):
+        with col:
+            st.markdown(f"{icon} <b>{name}</b><br>"
+                        f"{ui.small(line)}",
+                        unsafe_allow_html=True)
+            st.caption(decided_verbs if name == "Analyze"
+                       and n_verdicts else "")
+    if rounds:
+        loop = " \u2192 ".join(f"round {n}: {p} tested"
+                                for n, p in rounds)
+        st.caption(f"{ui.icon('history', 12, 'provenance')} DMTA loops: "
+                   + loop + (" \u2192 next round" if len(rounds) > 1
+                             else ""),
+                   unsafe_allow_html=True)
+
 
 def lineage_caption(problem_id: str | None) -> str:
     """Breadcrumb for a tree leaf: root \u25b8 ... \u25b8 this node, plus
