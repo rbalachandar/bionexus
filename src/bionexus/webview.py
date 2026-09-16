@@ -634,18 +634,18 @@ def render_dmta(recs, logf) -> None:
     accent = {"Design": "teal", "Make": "ink", "Test": "teal",
               "Analyze": "confirmed" if outcomes["confirmed"]
               else "resolved"}
-    chips = []
-    for icon, name, line in cells:
+    cols = st.columns(4)
+    for col, (icon, name, line) in zip(cols, cells):
         c = ui.COLORS[accent[name]]
-        chips.append(
-            f'<span style="display:inline-block;border:1px solid '
-            f'{ui.COLORS["provenance"]};border-left:3px solid {c};'
-            f'border-radius:6px;background:{ui.COLORS["card"]};'
-            f'padding:6px 14px;margin-right:10px">'
+        col.markdown(
+            f'<div style="border:1px solid {ui.COLORS["provenance"]};'
+            f'border-left:3px solid {c};border-radius:6px;'
+            f'background:{ui.COLORS["card"]};padding:8px 14px;'
+            f'width:100%;box-sizing:border-box">'
             f'{icon} <b>{name}</b><br>'
             f'<span style="color:{ui.COLORS["provenance"]}">{line}'
-            f"</span></span>")
-    st.markdown("".join(chips), unsafe_allow_html=True)
+            f"</span></div>",
+            unsafe_allow_html=True)
     if n_verdicts:
         st.caption(decided_verbs)
     if rounds:

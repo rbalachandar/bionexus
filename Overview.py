@@ -813,14 +813,15 @@ def experiment_view() -> None:
         problem_id = _resolve_problem(ag, logf)
         if problem_id and problem_id != ag.get("problem_id"):
             store.link_problem(row["id"], problem_id)
-        st.title(f"{row['question'][:70]}")
-        st.caption(f"experiment `{row['id']}`")
+        t1, t2 = st.columns([5, 1.2])
+        t1.title(f"{row['question'][:70]}")
+        t2.markdown(chip_html(status), unsafe_allow_html=True)
+        t2.caption(f"updated {ago(row['updated_at'])}")
+        st.caption(f"ID: `{row['id']}` · agent · "
+                   f"autonomy: {ag.get('autonomy', 'act')}")
         _crumb = _wv.lineage_caption(ag.get("problem_id"))
         if _crumb:
             st.caption(_crumb)
-        st.markdown(chip_html(status), unsafe_allow_html=True)
-        st.caption(f"agent-driven · autonomy: {ag.get('autonomy', 'act')} · "
-                   f"updated {ago(row['updated_at'])}")
         if status == "running":
             st.info("In progress — this view refreshes as the agent works.")
 
@@ -839,9 +840,8 @@ def experiment_view() -> None:
                 for c in pdef.get("constraints", [])) or "—"
             st.markdown(f"#### Objective: {pdef.get('objective', '—')}")
             st.caption(f"constraints: {cons} · success: "
-                       f"{pdef.get('success_metric', '—')} · branch "
-                       f"`problem/{problem_id}` · {len(recs)} hash-chained "
-                       f"records")
+                       f"{pdef.get('success_metric', '—')} · "
+                       f"{len(recs)} hash-chained records")
         lr = next((r.decision or {} for r in recs
                    if r.event_type.value == "lab_run"), None)
         if lr:
@@ -874,10 +874,13 @@ def experiment_view() -> None:
                 st.caption("(no log written yet)")
     else:
         p = row["payload"]
-        st.title(f"{row['question'][:70]}")
-        chip(row["status"].replace("_", " "))
-        st.caption(f"{program_cfg.gate_summary()} ▸ wizard "
-                   f"`{row['id']}` · updated {ago(row['updated_at'])}")
+        t1, t2 = st.columns([5, 1.2])
+        t1.title(f"{row['question'][:70]}")
+        t2.markdown(chip(row["status"].replace("_", " ")),
+                    unsafe_allow_html=True)
+        t2.caption(f"updated {ago(row['updated_at'])}")
+        st.caption(f"ID: `{row['id']}` · wizard · "
+                   f"{program_cfg.gate_summary()}")
         exp_d = p.get("exp_def")
         if exp_d:
             exp = (exp_d if isinstance(exp_d, ExperimentDefinition)
