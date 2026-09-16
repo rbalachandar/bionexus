@@ -345,8 +345,21 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
                             f"{'<=' if leaf.direction == 'min' else '>='} "
                             f"{leaf.gate:g}",
                 kind="hard", limit=leaf.gate)]
+        # the leaf's registered objective must say more than its own
+        # name: state the purpose within the tree (parent context, gate,
+        # metric) so the experiment page's Objective line carries
+        # information instead of echoing the title
+        gate_txt = (f"{leaf.metric} "
+                    f"{'<=' if leaf.direction == 'min' else '>='} "
+                    f"{leaf.gate:g}" if leaf.metric and
+                    leaf.gate is not None else "its registered gate")
+        if leaf.parent and leaf.parent != tree.root.id:
+            parent = (f"a {tree.nodes[leaf.parent].objective} sub-problem")
+        else:
+            parent = "a direct sub-problem"
         problem = ProblemStatement(
-            objective=leaf.objective,
+            objective=(f"{leaf.objective} — {parent} of "
+                       f"'{tree.root.objective}': show {gate_txt}"),
             problem_id=f"{tree.root.id}-{leaf.id}",
             constraints=cons,
             success_metric=f"{leaf.metric or 'objective'} gate met")
