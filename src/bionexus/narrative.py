@@ -66,6 +66,40 @@ def render_gates(recs, log_lines=()) -> None:
             (d.decision or {}).get("agents", [])), icon=":material/block:")
 
 
+def render_make(recs) -> None:
+    """Make: what actually crossed the gate into the lab — the submitted
+    protocols and their runs. Design and Analyze without Make hides the
+    physical action the whole framework exists to govern."""
+    runs = [r for r in recs if r.event_type.value == "lab_run"
+            and (r.decision or {}).get("run_id")]
+    refusals = [r for r in recs if r.event_type.value == "gate_decision"
+                and (r.decision or {}).get("kind") in
+                ("safety_refusal", "halt_refusal", "authorization",
+                 "durc_refusal", "operator_declined")
+                and (r.decision or {}).get("column") != "autonomous"]
+    if not runs and not refusals:
+        return
+    st.markdown("Make — through the gate, into the lab")
+    if runs:
+        st.dataframe([
+            {"run": (r.decision or {}).get("run_id", "?"),
+             "protocol": ((r.decision or {}).get("title") or "—")[:48],
+             "assay": (r.decision or {}).get("assay", "—"),
+             "samples": (r.decision or {}).get("n_samples", "—"),
+             "doses (µM)": ", ".join(
+                 str(c) for c in
+                 (r.decision or {}).get("concentrations") or []) or "—",
+             "replicates": (r.decision or {}).get("replicates", "—"),
+             "controls": (r.decision or {}).get("n_controls", "—")}
+            for r in runs], hide_index=True)
+        st.caption("Every submission passed the SafetyEngine and the "
+                   "governance gate before the lab saw it. The lab "
+                   "produced the raw evidence analyzed below.")
+    if refusals:
+        st.caption(f"{len(refusals)} further submission(s) were refused "
+                   "at the gate — see Hypotheses at the gates above.")
+
+
 def render_verdicts(recs) -> None:
     last: dict[str, dict] = {}
     for r in recs:
@@ -204,5 +238,6 @@ def render(recs, log_lines=()) -> None:
     # cards above already carry candidate/mechanism/refutation/citation
     render_portfolio(recs)
     render_gates(recs, log_lines)
+    render_make(recs)
     render_verdicts(recs)
     render_trust(recs, log_lines)
