@@ -111,9 +111,21 @@ def render_make(recs) -> None:
                    "governance gate — the lab executes these in the "
                    "Test section below.")
 
-    # Test: the lab's side — device, time, raw evidence
+    # Test: the lab's side — what the protocol asks for, device, evidence
     if runs:
         st.markdown("### Test — the lab executes")
+        d0 = runs[0].decision or {}
+        conc = ", ".join(str(c) for c in d0.get("concentrations") or [])
+        st.caption(
+            f"the protocol asks: dispense {d0.get('n_samples', '?')} "
+            f"sample well(s) at {d0.get('replicates', '?')} replicates per "
+            f"concentration ({conc} µM) plus "
+            f"{d0.get('n_controls', '?')} controls, incubate, then read "
+            f"on {d0.get('instrument', 'the reader')}"
+            + (f" ({d0.get('instrument_version')})"
+               if d0.get("instrument_version") else "")
+            + ". Each run's raw instrument export is recorded below and "
+              "re-rendered as evidence.")
         import time as _t
         rows = []
         for r in runs:
