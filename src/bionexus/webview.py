@@ -556,23 +556,31 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
             tooltip=root_name, children=root_children,
             disabled=root_gone))
 
-    # standalone experiments (wizard/manual, single agent runs) appear
-    # as their own top-level nodes: the workspace shows auto AND manual
+    # standalone experiments (wizard/manual, single agent runs) group
+    # under one collapsible node — the workspace shows auto AND manual
+    # without a flat dump at the top level
     tree_leaf_pids = {f"{t.root.id}-{lf.id}"
                       for t, _a, _l, _r, _rr in trees
                       for lf in t.leaves()}
-    for e in (all_rows or []):
-        ag = e["payload"].get("agent") or {}
-        pid = ag.get("problem_id")
-        if pid in tree_leaf_pids:
-            continue
-        label = e["question"][:60] or e["id"]
-        status = _row_status(e)
-        i = reserve()
-        idx2eid[i] = e["id"]
+    standalone = [e for e in (all_rows or [])
+                  if (e["payload"].get("agent") or {}).get("problem_id")
+                  not in tree_leaf_pids]
+    if standalone:
+        gi = reserve()
+        kids = []
+        for e in standalone:
+            ag = e["payload"].get("agent") or {}
+            status = _row_status(e)
+            i = reserve()
+            idx2eid[i] = e["id"]
+            kids.append(sac.TreeItem(
+                e["question"][:60] or e["id"],
+                icon="smart_toy" if ag else "person",
+                description=status, tooltip=e["id"]))
         items.append(sac.TreeItem(
-            label, icon="smart_toy" if ag else "person",
-            description=status, tooltip=label))
+            f"Standalone experiments ({len(standalone)})", icon="group",
+            description=f"{len(standalone)} experiment(s)",
+            children=kids))
 
     if not items:
         st.info("No problem trees yet — create one with "
