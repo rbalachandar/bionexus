@@ -125,3 +125,32 @@ def test_synthesis_deterministic_and_gated():
     assert 0 < len(fails) < 50                   # real, but not universal
     again = s.synthesize(f"F-{fails[0]}", "CC(=O)Oc1ccccc1C")
     assert again["ok"] is False                  # failures are deterministic
+
+
+def test_k_schedule_per_round():
+    """k may be a per-round schedule: screen wide, then narrow."""
+    import sys
+    from bionexus.autoloop import run_campaign, CampaignConfig
+    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+
+    problem = ProblemStatement(objective="schedule check", constraints=[
+        Constraint(name="potency", description="d", kind="hard", limit=60.0,
+                   unit="uM")])
+    cfg = CampaignConfig(problem=problem, hypotheses=[
+        {"statement": f"{c} binds", "candidate": c, "assay_type": "binding",
+         "predicted": "<= 60", "predicted_value": 60.0, "rationale": "t"}
+        for c in ("K-1", "K-2", "K-3")],
+        k=2, k_schedule=(2, 1), rounds=3, autonomy="act",
+        inbox=".data/inbox-sched", poll_secs=0.05)
+    store = SqliteProvenanceStore(":memory:")
+    rep = run_campaign(cfg, SimulatorLab(seed=5), store)
+    # round boundaries recorded per round; round 1 tested 2, later 1
+    rounds = [(r.decision or {}).get("candidates") for r in
+              store.branch_records(f"problem/{rep.problem_id}")
+              if r.event_type.value == "stage_transition"
+              and (r.decision or {}).get("kind") == "round_start"]
+    assert rounds and len(rounds[0]) == 2
+    if len(rounds) > 1:
+        assert len(rounds[1]) == 1

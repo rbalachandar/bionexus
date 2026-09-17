@@ -224,11 +224,15 @@ def _campaign_from_doc(cfg_doc: dict) -> "CampaignConfig":
         context=cfg_doc["problem"].get("context", ""),
         constraints=[Constraint(**c) for c in cfg_doc["problem"].get("constraints", [])],
         success_metric=cfg_doc["problem"].get("success_metric"))
+    k_cfg = cfg_doc.get("k", 2)
+    k_schedule = tuple(k_cfg) if isinstance(k_cfg, (list, tuple)) else ()
     return CampaignConfig(
         problem=problem, hypotheses=cfg_doc.get("hypotheses") or None,
         hypothesis_source=cfg_doc.get("hypothesis_source", "config"),
         model=cfg_doc.get("_model"),
-        k=cfg_doc.get("k", 2), autonomy=cfg_doc.get("autonomy", "act"),
+        k=(k_cfg[0] if isinstance(k_cfg, (list, tuple)) else k_cfg),
+        k_schedule=k_schedule,
+        autonomy=cfg_doc.get("autonomy", "act"),
         rounds=cfg_doc.get("rounds", 1),
         inbox=cfg_doc.get("inbox", ".data/inbox"),
         concentrations=tuple(cfg_doc.get("concentrations",

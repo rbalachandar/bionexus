@@ -260,6 +260,10 @@ bn connect scan /path/to/reader_share
 | `gate` | proposes everything; each lab submission waits for your Approve click in the workbench |
 | `act` | autonomous within the SafetyEngine, including confirmation assays |
 
+Round breadth is schedulable: `"k": [4, 2, 1]` screens wide in round 1,
+then narrows as the flywheel discounts failed families (`"k": 2` keeps it
+constant). The run budget still caps the total either way.
+
 Verdicts are uncertainty-aware: a fitted IC50 whose 95% CI straddles the
 threshold comes back `inconclusive`, never a coin-flip called validated. An
 orthogonal confirmation verifies the *direction* of the preliminary verdict —

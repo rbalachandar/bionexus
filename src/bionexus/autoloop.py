@@ -64,6 +64,9 @@ class CampaignConfig:
     max_variants_per_family: int = 3
     score_fn: Callable[[Any], float] | None = None   # portfolio filter scoring
     k: int = 2                                # hypotheses taken to wet-lab
+    k_schedule: tuple[int, ...] = ()          # per-round k, e.g. (4, 2, 1):
+                                              # screen wide, then narrow.
+                                              # falls back to k per round
     budget: ResourceBudget | None = None      # None = uncapped ( discouraged)
     concentrations: tuple[str, ...] = ("0.5uM", "2uM", "10uM", "40uM")
     dose_design: str = "fixed"          # "fixed" | "adaptive" (Bayesian
@@ -246,8 +249,12 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         if cfg.policy is not None and round_no > 1:
             selected = _policy_select(cfg, remaining, tracker, say)
         else:
+            k_round = (cfg.k_schedule[min(round_no - 1,
+                                          len(cfg.k_schedule) - 1)]
+                       if cfg.k_schedule else cfg.k)
             selected = tracker.select_portfolio(problem, remaining, score_fn,
-                                                k=cfg.k, max_per_family=1)
+                                                k=k_round,
+                                                max_per_family=1)
         remaining = [h for h in remaining if h not in selected]
         if not selected:
             say(f"round {round_no}: nothing selected — stopping")
