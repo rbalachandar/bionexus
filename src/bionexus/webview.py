@@ -239,10 +239,13 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                         "gate: " + criteria_label(crit.get("metric"),
                                                   crit.get("direction"),
                                                   crit["threshold"]))
+                _tested_round = cand2round.get(str(hp.get("candidate", hid)))
                 if cand2round:
-                    if cand2round.get(str(hp.get("candidate", hid))):
+                    if _tested_round:
                         meta_bits.append(
-                            f"round {cand2round[str(hp.get('candidate', hid))]}")
+                            f"tested in round {_tested_round}"
+                            + (" (carried from round 1)"
+                               if _tested_round > 1 else ""))
                     elif not verd:
                         meta_bits.append("not yet in a round")
                 if hp.get("rationale"):
@@ -752,7 +755,8 @@ def render_dmta(recs, logf) -> None:
             design = (f"{all_c['proposed']} proposed \u00b7 "
                       f"{all_c['selected']} selected"
                       if rnd == 1 else
-                      f"{len(cands)} carried from previous round")
+                      f"{len(cands)} carried from previous round: "
+                      + ", ".join(sorted(cand_set)))
             analyze = (f"{v_conf} confirmed \u00b7 {v_val} validated"
                        if v_conf or v_val else
                        (f"{v_incon} inconclusive" if v_incon else
