@@ -255,6 +255,14 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         say(f"round {round_no}: testing "
             f"{[h.candidate for h in selected]} "
             f"({len(remaining)} candidates remain)")
+        # round boundary in provenance: the DMTA strip groups events
+        # per round from these markers
+        store.append(record_for(
+            Envelope(experiment_branch_id=
+                     f"problem/{problem.problem_id or 'unnamed'}"),
+            EventType.stage_transition, actor,
+            decision={"kind": "round_start", "round": round_no,
+                      "candidates": [h.candidate for h in selected]}))
         if cfg.autonomy == "observe":
             say("observe-only: nothing submitted")
             return CampaignReport(problem_id=problem.problem_id,

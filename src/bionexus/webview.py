@@ -593,73 +593,61 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         st.session_state["view_experiment"] = idx2eid[picked]
         st.switch_page(PAGES_EXP)
 
-def render_dmta(recs, logf) -> None:
-    """The DMTA loop as structure, not decoration: each phase is counted
-    from provenance events, the active phase is marked, and multi-round
-    campaigns show one loop per round (docs/UX.md: honest, generic)."""
-    from bionexus import ui
-    n_proposed = n_filtered = n_decided = 0
-    n_made = n_refused = n_runs = n_verdicts = 0
-    outcomes = {"validated": 0, "confirmed": 0, "inconclusive": 0,
-                "refuted": 0, "invalidated": 0}
+def _dmta_counts(recs) -> dict:
+    """DMTA phase counts for a slice of provenance records."""
+    c = {"proposed": 0, "selected": 0, "submitted": 0, "refused": 0,
+         "runs": 0, "verdicts": 0,
+         "validated": 0, "confirmed": 0, "inconclusive": 0,
+         "refuted": 0}
     for r in recs:
         d = r.decision or {}
         et = r.event_type.value
         if et == "hypothesis_proposed":
-            n_proposed += 1
+            c["proposed"] += 1
         elif et == "hypotheses_filtered":
-            n_filtered += sum(1 for x in d.get("decisions", [])
-                              if x.get("selected"))
-        elif et == "hypothesis_tested":
-            n_runs += 1
+            c["selected"] += sum(1 for x in d.get("decisions", [])
+                                 if x.get("selected"))
         elif et == "lab_run" and d.get("run_id"):
-            n_made += 1
+            c["submitted"] += 1
+        elif et == "hypothesis_tested":
+            c["runs"] += 1
+            v = d.get("verdict")
+            if v in c:
+                c["verdicts"] += 1
+                c[v if v != "invalidated" else "refuted"] += 1
+        elif et in ("hypothesis_validated", "hypothesis_invalidated"):
+            v = d.get("verdict") or et.split("_")[1]
+            c["verdicts"] += 1
+            c[v if v != "invalidated" else "refuted"] += 1
         elif et == "gate_decision":
             k = d.get("kind")
-            if k in ("halt_refusal", "safety_refusal", "authorization") \
+            if k in ("halt_refusal", "safety_refusal", "authorization",
+                     "synthesis_failed") \
                     and d.get("column") != "autonomous":
-                n_refused += 1
-        elif et in ("hypothesis_validated", "hypothesis_invalidated"):
-            n_decided += 1
-            v = d.get("verdict")
-            if v in outcomes:
-                outcomes[v] += 1
-                n_verdicts += 1
-        elif et == "hypothesis_tested" and d.get("verdict"):
-            v = d["verdict"]
-            if v in outcomes:
-                outcomes[v] += 1
-                n_verdicts += 1
-    decided_verbs = (f"{outcomes['validated']} validated \u00b7 "
-                     f"{outcomes['confirmed']} confirmed \u00b7 "
-                     f"{outcomes['inconclusive']} inconclusive \u00b7 "
-                     f"{outcomes['refuted'] + outcomes['invalidated']} "
-                     "refuted")
+                c["refused"] += 1
+    return c
 
-    # rounds: from the campaign diary, when a log exists
-    rounds = []
-    if logf.is_file():
-        import re as _re
-        for m in _re.finditer(r"round (\d+): testing \[([^\]]*)\]",
-                              logf.read_text(errors="replace")):
-            picks = [p for p in m.group(2).split(",") if p]
-            rounds.append((int(m.group(1)), len(picks)))
 
+def _dmta_chip_row(counts: dict, label: str) -> None:
+    """One DMTA chip row (4 full-width cells) for a round or the total."""
+    from bionexus import ui
     cells = [
         (ui.icon("hypothesis", 15, "teal"), "Design",
-         f"{n_proposed} proposed \u00b7 {n_filtered} selected"),
+         f"{counts['proposed']} proposed \u00b7 {counts['selected']} "
+         "selected"),
         (ui.icon("gate-open", 15, "ink"), "Make",
-         f"{n_made} submitted" + (f" \u00b7 {n_refused} refused"
-                                   if n_refused else "")),
+         f"{counts['submitted']} submitted"
+         + (f" \u00b7 {counts['refused']} refused"
+            if counts["refused"] else "")),
         (ui.icon("instrument", 15, "progress"), "Test",
-         f"{n_runs} run(s) analyzed"),
-        (ui.icon("verdict", 15, "confirmed" if outcomes["confirmed"]
-                 else "resolved"), "Analyze",
-         f"{n_verdicts} verdict(s)"),
+         f"{counts['runs']} run(s) analyzed"),
+        (ui.icon("verdict", 15, "confirmed" if counts["confirmed"]
+                 else ("resolved" if counts["verdicts"] else "provenance")),
+         "Analyze", f"{counts['verdicts']} verdict(s)"),
     ]
     accent = {"Design": "teal", "Make": "ink", "Test": "teal",
-              "Analyze": "confirmed" if outcomes["confirmed"]
-              else "resolved"}
+              "Analyze": "confirmed" if counts["confirmed"]
+              else ("resolved" if counts["verdicts"] else "provenance")}
     cols = st.columns(4)
     for col, (icon, name, line) in zip(cols, cells):
         c = ui.COLORS[accent[name]]
@@ -668,18 +656,62 @@ def render_dmta(recs, logf) -> None:
             f'border-left:3px solid {c};border-radius:6px;'
             f'background:{ui.COLORS["card"]};padding:8px 14px;'
             f'width:100%;box-sizing:border-box">'
-            f'{icon} <b>{name}</b><br>'
+            f'{icon} <b>{label} \u00b7 {name}</b><br>'
             f'<span style="color:{ui.COLORS["provenance"]}">{line}'
             f"</span></div>",
             unsafe_allow_html=True)
-    if n_verdicts:
+
+
+def render_dmta(recs, logf) -> None:
+    """The DMTA loop as structure: a cumulative chip row, and — when the
+    campaign ran multiple rounds (round_start markers in provenance) —
+    one chip row per round (docs/UX.md)."""
+    from bionexus import ui
+
+    # round boundaries from provenance (fall back to log text for
+    # branches recorded before markers existed)
+    markers = [(getattr(getattr(r, "envelope", None), "created_at", 0) or 0,
+                int((r.decision or {}).get("round", 0)))
+               for r in recs
+               if r.event_type.value == "stage_transition"
+               and (r.decision or {}).get("kind") == "round_start"]
+    rounds = sorted(t for t, _n in markers if t)
+    logf_rounds = []
+    if not rounds and logf.is_file():
+        for m in re.finditer(r"round (\d+):", logf.read_text(
+                errors="replace")):
+            logf_rounds.append(int(m.group(1)))
+
+    _dmta_chip_row(_dmta_counts(recs), "All rounds"
+                   if len(rounds) > 1 else "DMTA")
+
+    if len(rounds) >= 2:
+        st.caption("")
+        bounds = rounds + [float("inf")]
+        for k in range(len(rounds)):
+            lo, hi = bounds[k], bounds[k + 1]
+            slice_recs = [r for r in recs
+                          if lo <= (getattr(getattr(r, "envelope", None),
+                                            "created_at", 0) or 0) < hi]
+            _dmta_chip_row(_dmta_counts(slice_recs), f"Round {k + 1}")
+    elif logf_rounds and len(logf_rounds) >= 2:
+        st.caption(f"{ui.small('DMTA loops: ')}{len(logf_rounds)} rounds "
+                   "recorded in the campaign diary (per-round event "
+                   "markers not available for this branch)")
+
+    decided_verbs = ""
+    all_c = _dmta_counts(recs)
+    if all_c["verdicts"]:
+        decided_verbs = (f"{all_c['validated']} validated \u00b7 "
+                         f"{all_c['confirmed']} confirmed \u00b7 "
+                         f"{all_c['inconclusive']} inconclusive \u00b7 "
+                         f"{all_c['refuted']} refuted")
+    if decided_verbs:
         st.caption(decided_verbs)
-    if rounds:
-        loop = " \u2192 ".join(f"round {n}: {p} tested"
-                                for n, p in rounds)
-        st.caption(f"{ui.icon('history', 12, 'provenance')} DMTA loops: "
-                   + loop + (" \u2192 next round" if len(rounds) > 1
-                             else ""),
+    if len(rounds) >= 2:
+        st.caption(f"{ui.icon('history', 12, 'provenance')} the Analyze "
+                   "of each round feeds the Design of the next \u2014 "
+                   "that loop closure is the DMTA cycle",
                    unsafe_allow_html=True)
 
 

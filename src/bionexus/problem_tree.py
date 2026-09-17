@@ -60,10 +60,12 @@ class ProblemTree(BaseModel):
     @classmethod
     def create(cls, objective: str, *, limits: TreeLimits | None = None,
                run_budget: int = 20, metric: str | None = None,
-               gate: float | None = None) -> "ProblemTree":
+               gate: float | None = None,
+               modality: str = "") -> "ProblemTree":
         root = ProblemNode(objective=objective, metric=metric, gate=gate)
         return cls(root=root, nodes={root.id: root},
-                   limits=limits or TreeLimits(), run_budget=run_budget)
+                   limits=limits or TreeLimits(), run_budget=run_budget,
+                   modality=modality)
 
     def depth_of(self, node_id: str) -> int:
         d, cur = 0, self.nodes[node_id]
@@ -372,11 +374,13 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
             max_total_runs=alloc.get(leaf.id, 2),
             max_hypotheses_total=tree.limits.max_hypotheses_per_leaf,
             max_confirmations=max(0, alloc.get(leaf.id, 2) - 1))
+        k_eff = min(tree.limits.k_per_leaf, alloc.get(leaf.id, 2))
         cfg = CampaignConfig(
             problem=problem,
             hypotheses=specs[: tree.limits.max_hypotheses_per_leaf],
             hypothesis_source="config", model=model, candidates=candidates,
-            k=min(tree.limits.k_per_leaf, alloc.get(leaf.id, 2)),
+            k=k_eff,
+            rounds=max(2, len(specs) // max(1, k_eff)),
             autonomy=autonomy,
             inbox=str(Path(inbox) / leaf.id), poll_secs=0.05,
             budget=budget)
