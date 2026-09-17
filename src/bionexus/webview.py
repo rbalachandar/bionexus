@@ -486,13 +486,19 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         return i
 
     for tree, alloc, leaf_stats, rollup, _rec in trees:
-        rstatus = rollup.get(tree.root.id, "open")
-        total = sum(alloc.get(l.id, 0) for l in tree.leaves())
         eid_by_pid = {}
         for e in (all_rows or []):
             p = (e["payload"].get("agent") or {}).get("problem_id")
             if p:
                 eid_by_pid[p] = e["id"]
+        # a fully-retired tree (every leaf archived) leaves the workspace;
+        # its experiments remain in the Archived section
+        if tree.leaves() and all(
+                f"{tree.root.id}-{lf.id}" not in eid_by_pid
+                for lf in tree.leaves()):
+            continue
+        rstatus = rollup.get(tree.root.id, "open")
+        total = sum(alloc.get(l.id, 0) for l in tree.leaves())
         root_name = tree.root.objective
 
         def chain(nid):
