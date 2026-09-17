@@ -600,11 +600,14 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         st.switch_page(PAGES_EXP)
 
 def _dmta_counts(recs) -> dict:
-    """DMTA phase counts for a slice of provenance records."""
+    """DMTA phase counts for a slice of provenance records. Test counts
+    unique lab_run submissions (one submission = one run = one analyzed
+    export); Analyze counts verdict-bearing decisions, deduplicated."""
     c = {"proposed": 0, "selected": 0, "submitted": 0, "refused": 0,
          "runs": 0, "verdicts": 0,
          "validated": 0, "confirmed": 0, "inconclusive": 0,
          "refuted": 0}
+    seen_verdicts = set()
     for r in recs:
         d = r.decision or {}
         et = r.event_type.value
@@ -615,32 +618,35 @@ def _dmta_counts(recs) -> dict:
                                  if x.get("selected"))
         elif et == "lab_run" and d.get("run_id"):
             c["submitted"] += 1
-        elif et == "hypothesis_tested":
-            c["runs"] += 1
-            v = d.get("verdict")
-            if v in c:
-                c["verdicts"] += 1
-                c[v if v != "invalidated" else "refuted"] += 1
-        elif et in ("hypothesis_validated", "hypothesis_invalidated"):
-            v = d.get("verdict") or et.split("_")[1]
-            c["verdicts"] += 1
-            c[v if v != "invalidated" else "refuted"] += 1
+            c["runs"] += 1          # one submission -> one analyzed export
         elif et == "gate_decision":
             k = d.get("kind")
             if k in ("halt_refusal", "safety_refusal", "authorization",
                      "synthesis_failed") \
                     and d.get("column") != "autonomous":
                 c["refused"] += 1
+        elif et in ("hypothesis_validated", "hypothesis_invalidated",
+                    "hypothesis_tested") and d.get("verdict"):
+            key = (r.record_id if hasattr(r, "record_id") else id(r))
+            if key in seen_verdicts:
+                continue
+            seen_verdicts.add(key)
+            v = d["verdict"]
+            c["verdicts"] += 1
+            c[v if v != "invalidated" else "refuted"] += 1
     return c
 
 
-def _dmta_chip_row(counts: dict, label: str) -> None:
-    """One DMTA chip row (4 full-width cells) for a round or the total."""
+def _dmta_chip_row(counts: dict, label: str,
+                   design_note: str = "") -> None:
+    """One DMTA chip row (4 full-width cells)."""
     from bionexus import ui
+    design_line = (f"{counts['proposed']} proposed \u00b7 "
+                   f"{counts['selected']} selected")
+    if design_note:
+        design_line = design_note
     cells = [
-        (ui.icon("hypothesis", 15, "teal"), "Design",
-         f"{counts['proposed']} proposed \u00b7 {counts['selected']} "
-         "selected"),
+        (ui.icon("hypothesis", 15, "teal"), "Design", design_line),
         (ui.icon("gate-open", 15, "ink"), "Make",
          f"{counts['submitted']} submitted"
          + (f" \u00b7 {counts['refused']} refused"
@@ -671,54 +677,84 @@ def _dmta_chip_row(counts: dict, label: str) -> None:
 def render_dmta(recs, logf) -> None:
     """The DMTA loop as structure: a cumulative chip row, and — when the
     campaign ran multiple rounds (round_start markers in provenance) —
-    one chip row per round (docs/UX.md)."""
+    one chip row per round. Representation rule (docs/UX.md): ONE branch
+    per sub-problem; rounds live inside the experiment page, never as
+    separate branches."""
     from bionexus import ui
 
-    # round boundaries from provenance (fall back to log text for
-    # branches recorded before markers existed)
-    markers = [(getattr(getattr(r, "envelope", None), "created_at", 0) or 0,
-                int((r.decision or {}).get("round", 0)))
-               for r in recs
-               if r.event_type.value == "stage_transition"
-               and (r.decision or {}).get("kind") == "round_start"]
-    rounds = sorted(t for t, _n in markers if t)
-    logf_rounds = []
-    if not rounds and logf.is_file():
-        for m in re.finditer(r"round (\d+):", logf.read_text(
-                errors="replace")):
-            logf_rounds.append(int(m.group(1)))
+    # round markers with their carried candidates
+    markers = []
+    for r in recs:
+        d = r.decision or {}
+        if r.event_type.value == "stage_transition" \
+                and d.get("kind") == "round_start":
+            ts = getattr(getattr(r, "envelope", None), "created_at", 0) or 0
+            markers.append((ts, int(d.get("round", 0)),
+                            d.get("candidates") or []))
+    markers.sort()
+    multi = len(markers) >= 2
 
-    _dmta_chip_row(_dmta_counts(recs), "All rounds"
-                   if len(rounds) > 1 else "DMTA")
+    _dmta_chip_row(_dmta_counts(recs),
+                   "All rounds" if multi else "DMTA")
 
-    if len(rounds) >= 2:
+    if multi:
         st.caption("")
-        bounds = rounds + [float("inf")]
-        for k in range(len(rounds)):
-            lo, hi = bounds[k], bounds[k + 1]
-            slice_recs = [r for r in recs
-                          if lo <= (getattr(getattr(r, "envelope", None),
-                                            "created_at", 0) or 0) < hi]
-            _dmta_chip_row(_dmta_counts(slice_recs), f"Round {k + 1}")
-    elif logf_rounds and len(logf_rounds) >= 2:
-        st.caption(f"{ui.small('DMTA loops: ')}{len(logf_rounds)} rounds "
-                   "recorded in the campaign diary (per-round event "
-                   "markers not available for this branch)")
-
-    decided_verbs = ""
-    all_c = _dmta_counts(recs)
-    if all_c["verdicts"]:
-        decided_verbs = (f"{all_c['validated']} validated \u00b7 "
-                         f"{all_c['confirmed']} confirmed \u00b7 "
-                         f"{all_c['inconclusive']} inconclusive \u00b7 "
-                         f"{all_c['refuted']} refuted")
-    if decided_verbs:
-        st.caption(decided_verbs)
-    if len(rounds) >= 2:
+        # attribute by CANDIDATE, not by timestamp windows: marker k
+        # lists round k+1's tested candidates; runs and verdicts belong
+        # to the round of their candidate. Robust even when selection
+        # events and markers interleave
+        cand2round = {}
+        for k in range(len(markers)):
+            for cand in markers[k][2]:
+                cand2round[str(cand)] = k + 1
+        run2cand: dict[str, str] = {}
+        verdict_by_cand: dict[str, dict] = {}
+        for r in recs:
+            d = r.decision or {}
+            et = r.event_type.value
+            cand = ((r.artifact.metadata or {}).get("candidate")
+                    if r.artifact else None) or d.get("candidate")
+            if et == "hypothesis_tested" and d.get("run_id") and cand:
+                run2cand[d["run_id"]] = str(cand)
+            if et.startswith("hypothesis_") and d.get("verdict") and cand:
+                verdict_by_cand[str(cand)] = d
+        all_c = _dmta_counts(recs)
+        attributed = sum(len(markers[k][2]) and
+                         sum(1 for cand in markers[k][2]
+                             if str(cand) in verdict_by_cand)
+                         for k in range(len(markers)))
+        leftover = max(0, all_c["verdicts"] - attributed)
+        for k in range(len(markers)):
+            rnd = k + 1
+            cands = {str(c) for c in markers[k][2]}
+            runs = sum(1 for rid, cand in run2cand.items()
+                       if cand in cands)
+            carried = (len(cands) if k > 0 else 0)
+            counts = {"proposed": all_c["proposed"] if k == 0 else 0,
+                      "selected": all_c["selected"] if k == 0 else 0,
+                      "submitted": runs, "runs": runs, "refused": 0,
+                      "verdicts": sum(1 for cand in cands
+                                      if cand in verdict_by_cand)
+                      + (leftover if k == len(markers) - 1 else 0),
+                      "confirmed": sum(1 for cand in cands
+                                       if verdict_by_cand.get(
+                                           cand, {}).get("verdict")
+                                       == "confirmed"),
+                      "validated": 0, "inconclusive": 0, "refuted": 0}
+            note = (f"{carried} carried from the previous round"
+                    if k > 0 else "")
+            _dmta_chip_row(counts, f"Round {rnd}", design_note=note)
         st.caption(f"{ui.icon('history', 12, 'provenance')} the Analyze "
                    "of each round feeds the Design of the next \u2014 "
                    "that loop closure is the DMTA cycle",
                    unsafe_allow_html=True)
+
+    all_c = _dmta_counts(recs)
+    if all_c["verdicts"]:
+        st.caption(f"{all_c['validated']} validated \u00b7 "
+                   f"{all_c['confirmed']} confirmed \u00b7 "
+                   f"{all_c['inconclusive']} inconclusive \u00b7 "
+                   f"{all_c['refuted']} refuted")
 
 
 def lineage_caption(problem_id: str | None) -> str:
