@@ -265,6 +265,10 @@ class HypothesisTracker:
             h.family = spec.get("family")
             if spec.get("smiles"):
                 h.metadata["smiles"] = spec["smiles"]
+            for key in ("modality", "sequence", "description",
+                        "source_candidate"):
+                if (spec.get("metadata") or {}).get(key):
+                    h.metadata[key] = spec["metadata"][key]
             h.branch_id = f"problem/{problem.problem_id}"
             self.hypotheses[h.hypothesis_id] = h
             proposed.append(h)

@@ -96,6 +96,12 @@ class ToxicophoreRule:
         return None
 
 
+try:
+    from bionexus.adapters.bio.seq_alerts import SequenceScreenRule
+except ImportError:      # seq screening is optional like rdkit
+    SequenceScreenRule = None
+
+
 class DurcTargetRule:
     """Dual-use screen on everything a protocol names: title, samples,
     reagents. Text-level, always on, no dependencies."""
@@ -124,6 +130,7 @@ class SafetyEngine:
             MaxStepsRule(max_steps=100),
             DurcTargetRule(),
             ToxicophoreRule(),
+            *( [SequenceScreenRule()] if SequenceScreenRule else [] ),
         ]
 
     def add_rule(self, rule: Any) -> None:

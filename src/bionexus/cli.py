@@ -439,7 +439,7 @@ def cmd_plan(args: argparse.Namespace) -> int:
                                     limits=limits, say=print)
     else:
         tree = ProblemTree.create(args.objective, limits=limits,
-                                  metric=None, gate=None)
+                                  metric=None, gate=None, modality=args.modality)
     tree.run_budget = args.run_budget
     print(tree.render())
     print("run allocation:", tree.allocation())
@@ -458,6 +458,18 @@ def cmd_plan(args: argparse.Namespace) -> int:
                        model=model, autonomy=args.autonomy,
                        rounds=rounds, notify=print)
     print("root status:", summary[tree.root.id])
+    return 0
+
+
+def cmd_modalities(args: argparse.Namespace) -> int:
+    from bionexus.modality import PACKS
+    for name, pack in PACKS.items():
+        print(f"{name}")
+        print(f"  make:  {pack.production_action}")
+        print(f"  test:  {', '.join(pack.test_assays)}")
+        print(f"  gate:  {', '.join(pack.safety_rule_names)}")
+        if pack.notes:
+            print(f"  note:  {pack.notes}")
     return 0
 
 
@@ -706,6 +718,14 @@ def main(argv: list[str] | None = None) -> int:
     pl.add_argument("--max-children", type=int, default=4)
     pl.add_argument("--max-depth", type=int, default=2)
     pl.add_argument("--max-nodes", type=int, default=12)
+    modp = sub.add_parser("modalities",
+                          help="registered DMTA modality packs — how "
+                               "Design/Make/Test/Analyze specialize")
+    modp.set_defaults(func=cmd_modalities)
+    pl.add_argument("--modality", default="",
+                    help="optional: small molecule, biologic, cell therapy, "
+                         "mRNA, agrochemical, material — words the Make "
+                         "step and selects the pack")
     pl.add_argument("--rounds", type=int, default=0,
                     help="DMTA rounds per leaf (0 = auto: hypotheses / k)")
     pl.add_argument("--run-budget", type=int, default=20,

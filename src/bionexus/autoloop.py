@@ -287,6 +287,8 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                     sample_id=h.candidate, kind=SampleKind.compound,
                     concentration=c,
                     metadata={"smiles": (h.metadata or {}).get("smiles", ""),
+                              "sequence": (h.metadata or {}).get("sequence", ""),
+                              "description": f"{h.candidate} construct",
                               "intent": ("covalent" if "covalent" in
                                          (h.mechanism or "").lower() else "")})
                          for c in ([screen_conc] if adaptive
