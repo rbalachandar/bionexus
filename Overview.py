@@ -177,6 +177,10 @@ def start_dialog() -> None:
     threshold = c4.number_input("Potency threshold (µM)", 0.001, 1000.0,
                                 program_cfg.gate_threshold_um(pdoc))
     k = st.slider("How many hypotheses may go to the lab (top-k)", 1, 6, 2)
+    st.number_input("DMTA rounds", 1, 6, 2, key="dmta_rounds",
+                    help="how many Design-Make-Test-Analyze loops the "
+                         "agent may run; each round's verdicts feed the "
+                         "next round's selections")
 
     extra_fields: dict[str, str] = {}
     missing_required = False
@@ -223,7 +227,9 @@ def start_dialog() -> None:
                         "predicted_value": float(threshold),
                         "rationale": ""}
                        for c in compounds.split(",") if c.strip()],
-                   "k": k, "autonomy": autonomy.split(" —")[0],
+                   "k": k, "rounds": int(st.session_state.get(
+                       "dmta_rounds", 2)),
+                   "autonomy": autonomy.split(" —")[0],
                    "concentrations": ["0.5uM", "2uM", "10uM", "40uM"]}
         else:
             cfg = build_campaign(fill(tpl_doc, {"compounds": compounds,
@@ -584,6 +590,11 @@ def wizard_view() -> None:
                     f"{program_cfg.gate_metric()} gate "
                     f"({program_cfg.gate_unit()})",
                     0.001, 1000.0, program_cfg.gate_threshold_um())
+                dmta_rounds = st.number_input(
+                    "DMTA rounds", 1, 6, 2,
+                    help="how many Design-Make-Test-Analyze loops the "
+                         "agent may run; each round's verdicts feed the "
+                         "next round's selections")
                 if st.button("Launch agent execution", type="primary",
                              icon=":material/smart_toy:",
                              disabled=not comps.strip()):
@@ -620,6 +631,7 @@ def wizard_view() -> None:
                             for c in comps.split(",") if c.strip()],
                         "k": min(4, len([c for c in comps.split(",")
                                          if c.strip()])),
+                        "rounds": int(dmta_rounds),
                         "autonomy": "gate",
                         "concentrations": ["0.5uM", "2uM", "10uM", "40uM"]}
                     cid = _spawn_agent_experiment(cfg, exp.scientific_question)

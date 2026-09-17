@@ -229,6 +229,7 @@ def _campaign_from_doc(cfg_doc: dict) -> "CampaignConfig":
         hypothesis_source=cfg_doc.get("hypothesis_source", "config"),
         model=cfg_doc.get("_model"),
         k=cfg_doc.get("k", 2), autonomy=cfg_doc.get("autonomy", "act"),
+        rounds=cfg_doc.get("rounds", 1),
         inbox=cfg_doc.get("inbox", ".data/inbox"),
         concentrations=tuple(cfg_doc.get("concentrations",
                                          ["0.5uM", "2uM", "10uM", "40uM"])),
@@ -423,6 +424,7 @@ def cmd_plan(args: argparse.Namespace) -> int:
 
     limits = TreeLimits(max_children=args.max_children,
                         max_depth=args.max_depth, max_nodes=args.max_nodes)
+    rounds = max(1, args.rounds)
     model = None
     if args.model == "anthropic":
         from bionexus.adapters.models.anthropic_provider import \
@@ -449,7 +451,8 @@ def cmd_plan(args: argparse.Namespace) -> int:
         return 2
     summary = run_tree(tree, lambda: SimulatorLab(seed=args.seed),
                        SqliteProvenanceStore(args.db), candidates=cands,
-                       model=model, autonomy=args.autonomy, notify=print)
+                       model=model, autonomy=args.autonomy,
+                       rounds=rounds, notify=print)
     print("root status:", summary[tree.root.id])
     return 0
 
@@ -699,6 +702,8 @@ def main(argv: list[str] | None = None) -> int:
     pl.add_argument("--max-children", type=int, default=4)
     pl.add_argument("--max-depth", type=int, default=2)
     pl.add_argument("--max-nodes", type=int, default=12)
+    pl.add_argument("--rounds", type=int, default=0,
+                    help="DMTA rounds per leaf (0 = auto: hypotheses / k)")
     pl.add_argument("--run-budget", type=int, default=20,
                     help="total lab runs the whole tree may spend")
     pl.add_argument("--run", action="store_true")

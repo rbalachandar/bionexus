@@ -311,6 +311,7 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
              hypotheses: dict[str, list] | None = None,
              model: Any = None, candidates: list[dict] | None = None,
              inbox: str = ".data/inbox-tree", autonomy: str = "act",
+             rounds: int | None = None,
              notify: Any = None) -> dict[str, str]:
     """Each leaf runs as its own budgeted campaign; the roll-up is recorded
     on the root branch. Resumable: achieved leaves are skipped."""
@@ -380,7 +381,8 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
             hypotheses=specs[: tree.limits.max_hypotheses_per_leaf],
             hypothesis_source="config", model=model, candidates=candidates,
             k=k_eff,
-            rounds=max(2, len(specs) // max(1, k_eff)),
+            rounds=(max(2, len(specs) // max(1, k_eff))
+                    if not rounds else rounds),
             autonomy=autonomy,
             inbox=str(Path(inbox) / leaf.id), poll_secs=0.05,
             budget=budget)
