@@ -255,9 +255,12 @@ new modality actually needs is a pack:
   wording ("expressed and purified", modality threaded from tree ->
   hypotheses -> protocols); Safety = sequence screen (format alphabet,
   length ceiling, regulated-name screen, versioned `seq-screen-v1`) in
-  the default gate; registry + `bn modalities`. STILL OPEN — Design =
-  structure-model scoring via BioTool; Test = real immunogenicity/
-  aggregation/stability assay adapters (virtual lab runs binding only)
+  the default gate; registry + `bn modalities`. SHIPPED — bioprocess QC
+  (stability/aggregation gate between Make and Test, provenance-recorded)
+  and structure scoring via BioTool (`c.fm.predict_structure`, stub
+  backend offline + HTTP backend for ESM-style servers). STILL OPEN —
+  real immunogenicity/aggregation/stability assay adapters (instruments,
+  not simulations) and a real fold-server deployment
 - [ ] **Agrochemicals / materials**: same chemical DMTA; Test adapters
   for organism/property assays; Analyze derivation already metric-generic
 - [ ] Modality pack = registry entry: {program template, Make adapter,

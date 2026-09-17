@@ -76,13 +76,26 @@ def render_make(recs) -> None:
                 and (r.decision or {}).get("kind") in
                 ("safety_refusal", "halt_refusal", "authorization",
                  "durc_refusal", "operator_declined",
-                 "synthesis_failed")
+                 "synthesis_failed", "stability_failed")
                 and (r.decision or {}).get("column") != "autonomous"]
     if not runs and not refusals:
         return
     st.markdown("### Make — what the gate allowed")
     synth = [r for r in recs
              if r.event_type.value == "synthesis_complete"]
+    bio_qc = [r for r in recs
+              if r.event_type.value == "stage_transition"
+              and (r.decision or {}).get("kind") == "bioprocess_qc"]
+    if bio_qc:
+        st.dataframe([
+            {"candidate": (r.decision or {}).get("candidate", "?"),
+             "lot": (r.decision or {}).get("lot", "—"),
+             "aggregation risk": (r.decision or {}).get(
+                 "aggregation_risk", "—"),
+             "t½ (h)": (r.decision or {}).get("t_half_h", "—"),
+             "batch": "passed" if (r.decision or {}).get("ok")
+                      else "REFUSED into Test"}
+            for r in bio_qc], hide_index=True)
     if runs and not synth:
         st.caption("No synthesis batches recorded — this run predates "
                    "Make-synthesis; submissions went straight to the "

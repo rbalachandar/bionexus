@@ -338,6 +338,33 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                               "reason": synth["note"],
                               "samples": [h.candidate]}))
                 continue
+            # biologic Make has a second QC: stability / aggregation.
+            # A batch that would aggregate in the vial never reaches an
+            # assay — the refusal is honest, not a missing verdict
+            if synth.get("modality", "").lower() in ("biologic",
+                                                     "cell therapy",
+                                                     "mrna"):
+                from bionexus.adapters.lab.bioprocess import bioprocess_qc
+                qc = bioprocess_qc(h.candidate,
+                                   (h.metadata or {}).get("sequence", ""),
+                                   synth["lot"])
+                store.append(record_for(
+                    protocol.envelope, EventType.stage_transition,
+                    system_actor("bioprocess"),
+                    decision={"kind": "bioprocess_qc", "candidate":
+                              h.candidate, **qc}))
+                if not qc["ok"]:
+                    say(f"batch for {h.candidate} refused into Test: "
+                        f"{qc['note']}")
+                    store.append(record_for(
+                        protocol.envelope, EventType.gate_decision,
+                        system_actor("bioprocess"),
+                        decision={"kind": "stability_failed",
+                                  "candidate": h.candidate,
+                                  "lot": synth["lot"],
+                                  "reason": qc["note"],
+                                  "samples": [h.candidate]}))
+                    continue
             run_id, rejection = gateway.submit(protocol)
             if rejection:
                 say(f"submission for {h.candidate} rejected: {rejection}")
