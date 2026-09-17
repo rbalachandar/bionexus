@@ -620,7 +620,10 @@ def _dmta_counts(recs) -> dict:
          "runs": 0, "verdicts": 0,
          "validated": 0, "confirmed": 0, "inconclusive": 0,
          "refuted": 0}
-    seen_verdicts = set()
+    # a hypothesis earns ONE verdict: its latest. Preliminary + orthogonal
+    # confirmation events collapse into the final call
+    final: dict[str, str] = {}
+    orphan = 0
     for r in recs:
         d = r.decision or {}
         et = r.event_type.value
@@ -640,13 +643,15 @@ def _dmta_counts(recs) -> dict:
                 c["refused"] += 1
         elif et in ("hypothesis_validated", "hypothesis_invalidated",
                     "hypothesis_tested") and d.get("verdict"):
-            key = (r.record_id if hasattr(r, "record_id") else id(r))
-            if key in seen_verdicts:
-                continue
-            seen_verdicts.add(key)
-            v = d["verdict"]
-            c["verdicts"] += 1
-            c[v if v != "invalidated" else "refuted"] += 1
+            cand = ((r.artifact.metadata or {}).get("candidate")
+                    if r.artifact else None) or d.get("candidate")
+            if cand:
+                final[str(cand)] = d["verdict"]
+            else:
+                orphan += 1
+    c["verdicts"] = len(final) + orphan
+    for v in final.values():
+        c[v if v != "invalidated" else "refuted"] += 1
     return c
 
 
