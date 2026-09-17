@@ -147,6 +147,15 @@ evidence that governance worked.
   state (one caption line) beats silence for sections a reader expects
   ("no gate decisions — every submission ran under standing policy").
 
+## 12. Multi-round representation rule
+
+ONE branch per sub-problem; rounds live INSIDE the experiment page as
+per-round DMTA chip rows (attributed by candidate via round_start
+markers). Rounds never become separate branches — a round is another
+loop of the same hypothesis, not a new one. If a round's Analyze
+suggests a genuinely new hypothesis, that becomes a new LEAF in the
+problem tree (flywheel/problem-tree already model this).
+
 ## 11. Anti-goals
 
 - No dual banners or repeated global state per section.
