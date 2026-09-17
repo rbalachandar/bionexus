@@ -258,9 +258,16 @@ new modality actually needs is a pack:
   the default gate; registry + `bn modalities`. SHIPPED — bioprocess QC
   (stability/aggregation gate between Make and Test, provenance-recorded)
   and structure scoring via BioTool (`c.fm.predict_structure`, stub
-  backend offline + HTTP backend for ESM-style servers). STILL OPEN —
-  real immunogenicity/aggregation/stability assay adapters (instruments,
-  not simulations) and a real fold-server deployment
+  backend offline + HTTP backend for ESM-style servers). ALSO SHIPPED —
+  assay analysis adapters for the three standard readouts (pure-Python,
+  raw exports in, provenance-ready results out): ELISA
+  (`assays/elisa` — blank+cutoff serology, endpoint titers, any
+  plate-reader CSV/XLSX via labread), DSF (`assays/dsf` — Tm per melt
+  curve), DLS (`assays/dls` — cumulant fit, Stokes-Einstein Rh,
+  aggregation flag). STILL OPEN — instrument-side integration per lab
+  (these adapters consume the standard exports; labs must export them),
+  a real fold-server deployment, and distribution-aware DLS inversion
+  (CONTIN) for full particle-size distributions
 - [ ] **Agrochemicals / materials**: same chemical DMTA; Test adapters
   for organism/property assays; Analyze derivation already metric-generic
 - [ ] Modality pack = registry entry: {program template, Make adapter,
