@@ -251,11 +251,13 @@ Positioning bet: trustworthiness as architecture, not marketing. Priority order:
 The flow is modality-agnostic (program = any metric; Make production
 step is modality-worded; Analyze derivation is metric-generic). What a
 new modality actually needs is a pack:
-- [ ] **Biologics (Bio-DMTA)**: Design = sequences + structure models
-  (AlphaFold-style scoring via BioTool); Make = bioprocessing production
-  adapter (transfect/express/purify batches); Test = immunogenicity,
-  aggregation, structural-stability assays; Safety = sequence-based
-  screening (toxicophore SMARTS only fire on SMILES)
+- [~] **Biologics (Bio-DMTA)**: DONE — Make = bioprocessing production
+  wording ("expressed and purified", modality threaded from tree ->
+  hypotheses -> protocols); Safety = sequence screen (format alphabet,
+  length ceiling, regulated-name screen, versioned `seq-screen-v1`) in
+  the default gate; registry + `bn modalities`. STILL OPEN — Design =
+  structure-model scoring via BioTool; Test = real immunogenicity/
+  aggregation/stability assay adapters (virtual lab runs binding only)
 - [ ] **Agrochemicals / materials**: same chemical DMTA; Test adapters
   for organism/property assays; Analyze derivation already metric-generic
 - [ ] Modality pack = registry entry: {program template, Make adapter,
