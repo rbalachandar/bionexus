@@ -61,7 +61,11 @@ def _pipeline_body(logf: Path, problem_id: str | None,
             recs = SqliteProvenanceStore("bionexus.db").branch_records(branch)
         except Exception:
             recs = []
+    cand2round = {cand: rnd for rnd, cands in _round_markers(recs)
+                  for cand in cands}
 
+    cand2round = {cand: rnd for rnd, cands in _round_markers(recs)
+                  for cand in cands}
     render_dmta(recs, logf)
     st.markdown("")
 
@@ -235,6 +239,12 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                         "gate: " + criteria_label(crit.get("metric"),
                                                   crit.get("direction"),
                                                   crit["threshold"]))
+                if cand2round:
+                    if cand2round.get(str(hp.get("candidate", hid))):
+                        meta_bits.append(
+                            f"round {cand2round[str(hp.get('candidate', hid))]}")
+                    elif not verd:
+                        meta_bits.append("not yet in a round")
                 if hp.get("rationale"):
                     meta_bits.append(f"rationale: {hp['rationale']}")
                 if sel and sel.get("selected"):
@@ -674,6 +684,17 @@ def _dmta_chip_row(counts: dict, label: str,
             unsafe_allow_html=True)
 
 
+def _round_markers(recs) -> list[tuple[int, list[str]]]:
+    """[(round_no, [candidates])] sorted by round, from round_start
+    markers."""
+    markers = [(int((r.decision or {}).get("round", 0)),
+                [str(c) for c in (r.decision or {}).get("candidates") or []])
+               for r in recs
+               if r.event_type.value == "stage_transition"
+               and (r.decision or {}).get("kind") == "round_start"]
+    return sorted(markers)
+
+
 def render_dmta(recs, logf) -> None:
     """The DMTA loop as structure: a cumulative chip row, and — when the
     campaign ran multiple rounds (round_start markers in provenance) —
@@ -683,15 +704,7 @@ def render_dmta(recs, logf) -> None:
     from bionexus import ui
 
     # round markers with their carried candidates
-    markers = []
-    for r in recs:
-        d = r.decision or {}
-        if r.event_type.value == "stage_transition" \
-                and d.get("kind") == "round_start":
-            ts = getattr(getattr(r, "envelope", None), "created_at", 0) or 0
-            markers.append((ts, int(d.get("round", 0)),
-                            d.get("candidates") or []))
-    markers.sort()
+    markers = _round_markers(recs)
     multi = len(markers) >= 2
 
     _dmta_chip_row(_dmta_counts(recs),
@@ -704,9 +717,9 @@ def render_dmta(recs, logf) -> None:
         # to the round of their candidate. Robust even when selection
         # events and markers interleave
         cand2round = {}
-        for k in range(len(markers)):
-            for cand in markers[k][2]:
-                cand2round[str(cand)] = k + 1
+        for rnd, cands in markers:
+            for cand in cands:
+                cand2round[cand] = rnd
         run2cand: dict[str, str] = {}
         verdict_by_cand: dict[str, dict] = {}
         for r in recs:
@@ -719,31 +732,36 @@ def render_dmta(recs, logf) -> None:
             if et.startswith("hypothesis_") and d.get("verdict") and cand:
                 verdict_by_cand[str(cand)] = d
         all_c = _dmta_counts(recs)
-        attributed = sum(len(markers[k][2]) and
-                         sum(1 for cand in markers[k][2]
-                             if str(cand) in verdict_by_cand)
-                         for k in range(len(markers)))
-        leftover = max(0, all_c["verdicts"] - attributed)
-        for k in range(len(markers)):
-            rnd = k + 1
-            cands = {str(c) for c in markers[k][2]}
+        rows = []
+        for rnd, cands in markers:
+            cand_set = set(cands)
             runs = sum(1 for rid, cand in run2cand.items()
-                       if cand in cands)
-            carried = (len(cands) if k > 0 else 0)
-            counts = {"proposed": all_c["proposed"] if k == 0 else 0,
-                      "selected": all_c["selected"] if k == 0 else 0,
-                      "submitted": runs, "runs": runs, "refused": 0,
-                      "verdicts": sum(1 for cand in cands
-                                      if cand in verdict_by_cand)
-                      + (leftover if k == len(markers) - 1 else 0),
-                      "confirmed": sum(1 for cand in cands
-                                       if verdict_by_cand.get(
-                                           cand, {}).get("verdict")
-                                       == "confirmed"),
-                      "validated": 0, "inconclusive": 0, "refuted": 0}
-            note = (f"{carried} carried from the previous round"
-                    if k > 0 else "")
-            _dmta_chip_row(counts, f"Round {rnd}", design_note=note)
+                       if cand in cand_set)
+            v_conf = sum(1 for cand in cand_set
+                         if verdict_by_cand.get(cand, {}).get("verdict")
+                         == "confirmed")
+            v_ref = sum(1 for cand in cand_set
+                        if verdict_by_cand.get(cand, {}).get("verdict")
+                        in ("refuted", "invalidated"))
+            v_incon = sum(1 for cand in cand_set
+                          if verdict_by_cand.get(cand, {}).get("verdict")
+                          == "inconclusive")
+            v_val = sum(1 for cand in cand_set
+                        if verdict_by_cand.get(cand, {}).get("verdict")
+                        == "validated")
+            design = (f"{all_c['proposed']} proposed \u00b7 "
+                      f"{all_c['selected']} selected"
+                      if rnd == 1 else
+                      f"{len(cands)} carried from previous round")
+            analyze = (f"{v_conf} confirmed \u00b7 {v_val} validated"
+                       if v_conf or v_val else
+                       (f"{v_incon} inconclusive" if v_incon else
+                        (f"{v_ref} refuted" if v_ref else "pending")))
+            rows.append({"round": rnd, "design": design,
+                         "make": f"{runs} submitted",
+                         "test": f"{runs} run(s) analyzed",
+                         "analyze": analyze})
+        st.dataframe(rows, hide_index=True)
         st.caption(f"{ui.icon('history', 12, 'provenance')} the Analyze "
                    "of each round feeds the Design of the next \u2014 "
                    "that loop closure is the DMTA cycle",
