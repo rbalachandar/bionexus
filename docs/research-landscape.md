@@ -18,6 +18,7 @@ our architecture compares. Last reviewed: 2026-08.
 | **OpenAI + Retro GPT-4b micro** (Dec 2024) | Fine-tuned GPT-4 variant for protein design | Retro wet lab | Designs beating human-made Yamanaka-factor variants >50× in some assays |
 | **Chai Discovery** | chai-1/chai-2 structure + antibody design FMs; CAD-suite, not agentic | Partner validation | Novartis, Pfizer, Lilly deals |
 | **OpenAI Rosalind Workbench** (Aug 2026) | GPT-Rosalind (dedicated life-sciences model) + Workbench: in-chat molecular/structure viewers, sequence alignment, plan-first NGS Analysis Workbench; Explore vs. gated Research modes; built into ChatGPT and Codex | Wet-lab *assistance* and tool orchestration; no owned lab fleet | Enterprise-first (verified orgs); "every scientist to be their own research team" |
+| **The Virtual Biotech** (2026) | Multi-agent org chart: virtual CSO + chief-of-staff + four scientist divisions (Target ID/Prioritization, Target Safety, Modality Selection, Clinical Officers) + scientific reviewer; 100+ domain MCP servers over biomedical DBs (78k targets, 14.5M PPIs, Tahoe-100M perturbation, FAERS, ClinicalTrials.gov) | **None** — analysis/evidence only; no wet lab, no physical loop | Evidence-based target/modality assessments; organizational auditability ("each agent audited by the corresponding human expert") |
 
 ## Rosalind: what it changes, and where BioNexus stands
 
@@ -55,6 +56,43 @@ OpenAI's, can drive BioNexus labs.
 Sources: https://openai.com/gpt-rosalind/ ·
 https://developers.openai.com/blog/rosalind-workbench ·
 https://help.openai.com/en/articles/20001193-gpt-rosalind-for-life-sciences-research
+
+## The Virtual Biotech: complementary, not competitive
+
+The Virtual Biotech (VB) is the clearest statement yet of the
+**pre-lab half** of the pipeline: translational evidence synthesis from
+target identification through modality selection. BioNexus is the
+clearest open statement of the **lab half**: the gated, audited
+Design-Make-Test-Analyze loop that turns a *selected* modality and
+target into verdicts with CIs. The two compose at a clean seam —
+VB's Modality Selection output (modality + target + evidence) is
+exactly BioNexus's program definition.
+
+**What VB has that we do not** (adopted into the roadmap):
+1. **Division-shaped decomposition** — target ID, target safety,
+   modality selection, clinical officers as distinct analyst roles with
+   curated tool subsets. Our problem trees decompose by scientific
+   objective but not by *translational function*.
+2. **Scientific reviewer agent** — a critic pass over methodology and
+   claims before synthesis, with the CSO coordinating revisions. Maps
+   1:1 onto our tiered-trust rule (AI may tighten, never clear).
+3. **Clarify-before-compute orchestration** — the CSO asks follow-up
+   questions and the chief-of-staff preps a data-availability briefing
+   before expensive analyses run.
+4. **Biomedical knowledge breadth** — 100+ MCP servers over genetics,
+   PPIs, single-cell, perturbation, FAERS, trials.
+
+**What we have that VB does not** (from their own framing, analysis/
+evidence only): a physical loop. No gateway on physical actions, no
+synthesis/production gates, no instrument adapters, no budgets, no
+hash-chained execution provenance, no verdict discipline against
+pre-registered CIs, no eval suite against seeded ground truth. VB
+*recommends*; BioNexus *executes and verifies*.
+
+**Folded back into the design** (see ROADMAP, "Virtual Biotech
+learnings"): reviewer pass on verdicts, division-shaped tree
+decomposition, pre-campaign briefing/clarification step, MCP-client
+consumption of external knowledge during Design.
 
 ## What our architecture already gets right
 

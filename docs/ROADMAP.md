@@ -282,6 +282,25 @@ new modality actually needs is a pack:
 - [ ] Modality packs as full program templates (pre-filled gate/metric
   per pack — currently the user still types the objective)
 
+### Virtual Biotech learnings (multi-agent org-chart framework, 2026)
+The Virtual Biotech covers the pre-lab half (target ID -> modality
+selection, evidence synthesis over 100+ biomedical MCP servers); BioNexus
+covers the lab half (gated DMTA execution). Composition seam: VB's
+modality-selection output IS a BioNexus program definition. Adopted:
+- [ ] **Scientific reviewer pass**: an AI critic over methodology and
+  claims before a campaign's verdicts synthesize — tiered-trust
+  compliant (reviewer may demand revisions, never clear a refusal);
+  eval-verifiable (reviewer must catch seeded methodology flaws)
+- [ ] **Division-shaped tree decomposition**: optional decomposition
+  template for validation problems — target-safety analysis, prior-art
+  (clinical/regulatory) check, then modality-appropriate Make/Test
+- [ ] **Pre-campaign briefing**: clarify-before-compute — wizard asks
+  clarifying questions and surfaces a data-availability briefing
+  (what the lab/agent can actually test) before budget burns
+- [ ] **MCP knowledge consumption during Design**: hypothesis agent
+  queries external biomedical MCP servers as evidence (complements the
+  flywheel's internal negatives)
+
 ### Trust-T2 — mechanistic interpretability
 - [ ] **Scalable safety (tiered)**: alerts/DURC lists move from code to
   versioned JSON data (ingest Benigni/Bosa + Toxtree/OpenAlerts rulebooks);
