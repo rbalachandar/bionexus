@@ -461,6 +461,22 @@ def cmd_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_materials_run(args: argparse.Namespace) -> int:
+    from bionexus.materials import run_materials_sweep
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    import json as _json
+    forms = [float(x) for x in args.formulations.split(",") if x.strip()]
+    rep = run_materials_sweep(
+        args.objective, forms, gate=args.gate, unit=args.unit,
+        metric=args.metric, param=args.param, direction=args.direction,
+        store=SqliteProvenanceStore(args.db),
+        notify=print)
+    print(_json.dumps({"problem": rep["problem_id"],
+                       "verdict": rep["verdict"],
+                       "best": rep["best"]}, indent=1))
+    return 0
+
+
 def cmd_modalities(args: argparse.Namespace) -> int:
     from bionexus.modality import PACKS
     for name, pack in PACKS.items():
@@ -718,6 +734,19 @@ def main(argv: list[str] | None = None) -> int:
     pl.add_argument("--max-children", type=int, default=4)
     pl.add_argument("--max-depth", type=int, default=2)
     pl.add_argument("--max-nodes", type=int, default=12)
+    matp = sub.add_parser("materials-run",
+                          help="run a materials formulation sweep against "
+                               "the program gate (material modality)")
+    matp.add_argument("--objective", required=True)
+    matp.add_argument("--formulations", required=True,
+                      help="comma-separated parameter values, e.g. 2,4,6,8,10")
+    matp.add_argument("--gate", type=float, required=True)
+    matp.add_argument("--unit", default="MPa")
+    matp.add_argument("--metric", default="tensile_strength_mpa")
+    matp.add_argument("--param", default="crosslinker_pct")
+    matp.add_argument("--direction", choices=["min", "max"], default="max")
+    matp.add_argument("--db", default="bionexus.db")
+    matp.set_defaults(func=cmd_materials_run)
     modp = sub.add_parser("modalities",
                           help="registered DMTA modality packs — how "
                                "Design/Make/Test/Analyze specialize")

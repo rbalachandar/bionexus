@@ -45,6 +45,7 @@ def review_campaign(recs) -> dict:
                              "observed": d.get("observed"),
                              "ci": d.get("observed_ci"),
                              "threshold": d.get("threshold"),
+                             "direction": d.get("direction", "min"),
                              "candidate": str(cand) if cand else None,
                              "evidence": d.get("evidence_run_id"),
                              "event": et}
@@ -57,18 +58,20 @@ def review_campaign(recs) -> dict:
         verdict, observed, ci = v.get("verdict"), v.get("observed"), v.get("ci")
         gate = v.get("threshold")
 
-        # 1. label vs observation vs gate (direction: lower is better for
-        # ic50-style metrics; inconclusive is exempt by design)
+        # 1. label vs observation vs gate — direction-aware: min-metrics
+        # (ic50) want observed below the gate; max-metrics (tensile
+        # strength, t_half, yield) want it above. Inconclusive is exempt.
+        worse_than_gate = (observed > gate if v.get("direction", "min")
+                           == "min" else observed < gate)
         if verdict in ("validated", "confirmed") and observed is not None \
-                and gate is not None and observed > gate:
-            # a confirmed hit whose center is beyond the gate needs the
-            # CI to straddle it — otherwise the label contradicts data
+                and gate is not None and worse_than_gate:
             if not (ci and ci[0] <= gate <= ci[1]):
+                sym = ">" if v.get("direction", "min") == "min" else "<"
                 findings.append({
                     "severity": "critical", "kind": "label-vs-data",
                     "candidate": cand,
-                    "detail": f"{verdict} but {observed} > gate {gate} "
-                              "and CI does not straddle the gate"})
+                    "detail": f"{verdict} but {observed} {sym} gate "
+                              f"{gate} and CI does not straddle the gate"})
 
         # 2. CI sanity
         if ci and len(ci) == 2 and ci[0] > ci[1]:

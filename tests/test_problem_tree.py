@@ -240,3 +240,23 @@ def test_bioprocess_qc_gates_biologics():
     assert found_qc
     # refusals depend on the seed — record rather than assert either way
     print("qc recorded:", found_qc, "| stability refusal:", found_refusal)
+
+
+def test_materials_sweep_direction_aware():
+    """Materials DMTA: max-metric sweep validated against its gate; the
+    reviewer stays direction-aware (no false label-vs-data flag)."""
+    from bionexus.materials import run_materials_sweep
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.reviewer import review_campaign
+    store = SqliteProvenanceStore(":memory:")
+    rep = run_materials_sweep(
+        "maximize tensile strength", [2.0, 4.0, 6.0, 8.0], gate=40.0,
+        store=store, seed=42, notify=lambda m: None)
+    assert rep["verdict"] == "validated"
+    review = review_campaign(store.branch_records(rep["branch"]))
+    assert not [f for f in review["findings"]
+                if f["kind"] == "label-vs-data"]
+    # provenance shape matches every other campaign
+    ets = {r.event_type.value for r in store.branch_records(rep["branch"])}
+    assert {"problem_defined", "hypothesis_proposed", "lab_run",
+            "hypothesis_validated"} <= ets

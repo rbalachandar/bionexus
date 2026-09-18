@@ -1,0 +1,38 @@
+{
+  "problem": {
+    "objective": "Find confirmed KRAS G12C binders with IC50 <= 10 uM",
+    "constraints": [
+      {"name": "potency", "description": "IC50 <= 10 uM", "kind": "hard",
+       "limit": 10.0, "unit": "uM"}
+    ],
+    "success_metric": "orthogonal confirmation with clear margin"
+  },
+  "hypotheses": [
+    {"statement": "aspirin binds KRAS G12C",
+     "candidate": "aspirin", "assay_type": "binding",
+     "smiles": "CC(=O)Oc1ccccc1C(=O)O",
+     "predicted": "IC50 <= 10", "predicted_value": 10.0,
+     "rationale": "pilot round: known-safe reference compound"},
+    {"statement": "ibuprofen binds KRAS G12C",
+     "candidate": "ibuprofen", "assay_type": "binding",
+     "smiles": "CC(C)Cc1ccc(cc1)C(C)C(=O)O",
+     "predicted": "IC50 <= 10", "predicted_value": 10.0,
+     "rationale": "pilot round: propionic-acid NSAID scaffold"},
+    {"statement": "acetaminophen binds KRAS G12C",
+     "candidate": "acetaminophen", "assay_type": "binding",
+     "smiles": "CC(=O)Nc1ccc(O)cc1",
+     "predicted": "IC50 <= 10", "predicted_value": 10.0,
+     "rationale": "pilot round: phenacetin-family comparator"},
+    {"statement": "clonazepam binds KRAS G12C",
+     "candidate": "clonazepam", "assay_type": "binding",
+     "smiles": "CN1C(=O)CN=C(c2ccccc2)c2cc(Cl)ccc21",
+     "predicted": "IC50 <= 10", "predicted_value": 10.0,
+     "rationale": "pilot round: chlorinated heterocycle, exercises the toxicophore screen"}
+  ],
+  "k": [2, 2, 1],
+  "rounds": 3,
+  "autonomy": "act",
+  "concentrations": ["0.5uM", "2uM", "10uM", "40uM"],
+  "max_families": 3,
+  "max_variants_per_family": 3
+}
