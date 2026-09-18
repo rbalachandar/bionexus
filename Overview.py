@@ -341,6 +341,13 @@ def overview_view() -> None:
             help="optional, free text: small molecule, biologic, cell "
                  "therapy, agrochemical, material — words the Make step "
                  "and reports use")
+        from bionexus.modality import get_pack
+        _pack = get_pack(modality)
+        if _pack:
+            st.caption(f"pack: {_pack.production_action} in Make · Test "
+                       f"via {', '.join(_pack.test_assays)} · gate rules: "
+                       f"{', '.join(_pack.safety_rule_names)}"
+                       + (f" — {_pack.notes}" if _pack.notes else ""))
         mt1, mt2, mt3, mt4 = st.columns(4)
         metric = mt1.text_input("Metric", doc.get("metric", "ic50"),
                                 key="tpp_metric",

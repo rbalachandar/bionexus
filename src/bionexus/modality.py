@@ -49,19 +49,24 @@ PACKS: dict[str, ModalityPack] = {
         production_action="transcribed and encapsulated",
         test_assays=("expression", "stability", "immunogenicity"),
         safety_rule_names=("sequence_screen", "durc_screen")),
-    "agrochemical": ModalityPack(
-        name="agrochemical",
-        production_action="synthesized",
-        test_assays=("organism dose-response", "phytotoxicity"),
-        safety_rule_names=("toxicophores", "durc_screen"),
-        notes="same chemical DMTA; Test targets organisms, not humans"),
-    "material": ModalityPack(
+"material": ModalityPack(
         name="material",
         production_action="produced",
         test_assays=("property sweep",),
         safety_rule_names=("durc_screen",),
         notes="Analyze reads any registered metric (tensile strength, "
-              "conductivity, heat resistance) against the program gate"),
+              "conductivity, heat resistance) against the program gate; "
+              "sweep simulator + analysis adapter shipped "
+              "(assays/simulate.simulate_property_sweep, "
+              "assays.properties.read_property_sweep)"),
+    "agrochemical": ModalityPack(
+        name="agrochemical",
+        production_action="synthesized",
+        test_assays=("organism dose-response", "phytotoxicity"),
+        safety_rule_names=("toxicophores", "durc_screen"),
+        notes="same chemical DMTA; Test targets organisms, not humans — "
+              "the standard dose-response engine (SimulatorLab, Hill "
+              "fits, CIs) applies unchanged")
 }
 
 

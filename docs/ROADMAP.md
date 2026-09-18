@@ -272,10 +272,15 @@ new modality actually needs is a pack:
   (these adapters consume the standard exports; labs must export them),
   a real fold-server deployment, and distribution-aware DLS inversion
   (CONTIN) for full particle-size distributions
-- [ ] **Agrochemicals / materials**: same chemical DMTA; Test adapters
-  for organism/property assays; Analyze derivation already metric-generic
-- [ ] Modality pack = registry entry: {program template, Make adapter,
-  Test assays, safety screen, Analyze derivation} — one import
+- [x] **Agrochemicals / materials**: same chemical DMTA; materials
+  property-sweep simulator + analysis adapter shipped (peak-sharpness
+  honesty: flat sweeps are reported as such); agro reuses the standard
+  dose-response engine unchanged
+- [x] Modality pack = registry entry: {Make verb, Test assays, safety
+  screen, notes} — `bionexus.modality`, `bn modalities`, surfaced in the
+  program form when the modality matches a pack
+- [ ] Modality packs as full program templates (pre-filled gate/metric
+  per pack — currently the user still types the objective)
 
 ### Trust-T2 — mechanistic interpretability
 - [ ] **Scalable safety (tiered)**: alerts/DURC lists move from code to

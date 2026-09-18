@@ -99,6 +99,38 @@ def simulate_elisa(top: float = 1.5, bottom: float = 0.08,
     return rows, truth
 
 
+# ------------------------------------------------- materials property sweep
+
+def simulate_property_sweep(formulations: list[float],
+                            optimum: float = 6.0,
+                            peak_value: float = 85.0,
+                            width: float = 2.5,
+                            noise: float = 1.5,
+                            seed: int = 13,
+                            metric: str = "tensile_strength_mpa",
+                            param: str = "crosslinker_pct") -> tuple[
+        list[dict], dict]:
+    """Materials Design-of-Experiments: a property responds to a
+    formulation parameter through a smooth peak (quadratic around the
+    optimum) — tensile strength vs crosslinker density, conductivity vs
+    dopant ratio, etc. Deterministic; truth carries the true optimum so
+    the analysis adapter can be checked against it."""
+    rng = random.Random(seed)
+    rows, values = [], []
+    for i, x in enumerate(formulations):
+        v = peak_value - ((x - optimum) / width) ** 2 * 10
+        v = max(0.0, v + rng.gauss(0, noise))
+        values.append(v)
+        rows.append({"Sample": f"F{i + 1}", param: f"{x:g}",
+                     metric: f"{v:.2f}"})
+    return rows, {"true_optimum": optimum, "peak_value": peak_value,
+                  "metric": metric, "param": param,
+                  "measured_best": formulations[max(range(len(values)),
+                                                    key=values.__getitem__)],
+                  "measured_best_value": round(max(values), 2),
+                  "seed": seed}
+
+
 # ------------------------------------------------------------------ DSF
 
 def simulate_dsf(tm: float = 65.0, steepness: float = 2.0,

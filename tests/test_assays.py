@@ -158,3 +158,35 @@ def test_dls_simulate_is_deterministic():
     assert a == b
     c = simulate_dls([(5.0, 1.0)], seed=4)[0]
     assert a != c
+
+
+# ------------------------------------------------ materials property sweep
+
+def test_property_sweep_roundtrip(tmp_path):
+    """Simulate a materials DoE sweep with a known optimum; the analysis
+    adapter must find the same best formulation."""
+    from bionexus.assays.simulate import simulate_property_sweep
+    from bionexus.assays.properties import read_property_sweep
+    rows, truth = simulate_property_sweep(
+        [2.0, 4.0, 6.0, 8.0, 10.0], optimum=6.0, seed=13)
+    p = _write(tmp_path / "sweep.csv", rows)
+    out = read_property_sweep(p, param="crosslinker_pct",
+                              metric="tensile_strength_mpa")
+    assert out["best"]["param"] == pytest.approx(truth["true_optimum"])
+    assert out["best"]["value"] == pytest.approx(
+        truth["measured_best_value"], abs=0.1)
+    assert out["peak_sharpness"] > 1.0
+    assert len(out["points"]) == 5
+
+
+def test_property_sweep_flat_is_honest(tmp_path):
+    from bionexus.assays.simulate import simulate_property_sweep
+    from bionexus.assays.properties import read_property_sweep
+    # huge width -> the sweep is effectively flat across points
+    rows, _t = simulate_property_sweep(
+        [2.0, 4.0, 6.0, 8.0, 10.0], optimum=6.0, width=100.0, noise=0.1,
+        seed=2)
+    p = _write(tmp_path / "sweep.csv", rows)
+    out = read_property_sweep(p, param="crosslinker_pct",
+                              metric="tensile_strength_mpa")
+    assert "flat sweep" in out["note"]
