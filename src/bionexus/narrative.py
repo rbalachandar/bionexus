@@ -203,6 +203,44 @@ def render_verdicts(recs) -> None:
                    "each abstention is a CI that straddled the gate.")
 
 
+def render_reviewer(recs) -> None:
+    """The reviewer pass, surfaced: findings recorded by the independent
+    audit (reviewer-v1). Critical findings contradict recorded evidence."""
+    from bionexus import ui
+    reviews = [r for r in recs
+               if r.event_type.value == "stage_transition"
+               and (r.decision or {}).get("kind") == "review_report"]
+    if not reviews:
+        return
+    r = reviews[-1]
+    d = r.decision or {}
+    findings = d.get("findings") or []
+    st.markdown("### Reviewer pass")
+    if not findings:
+        st.success(f"Independent review ({d.get('review', 'reviewer-v1')}): "
+                   f"{d.get('verdicts_reviewed', 0)} verdict(s) audited — "
+                   "no findings.")
+        return
+    icon = "critical" if d.get("critical") else "warning"
+    color = "#a3402f" if d.get("critical") else "#b07d2b"
+    st.markdown(f"#### Independent review — "
+                f"<span style='color:{color}'>{d.get('critical', 0)} "
+                f"critical / {d.get('warnings', 0)} warnings</span>",
+                unsafe_allow_html=True)
+    for f in findings:
+        sev = f.get("severity", "?")
+        icon_color = ("fault", "refused") if sev == "critical" \
+            else ("clock", "human-action")
+        ico = ui.icon(icon_color[0], 13, icon_color[1])
+        cand = f" · {f['candidate']}" if f.get("candidate") else ""
+        st.markdown(f"{ico} **{sev}** · {f.get('kind', '?')}{cand}"
+                    f" — {f.get('detail', '')}",
+                    unsafe_allow_html=True)
+    st.caption("The reviewer audits the analysis (math consistency, "
+               "evidence linkage, citations). It may demand revision — "
+               "it can never clear a refusal.")
+
+
 def render_trust(recs, log_lines=()) -> None:
     """Analyze, part 2 support: trust checks behind the verdicts."""
     props = _proposed(recs)
@@ -324,4 +362,5 @@ def render(recs, log_lines=()) -> None:
     render_make(recs)
     render_evidence(recs)
     render_verdicts(recs)
+    render_reviewer(recs)
     render_trust(recs, log_lines)

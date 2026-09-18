@@ -401,6 +401,29 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         tested.extend(selected)
 
     verdicts = {h.candidate: h.status for h in tested}
+    # reviewer pass: independent audit before results are finalized.
+    # Findings are recorded as provenance and surfaced in the workbench;
+    # the reviewer demands revision, it never clears a gate
+    from bionexus.reviewer import review_campaign
+    review = review_campaign(store.branch_records(
+        f"problem/{problem.problem_id or 'unnamed'}"))
+    store.append(record_for(
+        Envelope(experiment_branch_id=
+                 f"problem/{problem.problem_id or 'unnamed'}"),
+        EventType.stage_transition, system_actor("reviewer"),
+        decision={"kind": "review_report", "review": review["review"],
+                  "critical": review["critical"],
+                  "warnings": review["warnings"],
+                  "verdicts_reviewed": review["verdicts_reviewed"],
+                  "findings": review["findings"]}))
+    if review["findings"]:
+        say(f"reviewer: {review['critical']} critical / "
+            f"{review['warnings']} warning finding(s) — "
+            + "; ".join(f["detail"] for f in
+                        review["findings"][:3]))
+    else:
+        say("reviewer: no findings — analysis consistent")
+
     say(f"CAMPAIGN COMPLETE {problem.problem_id}: "
         + (", ".join(f"{c}={s}" for c, s in verdicts.items()) or "nothing tested"))
     return CampaignReport(problem_id=problem.problem_id,

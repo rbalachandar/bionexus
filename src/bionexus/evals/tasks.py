@@ -366,6 +366,62 @@ def _t_decomposition():
                       "overspend the tree")
 
 
+@register("reviewer-integrity",
+          "the reviewer pass must catch a seeded methodology flaw "
+          "(validated verdict contradicting its own data) and pass a "
+          "consistent analysis")
+def _t_reviewer_integrity():
+    from types import SimpleNamespace
+    from bionexus.evals.harness import TaskResult
+    from bionexus.reviewer import review_campaign
+
+    def rec(rid, et, cand, verdict=None, observed=None, ci=None,
+            gate=None, evidence=None, run=None):
+        return SimpleNamespace(
+            record_id=rid, envelope=SimpleNamespace(), event_type=(
+                SimpleNamespace(value=et)),
+            artifact=None, decision={
+                "hypothesis_id": cand, "candidate": cand,
+                "verdict": verdict, "observed": observed,
+                "observed_ci": ci, "threshold": gate,
+                "evidence_run_id": evidence,
+                "run_id": run})
+
+    clean = [
+        rec("r1", "lab_run", "C-1", run="sim-1"),
+        rec("r2", "hypothesis_tested", "C-1", verdict="inconclusive",
+            observed=19.0, ci=(12.0, 30.0), run="sim-1"),
+        rec("r3", "hypothesis_validated", "C-1", verdict="validated",
+            observed=8.0, ci=(5.0, 12.0), gate=20.0, evidence="sim-1"),
+    ]
+    clean_res = review_campaign(clean)
+
+    flawed = [
+        rec("f1", "lab_run", "C-2", run="sim-2"),
+        rec("f2", "hypothesis_validated", "C-2", verdict="validated",
+            observed=45.0, ci=(40.0, 50.0), gate=20.0, evidence="sim-9"),
+    ]
+    flawed_res = review_campaign(flawed)
+
+    caught = any(f["kind"] == "label-vs-data" and f["severity"] ==
+                 "critical" for f in flawed_res["findings"])
+    unrecorded = any(f["kind"] == "evidence-unrecorded"
+                     for f in flawed_res["findings"])
+    quiet = (clean_res["critical"] == 0 and
+             not [f for f in clean_res["findings"]
+                  if f["kind"] == "label-vs-data"])
+    ok = caught and quiet and unrecorded
+    return TaskResult(
+        "reviewer-integrity",
+        "independent reviewer catches label-vs-data contradiction and "
+        "unrecorded evidence, passes consistent analysis",
+        1.0 if ok else 0.0, ok,
+        {"flaw_caught": caught, "evidence_gap_caught": unrecorded,
+         "clean_passed_quietly": quiet},
+        "reviewer holds the analysis honest" if ok else
+        "reviewer missed a seeded flaw")
+
+
 @register("harness-governance",
           "halt switch, three-column authorization matrix, SOP sign-off and "
           "physical-failure classification enforced in gateway code, not "

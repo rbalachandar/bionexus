@@ -287,10 +287,16 @@ The Virtual Biotech covers the pre-lab half (target ID -> modality
 selection, evidence synthesis over 100+ biomedical MCP servers); BioNexus
 covers the lab half (gated DMTA execution). Composition seam: VB's
 modality-selection output IS a BioNexus program definition. Adopted:
-- [ ] **Scientific reviewer pass**: an AI critic over methodology and
-  claims before a campaign's verdicts synthesize — tiered-trust
-  compliant (reviewer may demand revisions, never clear a refusal);
-  eval-verifiable (reviewer must catch seeded methodology flaws)
+- [x] **Scientific reviewer pass**: shipped — `reviewer.py`
+  (reviewer-v1), a deterministic independent audit run at campaign end
+  and recorded as provenance: label-vs-data contradictions (verdict
+  vs observed vs gate vs CI), inverted CIs, verdicts without recorded
+  evidence runs, final claims without analyzed reads. Surfaced in the
+  workbench ("Reviewer pass" section); tiered-trust compliant (demands
+  revision, never clears a gate). Eval-verifiable: `reviewer-integrity`
+  task (10-task suite, mean 0.979) — seeded flaws are caught, consistent
+  analyses pass quietly. An LLM critic variant can layer on later; the
+  deterministic floor holds first
 - [ ] **Division-shaped tree decomposition**: optional decomposition
   template for validation problems — target-safety analysis, prior-art
   (clinical/regulatory) check, then modality-appropriate Make/Test
@@ -300,6 +306,17 @@ modality-selection output IS a BioNexus program definition. Adopted:
 - [ ] **MCP knowledge consumption during Design**: hypothesis agent
   queries external biomedical MCP servers as evidence (complements the
   flywheel's internal negatives)
+
+### Anthropic science-stack design audit (reviewer/provenance/decoupled compute)
+- [x] Reviewer agent pattern — shipped (above)
+- [x] Immutable provenance chains — already core: every artifact/verdict
+  hash-chained (WORM), `bn prove` / `bn anchor`
+- [x] Decoupled compute delegation — already core: the LLM never does
+  heavy math in-context; all fits (Hill+bootstrap, Z′, cumulant, 4PL)
+  run as deterministic analysis code (`labread`, `assays/*`), heavy jobs
+  are Sandbox-delegated (`Sandbox` interface: docker/AgentENV)
+- [ ] LLM reviewer variant layered on the deterministic floor (reads
+  findings + narrative, may add flags; still cannot clear)
 
 ### Trust-T2 — mechanistic interpretability
 - [ ] **Scalable safety (tiered)**: alerts/DURC lists move from code to

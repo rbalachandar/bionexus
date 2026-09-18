@@ -52,7 +52,7 @@
      "E-12"
     ]
    },
-   "duration_s": 6.5
+   "duration_s": 6.4
   },
   "notes": "1.0 confident-correct \u00b7 0.5 honest abstain \u00b7 0 wrong"
  },
@@ -63,7 +63,7 @@
   "metrics": {
    "straddling_ci": 2,
    "violations": 0,
-   "duration_s": 10.2
+   "duration_s": 10.1
   },
   "notes": "bar at E-03's true IC50 (10.75 uM); 2 borderline CIs, 0 overconfident verdicts"
  },
@@ -110,7 +110,7 @@
    "mean_err_adaptive_3well": 0.024,
    "mean_err_fixed_4well": 0.09,
    "ci_coverage": "15/16",
-   "duration_s": 2.6
+   "duration_s": 2.5
   },
   "notes": "3 wells beat 4: err 0.024 vs 0.090; CI coverage 15/16 (nominal 15.2)"
  },
@@ -159,7 +159,7 @@
      "confirmed"
     ]
    },
-   "duration_s": 9.5
+   "duration_s": 9.4
   },
   "notes": "unstable verdicts flag borderline evidence \u2014 reported, not hidden"
  },
@@ -173,9 +173,21 @@
    "budget": 20,
    "rollup_recorded": true,
    "root": "failed",
-   "duration_s": 2.5
+   "duration_s": 6.7
   },
   "notes": "over-eager decomposition capped; leaves could not overspend the tree"
+ },
+ {
+  "task": "reviewer-integrity",
+  "score": 1.0,
+  "passed": true,
+  "metrics": {
+   "flaw_caught": true,
+   "evidence_gap_caught": true,
+   "clean_passed_quietly": true,
+   "duration_s": 0.0
+  },
+  "notes": "reviewer holds the analysis honest"
  },
  {
   "task": "harness-governance",
