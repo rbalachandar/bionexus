@@ -102,3 +102,59 @@ def test_dls_aggregated_flag(tmp_path):
     assert out["curves"][0]["pdi_flag"] in ("aggregated", "monodisperse")
     # the flag must exist either way; strict assert on threshold behavior:
     assert out["curves"][0]["pdi_flag"] == "aggregated"
+
+
+# ------------------------------------------------- simulators (roundtrip)
+
+def _write(path: Path, rows: list[dict]) -> Path:
+    keys = list(rows[0].keys())
+    lines = [",".join(keys)]
+    for r in rows:
+        lines.append(",".join(str(r[k]) for k in keys))
+    path.write_text("\n".join(lines) + "\n")
+    return path
+
+
+def test_dls_simulate_parse_roundtrip(tmp_path):
+    """Simulate a polydisperse sample (Raynals-style), parse it back:
+    the intensity-weighted radius must be recovered."""
+    from bionexus.assays.simulate import simulate_dls
+    from bionexus.assays.dls import read_dls
+    species = [(3.0, 0.7), (30.0, 0.3)]       # small + aggregate
+    rows, truth = simulate_dls(species, seed=5)
+    out = read_dls(_write(tmp_path / "dls.csv", rows))
+    c = out["curves"][0]
+    assert c["points"] == 60
+    # intensity weighting favors the big particle's contribution; the
+    # cumulant Rh must sit between the two species' radii
+    assert 3.0 < c["rh_nm"] < 30.0
+    assert truth["rh_intensity_weighted_nm"] > 3.0
+
+
+def test_elisa_simulate_parse_roundtrip(tmp_path):
+    from bionexus.assays.simulate import simulate_elisa
+    from bionexus.assays.elisa import read_elisa
+    rows, truth = simulate_elisa(seed=9)
+    out = read_elisa(_write(tmp_path / "elisa.csv", rows))
+    r1 = out["results"][0]
+    assert r1["call"] == "positive"
+    assert r1["max_od"] == pytest.approx(truth["top"], abs=0.05)
+
+
+def test_dsf_simulate_parse_roundtrip(tmp_path):
+    from bionexus.assays.simulate import simulate_dsf
+    from bionexus.assays.dsf import read_dsf
+    rows, truth = simulate_dsf(tm=72.0, seed=4)
+    out = read_dsf(_write(tmp_path / "dsf.csv", rows))
+    c = out["curves"][0]
+    assert c["tm"] == pytest.approx(truth["tm"], abs=1.0)
+    assert c["span"] > 50
+
+
+def test_dls_simulate_is_deterministic():
+    from bionexus.assays.simulate import simulate_dls
+    a = simulate_dls([(5.0, 1.0)], seed=3)[0]
+    b = simulate_dls([(5.0, 1.0)], seed=3)[0]
+    assert a == b
+    c = simulate_dls([(5.0, 1.0)], seed=4)[0]
+    assert a != c

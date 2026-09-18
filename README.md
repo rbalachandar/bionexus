@@ -410,6 +410,11 @@ behavior is testable before hardware is involved:
 
 - **SimulatorLab** — seeded dose–response ground truth, replicates,
   counterscreen interference (PAINS-like artifacts), controls
+- **Biologics readout simulators** — DLS (Brownian + scattering physics,
+  polydisperse field-correlation sums), ELISA (4PL saturation curves),
+  DSF (two-state Boltzmann melts): seeded synthetic instrument exports
+  with known ground truth, roundtrip-tested against the analysis
+  adapters — pipeline validation without physical machines
 - **ImagingSimulatorLab** — a 96-well imaging plate reader: raw fluorescence
   micrographs per well, an analysis pipeline that fits IC50s from the images,
   Z'-factor QC, and per-well artifacts (pipetting spikes, bubbles, edge effects)

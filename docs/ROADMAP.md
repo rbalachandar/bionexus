@@ -255,7 +255,11 @@ new modality actually needs is a pack:
   wording ("expressed and purified", modality threaded from tree ->
   hypotheses -> protocols); Safety = sequence screen (format alphabet,
   length ceiling, regulated-name screen, versioned `seq-screen-v1`) in
-  the default gate; registry + `bn modalities`. SHIPPED — bioprocess QC
+  the default gate; registry + `bn modalities`. SHIPPED — readout simulators
+  (`assays/simulate.py`, Raynals-style): DLS Brownian/scattering physics
+  with polydisperse field-correlation sums, ELISA 4PL saturation curves,
+  DSF two-state Boltzmann melts — deterministic, seeded, roundtrip-tested
+  against the analysis adapters. SHIPPED — bioprocess QC
   (stability/aggregation gate between Make and Test, provenance-recorded)
   and structure scoring via BioTool (`c.fm.predict_structure`, stub
   backend offline + HTTP backend for ESM-style servers). ALSO SHIPPED —
