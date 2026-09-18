@@ -211,6 +211,10 @@ def render_reviewer(recs) -> None:
                if r.event_type.value == "stage_transition"
                and (r.decision or {}).get("kind") == "review_report"]
     if not reviews:
+        st.markdown("### Reviewer pass")
+        st.caption("No reviewer pass recorded — this run predates "
+                   "reviewer-v1 (campaigns run now are audited "
+                   "automatically).")
         return
     r = reviews[-1]
     d = r.decision or {}

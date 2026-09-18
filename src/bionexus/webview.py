@@ -568,12 +568,28 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         root_leaves = tree.leaves()
         root_gone = all(f"{tree.root.id}-{l.id}" not in eid_by_pid
                         for l in root_leaves)
-        items.append(sac.TreeItem(
-            root_name, icon="activity",
-            description=f"{rstatus} \u00b7 budget {total} runs"
-                        + (" \u00b7 archived" if root_gone else ""),
-            tooltip=root_name, children=root_children,
-            disabled=root_gone))
+        # a SINGLE-NODE tree (no sub-problems): the root itself is the
+        # experiment and must be clickable, not a dead group header
+        if not root_children and root_leaves:
+            leaf = root_leaves[0]
+            pid = f"{tree.root.id}-{leaf.id}"
+            st_word = rstatus
+            ls = leaf_stats.get(leaf.id, {})
+            if pid in eid_by_pid:
+                idx2eid[root_i] = eid_by_pid[pid]
+            items.append(sac.TreeItem(
+                root_name, icon="droplet",
+                description=(f"{st_word} \u00b7 "
+                             f"{alloc.get(leaf.id, 0)} runs"),
+                tooltip=root_name,
+                disabled=pid not in eid_by_pid))
+        else:
+            items.append(sac.TreeItem(
+                root_name, icon="activity",
+                description=f"{rstatus} \u00b7 budget {total} runs"
+                            + (" \u00b7 archived" if root_gone else ""),
+                tooltip=root_name, children=root_children,
+                disabled=root_gone))
 
     # standalone experiments (wizard/manual, single agent runs) group
     # under one collapsible node — the workspace shows auto AND manual
