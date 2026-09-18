@@ -315,8 +315,15 @@ modality-selection output IS a BioNexus program definition. Adopted:
   heavy math in-context; all fits (Hill+bootstrap, Z′, cumulant, 4PL)
   run as deterministic analysis code (`labread`, `assays/*`), heavy jobs
   are Sandbox-delegated (`Sandbox` interface: docker/AgentENV)
-- [ ] LLM reviewer variant layered on the deterministic floor (reads
-  findings + narrative, may add flags; still cannot clear)
+- [x] LLM reviewer variant layered on the deterministic floor —
+  `review_llm` (reviewer-llm-v1): reviews a compact deterministic
+  summary, may add up to 5 advisory flags (whitelisted kinds only),
+  records model + prompt-hash for audit; schema has NO verdict field and
+  flags never enter the verdict pipeline — advisory by construction.
+  Verified by `reviewer-llm-boundary` eval: legitimate flags recorded,
+  adversarial "clear the refusal / flip the verdict" responses discarded,
+  malformed JSON honestly unavailable. Wired only when a model was part
+  of the campaign (one extra call, no cost otherwise)
 
 ### Trust-T2 — mechanistic interpretability
 - [ ] **Scalable safety (tiered)**: alerts/DURC lists move from code to

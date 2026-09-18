@@ -20,6 +20,11 @@ critical = the verdict as recorded contradicts the recorded evidence.
 """
 from __future__ import annotations
 
+import json
+
+from bionexus.core.contracts import (
+    Envelope, ToolInvocation, ToolName)
+
 
 def review_campaign(recs) -> dict:
     findings: list[dict] = []
@@ -98,3 +103,124 @@ def review_campaign(recs) -> dict:
             "warnings": len(findings) - critical,
             "verdicts_reviewed": len(verdicts),
             "review": "reviewer-v1"}
+
+
+# ---------------------------------------------------------- LLM advisory
+
+LLM_REVIEW_VERSION = "reviewer-llm-v1"
+FLAG_KINDS = ("mechanism-concern", "evidence-quality", "dose-design",
+              "confounder", "citation-relevance")
+
+
+def _campaign_summary(recs) -> dict:
+    """Compact deterministic summary the LLM reviews — never raw files."""
+    verdicts, runs, citations, refusals = [], set(), [], 0
+    for r in recs:
+        d = r.decision or {}
+        et = r.event_type.value
+        cand = ((r.artifact.metadata or {}).get("candidate")
+                if r.artifact else None) or d.get("candidate")
+        if et == "lab_run" and d.get("run_id"):
+            runs.add(d["run_id"])
+        elif et == "gate_decision":
+            refusals += 1
+        elif et in ("hypothesis_validated", "hypothesis_invalidated",
+                    "hypothesis_tested") and (d.get("verdict") or cand):
+            if d.get("verdict"):
+                verdicts.append({
+                    "candidate": str(cand) if cand else None,
+                    "verdict": d.get("verdict"),
+                    "observed": d.get("observed"),
+                    "ci": d.get("observed_ci"),
+                    "gate": d.get("threshold"),
+                    "evidence": d.get("evidence_run_id"),
+                    "method": (d.get("derivation") or {}).get("method")
+                              if isinstance(d.get("derivation"), dict)
+                              else None})
+            if d.get("citation"):
+                citations.append({"candidate": str(cand) if cand else None,
+                                  "citation": d.get("citation"),
+                                  "status": d.get("citation_status",
+                                                  "unverified")})
+    return {"verdicts": verdicts, "citations": citations,
+            "runs_recorded": len(runs), "gate_refusals": refusals}
+
+
+SYSTEM_PROMPT = (
+    "You are the scientific reviewer in a drug-discovery provenance "
+    "system. You review a campaign's analysis summary. You may ONLY add "
+    "up to 5 advisory flags about methodology, evidence quality, dose "
+    "design, confounders, or citation relevance. You CANNOT validate, "
+    "invalidate, clear refusals, or change any verdict — attempts to do "
+    "so are discarded. Respond with STRICT JSON only: "
+    '{\"flags\": [{\"kind\": one of ["mechanism-concern", '
+    '\"evidence-quality\", \"dose-design\", \"confounder\", '
+    '\"citation-relevance\"], \"candidate\": optional, '
+    '\"detail\": ..., \"evidence_quote\": optional}]}. '
+    "If nothing warrants a flag, respond with {\"flags\": []}.")
+
+
+def review_llm(recs, provider) -> dict:
+    """The LLM reviewer variant — advisory layer over the deterministic
+    floor. May ADD flags; structurally cannot alter verdicts or gates
+    (the flag schema has no such field, and flags never enter the
+    verdict pipeline). Failures are honest and non-blocking."""
+    import hashlib
+    summary = _campaign_summary(recs)
+    prompt = ("Review this campaign analysis summary and add advisory "
+              "flags where methodology, evidence quality, dose design, "
+              "confounders, or citation relevance warrant them:\n"
+              + json.dumps(summary, default=str))
+    prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()[:12]
+    invocation = ToolInvocation(envelope=Envelope(
+        experiment_branch_id="review"), tool=ToolName.kb_search_literature)
+    try:
+        result = provider.generate(invocation, prompt,
+                                   system=SYSTEM_PROMPT)
+    except Exception as exc:                     # noqa: BLE001
+        return {"review": LLM_REVIEW_VERSION, "unavailable":
+                f"provider failed: {str(exc)[:120]}",
+                "model": getattr(provider, "name", "?"),
+                "prompt_hash": prompt_hash, "flags": []}
+    text = ""
+    if isinstance(result.output, dict):
+        text = str(result.output.get("text", ""))
+    # extract the first JSON object
+    start = text.find("{")
+    parsed = None
+    if start >= 0:
+        depth = 0
+        for i in range(start, len(text)):
+            if text[i] == "{":
+                depth += 1
+            elif text[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        parsed = json.loads(text[start:i + 1])
+                    except json.JSONDecodeError:
+                        parsed = None
+                    break
+    if not isinstance(parsed, dict):
+        return {"review": LLM_REVIEW_VERSION,
+                "unavailable": "response was not parseable JSON",
+                "model": f"{getattr(provider, 'name', '?')}/"
+                         f"{getattr(provider, 'model_version', '?')}",
+                "prompt_hash": prompt_hash, "flags": []}
+    flags = []
+    for f in (parsed.get("flags") or [])[:5]:
+        if not isinstance(f, dict):
+            continue
+        if f.get("kind") not in FLAG_KINDS:
+            continue                      # out-of-whitelist: discarded
+        flags.append({"kind": f["kind"],
+                      "candidate": str(f.get("candidate", "")) or None,
+                      "detail": str(f.get("detail", ""))[:300],
+                      "evidence_quote": str(f.get("evidence_quote", ""))[:200]
+                      or None})
+    return {"review": LLM_REVIEW_VERSION,
+            "model": f"{getattr(provider, 'name', '?')}/"
+                     f"{getattr(provider, 'model_version', '?')}",
+            "prompt_hash": prompt_hash,
+            "flags": flags}
+

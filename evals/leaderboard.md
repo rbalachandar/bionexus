@@ -1,8 +1,8 @@
 # BioNexus eval leaderboard
 
-Run 2026-09-18 20:01 · mean **0.979** · all pass
+Run 2026-09-18 20:17 · mean **0.981** · all pass
 
-### epistemics — mean 0.979
+### epistemics — mean 0.981
 
 | task | score | pass | time | notes |
 |---|---|---|---|---|
@@ -12,7 +12,8 @@ Run 2026-09-18 20:01 · mean **0.979** · all pass
 | falsifiability-tiebreak | 1.000 | ✅ | 4.4s | all k picks must be mechanistic+cited |
 | adaptive-dose-design | 0.875 | ✅ | 2.5s | 3 wells beat 4: err 0.024 vs 0.090; CI coverage 15/16 (nominal 15.2) |
 | flywheel-memory | 1.000 | ✅ | 3.6s | the dead family must get zero lab slots |
-| verdict-stability | 1.000 | ✅ | 9.4s | unstable verdicts flag borderline evidence — reported, not hidden |
+| verdict-stability | 1.000 | ✅ | 9.5s | unstable verdicts flag borderline evidence — reported, not hidden |
 | decomposition-integrity | 1.000 | ✅ | 6.7s | over-eager decomposition capped; leaves could not overspend the tree |
 | reviewer-integrity | 1.000 | ✅ | 0.0s | reviewer holds the analysis honest |
 | harness-governance | 1.000 | ✅ | 0.0s | code-level governance held under direct probe |
+| reviewer-llm-boundary | 1.000 | ✅ | 0.0s | the advisory layer cannot clear the deterministic floor |

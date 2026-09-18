@@ -424,6 +424,28 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     else:
         say("reviewer: no findings — analysis consistent")
 
+    # LLM advisory layer: only when a model was part of this campaign.
+    # Its output is flags-only (schema-enforced) — advisory by construction
+    if cfg.model is not None:
+        from bionexus.reviewer import review_llm
+        llm_review = review_llm(
+            store.branch_records(
+                f"problem/{problem.problem_id or 'unnamed'}"), cfg.model)
+        store.append(record_for(
+            Envelope(experiment_branch_id=
+                     f"problem/{problem.problem_id or 'unnamed'}"),
+            EventType.stage_transition, system_actor("llm-reviewer"),
+            decision={"kind": "review_report_llm", **llm_review}))
+        if llm_review.get("unavailable"):
+            say(f"llm reviewer unavailable: "
+                f"{llm_review['unavailable']}")
+        elif llm_review["flags"]:
+            say(f"llm reviewer ({llm_review['model']}): "
+                f"{len(llm_review['flags'])} advisory flag(s)")
+        else:
+            say(f"llm reviewer ({llm_review['model']}): no advisory "
+                "flags")
+
     say(f"CAMPAIGN COMPLETE {problem.problem_id}: "
         + (", ".join(f"{c}={s}" for c, s in verdicts.items()) or "nothing tested"))
     return CampaignReport(problem_id=problem.problem_id,

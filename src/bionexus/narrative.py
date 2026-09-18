@@ -239,6 +239,29 @@ def render_reviewer(recs) -> None:
     st.caption("The reviewer audits the analysis (math consistency, "
                "evidence linkage, citations). It may demand revision — "
                "it can never clear a refusal.")
+    llm = [r for r in recs
+           if r.event_type.value == "stage_transition"
+           and (r.decision or {}).get("kind") == "review_report_llm"]
+    if llm:
+        d = llm[-1].decision or {}
+        if d.get("unavailable"):
+            st.caption(f"LLM reviewer ({d.get('model', '?')}): "
+                       f"unavailable — {d['unavailable']}")
+        elif d.get("flags"):
+            st.markdown(f"**LLM reviewer (advisory)** — "
+                        f"{d.get('model', '?')} · prompt "
+                        f"`{d.get('prompt_hash', '')}`")
+            for f in d["flags"]:
+                cand = f" · {f['candidate']}" if f.get("candidate") else ""
+                st.markdown(f"{ui.icon('clock', 13, 'human-action')} "
+                            f"**advisory** · {f.get('kind', '?')}{cand}"
+                            f" — {f.get('detail', '')}",
+                            unsafe_allow_html=True)
+            st.caption("Advisory only: LLM flags cannot alter verdicts, "
+                       "gates, or refusals.")
+        else:
+            st.caption(f"LLM reviewer ({d.get('model', '?')}): no "
+                       "advisory flags.")
 
 
 def render_trust(recs, log_lines=()) -> None:

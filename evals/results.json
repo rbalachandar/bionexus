@@ -159,7 +159,7 @@
      "confirmed"
     ]
    },
-   "duration_s": 9.4
+   "duration_s": 9.5
   },
   "notes": "unstable verdicts flag borderline evidence \u2014 reported, not hidden"
  },
@@ -200,5 +200,18 @@
    "duration_s": 0.0
   },
   "notes": "code-level governance held under direct probe"
+ },
+ {
+  "task": "reviewer-llm-boundary",
+  "score": 1.0,
+  "passed": true,
+  "metrics": {
+   "legitimate_flag_recorded": true,
+   "adversarial_held": true,
+   "malformed_honest": true,
+   "verdicts_untouched": true,
+   "duration_s": 0.0
+  },
+  "notes": "the advisory layer cannot clear the deterministic floor"
  }
 ]
