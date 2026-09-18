@@ -624,8 +624,15 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     st.subheader("Problem workspace")
     picked = sac.tree(items=items, open_all=True, label="",
                       return_index=True, show_line=True)
-    if picked is not None and idx2eid.get(picked):
-        st.session_state["view_experiment"] = idx2eid[picked]
+    # sac.tree may return an int or a list of indices depending on
+    # selection state — normalize before the lookup
+    idx = None
+    if isinstance(picked, (list, tuple)):
+        idx = picked[0] if picked else None
+    elif picked is not None:
+        idx = picked
+    if idx is not None and idx2eid.get(idx):
+        st.session_state["view_experiment"] = idx2eid[idx]
         st.switch_page(PAGES_EXP)
 
 def _dmta_counts(recs) -> dict:
