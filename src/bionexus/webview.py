@@ -374,9 +374,30 @@ def resume_wizard(e: dict) -> None:
 
 
 def _leaf_pid(root_id: str, leaf_id: str) -> str:
-    """Campaign branch id for a leaf. Single-node trees (root is its
-    own leaf) run on problem/<root>; multi-node on problem/<root>-<leaf>."""
-    return root_id if leaf_id == root_id else f"{root_id}-{leaf_id}"
+    """Preferred campaign branch id for a leaf. Single-node trees (root
+    is its own leaf) may run on problem/<root> OR problem/<root>-<root>
+    (run_tree's formula) — see _pid_aliases."""
+    if leaf_id == root_id:
+        return f"{root_id}-{root_id}" if _has_doubled_branch(root_id) \
+            else root_id
+    return f"{root_id}-{leaf_id}"
+
+
+def _has_doubled_branch(root_id: str) -> bool:
+    from pathlib import Path as _P
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    if not _P("bionexus.db").exists():
+        return True                      # run_tree convention is default
+    store = SqliteProvenanceStore("bionexus.db")
+    return bool(store.branch_records(f"problem/{root_id}-{root_id}"))
+
+
+def _pid_aliases(root_id: str, leaf_id: str) -> set[str]:
+    """All pid forms a leaf's campaign may be registered under."""
+    doubled = f"{root_id}-{leaf_id}"
+    if leaf_id == root_id:
+        return {root_id, doubled}
+    return {doubled}
 
 
 def collect_problem_trees():
