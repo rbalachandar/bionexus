@@ -167,6 +167,16 @@ class AssayType(str, Enum):
     pcr = "pcr"
     sequencing = "sequencing"
     plate_reader = "plate_reader"
+    # materials characterization
+    tensile = "tensile"
+    dsc = "dsc"
+    dls = "dls"
+    ftir = "ftir"
+    xrd = "xrd"
+    density = "density"
+    # biologics
+    elisa = "elisa"
+    dsf = "dsf"
     custom = "custom"
 
 

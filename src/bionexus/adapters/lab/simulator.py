@@ -28,6 +28,16 @@ ASSAY_PROFILE: dict[str, tuple[float, str, float]] = {
     "counterscreen": (100.0, "percent_interference", 3.0),
     "adme": (70.0, "permeability_score", 9.0),
     "plate_reader": (60.0, "od450", 0.15),
+    # materials characterization (simulated property curves)
+    "tensile": (250.0, "MPa", 12.0),
+    "dsc": (145.0, "degC", 3.0),
+    "dls": (120.0, "nm", 8.0),
+    "ftir": (97.0, "pct_transmittance", 1.5),
+    "xrd": (68.0, "pct_crystallinity", 4.0),
+    "density": (7.8, "g_per_cm3", 0.15),
+    # biologics
+    "elisa": (850.0, "ng_per_mL", 40.0),
+    "dsf": (62.0, "degC", 1.2),
     "custom": (50.0, "signal", 10.0),
 }
 

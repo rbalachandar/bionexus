@@ -283,11 +283,12 @@ def start_dialog() -> None:
                        "dmta_rounds", 2)),
                    "autonomy": autonomy.split(" —")[0],
                    "concentrations": ["0.5uM", "2uM", "10uM", "40uM"]}
+            _assay = "binding" if _sm else "custom"
             if compounds.strip():
                 cfg["hypotheses"] = [
                     {"statement": f"{c.strip()} achieves {_metric} {_cmp} "
                                   f"{thr_s} {_unit}".strip(),
-                     "candidate": c.strip(), "assay_type": _metric,
+                     "candidate": c.strip(), "assay_type": _assay,
                      "predicted": f"{_metric} {_cmp} {thr_s}",
                      "predicted_value": float(threshold),
                      "rationale": ""}
