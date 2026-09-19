@@ -530,28 +530,6 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
             atts = sel_prog.get("attachments") or []
             st.caption(f"{len(atts)} attached experiment(s) - expand the "
                        "program node below to open them")
-            # attach an existing (unattached) experiment to this program
-            all_attached: set = set()
-            for _p in program_cfg.list_programs():
-                all_attached |= {a.get("eid")
-                                 for a in _p.get("attachments", [])}
-            unattached = [e for e in (all_rows or [])
-                          if e["id"] not in all_attached]
-            if unattached:
-                labels = {f"{(e.get('question') or e['id'])[:55]} "
-                          f"({e['id']})": e for e in unattached}
-                pick = st.selectbox("Attach an existing experiment",
-                                    list(labels), key="ws_attach_sel")
-                if st.button("Attach to this program",
-                             key="ws_attach_btn"):
-                    e = labels[pick]
-                    pid = ((e.get("payload") or {}).get("agent")
-                           or {}).get("problem_id") or e["id"]
-                    program_cfg.attach_experiment(
-                        sel_prog["name"], e["id"], pid,
-                        e.get("question") or e["id"],
-                        e.get("status") or "executing")
-                    st.rerun()
     try:
         import streamlit_antd_components as sac
     except ImportError:
