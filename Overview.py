@@ -398,7 +398,7 @@ def overview_view() -> None:
 
 
     # ---------------------------------------------------- experiments
-    all_rows = store.ongoing() + store.finished(50)
+    all_rows = store.ongoing() + store.finished(500)
     st.header("Experiments")
     if not all_rows:
         st.info("Nothing yet.")
