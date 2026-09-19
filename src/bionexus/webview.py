@@ -501,22 +501,28 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     for prog in program_cfg.list_programs():
         gate = prog.get("gate_summary", "")
         kids = []
+        status_tally: dict[str, int] = {}
         for a in prog.get("attachments", []):
             e = rows_by_eid.get(a.get("eid"))
             if not e:
                 continue                     # archived -> not shown
+            s = _row_status(e)
+            status_tally[s] = status_tally.get(s, 0) + 1
             i = reserve()
             idx2eid[i] = e["id"]
             kids.append(sac.TreeItem(
                 e["question"][:60] or e["id"],
                 icon="smart_toy" if (e["payload"].get("agent") or {})
                 else "person",
-                description=_row_status(e), tooltip=a.get("question", "")))
+                description=s, tooltip=a.get("question", "")))
+        tally = " · ".join(f"{n_} {s}" for s, n_ in
+                           sorted(status_tally.items(),
+                                  key=lambda kv: -kv[1]))
+        desc = gate + (f" · {tally}" if tally
+                       else " · no experiments yet")
         items.append(sac.TreeItem(
             prog.get("program", prog["slug"]), icon="activity",
-            description=gate + (f" · {len(kids)} experiment(s)"
-                                if kids else " · no experiments yet"),
-            tooltip=gate, children=kids or None,
+            description=desc, tooltip=gate, children=kids or None,
             disabled=not kids))
 
     def reserve() -> int:
@@ -647,7 +653,6 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         st.info("No problem trees yet — create one with "
                 "`bn plan --objective ...` or the agent experiment wizard.")
         return
-    st.subheader("Problem workspace")
     picked = sac.tree(items=items, open_all=True, label="",
                       return_index=True, show_line=True)
     # sac.tree may return an int or a list of indices depending on

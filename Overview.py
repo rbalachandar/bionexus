@@ -341,7 +341,6 @@ def overview_view() -> None:
     # ---------------------------------------------------- Program & TPP
     doc = program_cfg.load()
     st.header("Program")
-    st.markdown(f"**{program_cfg.gate_summary(doc)}**")
     with st.expander("Program & target product profile — what winning looks like"):
         st.markdown("*Hierarchy:* Program ▸ Problem ▸ Hypothesis ▸ "
                     "Experiment. Define the problem in your own terms — "
