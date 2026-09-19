@@ -380,8 +380,8 @@ def overview_view() -> None:
             doc.get("gate_value", 20.0)), key="tpp_gval")
         if "suggest_basis" in st.session_state:
             st.caption(st.session_state.pop("suggest_basis"))
-        if st.button("Save program", type="primary",
-                     icon=":material/save:"):
+        if st.button("Launch program", type="primary",
+                     icon=":material/rocket_launch:"):
             _slug = program_cfg._slug(prog)
             _existing = {x["slug"]: x for x in program_cfg.list_programs()}
             _prev = _existing.get(_slug)
@@ -400,8 +400,13 @@ def overview_view() -> None:
                                          "gate_value": float(gval),
                                          "mode": mode})
                 program_cfg.save_program_record(_doc)
-                st.toast(f"Program saved — {program_cfg.gate_summary()}",
-                         icon=":material/target:")
+                st.toast(f"Program launched — {program_cfg.gate_summary()}",
+                         icon=":material/rocket_launch:")
+                if mode == "autonomous":
+                    start_dialog()
+                else:
+                    st.session_state["step"] = 1
+                    st.switch_page(PAGES["wizard"])
             st.toast(f"Program saved — {program_cfg.gate_summary()}",
                      icon=":material/target:")
             st.rerun()
