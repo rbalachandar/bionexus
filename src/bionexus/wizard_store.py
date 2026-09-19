@@ -57,16 +57,20 @@ class WizardStore:
 
     def register_agent(self, eid: str, objective: str, log: str,
                        autonomy: str = "act", pid: int | None = None,
-                       status: str = "executing") -> str:
+                       status: str = "executing",
+                       program: str | None = None) -> str:
         """One registry: agent-driven experiments live in the same table as
-        wizard-defined ones, tagged by origin."""
+        wizard-defined ones, tagged by origin (and program when launched
+        from one)."""
         with self._lock:
             now = time.time()
+            payload = {"agent": {"log": log, "autonomy": autonomy,
+                                 "pid": pid, "problem_id": None}}
+            if program:
+                payload["program"] = program
             self._conn.execute(
                 "INSERT OR REPLACE INTO experiments VALUES (?,?,?,?,?,?)",
-                (eid, now, now, status, objective,
-                 json.dumps({"agent": {"log": log, "autonomy": autonomy,
-                                       "pid": pid, "problem_id": None}})))
+                (eid, now, now, status, objective, json.dumps(payload)))
             self._conn.commit()
         return eid
 

@@ -406,12 +406,14 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
             _ws = WizardStore()
             _eid = f"tree-{tree.root.id}-{leaf.id}"
             _root_name = tree.root.objective.split(":")[0].strip()[:40]
+            import os as _os
             _ws.register_agent(
                 _eid, f"{leaf.objective} · sub-problem of {_root_name}",
                 log=str(leaf_log), autonomy=autonomy,
                 status="completed" if leaf.status == "achieved"
                 else ("failed" if leaf.status == "failed"
-                      else "verdict_recorded"))
+                      else "verdict_recorded"),
+                program=_os.environ.get("BN_PROGRAM") or None)
             _ws.link_problem(_eid, problem.problem_id)
         except Exception:
             pass

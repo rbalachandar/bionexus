@@ -118,7 +118,8 @@ def _attach_to_program(cid: str, problem_id: str | None,
         pass                       # attachment is best-effort
 
 
-def _spawn_agent_experiment(cfg: dict, objective: str) -> str:
+def _spawn_agent_experiment(cfg: dict, objective: str,
+                            program: str | None = None) -> str:
     import subprocess
     from bionexus.paths import ensure_dirs
     from bionexus.serve import save_campaign_index
@@ -128,11 +129,15 @@ def _spawn_agent_experiment(cfg: dict, objective: str) -> str:
     cfgpath = CAMPAIGN_DIR / f"{cid}.json"
     cfgpath.write_text(json.dumps(cfg, indent=1))
     logf = CAMPAIGN_DIR / f"{cid}.log"
+    import os as _os
+    _env = dict(_os.environ)
+    if program:
+        _env["BN_PROGRAM"] = program
     proc = subprocess.Popen(
         [sys.executable, "-m", "bionexus.cli", "auto", str(cfgpath),
          "--db", "bionexus.db", "--inbox", ".data/approvals.jsonl", "--yes"],
         stdout=open(logf, "ab", buffering=0), stderr=subprocess.STDOUT,
-        cwd=str(Path.cwd()))
+        cwd=str(Path.cwd()), env=_env)
     store.register_agent(cid, objective, str(logf),
                          autonomy=cfg.get("autonomy", "act"), pid=proc.pid)
     idx = campaign_index()
@@ -252,7 +257,8 @@ def start_dialog() -> None:
                                       prompt_missing=False))
             cfg["k"] = k
             cfg["autonomy"] = autonomy.split(" —")[0]
-        cid = _spawn_agent_experiment(cfg, cfg["problem"]["objective"])
+        cid = _spawn_agent_experiment(cfg, cfg["problem"]["objective"],
+                                      pdoc.get("program"))
         _attach_to_program(cid, None, cfg["problem"]["objective"])
         st.session_state["view_experiment"] = cid
         st.switch_page(PAGES["experiment"])

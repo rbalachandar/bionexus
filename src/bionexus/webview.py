@@ -552,6 +552,14 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         counter["i"] += 1
         return i
 
+    # campaign rows launched from a program carry payload["program"]
+    # and render nested under that program (program -> campaign -> leaves)
+    prog_rows: dict[str, list] = {}
+    for e in (all_rows or []):
+        pn = (e.get("payload") or {}).get("program")
+        if pn:
+            prog_rows.setdefault(pn, []).append(e)
+
     for prog in program_cfg.list_programs():
         gate = prog.get("gate_summary", "")
         kids = []
@@ -569,6 +577,24 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                 icon="smart_toy" if (e["payload"].get("agent") or {})
                 else "person",
                 description=s, tooltip=a.get("question", "")))
+        pname = prog.get("name", prog["slug"])
+        camp = prog_rows.get(pname, []) + prog_rows.get(prog["slug"], [])
+        camp_ids = {a.get("eid") for a in prog.get("attachments", [])}
+        camp = [e for e in camp if e["id"] not in camp_ids]
+        if camp:
+            ckids = []
+            for e in camp:
+                s = _row_status(e)
+                status_tally[s] = status_tally.get(s, 0) + 1
+                i = reserve()
+                idx2eid[i] = e["id"]
+                ckids.append(sac.TreeItem(
+                    e["question"][:60] or e["id"], icon="smart_toy",
+                    description=s, tooltip=e["id"]))
+            kids.append(sac.TreeItem(
+                f"Autonomous campaign ({len(camp)})", icon="group",
+                description=f"{len(camp)} experiment(s)",
+                children=ckids))
         tally = " · ".join(f"{n_} {s}" for s, n_ in
                            sorted(status_tally.items(),
                                   key=lambda kv: -kv[1]))
@@ -686,9 +712,11 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                       for lf in t.leaves()}
     # standalone experiments grouped by who defines the problem:
     # autonomous campaigns (LLM-defined) vs guided (user-defined)
+    prog_tags = set(prog_rows)
     standalone = [e for e in (all_rows or [])
                   if (e["payload"].get("agent") or {}).get("problem_id")
-                  not in tree_leaf_pids]
+                  not in tree_leaf_pids
+                  and (e.get("payload") or {}).get("program") not in prog_tags]
     groups = {"Autonomous campaigns": ([], "smart_toy"),
               "Guided experiments": ([], "person")}
     for e in standalone:
