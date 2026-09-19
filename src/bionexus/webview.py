@@ -91,9 +91,19 @@ def _pipeline_body(logf: Path, problem_id: str | None,
         if et == "lab_run" and d.get("run_id"):
             run_ts[d["run_id"]] = ts or 0
         if et == "hypothesis_proposed":
-            hid = d.get("hypothesis_id") or art_id or d.get("candidate", "?")
-            proposed[hid] = {**d, "candidate": d.get("candidate") or art_meta.get("candidate"),
-                             "predicted": d.get("predicted") or art_meta.get("predicted"),
+            # variant records carry statement/predicted but no candidate
+            # (candidates are attributed later, at synthesis/round time);
+            # fall back to a numbered label, never the string "None"
+            _stmt0 = str(d.get("statement") or "")
+            hid = (d.get("hypothesis_id") or art_id
+                   or d.get("candidate") or _stmt0[:48]
+                   or f"hyp-{len(proposed) + 1}")
+            proposed[hid] = {**d,
+                             "candidate": d.get("candidate")
+                             or art_meta.get("candidate"),
+                             "statement": _stmt0,
+                             "predicted": d.get("predicted")
+                             or art_meta.get("predicted"),
                              "ts": ts}
         elif et == "hypotheses_filtered":
             for dec in d.get("decisions", []):
@@ -150,7 +160,8 @@ def _pipeline_body(logf: Path, problem_id: str | None,
         st.markdown("### Hypothesis pipeline")
         for hid, hp in proposed.items():
             sel = filtered.get(hid)
-            cand = str(hp.get("candidate", hid))
+            cand = str(hp.get("candidate")
+                       or (hp.get("statement") or hid)[:48])
             # statements embed their own "{cid} ({src}) — " label; the
             # card header already shows the candidate — strip it
             stmt = str(hp.get("statement", ""))

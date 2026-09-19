@@ -965,17 +965,23 @@ def experiment_view() -> None:
             if r.event_type.value != "hypothesis_proposed":
                 continue
             d = r.decision or {}
-            cid_ = d.get("candidate") or d.get("hypothesis_id")
-            if cid_ and cid_ not in _hyps:
-                _hyps[cid_] = d.get("statement") or ""
+            key = (d.get("candidate") or d.get("hypothesis_id")
+                   or (d.get("statement") or "")[:80])
+            if key and key not in _hyps:
+                _hyps[key] = d
         with st.expander(f"Hypotheses ({len(_hyps)})", expanded=True):
             if not _hyps:
                 st.caption("No hypotheses yet — the agent proposes them "
                            "in round 1 (or they come from your candidate "
                            "list).")
             else:
-                for cid_, stmt in _hyps.items():
-                    st.markdown(f"- **{cid_}** — {stmt}")
+                for key, d in _hyps.items():
+                    _cand = d.get("candidate")
+                    _stmt = d.get("statement") or key
+                    _pred = d.get("predicted")
+                    _head = f"**{_cand}** — " if _cand else ""
+                    st.markdown(f"- {_head}{_stmt}"
+                                + (f" · predicted: {_pred}" if _pred else ""))
 
         # auto-refresh while the agent is working
         if status == "running":
