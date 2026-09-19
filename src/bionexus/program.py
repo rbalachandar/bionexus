@@ -138,7 +138,8 @@ def link_leaf(program_name: str, eid: str, campaign_root: str,
 
 def launches_by_program() -> dict:
     """program name -> list of linked problem-tree root ids (relation)."""
-    if not Path(".data/wizard.db").exists():
+    from bionexus.paths import DATA_DIR
+    if not (DATA_DIR / "wizard.db").exists():
         return {}
     from bionexus.wizard_store import WizardStore
     ws = WizardStore()

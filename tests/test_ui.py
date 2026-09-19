@@ -1,3 +1,4 @@
+import pytest
 """UI vocabulary helpers: icons render, tokens resolve, missing is empty."""
 from bionexus.ui import COLORS, icon, small, tagged
 
@@ -37,6 +38,7 @@ def test_tree_mapper_positional_alignment():
     align exactly: container nodes -> None, leaves -> their meta. This
     is the regression test for the off-by-N that made program clicks
     open unrelated experiments."""
+    pytest.importorskip("streamlit_antd_components")
     from streamlit_antd_components.utils.parser import ParseItems
 
     from bionexus.webview import _TreeMapper
