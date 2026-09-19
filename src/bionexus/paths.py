@@ -1,9 +1,12 @@
 """Shared local-state paths for the CLI surface (all under .data/)."""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
-DATA_DIR = Path(".data")
+# Tests redirect this to an isolated temp dir (tests/conftest.py) so
+# running pytest can never pollute the user's workbench registry.
+DATA_DIR = Path(os.environ.get("BIONEXUS_DATA_DIR", ".data"))
 CAMPAIGN_DIR = DATA_DIR / "campaigns"
 EXPORT_DIR = DATA_DIR / "exports"
 
