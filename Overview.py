@@ -928,9 +928,12 @@ def experiment_view() -> None:
                           if p["slug"] == _pslug), None)
             if _prow:
                 _pd = _prow.get("program") or {}
+                _sym = program_cfg.gate_symbol(_pd)
+                _gate = (f"{_pd.get('metric', '—')} {_sym} "
+                         f"{float(_pd.get('gate_value', 0)):g} "
+                         f"{_pd.get('unit', '')}").strip()
                 st.markdown(
-                    f"**Program: {_prow['name']}** · gate: "
-                    f"{_prow.get('gate_summary', '—').split('· ', 1)[-1]} · "
+                    f"**Program: {_prow['name']}** · gate: {_gate} · "
                     f"modality: {_pd.get('modality') or '—'} · "
                     f"mode: {_pd.get('mode', '—')}")
         if _spec:
