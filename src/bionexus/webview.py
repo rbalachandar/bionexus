@@ -527,6 +527,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         return
     trees, _leaf_pids = collect_problem_trees()
     items, idx2eid = [], {}
+    idx2program: dict[int, dict] = {}
     counter = {"i": 0}
 
     # programs first: shared roots (any modality), visible to everyone
@@ -561,6 +562,13 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                                   key=lambda kv: -kv[1]))
         desc = gate + (f" · {tally}" if tally
                        else " · no experiments yet")
+        i = reserve()
+        idx2program[i] = {"name": prog.get("name", prog["slug"]),
+                          "doc": prog.get("program") or {},
+                          "mode": prog.get("mode", "autonomous"),
+                          "gate": gate,
+                          "attachments": prog.get("attachments", []),
+                          "rows_by_eid": rows_by_eid}
         items.append(sac.TreeItem(
             prog.get("name", prog["slug"]), icon="activity",
             description=desc, tooltip=gate, children=kids or None))
@@ -710,6 +718,20 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     if idx is not None and idx2eid.get(idx):
         st.session_state["view_experiment"] = idx2eid[idx]
         st.switch_page(PAGES_EXP)
+        return
+    # program node selected -> show its definition
+    prog_sel = idx2program.get(idx) if idx is not None else None
+    if prog_sel:
+        doc = prog_sel.get("doc") or {}
+        with st.expander(f"Program: {prog_sel['name']}", expanded=True):
+            st.markdown(f"**Objective:** {doc.get('objective', '—')}")
+            st.markdown(f"**Gate:** {prog_sel.get('gate', '—')} · "
+                        f"**Mode:** {prog_sel.get('mode', '—')} · "
+                        f"**Modality:** {doc.get('modality') or '—'}")
+            atts = prog_sel.get("attachments") or []
+            if atts:
+                st.caption(f"{len(atts)} attached experiment(s) — expand "
+                           "the program node above to open them")
 
 
 def _dmta_counts(recs) -> dict:

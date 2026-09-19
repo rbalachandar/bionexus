@@ -981,6 +981,8 @@ PAGES = {
                      url_path="documentation"),
 }
 _wv.WIZARD_PAGE = PAGES["wizard"]
+_wv.PAGES_EXP = PAGES["experiment"]
+_wv.START_DIALOG = start_dialog
 
 
 def _key_new() -> None:
