@@ -45,7 +45,17 @@ def run_materials_sweep(objective: str, formulations: list[float],
             EventType(event_type) if isinstance(event_type, str)
             else event_type, system_actor(actor), decision=decision))
 
-    # Design: the registered problem, honestly shaped for this modality
+    # Design: the registered problem, in the SAME shape every campaign
+    # uses (single-node problem tree) so the workspace, navigator and
+    # breadcrumb treat materials runs as first-class trees
+    from bionexus.problem_tree import ProblemNode, ProblemTree
+    sweep_tree = ProblemTree(
+        root=ProblemNode(id=problem_id, objective=objective,
+                         metric=metric, direction=direction, gate=gate),
+        nodes={problem_id: ProblemNode(
+            id=problem_id, objective=objective, metric=metric,
+            direction=direction, gate=gate)},
+        modality="material", run_budget=len(formulations))
     rec("problem_defined", {
         "problem_id": problem_id, "objective": objective,
         "modality": "material",
@@ -53,9 +63,9 @@ def run_materials_sweep(objective: str, formulations: list[float],
                          "description": f"{metric} {direction} {gate:g}",
                          "kind": "hard", "limit": gate, "unit": unit}],
         "success_metric": f"best {metric} meets the {gate:g} {unit} gate",
-        "environment": {"kind": "materials-sweep",
-                        "formulations": formulations,
-                        "gate": gate, "metric": metric, "param": param}})
+        "environment": {"kind": "problem-tree",
+                        "tree": sweep_tree.model_dump(),
+                        "run_budget": len(formulations)}})
 
     cand = f"{metric} {direction} {gate:g} {unit}"
     rec("hypothesis_proposed", {
