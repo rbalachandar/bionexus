@@ -180,7 +180,9 @@ def agent_row_status(e: dict) -> tuple[str, Path]:
 def _resolve_problem(meta: dict, logf: Path) -> str | None:
     problem_id = meta.get("problem_id")
     if logf and str(logf) != "." and logf.is_file():
-        m = re.findall(r"problem (prob-\w+):", logf.read_text(errors="replace"))
+        txt = logf.read_text(errors="replace")
+        m = re.findall(r"problem (prob-\w+):", txt) \
+            or re.findall(r"\b(prob-[0-9a-f]+)\b", txt)
         latest = m[-1] if m else None
         if latest and latest != problem_id:
             problem_id = latest
@@ -955,6 +957,32 @@ def experiment_view() -> None:
                        f"{_spec.get('rounds', '—')} DMTA rounds · "
                        f"autonomy: {_spec.get('autonomy')} · "
                        f"candidates: {_src}")
+
+        # hypotheses (from provenance; visible by default with an honest
+        # empty state while the agent is still proposing)
+        _hyps = {}
+        for r in recs:
+            if r.event_type.value != "hypothesis_proposed":
+                continue
+            d = r.decision or {}
+            cid_ = d.get("candidate") or d.get("hypothesis_id")
+            if cid_ and cid_ not in _hyps:
+                _hyps[cid_] = d.get("statement") or ""
+        with st.expander(f"Hypotheses ({len(_hyps)})", expanded=True):
+            if not _hyps:
+                st.caption("No hypotheses yet — the agent proposes them "
+                           "in round 1 (or they come from your candidate "
+                           "list).")
+            else:
+                for cid_, stmt in _hyps.items():
+                    st.markdown(f"- **{cid_}** — {stmt}")
+
+        # auto-refresh while the agent is working
+        if status == "running":
+            import streamlit.components.v1 as _components
+            _components.html(
+                "<script>setTimeout(function(){"
+                "window.location.reload();}, 6000);</script>", height=0)
         if status == "running":
             st.info("In progress — this view refreshes as the agent works.")
 

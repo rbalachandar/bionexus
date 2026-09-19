@@ -38,6 +38,19 @@ ASSAY_PROFILE: dict[str, tuple[float, str, float]] = {
     # biologics
     "elisa": (850.0, "ng_per_mL", 40.0),
     "dsf": (62.0, "degC", 1.2),
+    "immunogenicity": (35.0, "pct_response", 4.0),
+    "aggregation": (8.0, "pct_aggregate", 0.8),
+    "thermal_stability": (71.0, "degC", 1.0),
+    # cell therapy
+    "potency": (88.0, "pct_potency", 5.0),
+    "sterility": (99.0, "pct_sterile", 0.5),
+    "phenotype_stability": (92.0, "pct_phenotype", 2.5),
+    # mRNA
+    "expression": (74.0, "pct_expression", 4.5),
+    "stability": (80.0, "pct_intact", 3.0),
+    # agrochemical
+    "organism_dose_response": (100.0, "pct_mortality", 5.0),
+    "phytotoxicity": (100.0, "pct_injury", 5.0),
     "custom": (50.0, "signal", 10.0),
 }
 

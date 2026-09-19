@@ -177,6 +177,19 @@ class AssayType(str, Enum):
     # biologics
     elisa = "elisa"
     dsf = "dsf"
+    immunogenicity = "immunogenicity"
+    aggregation = "aggregation"
+    thermal_stability = "thermal_stability"
+    # cell therapy
+    potency = "potency"
+    sterility = "sterility"
+    phenotype_stability = "phenotype_stability"
+    # mRNA
+    expression = "expression"
+    stability = "stability"
+    # agrochemical
+    organism_dose_response = "organism_dose_response"
+    phytotoxicity = "phytotoxicity"
     custom = "custom"
 
 
