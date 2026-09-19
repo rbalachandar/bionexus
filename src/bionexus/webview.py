@@ -514,6 +514,46 @@ def _row_status(e: dict) -> str:
     return e["status"]
 
 
+class _TreeMapper:
+    """Emit sac.TreeItems with a position-aligned meta list.
+
+    One law of the navigator: a node exists in the widget tree if and
+    only if it exists in `flat`. sac.tree(return_index=True) numbers
+    EVERY node in depth-first pre-order (see the library's
+    ParseItems.multi), so `emit` appends the parent's meta BEFORE
+    building children. Containers map to None and can never navigate;
+    leaves map to their experiment id. Testable against the library
+    parser directly (tests/test_ui.py)."""
+
+    def __init__(self):
+        self.flat: list = []
+        self.items: list = []      # TOP-LEVEL items only: the library
+        self._depth = 0            # walks children via the hierarchy
+
+    def emit(self, label, *, icon=None, tooltip=None, meta=None,
+             build_children=None, describe=None, disabled=False):
+        import streamlit_antd_components as sac
+        # reserve BOTH lists' parent slots before building children:
+        # depth-first pre-order = parent position first, exactly like
+        # the library's ParseItems.multi keying
+        top = self._depth == 0
+        pos = len(self.items)
+        if top:
+            self.items.append(None)
+        self.flat.append(meta)
+        self._depth += 1
+        try:
+            children = build_children() if build_children else None
+        finally:
+            self._depth -= 1
+        item = sac.TreeItem(
+            label, icon=icon, description=describe() if describe else None,
+            tooltip=tooltip, children=children or None, disabled=disabled)
+        if top:
+            self.items[pos] = item
+        return item
+
+
 def render_experiment_navigator(all_rows: list | None = None) -> None:
     """The Experiments view IS the navigator: problem trees as
     hierarchies. Labels stay short and may repeat across trees — clicks
@@ -526,18 +566,21 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                 "streamlit-antd-components`)")
         return
     trees, _leaf_pids = collect_problem_trees()
-    items, idx2eid = [], {}
-    counter = {"i": 0}
 
     # programs first: shared roots (any modality), visible to everyone
     # on the service. Experiments launched under a program attach as
     # its children (linkage lands with leaf attachment)
     from bionexus import program as program_cfg
     rows_by_eid = {e["id"]: e for e in (all_rows or [])}
-    def reserve() -> int:
-        i = counter["i"]
-        counter["i"] += 1
-        return i
+
+    m = _TreeMapper()
+    emit, items, flat = m.emit, m.items, m.flat
+
+    def leaf_item(e, *, icon, tooltip=None):
+        return emit(e["question"][:60] or e["id"], icon=icon,
+                    describe=lambda s=_row_status(e): s,
+                    tooltip=tooltip or e["id"],
+                    meta=e["id"])
 
     # campaign rows launched from a program carry payload["program"]
     # and render nested under that program (program -> campaign -> leaves)
@@ -549,47 +592,50 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
 
     for prog in program_cfg.list_programs():
         gate = prog.get("gate_summary", "")
-        kids = []
-        status_tally: dict[str, int] = {}
-        for a in prog.get("attachments", []):
-            e = rows_by_eid.get(a.get("eid"))
-            if not e:
-                continue                     # archived -> not shown
-            s = _row_status(e)
-            status_tally[s] = status_tally.get(s, 0) + 1
-            i = reserve()
-            idx2eid[i] = e["id"]
-            kids.append(sac.TreeItem(
-                e["question"][:60] or e["id"],
-                icon="smart_toy" if (e["payload"].get("agent") or {})
-                else "person",
-                description=s, tooltip=a.get("question", "")))
         pname = prog.get("name", prog["slug"])
-        camp = prog_rows.get(pname, []) + prog_rows.get(prog["slug"], [])
         camp_ids = {a.get("eid") for a in prog.get("attachments", [])}
-        camp = [e for e in camp if e["id"] not in camp_ids]
-        if camp:
-            ckids = []
-            for e in camp:
+        status_tally: dict[str, int] = {}
+
+        def build_prog_kids(prog=prog, pname=pname, camp_ids=camp_ids):
+            kids = []
+            for a in prog.get("attachments", []):
+                e = rows_by_eid.get(a.get("eid"))
+                if not e:
+                    continue                 # archived -> not shown
                 s = _row_status(e)
                 status_tally[s] = status_tally.get(s, 0) + 1
-                i = reserve()
-                idx2eid[i] = e["id"]
-                ckids.append(sac.TreeItem(
-                    e["question"][:60] or e["id"], icon="smart_toy",
-                    description=s, tooltip=e["id"]))
-            kids.append(sac.TreeItem(
-                f"Autonomous campaign ({len(camp)})", icon="group",
-                description=f"{len(camp)} experiment(s)",
-                children=ckids))
-        tally = " · ".join(f"{n_} {s}" for s, n_ in
-                           sorted(status_tally.items(),
-                                  key=lambda kv: -kv[1]))
-        desc = gate + (f" · {tally}" if tally
-                       else " · no experiments yet")
-        items.append(sac.TreeItem(
-            prog.get("name", prog["slug"]), icon="activity",
-            description=desc, tooltip=gate, children=kids or None))
+                kids.append(leaf_item(
+                    e, icon="smart_toy"
+                    if (e["payload"].get("agent") or {}) else "person",
+                    tooltip=a.get("question", "")))
+            camp = [e for e in prog_rows.get(pname, [])
+                    + prog_rows.get(prog["slug"], [])
+                    if e["id"] not in camp_ids]
+            if camp:
+                def build_camp_kids(camp=camp):
+                    ck = []
+                    for e in camp:
+                        s = _row_status(e)
+                        status_tally[s] = status_tally.get(s, 0) + 1
+                        ck.append(leaf_item(e, icon="smart_toy"))
+                    return ck
+                kids.append(emit(f"Autonomous campaign ({len(camp)})",
+                                 icon="group",
+                                 describe=lambda n=len(camp):
+                                 f"{n} experiment(s)",
+                                 build_children=build_camp_kids))
+            return kids
+
+        def describe_prog():
+            tally = " \u00b7 ".join(
+                f"{n_} {s}" for s, n_ in sorted(status_tally.items(),
+                                                key=lambda kv: -kv[1]))
+            return gate + (f" \u00b7 {tally}" if tally
+                           else " \u00b7 no experiments yet")
+
+        emit(pname, icon="activity", tooltip=gate,
+                          build_children=build_prog_kids,
+                          describe=describe_prog)
 
     for tree, alloc, leaf_stats, rollup, _rec in trees:
         eid_by_pid = {}
@@ -607,7 +653,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         total = sum(alloc.get(l.id, 0) for l in tree.leaves())
         root_name = tree.root.objective
 
-        def chain(nid):
+        def chain(nid, tree=tree):
             """parent chain of objectives, root first."""
             out, cur = [], nid
             while cur:
@@ -615,10 +661,8 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                 cur = tree.nodes[cur].parent
             return " \u25b8 ".join(reversed(out))
 
-        def build(nid) -> sac.TreeItem:
-            # reserve the index FIRST: widget positions are pre-order
-            # (parent before children), so must our mapping be
-            i = reserve()
+        def build(nid, tree=tree, alloc=alloc, leaf_stats=leaf_stats,
+                  rollup=rollup, eid_by_pid=eid_by_pid):
             n = tree.nodes[nid]
             kids = tree.children(nid)
             st_word = rollup.get(nid, n.status)
@@ -627,62 +671,64 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
             lineage = chain(nid)
             gate = (f" \u00b7 gate {n.metric} "
                     f"{'\u2264' if n.direction == 'min' else '\u2265'}"
-                    f"{n.gate:g}") if n.metric else ""
-            children = [build(k.id) for k in kids]
+                    f"{n.gate:g}")
+
+            def kids_builder(nid=nid, kids=kids):
+                return [build(k.id) for k in kids]
+
             if kids:
-                sub_leaves = tree.subtree_leaves(nid)
-                sub = sum(alloc.get(l.id, 0) for l in sub_leaves)
-                # a group is as clickable as its subtree: if every leaf
-                # beneath it is archived, the group retires with them
-                all_gone = all(f"{tree.root.id}-{l.id}" not in eid_by_pid
-                               for l in sub_leaves)
-                return sac.TreeItem(
-                    n.objective, icon="diagram-2",
-                    description=f"{st_word} \u00b7 budget {sub} runs"
-                                + (" \u00b7 archived" if all_gone else ""),
-                    tooltip=f"{lineage}{gate}", children=children,
-                    disabled=all_gone)
+                def describe_group(nid=nid, kids=kids, st_word=st_word):
+                    sub_leaves = tree.subtree_leaves(nid)
+                    sub = sum(alloc.get(l.id, 0) for l in sub_leaves)
+                    # a group is as clickable as its subtree: if every leaf
+                    # beneath it is archived, the group retires with them
+                    all_gone = all(
+                        f"{tree.root.id}-{l.id}" not in eid_by_pid
+                        for l in sub_leaves)
+                    return (f"{st_word} \u00b7 budget {sub} runs"
+                            + (" \u00b7 archived" if all_gone else ""))
+                return emit(n.objective, icon="diagram-2",
+                            tooltip=f"{lineage}{gate}",
+                            build_children=kids_builder,
+                            describe=describe_group)
             pid = _leaf_pid(tree.root.id, nid)
             ls = leaf_stats.get(nid, {})
-            if pid in eid_by_pid:
-                idx2eid[i] = eid_by_pid[pid]
-            return sac.TreeItem(
-                n.objective, icon="droplet",
-                description=(f"{st_word} \u00b7 "
-                             f"{ls.get('runs', 0)}/"
-                             f"{alloc.get(nid, 0)} runs"),
-                tooltip=(f"{lineage}{gate} \u00b7 problem statement: "
-                         f"{ls.get('statement') or n.objective}"),
-                disabled=pid not in eid_by_pid)
+            meta = eid_by_pid.get(pid)
+            return emit(n.objective, icon="droplet",
+                        tooltip=(f"{lineage}{gate} \u00b7 problem statement: "
+                                 f"{ls.get('statement') or n.objective}"),
+                        meta=meta,
+                        describe=lambda st_word=st_word, ls=ls, nid=nid:
+                        f"{st_word} \u00b7 {ls.get('runs', 0)}/"
+                        f"{alloc.get(nid, 0)} runs",
+                        disabled=meta is None)
 
-        root_i = reserve()
-        root_children = [build(k.id)
-                         for k in tree.children(tree.root.id)]
         root_leaves = tree.leaves()
         root_gone = all(_leaf_pid(tree.root.id, l.id) not in eid_by_pid
                         for l in root_leaves)
         # a SINGLE-NODE tree (no sub-problems): the root itself is the
         # experiment and must be clickable, not a dead group header
-        if not root_children and root_leaves:
+        if not tree.children(tree.root.id) and root_leaves:
             leaf = root_leaves[0]
             pid = f"{tree.root.id}-{leaf.id}"
-            st_word = rstatus
             ls = leaf_stats.get(leaf.id, {})
-            if pid in eid_by_pid:
-                idx2eid[root_i] = eid_by_pid[pid]
-            items.append(sac.TreeItem(
-                root_name, icon="droplet",
-                description=(f"{st_word} \u00b7 "
-                             f"{alloc.get(leaf.id, 0)} runs"),
-                tooltip=root_name,
-                disabled=pid not in eid_by_pid))
+            emit(
+                root_name, icon="droplet", tooltip=root_name,
+                meta=eid_by_pid.get(pid),
+                describe=lambda rstatus=rstatus, ls=ls, leaf=leaf:
+                f"{rstatus} \u00b7 {alloc.get(leaf.id, 0)} runs",
+                disabled=pid not in eid_by_pid)
         else:
-            items.append(sac.TreeItem(
+            def build_root_kids(tree=tree):
+                return [build(k.id) for k in tree.children(tree.root.id)]
+            emit(
                 root_name, icon="activity",
-                description=f"{rstatus} \u00b7 budget {total} runs"
-                            + (" \u00b7 archived" if root_gone else ""),
-                tooltip=root_name, children=root_children,
-                disabled=root_gone))
+                tooltip=root_name, build_children=build_root_kids,
+                describe=lambda rstatus=rstatus, total=total,
+                root_gone=root_gone:
+                f"{rstatus} \u00b7 budget {total} runs"
+                + (" \u00b7 archived" if root_gone else ""),
+                disabled=root_gone)
 
     # standalone experiments (wizard/manual, single agent runs) group
     # under one collapsible node — the workspace shows auto AND manual
@@ -706,19 +752,14 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     for group_name, (entries, group_icon) in groups.items():
         if not entries:
             continue
-        gi = reserve()
-        kids = []
-        for e, ag in entries:
-            status = _row_status(e)
-            i = reserve()
-            idx2eid[i] = e["id"]
-            kids.append(sac.TreeItem(
-                e["question"][:60] or e["id"], icon=group_icon,
-                description=status, tooltip=e["id"]))
-        items.append(sac.TreeItem(
-            f"{group_name} ({len(entries)})", icon="group",
-            description=f"{len(entries)} experiment(s)",
-            children=kids))
+
+        def build_group_kids(entries=entries, group_icon=group_icon):
+            return [leaf_item(e, icon=group_icon) for e, _ag in entries]
+
+        emit(f"{group_name} ({len(entries)})", icon="group",
+                          describe=lambda n=len(entries):
+                          f"{n} experiment(s)",
+                          build_children=build_group_kids)
 
     if not program_cfg.list_programs():
         st.info("Create a program first — open **Program** above, define "
@@ -735,8 +776,8 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         idx = picked[0] if picked else None
     elif picked is not None:
         idx = picked
-    if idx is not None and idx2eid.get(idx):
-        st.session_state["view_experiment"] = idx2eid[idx]
+    if isinstance(idx, int) and 0 <= idx < len(flat) and flat[idx]:
+        st.session_state["view_experiment"] = flat[idx]
         st.switch_page(PAGES_EXP)
         return
 
