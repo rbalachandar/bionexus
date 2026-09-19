@@ -518,18 +518,6 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     """The Experiments view IS the navigator: problem trees as
     hierarchies. Labels stay short and may repeat across trees — clicks
     map by node POSITION (return_index), and tooltips carry lineage."""
-
-    sel_prog = st.session_state.pop("ws_program_sel", None)
-    if sel_prog:
-        doc = sel_prog.get("doc") or {}
-        with st.container(border=True):
-            st.markdown(f"**Program: {sel_prog['name']}**")
-            st.markdown(f"**Objective:** {doc.get('objective', chr(8212))}")
-            st.markdown(f"**Gate:** {sel_prog.get('gate', chr(8212))} - "
-                        f"**Mode:** {sel_prog.get('mode', chr(8212))}")
-            atts = sel_prog.get("attachments") or []
-            st.caption(f"{len(atts)} attached experiment(s) - expand the "
-                       "program node below to open them")
     try:
         import streamlit_antd_components as sac
     except ImportError:
@@ -539,7 +527,6 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         return
     trees, _leaf_pids = collect_problem_trees()
     items, idx2eid = [], {}
-    idx2program: dict[int, dict] = {}
     counter = {"i": 0}
 
     # programs first: shared roots (any modality), visible to everyone
@@ -600,13 +587,6 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                                   key=lambda kv: -kv[1]))
         desc = gate + (f" · {tally}" if tally
                        else " · no experiments yet")
-        i = reserve()
-        idx2program[i] = {"name": prog.get("name", prog["slug"]),
-                          "doc": prog.get("program") or {},
-                          "mode": prog.get("mode", "autonomous"),
-                          "gate": gate,
-                          "attachments": prog.get("attachments", []),
-                          "rows_by_eid": rows_by_eid}
         items.append(sac.TreeItem(
             prog.get("name", prog["slug"]), icon="activity",
             description=desc, tooltip=gate, children=kids or None))
@@ -759,12 +739,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         st.session_state["view_experiment"] = idx2eid[idx]
         st.switch_page(PAGES_EXP)
         return
-    # program node selected -> remember it and rerun so the definition
-    # renders ABOVE the tree (immediately visible)
-    prog_sel = idx2program.get(idx) if idx is not None else None
-    if prog_sel:
-        st.session_state["ws_program_sel"] = prog_sel
-        st.rerun()
+
 
 
 def _dmta_counts(recs) -> dict:
