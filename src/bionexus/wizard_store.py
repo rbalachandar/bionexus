@@ -128,6 +128,15 @@ class WizardStore:
     def finished(self, limit: int = 20) -> list[dict]:
         return self._visible("status = 'verdict_recorded'", limit)
 
+    def purge_archived(self) -> int:
+        """Hard-delete archived REGISTRY rows. Provenance (bionexus.db)
+        is untouched — only the working-set registration is removed."""
+        cur = self._conn.execute(
+            "DELETE FROM experiments "
+            "WHERE payload LIKE '%\"archived\": true%'")
+        self._conn.commit()
+        return cur.rowcount
+
     def archived(self, limit: int = 100) -> list[dict]:
         rows = self._conn.execute(
             "SELECT * FROM experiments "
