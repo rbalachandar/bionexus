@@ -125,3 +125,28 @@ def test_program_relations_roundtrip(tmp_path, monkeypatch):
     tables = {r[0] for r in ws._conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"programs", "program_experiments", "experiments"} <= tables
+
+
+def test_campaign_spec_roundtrip():
+    """Launch details are captured relationally (campaign_specs) and
+    readable by the experiment page before provenance catches up."""
+    from bionexus.wizard_store import WizardStore
+
+    ws = WizardStore()
+    eid = "spec-test-1"
+    ws._conn.execute(
+        "INSERT OR REPLACE INTO experiments VALUES (?,?,?,?,?,?)",
+        (eid, 0, 0, "executing", "test campaign", "{}"))
+    ws._conn.commit()
+    ws.set_campaign_spec(
+        eid, objective="find X", program_slug="rel-1",
+        constraints=[{"name": "x", "description": "x >= 5"}],
+        success_metric="x gate", k=2, rounds=3, autonomy="act",
+        hypothesis_source="agent", n_candidates=0, modality="material")
+    spec = ws.get_campaign_spec(eid)
+    assert spec["objective"] == "find X"
+    assert spec["program_slug"] == "rel-1"
+    assert spec["constraints"][0]["name"] == "x"
+    assert spec["hypothesis_source"] == "agent"
+    assert spec["n_candidates"] == 0
+    assert spec["rounds"] == 3

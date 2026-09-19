@@ -140,6 +140,24 @@ def _spawn_agent_experiment(cfg: dict, objective: str,
         cwd=str(Path.cwd()), env=_env)
     store.register_agent(cid, objective, str(logf),
                          autonomy=cfg.get("autonomy", "act"), pid=proc.pid)
+    # relational capture: the full launch definition, readable by the
+    # experiment page before provenance catches up
+    try:
+        _problem = cfg.get("problem") or {}
+        _pdoc = program_cfg.load() if program else {}
+        store.set_campaign_spec(
+            cid, objective=objective,
+            program_slug=(program_cfg._slug(program) if program else None),
+            constraints=_problem.get("constraints") or [],
+            success_metric=_problem.get("success_metric"),
+            k=cfg.get("k"), rounds=cfg.get("rounds"),
+            autonomy=cfg.get("autonomy", "act"),
+            hypothesis_source=("agent" if cfg.get("hypothesis_source")
+                               == "agent" else "config"),
+            n_candidates=len(cfg.get("hypotheses") or []),
+            modality=_pdoc.get("modality") or None)
+    except Exception:
+        pass
     if program:
         try:
             from bionexus import program as _pc
@@ -887,14 +905,56 @@ def experiment_view() -> None:
         _crumb = _wv.lineage_caption(ag.get("problem_id"))
         if _crumb:
             st.caption(_crumb)
-        if status == "running":
-            st.info("In progress — this view refreshes as the agent works.")
 
-        # metric tiles
+        # provenance records for this campaign (needed by the spec
+        # block below and the metric tiles)
         from bionexus.adapters.store.sqlite import SqliteProvenanceStore
         branch = f"problem/{problem_id}" if problem_id else None
         recs = (SqliteProvenanceStore("bionexus.db").branch_records(branch)
                 if branch and Path("bionexus.db").exists() else [])
+
+        # program context + campaign definition (relational; provenance
+        # takes precedence for objective/constraints once registered)
+        _spec = store.get_campaign_spec(row["id"])
+        _pslug = (_spec or {}).get("program_slug")
+        if not _pslug:
+            for _l in program_cfg.list_programs():
+                if any(a["eid"] == row["id"]
+                       for a in _l.get("attachments", [])):
+                    _pslug = _l["slug"]
+                    break
+        if _pslug:
+            _prow = next((p for p in program_cfg.list_programs()
+                          if p["slug"] == _pslug), None)
+            if _prow:
+                _pd = _prow.get("program") or {}
+                st.markdown(
+                    f"**Program: {_prow['name']}** · gate: "
+                    f"{_prow.get('gate_summary', '—').split('· ', 1)[-1]} · "
+                    f"modality: {_pd.get('modality') or '—'} · "
+                    f"mode: {_pd.get('mode', '—')}")
+        if _spec:
+            _pdef = next((r.decision for r in recs
+                          if r.event_type.value == "problem_defined"), None) \
+                if recs else None
+            _obj = (_pdef or {}).get("objective") or _spec["objective"]
+            _cons = ((_pdef or {}).get("constraints")
+                     or _spec.get("constraints") or [])
+            _cons_s = " · ".join(
+                f"{c.get('name')}: {c.get('description', '')}"
+                for c in _cons) or "—"
+            _src = ("agent-proposed candidates"
+                    if _spec.get("hypothesis_source") == "agent"
+                    else f"{_spec.get('n_candidates') or 0} named candidates")
+            st.caption(f"objective: {_obj} · constraints: {_cons_s}")
+            st.caption(f"budget: top-{_spec.get('k', '—')} hypotheses/round · "
+                       f"{_spec.get('rounds', '—')} DMTA rounds · "
+                       f"autonomy: {_spec.get('autonomy')} · "
+                       f"candidates: {_src}")
+        if status == "running":
+            st.info("In progress — this view refreshes as the agent works.")
+
+        # metric tiles
         n_runs = sum(1 for r in recs if r.event_type.value == "lab_run")
         # the problem, as registered at the root of the chain
         pdef = next((r.decision or {} for r in recs

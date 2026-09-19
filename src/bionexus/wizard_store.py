@@ -46,6 +46,22 @@ class WizardStore:
                 updated_at REAL NOT NULL
             )""")
         self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_specs (
+                experiment_id    TEXT PRIMARY KEY
+                    REFERENCES experiments(id) ON DELETE CASCADE,
+                program_slug     TEXT REFERENCES programs(slug),
+                objective        TEXT NOT NULL,
+                constraints_json TEXT,
+                success_metric   TEXT,
+                k                INTEGER,
+                rounds           INTEGER,
+                autonomy         TEXT,
+                hypothesis_source TEXT,
+                n_candidates     INTEGER,
+                modality         TEXT,
+                created_at       REAL NOT NULL
+            )""")
+        self._conn.execute("""
             CREATE TABLE IF NOT EXISTS program_experiments (
                 program_slug TEXT NOT NULL
                     REFERENCES programs(slug) ON DELETE CASCADE,
@@ -149,6 +165,40 @@ class WizardStore:
                     "campaign_root, question, status "
                     "FROM program_experiments WHERE program_slug=? "
                     "ORDER BY created_at", (slug,))]
+
+    def set_campaign_spec(self, eid: str, *, objective: str,
+                          program_slug: str | None = None,
+                          constraints: list | None = None,
+                          success_metric: str | None = None,
+                          k: int | None = None, rounds: int | None = None,
+                          autonomy: str | None = None,
+                          hypothesis_source: str | None = None,
+                          n_candidates: int | None = None,
+                          modality: str | None = None) -> None:
+        with self._lock:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO campaign_specs VALUES "
+                "(?,?,?,?,?,?,?,?,?,?,?,?)",
+                (eid, program_slug, objective,
+                 json.dumps(constraints) if constraints else None,
+                 success_metric, k, rounds, autonomy, hypothesis_source,
+                 n_candidates, modality, time.time()))
+            self._conn.commit()
+
+    def get_campaign_spec(self, eid: str) -> dict | None:
+        row = self._conn.execute(
+            "SELECT experiment_id, program_slug, objective, "
+            "constraints_json, success_metric, k, rounds, autonomy, "
+            "hypothesis_source, n_candidates, modality "
+            "FROM campaign_specs WHERE experiment_id=?", (eid,)).fetchone()
+        if not row:
+            return None
+        return {"experiment_id": row[0], "program_slug": row[1],
+                "objective": row[2],
+                "constraints": json.loads(row[3]) if row[3] else [],
+                "success_metric": row[4], "k": row[5], "rounds": row[6],
+                "autonomy": row[7], "hypothesis_source": row[8],
+                "n_candidates": row[9], "modality": row[10]}
 
     def set_question(self, eid: str, question: str) -> None:
         """Retitle: question is a column, not payload fields."""

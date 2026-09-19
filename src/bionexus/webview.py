@@ -716,7 +716,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                         continue
                     kids.append(emit(
                         a["question"][:60] or a["eid"], icon="droplet",
-                        description=a.get("status") or "archived",
+                        describe=lambda s=a.get("status"): s or "archived",
                         tooltip=a["eid"], meta=None, disabled=True))
                     continue
                 s = _row_status(e)
@@ -736,7 +736,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                     item = render_tree(*tup)
                     return [item] if item is not None else []
                 kids.append(emit("Autonomous campaign", icon="group",
-                                 description="campaign problem tree",
+                                 describe=lambda: "campaign problem tree",
                                  build_children=build_tree_kids))
             return kids
 
