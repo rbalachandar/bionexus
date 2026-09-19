@@ -373,6 +373,12 @@ def resume_wizard(e: dict) -> None:
     st.session_state["step"] = STATUS_STEP.get(e["status"], 1)
 
 
+def _leaf_pid(root_id: str, leaf_id: str) -> str:
+    """Campaign branch id for a leaf. Single-node trees (root is its
+    own leaf) run on problem/<root>; multi-node on problem/<root>-<leaf>."""
+    return root_id if leaf_id == root_id else f"{root_id}-{leaf_id}"
+
+
 def collect_problem_trees():
     """All serialized problem trees with live status, for the Overview.
     Returns (trees, leaf_problem_ids) where trees is a list of
@@ -418,8 +424,9 @@ def collect_problem_trees():
         for leaf in tree.leaves():
             # campaigns run on problem/{root}-{leaf}; the slash form only
             # carries the leaf-complete marker
+            from bionexus.webview import _leaf_pid as _lp
             lrecs = (full.branch_records(
-                f"problem/{tree.root.id}-{leaf.id}")
+                f"problem/{_lp(tree.root.id, leaf.id)}")
                 or full.branch_records(leaf.branch(tree.root.id)) or [])
             runs = sum(1 for r in lrecs if r.event_type.value == "lab_run")
             verdicts: dict[str, str] = {}
@@ -449,7 +456,9 @@ def collect_problem_trees():
                                              if v in ("validated",
                                                       "confirmed")),
                                    "blocked": blocked}
-            leaf_pids.add(f"{tree.root.id}-{leaf.id}")
+            leaf_pids.add(_lp(tree.root.id, leaf.id)
+                          if "_lp" in dir() else
+                          f"{tree.root.id}-{leaf.id}")
         trees.append((tree, alloc, leaf_stats, tree.rollup(),
                       bool(rollup_rec)))
     return trees, leaf_pids
@@ -538,7 +547,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         # a fully-retired tree (every leaf archived) leaves the workspace;
         # its experiments remain in the Archived section
         if tree.leaves() and all(
-                f"{tree.root.id}-{lf.id}" not in eid_by_pid
+                _leaf_pid(tree.root.id, lf.id) not in eid_by_pid
                 for lf in tree.leaves()):
             continue
         rstatus = rollup.get(tree.root.id, "open")
@@ -580,7 +589,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                                 + (" \u00b7 archived" if all_gone else ""),
                     tooltip=f"{lineage}{gate}", children=children,
                     disabled=all_gone)
-            pid = f"{tree.root.id}-{nid}"
+            pid = _leaf_pid(tree.root.id, nid)
             ls = leaf_stats.get(nid, {})
             if pid in eid_by_pid:
                 idx2eid[i] = eid_by_pid[pid]
@@ -597,7 +606,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         root_children = [build(k.id)
                          for k in tree.children(tree.root.id)]
         root_leaves = tree.leaves()
-        root_gone = all(f"{tree.root.id}-{l.id}" not in eid_by_pid
+        root_gone = all(_leaf_pid(tree.root.id, l.id) not in eid_by_pid
                         for l in root_leaves)
         # a SINGLE-NODE tree (no sub-problems): the root itself is the
         # experiment and must be clickable, not a dead group header
@@ -625,7 +634,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     # standalone experiments (wizard/manual, single agent runs) group
     # under one collapsible node — the workspace shows auto AND manual
     # without a flat dump at the top level
-    tree_leaf_pids = {f"{t.root.id}-{lf.id}"
+    tree_leaf_pids = {_leaf_pid(t.root.id, lf.id)
                       for t, _a, _l, _r, _rr in trees
                       for lf in t.leaves()}
     # standalone experiments grouped by who defines the problem:
@@ -754,6 +763,8 @@ def _dmta_chip_row(counts: dict, label: str,
             f'<span style="color:{ui.COLORS["provenance"]}">{line}'
             f"</span></div>",
             unsafe_allow_html=True)
+
+
 
 
 def _round_markers(recs) -> list[tuple[int, list[str]]]:
