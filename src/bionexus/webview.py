@@ -799,31 +799,27 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                 "save. Experiments can only be launched under a program.")
         return
 
-    # manage programs: delete removes the relational rows (relations
-    # cascade; experiments stay and become unlinked) and appends a
-    # provenance tombstone for the audit trail
-    with st.expander("Manage programs"):
-        _progs = program_cfg.list_programs()
-        if not _progs:
-            st.caption("No programs.")
-        else:
-            _labels = {f"{p['name']} ({p['slug']})": p["slug"]
-                       for p in _progs}
-            _pick = st.selectbox("Program", list(_labels),
-                                 key="ws_del_pick")
-            _n_att = len(program_cfg.links_for(_labels[_pick]))
-            st.caption(f"{_n_att} linked experiment(s) will be unlinked "
-                       "(the experiments themselves are kept). The "
-                       "deletion is recorded in provenance.")
-            _confirm = st.checkbox("Yes, delete this program",
-                                   key="ws_del_confirm")
-            if st.button("Delete program", type="primary",
-                         disabled=not _confirm,
-                         icon=":material/delete:"):
-                program_cfg.delete_program(_labels[_pick])
-                st.session_state.pop("ws_del_pick", None)
-                st.session_state.pop("ws_del_confirm", None)
-                st.rerun()
+    # delete: one small button next to every program (below the tree,
+    # since tree nodes cannot host controls). Two-step: first click
+    # arms, second confirms. Relations cascade; experiments stay.
+    if program_cfg.list_programs():
+        _cols = st.columns(len(program_cfg.list_programs()))
+        for _col, _p in zip(_cols, program_cfg.list_programs()):
+            _slug = _p["slug"]
+            _armed = st.session_state.get(f"del_arm_{_slug}")
+            if _col.button(
+                    ("Confirm delete?" if _armed else "Delete"),
+                    key=f"del_{_slug}",
+                    type="primary" if _armed else "secondary",
+                    icon=":material/delete:",
+                    use_container_width=True):
+                if _armed:
+                    program_cfg.delete_program(_slug)
+                    st.session_state.pop(f"del_arm_{_slug}", None)
+                    st.rerun()
+                else:
+                    st.session_state[f"del_arm_{_slug}"] = True
+                    st.rerun()
 
     picked = sac.tree(items=items, open_all=True, label="",
                       return_index=True, show_line=True)
