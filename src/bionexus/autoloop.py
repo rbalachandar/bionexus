@@ -95,6 +95,9 @@ class CampaignReport:
     history: list[dict] = field(default_factory=list)
 
 
+from bionexus.core.contracts.models import coerce_assay_type
+
+
 def run_campaign(cfg: CampaignConfig, lab: Any,
                  store: ProvenanceStore,
                  approver: Callable[[str], bool] | None = None,
@@ -280,7 +283,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             protocol = ProtocolSubmission(
                 envelope=Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
                 title=f"screen-{h.candidate}" if adaptive else f"test-{h.candidate}",
-                assay_type=h.assay_type,
+                assay_type=str(coerce_assay_type(h.assay_type).value),
                 steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense,
                                     params={"volume_ul": 50})],
                 samples=[SampleSpec(
@@ -299,7 +302,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                                       bsl_level=1)],
             )
             h.design = ExperimentDesign(
-                assay_type=h.assay_type, concentrations=list(cfg.concentrations),
+                assay_type=str(coerce_assay_type(h.assay_type).value), concentrations=list(cfg.concentrations),
                 replicates=3, controls=["negative"],
                 protocol_id=protocol.protocol_id)
             # Make: synthesize & purify before Test — a failed batch

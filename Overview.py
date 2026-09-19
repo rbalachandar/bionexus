@@ -898,13 +898,6 @@ def experiment_view() -> None:
                        f"autonomy: {_spec.get('autonomy')} · "
                        f"candidates: {_src}")
 
-        # auto-refresh while the agent is working
-        if status == "running":
-            import streamlit.components.v1 as _components
-            _components.html(
-                "<script>setTimeout(function(){"
-                "window.parent.location.reload();}, 6000);</script>",
-                height=0)
         if status == "running":
             st.info("In progress — this view refreshes as the agent works.")
 
@@ -942,22 +935,28 @@ def experiment_view() -> None:
                        f" · {n_runs} run(s)")
 
         halt_banner()
-        render_experiment_pipeline(logf, problem_id,
-                                   running=(status == "running"),
-                                   store=store, eid=row["id"])
-        from bionexus import narrative
-        _logtail = (logf.read_text(errors="replace").splitlines()[-200:]
-                    if logf.is_file() else [])
-        _live = (SqliteProvenanceStore("bionexus.db").branch_records(branch)
-                 if branch and Path("bionexus.db").exists() else recs)
-        narrative.render(_live or recs, _logtail)
-        with st.expander("Trace log", expanded=False):
-            if logf.is_file():
-                tail = logf.read_text(errors="replace").splitlines()[-30:]
-                st.code("\n".join(tail) or "(waiting for output...)",
-                        language=None)
-            else:
-                st.caption("(no log written yet)")
+
+        @st.fragment(run_every="6s" if status == "running" else None)
+        def _live_block():
+            render_experiment_pipeline(logf, problem_id,
+                                       running=(status == "running"),
+                                       store=store, eid=row["id"])
+            from bionexus import narrative
+            _logtail = (logf.read_text(errors="replace").splitlines()[-200:]
+                        if logf.is_file() else [])
+            _live = (SqliteProvenanceStore("bionexus.db")
+                     .branch_records(branch)
+                     if branch and Path("bionexus.db").exists() else recs)
+            narrative.render(_live or recs, _logtail)
+            with st.expander("Trace log", expanded=False):
+                if logf.is_file():
+                    tail = logf.read_text(
+                        errors="replace").splitlines()[-30:]
+                    st.code("\n".join(tail) or "(waiting for output...)",
+                            language=None)
+                else:
+                    st.caption("(no log written yet)")
+        _live_block()
     else:
         p = row["payload"]
         t1, t2 = st.columns([5, 1.2])

@@ -193,6 +193,27 @@ class AssayType(str, Enum):
     custom = "custom"
 
 
+def coerce_assay_type(name) -> "AssayType":
+    """Map a free-form assay name (LLM-proposed or metric-derived) onto
+    the legal enum; unknown names fall back to 'custom'. Never crash a
+    campaign over vocabulary."""
+    if isinstance(name, AssayType):
+        return name
+    n = str(name or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if not n:
+        return AssayType.custom
+    legal = {a.value: a for a in AssayType}
+    if n in legal:
+        return legal[n]
+    for suffix in ("_test", "_assay", "_assays", "_screen", "_measurement"):
+        if n.endswith(suffix) and n[:-len(suffix)] in legal:
+            return legal[n[:-len(suffix)]]
+    for value in sorted(legal, key=len, reverse=True):
+        if value != "custom" and (value in n or n in value):
+            return legal[value]
+    return AssayType.custom
+
+
 class Priority(str, Enum):
     low = "low"
     normal = "normal"

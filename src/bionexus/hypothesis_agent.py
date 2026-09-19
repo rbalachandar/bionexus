@@ -70,6 +70,9 @@ Reply ONLY with JSON:
 ]}}"""
 
 
+from bionexus.core.contracts.models import coerce_assay_type
+
+
 def propose_families_with_agent(
     tracker: HypothesisTracker,
     problem: ProblemStatement,
@@ -165,7 +168,8 @@ def propose_families_with_agent(
             spec = {
                 "statement": v.get("statement", ""),
                 "candidate": v.get("candidate", ""),
-                "assay_type": v.get("assay_type", "binding"),
+                "assay_type": str(coerce_assay_type(
+                    v.get("assay_type", "binding")).value),
                 "predicted": v.get("predicted", v.get("statement", "")),
                 "predicted_value": v.get("predicted_value"),
                 "rationale": v.get("rationale", ""),
