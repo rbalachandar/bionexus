@@ -94,7 +94,8 @@ def _pipeline_body(logf: Path, problem_id: str | None,
             # variant records carry statement/predicted but no candidate
             # (candidates are attributed later, at synthesis/round time);
             # fall back to a numbered label, never the string "None"
-            _stmt0 = str(d.get("statement") or "")
+            _stmt0 = str(d.get("statement")
+                         or d.get("parent_statement") or "")
             hid = (d.get("hypothesis_id") or art_id
                    or d.get("candidate") or _stmt0[:48]
                    or f"hyp-{len(proposed) + 1}")
@@ -220,8 +221,8 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                 icon, stage = ui.icon("hypothesis", 15, "teal"), "proposed"
             with st.container(border=True):
                 c1, c2 = st.columns([4, 2])
-                c1.markdown(f"{icon} <b>{hp.get('candidate', hid)}"
-                            f"</b> \u2014 {stmt}",
+                _head = hp.get("candidate") or hid
+                c1.markdown(f"{icon} <b>{_head}</b> \u2014 {stmt}",
                             unsafe_allow_html=True)
                 c2.caption(stage, unsafe_allow_html=True)
                 crit = hp.get("criteria") or {}
@@ -248,7 +249,8 @@ def _pipeline_body(logf: Path, problem_id: str | None,
                     st.caption(_cit[3:], unsafe_allow_html=True)
                 if hp.get("refutation_condition"):
                     st.caption(f"refuted if: {hp['refutation_condition']}")
-                meta_bits = [f"predicted: {hp.get('predicted', '—')}"]
+                _pred = hp.get("predicted")
+                meta_bits = [f"predicted: {_pred if _pred not in (None, '') else '—'}"]
                 if crit.get("threshold") is not None:
                     meta_bits.append(
                         "gate: " + criteria_label(crit.get("metric"),

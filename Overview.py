@@ -881,6 +881,8 @@ def experiment_view() -> None:
     b1.button("← All experiments", on_click=_go("overview"))
     eid = st.session_state.get("view_experiment") \
         or st.query_params.get("exp")
+    if eid and st.query_params.get("exp") != eid:
+        st.query_params["exp"] = eid   # survive browser refresh
     _row0 = store.get(eid) if eid else None
     if _row0 and not (_row0["payload"].get("archived")):
         if b2.button("Archive", icon=":material/archive:"):
@@ -957,31 +959,6 @@ def experiment_view() -> None:
                        f"{_spec.get('rounds', '—')} DMTA rounds · "
                        f"autonomy: {_spec.get('autonomy')} · "
                        f"candidates: {_src}")
-
-        # hypotheses (from provenance; visible by default with an honest
-        # empty state while the agent is still proposing)
-        _hyps = {}
-        for r in recs:
-            if r.event_type.value != "hypothesis_proposed":
-                continue
-            d = r.decision or {}
-            key = (d.get("candidate") or d.get("hypothesis_id")
-                   or (d.get("statement") or "")[:80])
-            if key and key not in _hyps:
-                _hyps[key] = d
-        with st.expander(f"Hypotheses ({len(_hyps)})", expanded=True):
-            if not _hyps:
-                st.caption("No hypotheses yet — the agent proposes them "
-                           "in round 1 (or they come from your candidate "
-                           "list).")
-            else:
-                for key, d in _hyps.items():
-                    _cand = d.get("candidate")
-                    _stmt = d.get("statement") or key
-                    _pred = d.get("predicted")
-                    _head = f"**{_cand}** — " if _cand else ""
-                    st.markdown(f"- {_head}{_stmt}"
-                                + (f" · predicted: {_pred}" if _pred else ""))
 
         # auto-refresh while the agent is working
         if status == "running":
