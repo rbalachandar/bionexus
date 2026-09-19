@@ -604,7 +604,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
 
     def render_tree(tree, alloc, leaf_stats, rollup, _rec):
         """The problem-tree rendering, unchanged: root -> sub-problems
-        -> leaves. Returns the emitted root item."""
+        -> leaves. Returns the emitted root item (None if retired)."""
         eid_by_pid = {}
         for e in (all_rows or []):
             p = (e["payload"].get("agent") or {}).get("problem_id")
@@ -616,6 +616,88 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                 _leaf_pid(tree.root.id, lf.id) not in eid_by_pid
                 for lf in tree.leaves()):
             return None
+        rstatus = rollup.get(tree.root.id, "open")
+        total = sum(alloc.get(l.id, 0) for l in tree.leaves())
+        root_name = tree.root.objective
+
+        def chain(nid, tree=tree):
+            """parent chain of objectives, root first."""
+            out, cur = [], nid
+            while cur:
+                out.append(tree.nodes[cur].objective)
+                cur = tree.nodes[cur].parent
+            return " \u25b8 ".join(reversed(out))
+
+        def build(nid, tree=tree, alloc=alloc, leaf_stats=leaf_stats,
+                  rollup=rollup, eid_by_pid=eid_by_pid):
+            n = tree.nodes[nid]
+            kids = tree.children(nid)
+            st_word = rollup.get(nid, n.status)
+            icon = {"achieved": "check-circle", "partial": "hourglass",
+                    "failed": "x-circle"}.get(st_word, "circle")
+            lineage = chain(nid)
+            gate = (f" \u00b7 gate {n.metric} "
+                    f"{'\u2264' if n.direction == 'min' else '\u2265'}"
+                    f"{n.gate:g}")
+
+            def kids_builder(nid=nid, kids=kids):
+                return [build(k.id) for k in kids]
+
+            if kids:
+                def describe_group(nid=nid, st_word=st_word):
+                    sub_leaves = tree.subtree_leaves(nid)
+                    sub = sum(alloc.get(l.id, 0) for l in sub_leaves)
+                    # a group is as clickable as its subtree: if every leaf
+                    # beneath it is archived, the group retires with them
+                    all_gone = all(
+                        f"{tree.root.id}-{l.id}" not in eid_by_pid
+                        for l in sub_leaves)
+                    return (f"{st_word} \u00b7 budget {sub} runs"
+                            + (" \u00b7 archived" if all_gone else ""))
+                return emit(n.objective, icon="diagram-2",
+                            tooltip=f"{lineage}{gate}",
+                            build_children=kids_builder,
+                            describe=describe_group)
+            pid = _leaf_pid(tree.root.id, nid)
+            ls = leaf_stats.get(nid, {})
+            meta = eid_by_pid.get(pid)
+            return emit(n.objective, icon="droplet",
+                        tooltip=(f"{lineage}{gate} \u00b7 problem statement: "
+                                 f"{ls.get('statement') or n.objective}"),
+                        meta=meta,
+                        describe=lambda st_word=st_word, ls=ls, nid=nid:
+                        f"{st_word} \u00b7 {ls.get('runs', 0)}/"
+                        f"{alloc.get(nid, 0)} runs",
+                        disabled=meta is None)
+
+        root_leaves = tree.leaves()
+        root_gone = all(_leaf_pid(tree.root.id, l.id) not in eid_by_pid
+                        for l in root_leaves)
+        # a SINGLE-NODE tree (no sub-problems): the root itself is the
+        # experiment and must be clickable, not a dead group header
+        if not tree.children(tree.root.id) and root_leaves:
+            leaf = root_leaves[0]
+            pid = f"{tree.root.id}-{leaf.id}"
+            ls = leaf_stats.get(leaf.id, {})
+            return emit(
+                root_name, icon="droplet", tooltip=root_name,
+                meta=eid_by_pid.get(pid),
+                describe=lambda rstatus=rstatus, ls=ls, leaf=leaf:
+                f"{rstatus} \u00b7 {alloc.get(leaf.id, 0)} runs",
+                disabled=pid not in eid_by_pid)
+
+        def build_root_kids(tree=tree):
+            return [build(k.id) for k in tree.children(tree.root.id)]
+        return emit(
+            root_name, icon="activity",
+            tooltip=root_name, build_children=build_root_kids,
+            describe=lambda rstatus=rstatus, total=total,
+            root_gone=root_gone:
+            f"{rstatus} \u00b7 budget {total} runs"
+            + (" \u00b7 archived" if root_gone else ""),
+            disabled=root_gone)
+
+    for prog in program_cfg.list_programs():
         gate = prog.get("gate_summary", "")
         pname = prog.get("name", prog["slug"])
         camp_ids = {a.get("eid") for a in prog.get("attachments", [])}
@@ -675,101 +757,8 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                            else " \u00b7 no experiments yet")
 
         emit(pname, icon="activity", tooltip=gate,
-                          build_children=build_prog_kids,
-                          describe=describe_prog)
-
-    for tree, alloc, leaf_stats, rollup, _rec in trees:
-        eid_by_pid = {}
-        for e in (all_rows or []):
-            p = (e["payload"].get("agent") or {}).get("problem_id")
-            if p:
-                eid_by_pid[p] = e["id"]
-        # a fully-retired tree (every leaf archived) leaves the workspace;
-        # its experiments remain in the Archived section
-        if tree.leaves() and all(
-                _leaf_pid(tree.root.id, lf.id) not in eid_by_pid
-                for lf in tree.leaves()):
-            continue
-        rstatus = rollup.get(tree.root.id, "open")
-        total = sum(alloc.get(l.id, 0) for l in tree.leaves())
-        root_name = tree.root.objective
-
-        def chain(nid, tree=tree):
-            """parent chain of objectives, root first."""
-            out, cur = [], nid
-            while cur:
-                out.append(tree.nodes[cur].objective)
-                cur = tree.nodes[cur].parent
-            return " \u25b8 ".join(reversed(out))
-
-        def build(nid, tree=tree, alloc=alloc, leaf_stats=leaf_stats,
-                  rollup=rollup, eid_by_pid=eid_by_pid):
-            n = tree.nodes[nid]
-            kids = tree.children(nid)
-            st_word = rollup.get(nid, n.status)
-            icon = {"achieved": "check-circle", "partial": "hourglass",
-                    "failed": "x-circle"}.get(st_word, "circle")
-            lineage = chain(nid)
-            gate = (f" \u00b7 gate {n.metric} "
-                    f"{'\u2264' if n.direction == 'min' else '\u2265'}"
-                    f"{n.gate:g}")
-
-            def kids_builder(nid=nid, kids=kids):
-                return [build(k.id) for k in kids]
-
-            if kids:
-                def describe_group(nid=nid, kids=kids, st_word=st_word):
-                    sub_leaves = tree.subtree_leaves(nid)
-                    sub = sum(alloc.get(l.id, 0) for l in sub_leaves)
-                    # a group is as clickable as its subtree: if every leaf
-                    # beneath it is archived, the group retires with them
-                    all_gone = all(
-                        f"{tree.root.id}-{l.id}" not in eid_by_pid
-                        for l in sub_leaves)
-                    return (f"{st_word} \u00b7 budget {sub} runs"
-                            + (" \u00b7 archived" if all_gone else ""))
-                return emit(n.objective, icon="diagram-2",
-                            tooltip=f"{lineage}{gate}",
-                            build_children=kids_builder,
-                            describe=describe_group)
-            pid = _leaf_pid(tree.root.id, nid)
-            ls = leaf_stats.get(nid, {})
-            meta = eid_by_pid.get(pid)
-            return emit(n.objective, icon="droplet",
-                        tooltip=(f"{lineage}{gate} \u00b7 problem statement: "
-                                 f"{ls.get('statement') or n.objective}"),
-                        meta=meta,
-                        describe=lambda st_word=st_word, ls=ls, nid=nid:
-                        f"{st_word} \u00b7 {ls.get('runs', 0)}/"
-                        f"{alloc.get(nid, 0)} runs",
-                        disabled=meta is None)
-
-        root_leaves = tree.leaves()
-        root_gone = all(_leaf_pid(tree.root.id, l.id) not in eid_by_pid
-                        for l in root_leaves)
-        # a SINGLE-NODE tree (no sub-problems): the root itself is the
-        # experiment and must be clickable, not a dead group header
-        if not tree.children(tree.root.id) and root_leaves:
-            leaf = root_leaves[0]
-            pid = f"{tree.root.id}-{leaf.id}"
-            ls = leaf_stats.get(leaf.id, {})
-            return emit(
-                root_name, icon="droplet", tooltip=root_name,
-                meta=eid_by_pid.get(pid),
-                describe=lambda rstatus=rstatus, ls=ls, leaf=leaf:
-                f"{rstatus} \u00b7 {alloc.get(leaf.id, 0)} runs",
-                disabled=pid not in eid_by_pid)
-        else:
-            def build_root_kids(tree=tree):
-                return [build(k.id) for k in tree.children(tree.root.id)]
-            return emit(
-                root_name, icon="activity",
-                tooltip=root_name, build_children=build_root_kids,
-                describe=lambda rstatus=rstatus, total=total,
-                root_gone=root_gone:
-                f"{rstatus} \u00b7 budget {total} runs"
-                + (" \u00b7 archived" if root_gone else ""),
-                disabled=root_gone)
+             build_children=build_prog_kids,
+             describe=describe_prog)
 
     for tup in free_trees:
         render_tree(*tup)
