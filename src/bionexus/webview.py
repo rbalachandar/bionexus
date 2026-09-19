@@ -7,6 +7,10 @@ from pathlib import Path
 
 import streamlit as st
 
+PAGES_EXP = None       # Overview injects at import
+WIZARD_PAGE = None      # Overview injects at import
+START_DIALOG = None     # Overview injects at import
+
 def halt_banner() -> None:
     """Operator stop-condition banner. This is a HUMAN decision recorded
     via `bn halt` (or the button below) — deliberately not an instrument
