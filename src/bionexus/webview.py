@@ -518,6 +518,18 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     """The Experiments view IS the navigator: problem trees as
     hierarchies. Labels stay short and may repeat across trees — clicks
     map by node POSITION (return_index), and tooltips carry lineage."""
+
+    sel_prog = st.session_state.pop("ws_program_sel", None)
+    if sel_prog:
+        doc = sel_prog.get("doc") or {}
+        with st.container(border=True):
+            st.markdown(f"**Program: {sel_prog['name']}**")
+            st.markdown(f"**Objective:** {doc.get('objective', chr(8212))}")
+            st.markdown(f"**Gate:** {sel_prog.get('gate', chr(8212))} - "
+                        f"**Mode:** {sel_prog.get('mode', chr(8212))}")
+            atts = sel_prog.get("attachments") or []
+            st.caption(f"{len(atts)} attached experiment(s) - expand the "
+                       "program node below to open them")
     try:
         import streamlit_antd_components as sac
     except ImportError:
@@ -719,19 +731,12 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         st.session_state["view_experiment"] = idx2eid[idx]
         st.switch_page(PAGES_EXP)
         return
-    # program node selected -> show its definition
+    # program node selected -> remember it and rerun so the definition
+    # renders ABOVE the tree (immediately visible)
     prog_sel = idx2program.get(idx) if idx is not None else None
     if prog_sel:
-        doc = prog_sel.get("doc") or {}
-        with st.expander(f"Program: {prog_sel['name']}", expanded=True):
-            st.markdown(f"**Objective:** {doc.get('objective', '—')}")
-            st.markdown(f"**Gate:** {prog_sel.get('gate', '—')} · "
-                        f"**Mode:** {prog_sel.get('mode', '—')} · "
-                        f"**Modality:** {doc.get('modality') or '—'}")
-            atts = prog_sel.get("attachments") or []
-            if atts:
-                st.caption(f"{len(atts)} attached experiment(s) — expand "
-                           "the program node above to open them")
+        st.session_state["ws_program_sel"] = prog_sel
+        st.rerun()
 
 
 def _dmta_counts(recs) -> dict:
