@@ -160,7 +160,7 @@ def _resolve_problem(meta: dict, logf: Path) -> str | None:
 # --------------------------------------------------------------------------
 # start dialog (P2: modal over the list, no page displacement)
 # --------------------------------------------------------------------------
-@st.dialog("Start agent experiment", width="large")
+@st.dialog("Launch autonomous campaign", width="large")
 def start_dialog() -> None:
     from bionexus.templates import (build_campaign, fill, load_template,
                                     list_templates, save_user_template)
@@ -217,7 +217,7 @@ def start_dialog() -> None:
         save_as = st.text_input("Save as reusable template (optional name)",
                                 placeholder="my-kinase-screen")
 
-    if st.button("Start agent experiment", type="primary",
+    if st.button("Launch autonomous campaign", type="primary",
                  icon=":material/rocket_launch:",
                  disabled=not compounds.strip() or missing_required):
         thr_s = f"{threshold:g}"
@@ -274,10 +274,16 @@ def overview_view() -> None:
     else:
         h1.title("BioNexus")
     halt_banner()
-    if h2.button("Agent experiment", type="primary",
-                    icon=":material/smart_toy:"):
+    if h2.button("Autonomous campaign", type="primary",
+                    icon=":material/smart_toy:",
+                    help="the LLM proposes the hypotheses and runs the "
+                         "Design-Make-Test-Analyze loops under your "
+                         "program gate"):
         start_dialog()
-    if h3.button("Manual experiment", icon=":material/person:"):
+    if h3.button("Guided experiment", icon=":material/person:",
+                 help="you define the problem and design through the "
+                      "readiness-gated wizard; choose bench or agent "
+                      "execution at the end"):
         st.session_state["step"] = 1
         st.switch_page(PAGES["wizard"])
 
