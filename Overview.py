@@ -936,14 +936,6 @@ def experiment_view() -> None:
 
         halt_banner()
 
-        # evidence narrative: rendered once per page run (heavy, rarely
-        # changes) — keeping it out of the live fragment avoids the
-        # dim-and-redraw flash on every tick
-        from bionexus import narrative
-        _logtail = (logf.read_text(errors="replace").splitlines()[-200:]
-                    if logf.is_file() else [])
-        narrative.render(recs or [], _logtail)
-
         @st.fragment(run_every="15s" if status == "running" else None)
         def _live_block():
             # re-resolve per tick: the problem branch only exists after
@@ -967,6 +959,14 @@ def experiment_view() -> None:
                 else:
                     st.caption("(no log written yet)")
         _live_block()
+
+        # evidence narrative: after the pipeline; rendered once per page
+        # run (heavy, rarely changes) — keeping it out of the live
+        # fragment avoids the dim-and-redraw flash on every tick
+        from bionexus import narrative
+        _logtail = (logf.read_text(errors="replace").splitlines()[-200:]
+                    if logf.is_file() else [])
+        narrative.render(recs or [], _logtail)
     else:
         p = row["payload"]
         t1, t2 = st.columns([5, 1.2])
