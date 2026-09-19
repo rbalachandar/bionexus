@@ -709,20 +709,6 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
             + (" \u00b7 archived" if root_gone else ""),
             disabled=root_gone)
 
-    def _handle_pick(picked, flat_slice):
-        """sac.tree may return an int or a list — normalize, then map
-        the position through this tree's meta slice."""
-        idx = None
-        if isinstance(picked, (list, tuple)):
-            idx = picked[0] if picked else None
-        elif picked is not None:
-            idx = picked
-        if isinstance(idx, int) and 0 <= idx < len(flat_slice) \
-                and flat_slice[idx]:
-            st.session_state["view_experiment"] = flat_slice[idx]
-            st.switch_page(PAGES_EXP)
-            return
-
     for prog in program_cfg.list_programs():
         gate = prog.get("gate_summary", "")
         pname = prog.get("name", prog["slug"])
@@ -770,34 +756,9 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
             return gate + (f" \u00b7 {tally}" if tally
                            else " \u00b7 no experiments yet")
 
-        _i0_items, _i0_flat = len(m.items), len(m.flat)
         emit(pname, icon="activity", tooltip=gate,
              build_children=build_prog_kids,
              describe=describe_prog)
-
-        # program header row: name + delete button beside the program's
-        # own tree (tree nodes cannot host controls, so each program is
-        # its own tree under a header row)
-        _slug = prog["slug"]
-        _armed = st.session_state.get(f"del_arm_{_slug}")
-        _head = st.columns([5, 1.1])
-        _head[0].caption(f"{pname} — delete this program")
-        if _head[1].button(
-                "Confirm delete?" if _armed else "Delete",
-                key=f"del_{_slug}",
-                type="primary" if _armed else "secondary",
-                icon=":material/delete:",
-                use_container_width=True):
-            if _armed:
-                program_cfg.delete_program(_slug)
-                st.session_state.pop(f"del_arm_{_slug}", None)
-                st.rerun()
-            else:
-                st.session_state[f"del_arm_{_slug}"] = True
-                st.rerun()
-        _handle_pick(sac.tree(items=m.items[_i0_items:], open_all=True,
-                              label="", return_index=True, show_line=True),
-                     m.flat[_i0_flat:])
 
     for tup in free_trees:
         render_tree(*tup)
@@ -831,9 +792,19 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                           describe=lambda n=len(entries):
                           f"{n} experiment(s)",
                           build_children=build_group_kids)
-    _handle_pick(sac.tree(items=m.items[_i0_items:], open_all=True,
-                          label="", return_index=True, show_line=True),
-                 m.flat[_i0_flat:])
+    picked = sac.tree(items=items, open_all=True, label="",
+                      return_index=True, show_line=True)
+    # sac.tree may return an int or a list of indices depending on
+    # selection state — normalize before the lookup
+    idx = None
+    if isinstance(picked, (list, tuple)):
+        idx = picked[0] if picked else None
+    elif picked is not None:
+        idx = picked
+    if isinstance(idx, int) and 0 <= idx < len(flat) and flat[idx]:
+        st.session_state["view_experiment"] = flat[idx]
+        st.switch_page(PAGES_EXP)
+        return
 
     if not program_cfg.list_programs():
         st.info("Create a program first — open **Program** above, define "
@@ -841,7 +812,6 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                 "save. Experiments can only be launched under a program.")
         return
 
-    _i0_items, _i0_flat = len(m.items), len(m.flat)
     for tup in free_trees:
         render_tree(*tup)
 

@@ -150,36 +150,3 @@ def test_campaign_spec_roundtrip():
     assert spec["hypothesis_source"] == "agent"
     assert spec["n_candidates"] == 0
     assert spec["rounds"] == 3
-
-
-def test_program_delete_roundtrip():
-    """Delete removes the program + its links (experiments survive) and
-    appends a provenance tombstone."""
-    from bionexus import program as program_cfg
-    from bionexus.wizard_store import WizardStore
-
-    ws = WizardStore()
-    program_cfg.save_program_record(
-        {"program": "Del-1", "custom": True, "objective": "x",
-         "metric": "m", "direction": "max", "gate_value": 1,
-         "unit": "u", "mode": "autonomous"})
-    ws._conn.execute(
-        "INSERT OR REPLACE INTO experiments VALUES (?,?,?,?,?,?)",
-        ("del-exp-1", 0, 0, "failed", "kept experiment", "{}"))
-    ws._conn.commit()
-    program_cfg.link_leaf("Del-1", "del-exp-1", campaign_root=None,
-                          question="kept experiment")
-    assert program_cfg.delete_program("Del-1") is True
-    assert program_cfg.delete_program("Del-1") is False   # idempotent
-    assert ws.get_program("del-1") is None
-    assert ws.program_links("del-1") == []
-    # the experiment itself survives
-    assert ws._conn.execute(
-        "SELECT COUNT(*) FROM experiments WHERE id='del-exp-1'"
-    ).fetchone()[0] == 1
-    # tombstone in provenance
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    recs = SqliteProvenanceStore("bionexus.db").branch_records(
-        "programs/del-1")
-    assert any((r.decision or {}).get("kind") == "program_deleted"
-               for r in recs)
