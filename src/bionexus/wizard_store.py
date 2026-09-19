@@ -121,6 +121,15 @@ class WizardStore:
                  name, json.dumps(doc), now))
             self._conn.commit()
 
+    def delete_program(self, slug: str) -> None:
+        """Relations cascade via FK; the program row goes last."""
+        with self._lock:
+            self._conn.execute(
+                "PRAGMA foreign_keys=ON")
+            self._conn.execute(
+                "DELETE FROM programs WHERE slug=?", (slug,))
+            self._conn.commit()
+
     def get_program(self, slug: str) -> dict | None:
         row = self._conn.execute(
             "SELECT doc FROM programs WHERE slug=?", (slug,)).fetchone()

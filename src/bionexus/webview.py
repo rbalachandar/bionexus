@@ -799,6 +799,32 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                 "save. Experiments can only be launched under a program.")
         return
 
+    # manage programs: delete removes the relational rows (relations
+    # cascade; experiments stay and become unlinked) and appends a
+    # provenance tombstone for the audit trail
+    with st.expander("Manage programs"):
+        _progs = program_cfg.list_programs()
+        if not _progs:
+            st.caption("No programs.")
+        else:
+            _labels = {f"{p['name']} ({p['slug']})": p["slug"]
+                       for p in _progs}
+            _pick = st.selectbox("Program", list(_labels),
+                                 key="ws_del_pick")
+            _n_att = len(program_cfg.links_for(_labels[_pick]))
+            st.caption(f"{_n_att} linked experiment(s) will be unlinked "
+                       "(the experiments themselves are kept). The "
+                       "deletion is recorded in provenance.")
+            _confirm = st.checkbox("Yes, delete this program",
+                                   key="ws_del_confirm")
+            if st.button("Delete program", type="primary",
+                         disabled=not _confirm,
+                         icon=":material/delete:"):
+                program_cfg.delete_program(_labels[_pick])
+                st.session_state.pop("ws_del_pick", None)
+                st.session_state.pop("ws_del_confirm", None)
+                st.rerun()
+
     picked = sac.tree(items=items, open_all=True, label="",
                       return_index=True, show_line=True)
     # sac.tree may return an int or a list of indices depending on
