@@ -799,28 +799,6 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                 "save. Experiments can only be launched under a program.")
         return
 
-    # delete: one small button next to every program (below the tree,
-    # since tree nodes cannot host controls). Two-step: first click
-    # arms, second confirms. Relations cascade; experiments stay.
-    if program_cfg.list_programs():
-        _cols = st.columns(len(program_cfg.list_programs()))
-        for _col, _p in zip(_cols, program_cfg.list_programs()):
-            _slug = _p["slug"]
-            _armed = st.session_state.get(f"del_arm_{_slug}")
-            if _col.button(
-                    ("Confirm delete?" if _armed else "Delete"),
-                    key=f"del_{_slug}",
-                    type="primary" if _armed else "secondary",
-                    icon=":material/delete:",
-                    use_container_width=True):
-                if _armed:
-                    program_cfg.delete_program(_slug)
-                    st.session_state.pop(f"del_arm_{_slug}", None)
-                    st.rerun()
-                else:
-                    st.session_state[f"del_arm_{_slug}"] = True
-                    st.rerun()
-
     picked = sac.tree(items=items, open_all=True, label="",
                       return_index=True, show_line=True)
     # sac.tree may return an int or a list of indices depending on
@@ -830,6 +808,28 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         idx = picked[0] if picked else None
     elif picked is not None:
         idx = picked
+    # per-program delete: name + button rows under the tree (tree nodes
+    # cannot host controls). Two-step arm/confirm; relations cascade,
+    # experiments stay unlinked, provenance tombstone appended.
+    for _p in program_cfg.list_programs():
+        _slug = _p["slug"]
+        _armed = st.session_state.get(f"del_arm_{_slug}")
+        _row = st.columns([4, 1.2])
+        _row[0].caption(f"Delete program: {_p['name']}")
+        if _row[1].button(
+                "Confirm delete?" if _armed else "Delete",
+                key=f"del_{_slug}",
+                type="primary" if _armed else "secondary",
+                icon=":material/delete:",
+                use_container_width=True):
+            if _armed:
+                program_cfg.delete_program(_slug)
+                st.session_state.pop(f"del_arm_{_slug}", None)
+                st.rerun()
+            else:
+                st.session_state[f"del_arm_{_slug}"] = True
+                st.rerun()
+
     if isinstance(idx, int) and 0 <= idx < len(flat) and flat[idx]:
         meta = flat[idx]
         if isinstance(meta, str):
