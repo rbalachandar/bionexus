@@ -62,6 +62,7 @@ def save_program_record(doc: dict) -> str:
         Envelope(experiment_branch_id=branch),
         EventType.problem_defined, system_actor("program"),
         decision={"kind": "program_root", "program_id": slug,
+                  "name": doc.get("program", slug),
                   "program": doc,
                   "gate_summary": gate_summary(doc)}))
     return branch
@@ -123,7 +124,10 @@ def list_programs() -> list[dict]:
                        if (r.decision or {}).get("kind") == "program_root"),
                       None)
         if latest:
-            out.append({"branch": br, "slug": br.split("/", 1)[1],
+            s = br.split("/", 1)[1]
+            out.append({"branch": br, "slug": s,
+                        "name": latest.get("name",
+                                           latest.get("program_id", s)),
                         **latest})
     return out
 

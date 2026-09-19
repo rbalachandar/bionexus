@@ -521,7 +521,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         desc = gate + (f" · {tally}" if tally
                        else " · no experiments yet")
         items.append(sac.TreeItem(
-            prog.get("program", prog["slug"]), icon="activity",
+            prog.get("name", prog["slug"]), icon="activity",
             description=desc, tooltip=gate, children=kids or None,
             disabled=not kids))
 
