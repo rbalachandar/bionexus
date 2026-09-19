@@ -629,24 +629,32 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     tree_leaf_pids = {f"{t.root.id}-{lf.id}"
                       for t, _a, _l, _r, _rr in trees
                       for lf in t.leaves()}
+    # standalone experiments grouped by who defines the problem:
+    # autonomous campaigns (LLM-defined) vs guided (user-defined)
     standalone = [e for e in (all_rows or [])
                   if (e["payload"].get("agent") or {}).get("problem_id")
                   not in tree_leaf_pids]
-    if standalone:
+    groups = {"Autonomous campaigns": ([], "smart_toy"),
+              "Guided experiments": ([], "person")}
+    for e in standalone:
+        ag = e["payload"].get("agent") or {}
+        groups["Autonomous campaigns" if ag
+               else "Guided experiments"][0].append((e, ag))
+    for group_name, (entries, group_icon) in groups.items():
+        if not entries:
+            continue
         gi = reserve()
         kids = []
-        for e in standalone:
-            ag = e["payload"].get("agent") or {}
+        for e, ag in entries:
             status = _row_status(e)
             i = reserve()
             idx2eid[i] = e["id"]
             kids.append(sac.TreeItem(
-                e["question"][:60] or e["id"],
-                icon="smart_toy" if ag else "person",
+                e["question"][:60] or e["id"], icon=group_icon,
                 description=status, tooltip=e["id"]))
         items.append(sac.TreeItem(
-            f"Standalone experiments ({len(standalone)})", icon="group",
-            description=f"{len(standalone)} experiment(s)",
+            f"{group_name} ({len(entries)})", icon="group",
+            description=f"{len(entries)} experiment(s)",
             children=kids))
 
     if not items:
