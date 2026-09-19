@@ -192,7 +192,7 @@ def _resolve_problem(meta: dict, logf: Path) -> str | None:
 # --------------------------------------------------------------------------
 # start dialog (P2: modal over the list, no page displacement)
 # --------------------------------------------------------------------------
-@st.dialog("Launch autonomous campaign", width="large")
+@st.dialog("Launch campaign", width="large")
 def start_dialog() -> None:
     from bionexus.templates import (build_campaign, fill, load_template,
                                     list_templates, save_user_template)
@@ -461,8 +461,9 @@ def overview_view() -> None:
                 st.toast(f"Program launched — {program_cfg.gate_summary()}",
                          icon=":material/rocket_launch:")
                 if mode == "autonomous":
-                    # open the launch dialog LAST and stop: a rerun here
-                    # would destroy the dialog before it renders
+                    # the ONLY launch surface: Program -> Launch program
+                    # opens this dialog (a rerun here would destroy it
+                    # before it renders, so open last and stop)
                     start_dialog()
                     st.stop()
                 st.session_state["step"] = 1
@@ -1096,7 +1097,6 @@ PAGES = {
 }
 _wv.WIZARD_PAGE = PAGES["wizard"]
 _wv.PAGES_EXP = PAGES["experiment"]
-_wv.START_DIALOG = start_dialog
 
 
 def _key_new() -> None:
