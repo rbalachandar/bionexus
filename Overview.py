@@ -416,13 +416,12 @@ def overview_view() -> None:
                 st.toast(f"Program launched — {program_cfg.gate_summary()}",
                          icon=":material/rocket_launch:")
                 if mode == "autonomous":
+                    # open the launch dialog LAST and stop: a rerun here
+                    # would destroy the dialog before it renders
                     start_dialog()
-                else:
-                    st.session_state["step"] = 1
-                    st.switch_page(PAGES["wizard"])
-            st.toast(f"Program saved — {program_cfg.gate_summary()}",
-                     icon=":material/target:")
-            st.rerun()
+                    st.stop()
+                st.session_state["step"] = 1
+                st.switch_page(PAGES["wizard"])
 
 
 

@@ -522,8 +522,8 @@ class _TreeMapper:
     EVERY node in depth-first pre-order (see the library's
     ParseItems.multi), so `emit` appends the parent's meta BEFORE
     building children. Containers map to None and can never navigate;
-    leaves map to their experiment id. Testable against the library
-    parser directly (tests/test_ui.py)."""
+    leaves map to their experiment id, containers to None. Testable
+    against the library parser directly (tests/test_ui.py)."""
 
     def __init__(self):
         self.flat: list = []
@@ -800,9 +800,11 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     elif picked is not None:
         idx = picked
     if isinstance(idx, int) and 0 <= idx < len(flat) and flat[idx]:
-        st.session_state["view_experiment"] = flat[idx]
-        st.switch_page(PAGES_EXP)
-        return
+        meta = flat[idx]
+        if isinstance(meta, str):
+            st.session_state["view_experiment"] = meta
+            st.switch_page(PAGES_EXP)
+            return
 
 
 
