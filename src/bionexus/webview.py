@@ -424,10 +424,14 @@ def collect_problem_trees():
         for leaf in tree.leaves():
             # campaigns run on problem/{root}-{leaf}; the slash form only
             # carries the leaf-complete marker
-            from bionexus.webview import _leaf_pid as _lp
-            lrecs = (full.branch_records(
-                f"problem/{_lp(tree.root.id, leaf.id)}")
-                or full.branch_records(leaf.branch(tree.root.id)) or [])
+            aliases = _pid_aliases(tree.root.id, leaf.id)
+            lrecs = []
+            for a in aliases:
+                lrecs = full.branch_records(f"problem/{a}")
+                if lrecs:
+                    break
+            lrecs = lrecs or full.branch_records(
+                leaf.branch(tree.root.id)) or []
             runs = sum(1 for r in lrecs if r.event_type.value == "lab_run")
             verdicts: dict[str, str] = {}
             blocked = None
@@ -456,9 +460,7 @@ def collect_problem_trees():
                                              if v in ("validated",
                                                       "confirmed")),
                                    "blocked": blocked}
-            leaf_pids.add(_lp(tree.root.id, leaf.id)
-                          if "_lp" in dir() else
-                          f"{tree.root.id}-{leaf.id}")
+            leaf_pids.update(_pid_aliases(tree.root.id, leaf.id))
         trees.append((tree, alloc, leaf_stats, tree.rollup(),
                       bool(rollup_rec)))
     return trees, leaf_pids
