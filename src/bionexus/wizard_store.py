@@ -37,6 +37,26 @@ class WizardStore:
                 question TEXT NOT NULL,
                 payload TEXT NOT NULL
             )""")
+        self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS programs (
+                slug TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                doc TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL
+            )""")
+        self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS program_experiments (
+                program_slug TEXT NOT NULL
+                    REFERENCES programs(slug) ON DELETE CASCADE,
+                experiment_id TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'leaf',
+                campaign_root TEXT,
+                question TEXT,
+                status TEXT,
+                created_at REAL NOT NULL,
+                PRIMARY KEY (program_slug, experiment_id)
+            )""")
 
     def _row(self, r) -> dict:
         return {"id": r[0], "created_at": r[1], "updated_at": r[2],
@@ -73,6 +93,62 @@ class WizardStore:
                 (eid, now, now, status, objective, json.dumps(payload)))
             self._conn.commit()
         return eid
+
+    # ------------------------------------------------ program relations
+    def upsert_program(self, slug: str, name: str, doc: dict) -> None:
+        with self._lock:
+            now = time.time()
+            self._conn.execute(
+                "INSERT INTO programs VALUES (?,?,?,?,?) "
+                "ON CONFLICT(slug) DO UPDATE SET name=?, doc=?, updated_at=?",
+                (slug, name, json.dumps(doc), now, now,
+                 name, json.dumps(doc), now))
+            self._conn.commit()
+
+    def get_program(self, slug: str) -> dict | None:
+        row = self._conn.execute(
+            "SELECT doc FROM programs WHERE slug=?", (slug,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def db_programs(self) -> list[dict]:
+        out = []
+        for slug, name, doc, ts in self._conn.execute(
+                "SELECT slug, name, doc, updated_at FROM programs "
+                "ORDER BY created_at"):
+            out.append({"slug": slug, "name": name,
+                        "doc": json.loads(doc), "updated_at": ts})
+        return out
+
+    def db_program_count(self) -> int:
+        return self._conn.execute(
+            "SELECT COUNT(*) FROM programs").fetchone()[0]
+
+    def link_experiment(self, program_slug: str, eid: str,
+                        role: str = "leaf", campaign_root: str | None = None,
+                        question: str = "", status: str = "executing") -> None:
+        """The Program-Experiment relation: role 'campaign' marks a
+        problem-tree ROOT (campaign container), role 'leaf' marks a
+        single experiment under the program (campaign_root set when it
+        belongs to a decomposed campaign)."""
+        with self._lock:
+            now = time.time()
+            self._conn.execute(
+                "INSERT INTO program_experiments VALUES (?,?,?,?,?,?,?) "
+                "ON CONFLICT(program_slug, experiment_id) DO UPDATE SET "
+                "role=?, campaign_root=?, question=?, status=?",
+                (program_slug, eid, role, campaign_root,
+                 (question or "")[:120], status, now,
+                 role, campaign_root, (question or "")[:120], status))
+            self._conn.commit()
+
+    def program_links(self, slug: str) -> list[dict]:
+        return [{"program": r[0], "eid": r[1], "role": r[2],
+                 "campaign_root": r[3], "question": r[4], "status": r[5]}
+                for r in self._conn.execute(
+                    "SELECT program_slug, experiment_id, role, "
+                    "campaign_root, question, status "
+                    "FROM program_experiments WHERE program_slug=? "
+                    "ORDER BY created_at", (slug,))]
 
     def set_question(self, eid: str, question: str) -> None:
         """Retitle: question is a column, not payload fields."""

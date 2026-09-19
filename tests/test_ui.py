@@ -81,3 +81,47 @@ def test_tree_mapper_positional_alignment():
                        if l == "Material-3")
     assert m.flat[program_idx] is None
     assert standalone is not None
+
+
+def test_program_relations_roundtrip(tmp_path, monkeypatch):
+    """Programs live in relational tables (programs,
+    program_experiments); the workspace reads relations, not payload
+    tags or JSON blobs. Roundtrip: save -> link -> list -> campaign
+    grouping."""
+    import sqlite3
+
+    from bionexus import program as program_cfg
+    from bionexus.wizard_store import WizardStore
+
+    ws = WizardStore()
+    doc = {"program": "Rel-1", "objective": "find X", "custom": True,
+           "modality": "material", "metric": "strength", "direction": "max",
+           "gate_value": 60, "unit": "MPa", "mode": "autonomous"}
+    branch = program_cfg.save_program_record(doc)
+    assert branch == "programs/rel-1"
+
+    # relation rows: campaign root + leaf
+    program_cfg.record_launch("Rel-1", "root-abc", "find X")
+    program_cfg.link_leaf("Rel-1", "exp-1", "root-abc", "sub-problem 1",
+                          "verdict_recorded")
+    program_cfg.link_leaf("Rel-1", "exp-2", campaign_root=None,
+                          question="single experiment")
+
+    progs = program_cfg.list_programs()
+    p = next(x for x in progs if x["slug"] == "rel-1")
+    assert p["name"] == "Rel-1"
+    leaf_eids = {a["eid"] for a in p["attachments"]}
+    assert {"exp-1", "exp-2"} <= leaf_eids
+
+    roots = program_cfg.launches_by_program().get("Rel-1", [])
+    assert "root-abc" in roots
+
+    links = program_cfg.links_for("rel-1")
+    campaigns = [l["eid"] for l in links if l["role"] == "campaign"]
+    leaves = [l["eid"] for l in links if l["role"] == "leaf"]
+    assert "root-abc" in campaigns
+    assert "exp-1" in leaves
+
+    tables = {r[0] for r in ws._conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'")}
+    assert {"programs", "program_experiments", "experiments"} <= tables

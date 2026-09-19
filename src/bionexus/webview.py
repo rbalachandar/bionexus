@@ -582,21 +582,24 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                     tooltip=tooltip or e["id"],
                     meta=e["id"])
 
-    # campaign rows launched from a program carry payload["program"]
-    # and render nested under that program (program -> campaign -> leaves)
-    prog_rows: dict[str, list] = {}
-    for e in (all_rows or []):
-        pn = (e.get("payload") or {}).get("program")
-        if pn:
-            prog_rows.setdefault(pn, []).append(e)
+    # Program -> Experiment relations (the programs/program_experiments
+    # tables are the query source; provenance is audit only)
+    programs = program_cfg.list_programs()
+    links_by_slug: dict[str, list[dict]] = {}
+    linked_eids: set = set()
+    for _p in programs:
+        links = program_cfg.links_for(_p["slug"])
+        links_by_slug[_p["slug"]] = links
+        linked_eids |= {l["eid"] for l in links}
 
     # programs -> campaign trees: one provenance record per launch
     # (program_launch) links a problem-tree root to its program; linked
     # trees render nested under the program, free trees at top level
     link_by_root: dict[str, str] = {}
-    for _pname, _roots in program_cfg.launches_by_program().items():
-        for _r in _roots:
-            link_by_root[_r] = _pname
+    for _p in programs:
+        for l in links_by_slug.get(_p["slug"], []):
+            if l["role"] == "campaign" and l["campaign_root"]:
+                link_by_root[l["campaign_root"]] = _p["slug"]
     linked_trees = [t for t in trees if t[0].root.id in link_by_root]
     free_trees = [t for t in trees if t[0].root.id not in link_by_root]
     linked_leaf_pids = {_leaf_pid(t.root.id, lf.id)
@@ -700,41 +703,29 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     for prog in program_cfg.list_programs():
         gate = prog.get("gate_summary", "")
         pname = prog.get("name", prog["slug"])
-        camp_ids = {a.get("eid") for a in prog.get("attachments", [])}
         status_tally: dict[str, int] = {}
 
-        def build_prog_kids(prog=prog, pname=pname, camp_ids=camp_ids):
+        def build_prog_kids(prog=prog, pname=pname):
             kids = []
             for a in prog.get("attachments", []):
                 e = rows_by_eid.get(a.get("eid"))
                 if not e:
-                    continue                 # archived -> not shown
+                    # registry row archived/purged: the RELATION still
+                    # holds — render from the link record
+                    if not a.get("question"):
+                        continue
+                    kids.append(emit(
+                        a["question"][:60] or a["eid"], icon="droplet",
+                        description=a.get("status") or "archived",
+                        tooltip=a["eid"], meta=None, disabled=True))
+                    continue
                 s = _row_status(e)
                 status_tally[s] = status_tally.get(s, 0) + 1
                 kids.append(leaf_item(
                     e, icon="smart_toy"
                     if (e["payload"].get("agent") or {}) else "person",
                     tooltip=a.get("question", "")))
-            # campaign rows launched from this program; leaf rows of a
-            # linked tree render inside the tree itself, so skip them here
-            camp = [e for e in prog_rows.get(pname, [])
-                    + prog_rows.get(prog["slug"], [])
-                    if e["id"] not in camp_ids
-                    and (e["payload"].get("agent") or {}).get("problem_id")
-                    not in linked_leaf_pids]
-            if camp:
-                def build_camp_kids(camp=camp):
-                    ck = []
-                    for e in camp:
-                        s = _row_status(e)
-                        status_tally[s] = status_tally.get(s, 0) + 1
-                        ck.append(leaf_item(e, icon="smart_toy"))
-                    return ck
-                kids.append(emit(f"Autonomous campaign ({len(camp)})",
-                                 icon="group",
-                                 describe=lambda n=len(camp):
-                                 f"{n} experiment(s)",
-                                 build_children=build_camp_kids))
+            return kids
             # linked problem trees: Program -> Autonomous campaign ->
             # problem root -> sub-problems (the existing rendering)
             for tup in linked_trees:
@@ -771,11 +762,10 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                       for lf in t.leaves()}
     # standalone experiments grouped by who defines the problem:
     # autonomous campaigns (LLM-defined) vs guided (user-defined)
-    prog_tags = set(prog_rows)
     standalone = [e for e in (all_rows or [])
                   if (e["payload"].get("agent") or {}).get("problem_id")
                   not in tree_leaf_pids
-                  and (e.get("payload") or {}).get("program") not in prog_tags]
+                  and e["id"] not in linked_eids]
     groups = {"Autonomous campaigns": ([], "smart_toy"),
               "Guided experiments": ([], "person")}
     for e in standalone:

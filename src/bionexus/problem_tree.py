@@ -418,13 +418,20 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
             _eid = f"tree-{tree.root.id}-{leaf.id}"
             _root_name = tree.root.objective.split(":")[0].strip()[:40]
             import os as _os
+            _status = ("completed" if leaf.status == "achieved"
+                       else ("failed" if leaf.status == "failed"
+                             else "verdict_recorded"))
             _ws.register_agent(
                 _eid, f"{leaf.objective} · sub-problem of {_root_name}",
-                log=str(leaf_log), autonomy=autonomy,
-                status="completed" if leaf.status == "achieved"
-                else ("failed" if leaf.status == "failed"
-                      else "verdict_recorded"),
-                program=_os.environ.get("BN_PROGRAM") or None)
+                log=str(leaf_log), autonomy=autonomy, status=_status)
+            _bn_prog = _os.environ.get("BN_PROGRAM")
+            if _bn_prog:
+                try:
+                    from bionexus import program as _program
+                    _program.link_leaf(_bn_prog, _eid, tree.root.id,
+                                       leaf.objective, _status)
+                except Exception:
+                    pass
             _ws.link_problem(_eid, problem.problem_id)
         except Exception:
             pass

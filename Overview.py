@@ -140,6 +140,13 @@ def _spawn_agent_experiment(cfg: dict, objective: str,
         cwd=str(Path.cwd()), env=_env)
     store.register_agent(cid, objective, str(logf),
                          autonomy=cfg.get("autonomy", "act"), pid=proc.pid)
+    if program:
+        try:
+            from bionexus import program as _pc
+            _pc.link_leaf(program, cid, campaign_root=None,
+                          question=objective, status="executing")
+        except Exception:
+            pass
     idx = campaign_index()
     idx[cid] = {"pid": proc.pid, "autonomy": cfg.get("autonomy", "act"),
                 "objective": objective, "log": str(logf)}

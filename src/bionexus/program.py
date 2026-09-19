@@ -57,6 +57,9 @@ def save_program_record(doc: dict) -> str:
     from bionexus.core.interfaces import record_for, system_actor
     slug = _slug(doc.get("program"))
     branch = f"programs/{slug}"
+    # relational row: the query source for the workspace
+    from bionexus.wizard_store import WizardStore
+    WizardStore().upsert_program(slug, doc.get("program", slug), doc)
     store = SqliteProvenanceStore("bionexus.db")
     store.append(record_for(
         Envelope(experiment_branch_id=branch),
@@ -78,6 +81,10 @@ def attach_experiment(program_name: str, eid: str, problem_id: str,
     existing = {x["slug"]: x for x in list_programs()}
     if slug not in existing:
         return None
+    from bionexus.wizard_store import WizardStore
+    WizardStore().link_experiment(slug, eid, role="leaf",
+                                  campaign_root=problem_id or None,
+                                  question=question, status=status)
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
     from bionexus.core.contracts import Envelope, EventType
     from bionexus.core.interfaces import record_for, system_actor
@@ -103,6 +110,10 @@ def record_launch(program_name: str, root_id: str, objective: str = "") -> None:
     This single record is what nests the tree under the program in the
     workspace: Program -> Autonomous campaign -> problem tree."""
     slug = _slug(program_name)
+    from bionexus.wizard_store import WizardStore
+    WizardStore().link_experiment(slug, root_id, role="campaign",
+                                  campaign_root=root_id,
+                                  question=objective)
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
     from bionexus.core.contracts import Envelope, EventType
     from bionexus.core.interfaces import record_for, system_actor
@@ -114,22 +125,35 @@ def record_launch(program_name: str, root_id: str, objective: str = "") -> None:
                   "objective": (objective or "")[:120]}))
 
 
+def link_leaf(program_name: str, eid: str, campaign_root: str,
+              question: str, status: str = "executing") -> None:
+    """Register a campaign leaf under a program (relational only — the
+    provenance audit trail is written by the campaign itself)."""
+    slug = _slug(program_name)
+    from bionexus.wizard_store import WizardStore
+    WizardStore().link_experiment(slug, eid, role="leaf",
+                                  campaign_root=campaign_root,
+                                  question=question, status=status)
+
+
 def launches_by_program() -> dict:
-    """program name -> list of linked problem-tree root ids."""
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    if not Path("bionexus.db").exists():
+    """program name -> list of linked problem-tree root ids (relation)."""
+    if not Path(".data/wizard.db").exists():
         return {}
-    store = SqliteProvenanceStore("bionexus.db")
+    from bionexus.wizard_store import WizardStore
+    ws = WizardStore()
     out: dict = {}
-    for br in store.branches():
-        if not br.startswith("programs/") or br.count("/") != 1:
-            continue
-        for r in store.branch_records(br):
-            d = r.decision or {}
-            if d.get("kind") == "program_launch" and d.get("root"):
-                out.setdefault(d.get("name") or br.split("/", 1)[1],
-                               []).append(d["root"])
+    for p in ws.db_programs():
+        for l in ws.program_links(p["slug"]):
+            if l["role"] == "campaign" and l["campaign_root"]:
+                out.setdefault(p["name"], []).append(l["campaign_root"])
     return out
+
+
+def links_for(program_name: str) -> list[dict]:
+    """All program_experiments relations for a program slug."""
+    from bionexus.wizard_store import WizardStore
+    return WizardStore().program_links(_slug(program_name))
 
 
 def branch_of(slug: str) -> str:
@@ -145,26 +169,52 @@ def attachments_for(program_name: str) -> list[dict]:
 
 
 def list_programs() -> list[dict]:
-    """Latest program record per branch, most recent first."""
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    if not Path("bionexus.db").exists():
-        return []
-    store = SqliteProvenanceStore("bionexus.db")
+    """Programs from the relational tables; first call migrates any
+    legacy provenance-only programs into them."""
+    from bionexus.wizard_store import WizardStore
+    ws = WizardStore()
+    if ws.db_program_count() == 0 and Path("bionexus.db").exists():
+        _migrate_from_provenance(ws)
     out = []
+    for p in ws.db_programs():
+        doc = p["doc"]
+        slug = p["slug"]
+        attachments = [{"eid": l["eid"], "question": l["question"],
+                        "status": l["status"]}
+                       for l in ws.program_links(slug)
+                       if l["role"] == "leaf"]
+        out.append({"branch": f"programs/{slug}", "slug": slug,
+                    "name": p["name"], "program": doc,
+                    "mode": doc.get("mode", "autonomous"),
+                    "gate_summary": gate_summary(doc),
+                    "attachments": attachments})
+    return out
+
+
+def _migrate_from_provenance(ws) -> None:
+    """One-time: seed the relational programs table from legacy
+    provenance-only program records."""
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    store = SqliteProvenanceStore("bionexus.db")
     for br in store.branches():
-        if not br.startswith("programs/"):
+        if not br.startswith("programs/") or br.count("/") != 1:
             continue
         recs = store.branch_records(br)
         latest = next((r.decision or {} for r in reversed(recs)
                        if (r.decision or {}).get("kind") == "program_root"),
                       None)
-        if latest:
-            s = br.split("/", 1)[1]
-            out.append({"branch": br, "slug": s,
-                        "name": latest.get("name",
-                                           latest.get("program_id", s)),
-                        **latest})
-    return out
+        if not latest:
+            continue
+        slug = br.split("/", 1)[1]
+        doc = latest.get("program", {})
+        name = latest.get("name", latest.get("program_id", slug))
+        ws.upsert_program(slug, name, doc)
+        for a in latest.get("attachments", []):
+            if a.get("eid"):
+                ws.link_experiment(slug, a["eid"], role="leaf",
+                                   campaign_root=a.get("problem_id"),
+                                   question=a.get("question", ""),
+                                   status=a.get("status", "executing"))
 
 
 def load() -> dict:
