@@ -471,6 +471,18 @@ def cmd_materials_run(args: argparse.Namespace) -> int:
         metric=args.metric, param=args.param, direction=args.direction,
         store=SqliteProvenanceStore(args.db),
         notify=print)
+    from bionexus import program as _prog
+    _doc = _prog.load()
+    if _doc.get("program"):
+        try:
+            _prog.attach_experiment(_doc["program"],
+                                    f"materials-{rep['problem_id']}",
+                                    rep["problem_id"], args.objective,
+                                    status="verdict_recorded" if
+                                    rep["verdict"] == "validated" else
+                                    "failed")
+        except Exception:
+            pass
     print(_json.dumps({"problem": rep["problem_id"],
                        "verdict": rep["verdict"],
                        "best": rep["best"]}, indent=1))

@@ -493,6 +493,32 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     items, idx2eid = [], {}
     counter = {"i": 0}
 
+    # programs first: shared roots (any modality), visible to everyone
+    # on the service. Experiments launched under a program attach as
+    # its children (linkage lands with leaf attachment)
+    from bionexus import program as program_cfg
+    rows_by_eid = {e["id"]: e for e in (all_rows or [])}
+    for prog in program_cfg.list_programs():
+        gate = prog.get("gate_summary", "")
+        kids = []
+        for a in prog.get("attachments", []):
+            e = rows_by_eid.get(a.get("eid"))
+            if not e:
+                continue                     # archived -> not shown
+            i = reserve()
+            idx2eid[i] = e["id"]
+            kids.append(sac.TreeItem(
+                e["question"][:60] or e["id"],
+                icon="smart_toy" if (e["payload"].get("agent") or {})
+                else "person",
+                description=_row_status(e), tooltip=a.get("question", "")))
+        items.append(sac.TreeItem(
+            prog.get("program", prog["slug"]), icon="activity",
+            description=gate + (f" · {len(kids)} experiment(s)"
+                                if kids else " · no experiments yet"),
+            tooltip=gate, children=kids or None,
+            disabled=not kids))
+
     def reserve() -> int:
         i = counter["i"]
         counter["i"] += 1

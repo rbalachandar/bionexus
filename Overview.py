@@ -104,6 +104,20 @@ def _looks_like_smiles(text: str) -> bool:
             and any(ch in t for ch in "#=("))
 
 
+def _attach_to_program(cid: str, problem_id: str | None,
+                       question: str) -> None:
+    """Link a launched experiment to the active program: it becomes a
+    leaf of the program's tree in the shared registry."""
+    doc = program_cfg.load()
+    if not doc.get("program"):
+        return
+    try:
+        program_cfg.attach_experiment(doc["program"], cid,
+                                      problem_id or "", question)
+    except Exception:
+        pass                       # attachment is best-effort
+
+
 def _spawn_agent_experiment(cfg: dict, objective: str) -> str:
     import subprocess
     from bionexus.paths import ensure_dirs
@@ -239,6 +253,7 @@ def start_dialog() -> None:
             cfg["k"] = k
             cfg["autonomy"] = autonomy.split(" —")[0]
         cid = _spawn_agent_experiment(cfg, cfg["problem"]["objective"])
+        _attach_to_program(cid, None, cfg["problem"]["objective"])
         st.session_state["view_experiment"] = cid
         st.switch_page(PAGES["experiment"])
 
@@ -365,11 +380,12 @@ def overview_view() -> None:
             st.caption(st.session_state.pop("suggest_basis"))
         if st.button("Save program", type="primary",
                      icon=":material/save:"):
-            program_cfg.save({"program": prog, "custom": True,
-                              "objective": obj, "modality": modality,
-                              "metric": metric or "ic50", "unit": unit,
-                              "direction": direction,
-                              "gate_value": float(gval)})
+            _doc = program_cfg.save({"program": prog, "custom": True,
+                                     "objective": obj, "modality": modality,
+                                     "metric": metric or "ic50", "unit": unit,
+                                     "direction": direction,
+                                     "gate_value": float(gval)})
+            program_cfg.save_program_record(_doc)
             st.toast(f"Program saved — {program_cfg.gate_summary()}",
                      icon=":material/target:")
             st.rerun()
@@ -642,6 +658,7 @@ def wizard_view() -> None:
                         "autonomy": "gate",
                         "concentrations": ["0.5uM", "2uM", "10uM", "40uM"]}
                     cid = _spawn_agent_experiment(cfg, exp.scientific_question)
+                    _attach_to_program(cid, None, exp.scientific_question)
                     _save("executing", agent_link=cid)
                     _wprove(EventType.stage_transition,
                             {"stage": "handed-off",

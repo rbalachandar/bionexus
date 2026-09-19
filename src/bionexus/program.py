@@ -38,6 +38,96 @@ DEFAULT = {
 GATE_LABELS = {p.value: p for p in CriterionPhase}
 
 
+# ------------------------------------------------------ program registry
+# Programs are first-class shared records in the provenance store: every
+# user of a shared service sees the same program roots. program.json
+# remains only the LOCAL pointer to the active program (wizard defaults).
+
+def _slug(name: str) -> str:
+    import re as _re
+    s = _re.sub(r"[^a-zA-Z0-9]+", "-", (name or "program").lower()).strip("-")
+    return s[:48] or "program"
+
+
+def save_program_record(doc: dict) -> str:
+    """Register/refresh a program as a shared provenance root. Returns
+    the program branch id (programs/<slug>)."""
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    slug = _slug(doc.get("program"))
+    branch = f"programs/{slug}"
+    store = SqliteProvenanceStore("bionexus.db")
+    store.append(record_for(
+        Envelope(experiment_branch_id=branch),
+        EventType.problem_defined, system_actor("program"),
+        decision={"kind": "program_root", "program_id": slug,
+                  "program": doc,
+                  "gate_summary": gate_summary(doc)}))
+    return branch
+
+
+def attach_experiment(program_name: str, eid: str, problem_id: str,
+                      question: str, status: str = "executing") -> str | None:
+    """Attach an experiment to a program root: it becomes a leaf of the
+    program's tree in the shared registry instead of a free-standing
+    node. Append-only: the latest record carries the attachment list."""
+    slug = _slug(program_name)
+    existing = {x["slug"]: x for x in list_programs()}
+    if slug not in existing:
+        return None
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    prev = existing[slug]
+    attachments = [a for a in prev.get("attachments", [])
+                   if a.get("eid") != eid]
+    attachments.append({"eid": eid, "problem_id": problem_id,
+                        "question": question[:120], "status": status,
+                        "ts": __import__("time").time()})
+    store = SqliteProvenanceStore("bionexus.db")
+    store.append(record_for(
+        Envelope(experiment_branch_id=f"programs/{slug}"),
+        EventType.problem_defined, system_actor("program"),
+        decision={"kind": "program_root", "program_id": slug,
+                  "program": prev.get("program", {}),
+                  "gate_summary": prev.get("gate_summary", ""),
+                  "attachments": attachments}))
+    return branch_of(slug)
+
+
+def branch_of(slug: str) -> str:
+    return f"programs/{slug}"
+
+
+def attachments_for(program_name: str) -> list[dict]:
+    slug = _slug(program_name)
+    for x in list_programs():
+        if x["slug"] == slug:
+            return x.get("attachments", [])
+    return []
+
+
+def list_programs() -> list[dict]:
+    """Latest program record per branch, most recent first."""
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    if not Path("bionexus.db").exists():
+        return []
+    store = SqliteProvenanceStore("bionexus.db")
+    out = []
+    for br in store.branches():
+        if not br.startswith("programs/"):
+            continue
+        recs = store.branch_records(br)
+        latest = next((r.decision or {} for r in reversed(recs)
+                       if (r.decision or {}).get("kind") == "program_root"),
+                      None)
+        if latest:
+            out.append({"branch": br, "slug": br.split("/", 1)[1],
+                        **latest})
+    return out
+
+
 def load() -> dict:
     if PATH.exists():
         try:
