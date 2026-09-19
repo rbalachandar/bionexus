@@ -274,18 +274,6 @@ def overview_view() -> None:
     else:
         h1.title("BioNexus")
     halt_banner()
-    if h2.button("Autonomous campaign", type="primary",
-                    icon=":material/smart_toy:",
-                    help="the LLM proposes the hypotheses and runs the "
-                         "Design-Make-Test-Analyze loops under your "
-                         "program gate"):
-        start_dialog()
-    if h3.button("Guided experiment", icon=":material/person:",
-                 help="you define the problem and design through the "
-                      "readiness-gated wizard; choose bench or agent "
-                      "execution at the end"):
-        st.session_state["step"] = 1
-        st.switch_page(PAGES["wizard"])
 
     # consume keymap-initiated actions
     if st.session_state.pop("open_new", False):
@@ -352,11 +340,20 @@ def overview_view() -> None:
                     "Experiment. Define the problem in your own terms — "
                     "any metric, any unit. The gate below is what wizard "
                     "hypotheses and agent experiments inherit.")
-        tp1, tp2, tp3 = st.columns([2, 2, 1])
+        tp1, tp2 = st.columns(2)
         prog = tp1.text_input("Program", doc["program"], key="tpp_prog")
         obj = tp2.text_input("Objective — the problem, in plain words",
                              doc.get("objective") or "", key="tpp_obj")
-        modality = tp3.text_input(
+        mode = st.selectbox(
+            "Execution mode", ["autonomous", "guided"],
+            index=["autonomous", "guided"].index(
+                doc.get("mode", "autonomous")),
+            key="tpp_mode",
+            help="autonomous: the LLM proposes hypotheses and runs the "
+                 "DMTA loops. guided: you define the problem through the "
+                 "wizard. Locked once experiments are attached.")
+        tp_mod = st.columns(1)[0]
+        modality = tp_mod.text_input(
             "Modality", doc.get("modality", ""), key="tpp_modality",
             help="optional, free text: small molecule, biologic, cell "
                  "therapy, agrochemical, material — words the Make step "
@@ -385,12 +382,26 @@ def overview_view() -> None:
             st.caption(st.session_state.pop("suggest_basis"))
         if st.button("Save program", type="primary",
                      icon=":material/save:"):
-            _doc = program_cfg.save({"program": prog, "custom": True,
-                                     "objective": obj, "modality": modality,
-                                     "metric": metric or "ic50", "unit": unit,
-                                     "direction": direction,
-                                     "gate_value": float(gval)})
-            program_cfg.save_program_record(_doc)
+            _slug = program_cfg._slug(prog)
+            _existing = {x["slug"]: x for x in program_cfg.list_programs()}
+            _prev = _existing.get(_slug)
+            if _prev and _prev.get("attachments") \
+                    and _prev.get("mode") != mode:
+                st.error(f"Execution mode is locked: '{prog}' has "
+                         f"{len(_prev.get('attachments', []))} attached "
+                         "experiment(s). Create a new program to use the "
+                         "other mode.")
+            else:
+                _doc = program_cfg.save({"program": prog, "custom": True,
+                                         "objective": obj,
+                                         "modality": modality,
+                                         "metric": metric or "ic50",
+                                         "unit": unit, "direction": direction,
+                                         "gate_value": float(gval),
+                                         "mode": mode})
+                program_cfg.save_program_record(_doc)
+                st.toast(f"Program saved — {program_cfg.gate_summary()}",
+                         icon=":material/target:")
             st.toast(f"Program saved — {program_cfg.gate_summary()}",
                      icon=":material/target:")
             st.rerun()
@@ -964,7 +975,7 @@ PAGES = {
                      icon=":material/menu_book:",
                      url_path="documentation"),
 }
-_wv.PAGES_EXP = PAGES["experiment"]
+_wv.WIZARD_PAGE = PAGES["wizard"]
 
 
 def _key_new() -> None:

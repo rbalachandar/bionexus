@@ -498,6 +498,13 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     # its children (linkage lands with leaf attachment)
     from bionexus import program as program_cfg
     rows_by_eid = {e["id"]: e for e in (all_rows or [])}
+    idx2program: dict[int, dict] = {}
+
+    def reserve() -> int:
+        i = counter["i"]
+        counter["i"] += 1
+        return i
+
     for prog in program_cfg.list_programs():
         gate = prog.get("gate_summary", "")
         kids = []
@@ -520,15 +527,16 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                                   key=lambda kv: -kv[1]))
         desc = gate + (f" · {tally}" if tally
                        else " · no experiments yet")
+        # program nodes are selectable launch targets (mode-gated below),
+        # even when empty — launching the first experiment is the point
+        i = reserve()
+        idx2program[i] = {"slug": prog["slug"],
+                          "doc": prog.get("program") or {},
+                          "mode": prog.get("mode", "autonomous"),
+                          "name": prog.get("name", prog["slug"])}
         items.append(sac.TreeItem(
             prog.get("name", prog["slug"]), icon="activity",
-            description=desc, tooltip=gate, children=kids or None,
-            disabled=not kids))
-
-    def reserve() -> int:
-        i = counter["i"]
-        counter["i"] += 1
-        return i
+            description=desc, tooltip=gate, children=kids or None))
 
     for tree, alloc, leaf_stats, rollup, _rec in trees:
         eid_by_pid = {}
@@ -657,10 +665,12 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
             description=f"{len(entries)} experiment(s)",
             children=kids))
 
-    if not items:
-        st.info("No problem trees yet — create one with "
-                "`bn plan --objective ...` or the agent experiment wizard.")
+    if not program_cfg.list_programs():
+        st.info("Create a program first — open **Program** above, define "
+                "the objective, metric, gate and execution mode, then "
+                "save. Experiments can only be launched under a program.")
         return
+    st.caption("select a program, then launch under its gate")
     picked = sac.tree(items=items, open_all=True, label="",
                       return_index=True, show_line=True)
     # sac.tree may return an int or a list of indices depending on
@@ -673,6 +683,23 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
     if idx is not None and idx2eid.get(idx):
         st.session_state["view_experiment"] = idx2eid[idx]
         st.switch_page(PAGES_EXP)
+        return
+    # program selected -> mode-gated launch action
+    prog_sel = idx2program.get(idx) if idx is not None else None
+    if prog_sel:
+        st.markdown(f"**Launch under {prog_sel['name']}** "
+                    f"(mode: {prog_sel['mode']})")
+        if prog_sel["mode"] == "autonomous":
+            if st.button("Launch autonomous campaign", type="primary",
+                         icon=":material/smart_toy:"):
+                program_cfg.save({**prog_sel["doc"], "mode": "autonomous"})
+                START_DIALOG()
+        else:
+            if st.button("New guided experiment", type="primary",
+                         icon=":material/person:"):
+                program_cfg.save({**prog_sel["doc"], "mode": "guided"})
+                st.session_state["step"] = 1
+                st.switch_page(WIZARD_PAGE)
 
 def _dmta_counts(recs) -> dict:
     """DMTA phase counts for a slice of provenance records. Test counts

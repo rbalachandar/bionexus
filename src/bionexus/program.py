@@ -63,6 +63,7 @@ def save_program_record(doc: dict) -> str:
         EventType.problem_defined, system_actor("program"),
         decision={"kind": "program_root", "program_id": slug,
                   "name": doc.get("program", slug),
+                  "mode": doc.get("mode", "autonomous"),
                   "program": doc,
                   "gate_summary": gate_summary(doc)}))
     return branch
