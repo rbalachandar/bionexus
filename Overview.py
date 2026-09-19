@@ -197,11 +197,19 @@ def start_dialog() -> None:
                               disabled=not custom)
     pdoc = program_cfg.load()
     st.caption(f"Program gates: {program_cfg.gate_summary(pdoc)}")
+    # candidate list: small-molecule campaigns name compounds up front;
+    # other modalities let the agent propose candidates itself
+    _mod = (pdoc.get("modality") or "").lower() if pdoc.get("custom") else ""
+    _sm = _mod in ("", "small molecule", "small-molecule")
     c3, c4 = st.columns(2)
-    compounds = c3.text_input("Compounds (comma-separated)",
-                              "gefitinib,erlotinib,lapatinib,osimertinib")
-    threshold = c4.number_input("Potency threshold (µM)", 0.001, 1000.0,
-                                program_cfg.gate_threshold_um(pdoc))
+    compounds = c3.text_input(
+        "Compounds (comma-separated)" if _sm else
+        "Candidates (optional - empty = agent proposes them)",
+        "gefitinib,erlotinib,lapatinib,osimertinib" if _sm else "")
+    threshold = c4.number_input("Gate threshold", 0.001, 1000000.0,
+                                program_cfg.gate_threshold_um(pdoc)
+                                if _sm else float(pdoc.get("gate_value", 1.0)),
+                                format="%0.3f")
     k = st.slider("How many hypotheses may go to the lab (top-k)", 1, 6, 2)
     st.number_input("DMTA rounds", 1, 6, 2, key="dmta_rounds",
                     help="how many Design-Make-Test-Analyze loops the "
@@ -231,32 +239,44 @@ def start_dialog() -> None:
 
     if st.button("Launch autonomous campaign", type="primary",
                  icon=":material/rocket_launch:",
-                 disabled=not compounds.strip() or missing_required):
+                 disabled=missing_required
+                 or (not compounds.strip() and not custom)):
         thr_s = f"{threshold:g}"
         if custom:
             objective_text = (objective.strip() or objective_default).replace(
                 "{threshold}", thr_s)
+            _metric = pdoc.get("metric") or "potency"
+            _unit = pdoc.get("unit") or ""
+            _cmp = "<=" if pdoc.get("direction", "min") == "min" else ">="
             problem = {"objective": objective_text,
-                       "constraints": [{"name": "potency",
-                                        "description": f"IC50 <= {thr_s} uM",
+                       "constraints": [{"name": _metric,
+                                        "description": f"{_metric} {_cmp} "
+                                                       f"{thr_s} {_unit}".strip(),
                                         "kind": "hard",
-                                        "limit": float(threshold), "unit": "uM"}],
-                       "success_metric": "IC50 ranking consistent across replicates"}
+                                        "limit": float(threshold),
+                                        "unit": _unit}],
+                       "success_metric": f"{_metric} gate decisions "
+                                         "consistent across replicates"}
             if save_as and save_as.strip():
                 save_user_template(save_as.strip(), objective_text, problem,
                                    {"type": "binding"})
             cfg = {"problem": problem,
-                   "hypotheses": [
-                       {"statement": f"{c.strip()} binds with IC50 <= {thr_s} uM",
-                        "candidate": c.strip(), "assay_type": "binding",
-                        "predicted": f"IC50 <= {thr_s}",
-                        "predicted_value": float(threshold),
-                        "rationale": ""}
-                       for c in compounds.split(",") if c.strip()],
                    "k": k, "rounds": int(st.session_state.get(
                        "dmta_rounds", 2)),
                    "autonomy": autonomy.split(" —")[0],
                    "concentrations": ["0.5uM", "2uM", "10uM", "40uM"]}
+            if compounds.strip():
+                cfg["hypotheses"] = [
+                    {"statement": f"{c.strip()} achieves {_metric} {_cmp} "
+                                  f"{thr_s} {_unit}".strip(),
+                     "candidate": c.strip(), "assay_type": _metric,
+                     "predicted": f"{_metric} {_cmp} {thr_s}",
+                     "predicted_value": float(threshold),
+                     "rationale": ""}
+                    for c in compounds.split(",") if c.strip()]
+            else:
+                # no candidates given: the agent proposes them
+                cfg["hypothesis_source"] = "agent"
         else:
             cfg = build_campaign(fill(tpl_doc, {"compounds": compounds,
                                                 "threshold": thr_s,
