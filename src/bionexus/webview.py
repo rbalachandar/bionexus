@@ -67,9 +67,6 @@ def _pipeline_body(logf: Path, problem_id: str | None,
             recs = []
     cand2round = {cand: rnd for rnd, cands in _round_markers(recs)
                   for cand in cands}
-
-    cand2round = {cand: rnd for rnd, cands in _round_markers(recs)
-                  for cand in cands}
     render_dmta(recs, logf)
     st.markdown("")
 

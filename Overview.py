@@ -965,7 +965,8 @@ def experiment_view() -> None:
             import streamlit.components.v1 as _components
             _components.html(
                 "<script>setTimeout(function(){"
-                "window.location.reload();}, 6000);</script>", height=0)
+                "window.parent.location.reload();}, 6000);</script>",
+                height=0)
         if status == "running":
             st.info("In progress — this view refreshes as the agent works.")
 
