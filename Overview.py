@@ -190,129 +190,6 @@ def _resolve_problem(meta: dict, logf: Path) -> str | None:
 
 
 # --------------------------------------------------------------------------
-# start dialog (P2: modal over the list, no page displacement)
-# --------------------------------------------------------------------------
-@st.dialog("Launch campaign", width="large")
-def start_dialog() -> None:
-    from bionexus.templates import (build_campaign, fill, load_template,
-                                    list_templates, save_user_template)
-
-    tpl_names = [t["name"] for t in list_templates()] + ["Custom…"]
-    c1, c2 = st.columns(2)
-    tpl = c1.selectbox("Template", tpl_names)
-    autonomy = c2.selectbox(
-        "Autonomy",
-        ["act — autonomous within safety rules",
-         "gate — I approve each experiment",
-         "observe — analysis only"])
-
-    custom = tpl == "Custom…"
-    if custom:
-        st.caption("No template — describe the problem yourself. Compounds "
-                   "become one hypothesis each with your potency criterion.")
-    objective_default = ("Rank compounds by binding potency and identify "
-                         "those with IC50 <= {threshold} uM")
-    objective = st.text_input("Objective", "",
-                              placeholder=objective_default,
-                              disabled=not custom)
-    pdoc = program_cfg.load()
-    st.caption(f"Program gates: {program_cfg.gate_summary(pdoc)}")
-    # candidate list: small-molecule campaigns name compounds up front;
-    # other modalities let the agent propose candidates itself
-    _mod = (pdoc.get("modality") or "").lower() if pdoc.get("custom") else ""
-    _sm = _mod in ("", "small molecule", "small-molecule")
-    c3, c4 = st.columns(2)
-    compounds = c3.text_input(
-        "Compounds (comma-separated)" if _sm else
-        "Candidates (optional - empty = agent proposes them)",
-        "gefitinib,erlotinib,lapatinib,osimertinib" if _sm else "")
-    threshold = c4.number_input("Gate threshold", 0.001, 1000000.0,
-                                program_cfg.gate_threshold_um(pdoc)
-                                if _sm else float(pdoc.get("gate_value", 1.0)),
-                                format="%0.3f")
-    k = st.slider("How many hypotheses may go to the lab (top-k)", 1, 6, 2)
-    st.number_input("DMTA rounds", 1, 6, 2, key="dmta_rounds",
-                    help="how many Design-Make-Test-Analyze loops the "
-                         "agent may run; each round's verdicts feed the "
-                         "next round's selections")
-
-    extra_fields: dict[str, str] = {}
-    missing_required = False
-    tpl_doc = None if custom else load_template(tpl)
-    if not custom and tpl_doc:
-        for fname, spec in (tpl_doc.get("fields") or {}).items():
-            if fname in ("compounds", "threshold"):
-                continue
-            label = spec.get("prompt", fname.replace("_", " ").title())
-            default = str(spec.get("default") or "")
-            star = " *" if spec.get("required") else ""
-            val = st.text_input(label + star, value=default, key=f"fld_{fname}")
-            if val.strip():
-                extra_fields[fname] = val.strip()
-            elif spec.get("required") and default == "":
-                missing_required = True
-
-    save_as = None
-    if custom:
-        save_as = st.text_input("Save as reusable template (optional name)",
-                                placeholder="my-kinase-screen")
-
-    if st.button("Launch autonomous campaign", type="primary",
-                 icon=":material/rocket_launch:",
-                 disabled=missing_required
-                 or (not compounds.strip() and not custom)):
-        thr_s = f"{threshold:g}"
-        if custom:
-            objective_text = (objective.strip() or objective_default).replace(
-                "{threshold}", thr_s)
-            _metric = pdoc.get("metric") or "potency"
-            _unit = pdoc.get("unit") or ""
-            _cmp = "<=" if pdoc.get("direction", "min") == "min" else ">="
-            problem = {"objective": objective_text,
-                       "constraints": [{"name": _metric,
-                                        "description": f"{_metric} {_cmp} "
-                                                       f"{thr_s} {_unit}".strip(),
-                                        "kind": "hard",
-                                        "limit": float(threshold),
-                                        "unit": _unit}],
-                       "success_metric": f"{_metric} gate decisions "
-                                         "consistent across replicates"}
-            if save_as and save_as.strip():
-                save_user_template(save_as.strip(), objective_text, problem,
-                                   {"type": "binding"})
-            cfg = {"problem": problem,
-                   "k": k, "rounds": int(st.session_state.get(
-                       "dmta_rounds", 2)),
-                   "autonomy": autonomy.split(" —")[0],
-                   "concentrations": ["0.5uM", "2uM", "10uM", "40uM"]}
-            _assay = "binding" if _sm else "custom"
-            if compounds.strip():
-                cfg["hypotheses"] = [
-                    {"statement": f"{c.strip()} achieves {_metric} {_cmp} "
-                                  f"{thr_s} {_unit}".strip(),
-                     "candidate": c.strip(), "assay_type": _assay,
-                     "predicted": f"{_metric} {_cmp} {thr_s}",
-                     "predicted_value": float(threshold),
-                     "rationale": ""}
-                    for c in compounds.split(",") if c.strip()]
-            else:
-                # no candidates given: the agent proposes them
-                cfg["hypothesis_source"] = "agent"
-        else:
-            cfg = build_campaign(fill(tpl_doc, {"compounds": compounds,
-                                                "threshold": thr_s,
-                                                **extra_fields},
-                                      prompt_missing=False))
-            cfg["k"] = k
-            cfg["autonomy"] = autonomy.split(" —")[0]
-        cid = _spawn_agent_experiment(cfg, cfg["problem"]["objective"],
-                                      pdoc.get("program"))
-        _attach_to_program(cid, None, cfg["problem"]["objective"])
-        st.session_state["view_experiment"] = cid
-        st.switch_page(PAGES["experiment"])
-
-
-# --------------------------------------------------------------------------
 # VIEW: overview
 # --------------------------------------------------------------------------
 def overview_view() -> None:
@@ -423,6 +300,24 @@ def overview_view() -> None:
                        f"via {', '.join(_pack.test_assays)} · gate rules: "
                        f"{', '.join(_pack.safety_rule_names)}"
                        + (f" — {_pack.notes}" if _pack.notes else ""))
+        with st.expander("Launch settings", expanded=False):
+            _lc1, _lc2, _lc3 = st.columns(3)
+            autonomy = _lc1.selectbox(
+                "Autonomy", ["act", "gate", "observe"],
+                index=["act", "gate", "observe"].index(
+                    doc.get("autonomy", "act")),
+                help="act: autonomous within safety rules; gate: you "
+                     "approve each experiment; observe: analysis only")
+            k = _lc2.slider("Hypotheses to lab per round (top-k)", 1, 6,
+                            int(doc.get("k", 2)))
+            rounds = _lc3.number_input("DMTA rounds", 1, 6,
+                                       int(doc.get("rounds", 2)))
+            candidates = st.text_input(
+                "Candidates (optional - empty = agent proposes them)",
+                doc.get("candidates", ""),
+                help="comma-separated; small-molecule campaigns usually "
+                     "name compounds, other modalities let the agent "
+                     "propose")
         mt1, mt2, mt3, mt4 = st.columns(4)
         metric = mt1.text_input("Metric", doc.get("metric", "ic50"),
                                 key="tpp_metric",
@@ -456,16 +351,52 @@ def overview_view() -> None:
                                          "metric": metric or "ic50",
                                          "unit": unit, "direction": direction,
                                          "gate_value": float(gval),
-                                         "mode": mode})
+                                         "mode": mode, "autonomy": autonomy,
+                                         "k": int(k), "rounds": int(rounds),
+                                         "candidates": candidates})
                 program_cfg.save_program_record(_doc)
                 st.toast(f"Program launched — {program_cfg.gate_summary()}",
                          icon=":material/rocket_launch:")
                 if mode == "autonomous":
-                    # the ONLY launch surface: Program -> Launch program
-                    # opens this dialog (a rerun here would destroy it
-                    # before it renders, so open last and stop)
-                    start_dialog()
-                    st.stop()
+                    # no dialog: the program IS the launch definition
+                    _sym = program_cfg.gate_symbol(_doc)
+                    _metric = _doc.get("metric") or "potency"
+                    _unit = _doc.get("unit") or ""
+                    _cmp = "<=" if _doc.get("direction", "min") == "min"                         else ">="
+                    _gval = float(_doc.get("gate_value", 1.0))
+                    _cands = [c.strip() for c in candidates.split(",")
+                              if c.strip()]
+                    _cfg = {
+                        "problem": {
+                            "objective": obj or f"Optimize {_metric}",
+                            "constraints": [{
+                                "name": _metric,
+                                "description":
+                                    f"{_metric} {_cmp} {_gval:g} {_unit}".strip(),
+                                "kind": "hard", "limit": _gval,
+                                "unit": _unit}],
+                            "success_metric":
+                                f"{_metric} gate decisions consistent "
+                                "across replicates"},
+                        "k": int(k), "rounds": int(rounds),
+                        "autonomy": autonomy,
+                        "concentrations": ["0.5uM", "2uM", "10uM", "40uM"]}
+                    if _cands:
+                        _assay = "binding" if (modality or "").lower() in (
+                            "", "small molecule") else "custom"
+                        _cfg["hypotheses"] = [
+                            {"statement":
+                             f"{c} achieves {_metric} {_cmp} "
+                             f"{_gval:g} {_unit}".strip(),
+                             "candidate": c, "assay_type": _assay,
+                             "predicted": f"{_metric} {_cmp} {_gval:g}",
+                             "predicted_value": _gval, "rationale": ""}
+                            for c in _cands]
+                    else:
+                        _cfg["hypothesis_source"] = "agent"
+                    _spawn_agent_experiment(_cfg, _cfg["problem"]["objective"],
+                                            prog)
+                    st.rerun()
                 st.session_state["step"] = 1
                 st.switch_page(PAGES["wizard"])
 
