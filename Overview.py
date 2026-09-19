@@ -329,9 +329,10 @@ def overview_view() -> None:
         h1.title("BioNexus")
     halt_banner()
 
-    # consume keymap-initiated actions
+    # consume keymap-initiated actions: 'n' opens the Program section —
+    # campaigns launch ONLY from Program -> Launch program
     if st.session_state.pop("open_new", False):
-        start_dialog()
+        st.session_state["program_open"] = True
 
     inbox = ApprovalInbox(".data/approvals.jsonl")
     pending = inbox.pending()
@@ -389,7 +390,10 @@ def overview_view() -> None:
     # ---------------------------------------------------- Program & TPP
     doc = program_cfg.load()
     st.header("Program")
-    with st.expander("Program & target product profile — what winning looks like"):
+    with st.expander("Program & target product profile — what winning "
+                     "looks like",
+                     expanded=bool(st.session_state.pop("program_open",
+                                                        False))):
         st.markdown("*Hierarchy:* Program ▸ Problem ▸ Hypothesis ▸ "
                     "Experiment. Define the problem in your own terms — "
                     "any metric, any unit. The gate below is what wizard "
@@ -470,10 +474,12 @@ def overview_view() -> None:
     all_rows = store.ongoing() + store.finished(500)
     st.header("Experiments")
     if not all_rows:
-        st.info("Nothing yet.")
-        if st.button("Start your first experiment", type="primary",
-                     icon=":material/science:"):
-            start_dialog()
+        st.info("Nothing yet. Define a program, then press "
+                "**Launch program** — the campaign starts from there.")
+        if st.button("Open Program", type="primary",
+                     icon=":material/target:"):
+            st.session_state["program_open"] = True
+            st.rerun()
         return
     _wv.render_experiment_navigator(all_rows)
 
