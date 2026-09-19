@@ -938,16 +938,22 @@ def experiment_view() -> None:
 
         @st.fragment(run_every="6s" if status == "running" else None)
         def _live_block():
-            render_experiment_pipeline(logf, problem_id,
+            # re-resolve per tick: the problem branch only exists after
+            # the agent registers it, so early captures stay empty
+            _pid = _resolve_problem(ag, logf) or problem_id
+            if _pid and _pid != ag.get("problem_id"):
+                store.link_problem(row["id"], _pid)
+            _branch = f"problem/{_pid}" if _pid else branch
+            _recs = (SqliteProvenanceStore("bionexus.db")
+                     .branch_records(_branch)
+                     if _branch and Path("bionexus.db").exists() else recs)
+            render_experiment_pipeline(logf, _pid,
                                        running=(status == "running"),
                                        store=store, eid=row["id"])
             from bionexus import narrative
             _logtail = (logf.read_text(errors="replace").splitlines()[-200:]
                         if logf.is_file() else [])
-            _live = (SqliteProvenanceStore("bionexus.db")
-                     .branch_records(branch)
-                     if branch and Path("bionexus.db").exists() else recs)
-            narrative.render(_live or recs, _logtail)
+            narrative.render(_recs or recs, _logtail)
             with st.expander("Trace log", expanded=False):
                 if logf.is_file():
                     tail = logf.read_text(
