@@ -590,7 +590,32 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         if pn:
             prog_rows.setdefault(pn, []).append(e)
 
-    for prog in program_cfg.list_programs():
+    # programs -> campaign trees: one provenance record per launch
+    # (program_launch) links a problem-tree root to its program; linked
+    # trees render nested under the program, free trees at top level
+    link_by_root: dict[str, str] = {}
+    for _pname, _roots in program_cfg.launches_by_program().items():
+        for _r in _roots:
+            link_by_root[_r] = _pname
+    linked_trees = [t for t in trees if t[0].root.id in link_by_root]
+    free_trees = [t for t in trees if t[0].root.id not in link_by_root]
+    linked_leaf_pids = {_leaf_pid(t.root.id, lf.id)
+                        for t in linked_trees for lf in t.leaves()}
+
+    def render_tree(tree, alloc, leaf_stats, rollup, _rec):
+        """The problem-tree rendering, unchanged: root -> sub-problems
+        -> leaves. Returns the emitted root item."""
+        eid_by_pid = {}
+        for e in (all_rows or []):
+            p = (e["payload"].get("agent") or {}).get("problem_id")
+            if p:
+                eid_by_pid[p] = e["id"]
+        # a fully-retired tree (every leaf archived) leaves the workspace;
+        # its experiments remain in the Archived section
+        if tree.leaves() and all(
+                _leaf_pid(tree.root.id, lf.id) not in eid_by_pid
+                for lf in tree.leaves()):
+            return None
         gate = prog.get("gate_summary", "")
         pname = prog.get("name", prog["slug"])
         camp_ids = {a.get("eid") for a in prog.get("attachments", [])}
@@ -608,9 +633,13 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                     e, icon="smart_toy"
                     if (e["payload"].get("agent") or {}) else "person",
                     tooltip=a.get("question", "")))
+            # campaign rows launched from this program; leaf rows of a
+            # linked tree render inside the tree itself, so skip them here
             camp = [e for e in prog_rows.get(pname, [])
                     + prog_rows.get(prog["slug"], [])
-                    if e["id"] not in camp_ids]
+                    if e["id"] not in camp_ids
+                    and (e["payload"].get("agent") or {}).get("problem_id")
+                    not in linked_leaf_pids]
             if camp:
                 def build_camp_kids(camp=camp):
                     ck = []
@@ -624,6 +653,18 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                                  describe=lambda n=len(camp):
                                  f"{n} experiment(s)",
                                  build_children=build_camp_kids))
+            # linked problem trees: Program -> Autonomous campaign ->
+            # problem root -> sub-problems (the existing rendering)
+            for tup in linked_trees:
+                if link_by_root.get(tup[0].root.id) not in (pname,
+                                                            prog["slug"]):
+                    continue
+                def build_tree_kids(tup=tup):
+                    item = render_tree(*tup)
+                    return [item] if item is not None else []
+                kids.append(emit("Autonomous campaign", icon="group",
+                                 description="campaign problem tree",
+                                 build_children=build_tree_kids))
             return kids
 
         def describe_prog():
@@ -712,7 +753,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
             leaf = root_leaves[0]
             pid = f"{tree.root.id}-{leaf.id}"
             ls = leaf_stats.get(leaf.id, {})
-            emit(
+            return emit(
                 root_name, icon="droplet", tooltip=root_name,
                 meta=eid_by_pid.get(pid),
                 describe=lambda rstatus=rstatus, ls=ls, leaf=leaf:
@@ -721,7 +762,7 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
         else:
             def build_root_kids(tree=tree):
                 return [build(k.id) for k in tree.children(tree.root.id)]
-            emit(
+            return emit(
                 root_name, icon="activity",
                 tooltip=root_name, build_children=build_root_kids,
                 describe=lambda rstatus=rstatus, total=total,
@@ -729,6 +770,9 @@ def render_experiment_navigator(all_rows: list | None = None) -> None:
                 f"{rstatus} \u00b7 budget {total} runs"
                 + (" \u00b7 archived" if root_gone else ""),
                 disabled=root_gone)
+
+    for tup in free_trees:
+        render_tree(*tup)
 
     # standalone experiments (wizard/manual, single agent runs) group
     # under one collapsible node — the workspace shows auto AND manual

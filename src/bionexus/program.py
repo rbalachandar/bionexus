@@ -98,6 +98,40 @@ def attach_experiment(program_name: str, eid: str, problem_id: str,
     return branch_of(slug)
 
 
+def record_launch(program_name: str, root_id: str, objective: str = "") -> None:
+    """Link a campaign's problem-tree root to a program (append-only).
+    This single record is what nests the tree under the program in the
+    workspace: Program -> Autonomous campaign -> problem tree."""
+    slug = _slug(program_name)
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    SqliteProvenanceStore("bionexus.db").append(record_for(
+        Envelope(experiment_branch_id=f"programs/{slug}"),
+        EventType.problem_defined, system_actor("program"),
+        decision={"kind": "program_launch", "program_id": slug,
+                  "name": program_name, "root": root_id,
+                  "objective": (objective or "")[:120]}))
+
+
+def launches_by_program() -> dict:
+    """program name -> list of linked problem-tree root ids."""
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    if not Path("bionexus.db").exists():
+        return {}
+    store = SqliteProvenanceStore("bionexus.db")
+    out: dict = {}
+    for br in store.branches():
+        if not br.startswith("programs/") or br.count("/") != 1:
+            continue
+        for r in store.branch_records(br):
+            d = r.decision or {}
+            if d.get("kind") == "program_launch" and d.get("root"):
+                out.setdefault(d.get("name") or br.split("/", 1)[1],
+                               []).append(d["root"])
+    return out
+
+
 def branch_of(slug: str) -> str:
     return f"programs/{slug}"
 

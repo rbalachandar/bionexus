@@ -328,6 +328,17 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
         tree, [c["sample_id"] if isinstance(c, dict) else str(c)
                for c in (candidates or [])])
     root_branch = f"problem/{tree.root.id}"
+    # launched from a program (workbench dialog): link the tree root to
+    # it once, in provenance — the workspace nests on this record
+    import os as _os
+    _bn_prog = _os.environ.get("BN_PROGRAM")
+    if _bn_prog:
+        try:
+            from bionexus import program as _program
+            _program.record_launch(_bn_prog, tree.root.id,
+                                   tree.root.objective)
+        except Exception:
+            pass
     store.append(record_for(
         Envelope(experiment_branch_id=root_branch), EventType.problem_defined,
         system_actor("planner"),
