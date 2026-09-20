@@ -133,3 +133,54 @@ def test_sse_watch_and_replay(tmp_path, monkeypatch):
     back = sse.replay_events(i1, {"workspace"})
     assert [e["kind"] for e in back] == ["experiment_added"]
     assert back[0]["id"] == i2
+
+
+def test_wizard_session_flow(tmp_path):
+    """Guided wizard API: create -> design (readiness) -> execute ->
+    upload -> analyze, with provenance on the wizard branch."""
+    from fastapi.testclient import TestClient
+
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.api.app import app
+
+    with TestClient(app) as c:
+        r = c.post("/api/wizard/sessions", json={
+            "question": "Does S62 phosphorylation degrade c-Myc?",
+            "target": "c-Myc", "claim": "causal_modification"})
+        assert r.status_code == 200
+        sid, eid = r.json()["sid"], r.json()["eid"]
+
+        r = c.post(f"/api/wizard/sessions/{sid}/design", json={
+            "site": "S62", "half_life": 120, "controls": ["ctrl-1"],
+            "edited_frac": True, "mimetic": True,
+            "mechanism": "phospho blocks degron", "citation": ""})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["readiness"]["verdict"] in ("ready", "ready_with_warnings",
+                                                "blocked")
+
+        r = c.post(f"/api/wizard/sessions/{sid}/execute")
+        assert r.status_code == 200
+
+        csv = ("sample,conc_um,value,control\n"
+               "hit-1,1,10,0\nhit-1,10,50,0\nhit-1,100,90,0\n"
+               "ctrl,10,5,1\n")
+        r = c.post(f"/api/wizard/sessions/{sid}/upload",
+                   files={"file": ("plate.csv", csv.encode())})
+        assert r.status_code == 200
+        assert "plate" in r.json()
+
+        r = c.post(f"/api/wizard/sessions/{sid}/analyze",
+                   json={"selected": ["hit-1"]})
+        assert r.status_code == 200 and r.json()["done"] is True
+
+        sess = c.get(f"/api/wizard/sessions/{sid}").json()
+        assert sess["selected"] == ["hit-1"]
+        assert sess["step"] == 6
+        # provenance recorded on the wizard branch
+        from bionexus.wizard_chain import wizard_branch
+        recs = SqliteProvenanceStore("bionexus.db").branch_records(
+            wizard_branch(eid))
+        kinds = [(x.decision or {}).get("kind") for x in recs
+                 if x.event_type.value == "gate_decision"]
+        assert "wizard_verdict" in kinds

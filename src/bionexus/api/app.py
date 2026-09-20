@@ -9,6 +9,9 @@ import asyncio
 import json
 from pathlib import Path
 
+from fastapi import UploadFile
+from pydantic import BaseModel
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -51,6 +54,13 @@ def get_ws() -> WizardStore:
     return WizardStore()
 
 
+def publish_workspace(kind: str, payload: dict) -> None:
+    """Persist + fan out a workspace-level event (no subprocess needed —
+    these originate in this process)."""
+    from bionexus.api.sse import record_event
+    record_event("workspace", kind, payload)
+
+
 def get_prov():
     db = Path("bionexus.db")
     if not db.exists():
@@ -79,7 +89,41 @@ def modalities() -> dict:
 @app.get("/api/halt")
 def halt_state() -> dict:
     from bionexus.governance import HaltSwitch
-    return {"halted": HaltSwitch().is_halted()}
+    hs = HaltSwitch()
+    halt = hs.engaged()
+    return {"halted": halt is not None, "detail": halt,
+            "history": hs.history()}
+
+
+@app.post("/api/halt")
+def halt_set(body: dict) -> dict:
+    from bionexus.governance import HaltSwitch
+    hs = HaltSwitch()
+    if body.get("halted"):
+        hs.engage(body.get("reason", "operator halt (web)"))
+    else:
+        hs.clear()
+    return halt_state()
+
+
+@app.get("/api/approvals")
+def approvals() -> dict:
+    from bionexus.approvals import ApprovalInbox
+    inbox = ApprovalInbox(".data/approvals.jsonl")
+    st = inbox.state()
+    return {"pending": [{"id": k, **v} for k, v in st.items()
+                        if v.get("status") == "pending"],
+            "decided": [{"id": k, **v} for k, v in st.items()
+                        if v.get("status") != "pending"]}
+
+
+@app.post("/api/approvals/{aid}/decide")
+def approval_decide(aid: str, body: dict) -> dict:
+    from bionexus.approvals import ApprovalInbox
+    inbox = ApprovalInbox(".data/approvals.jsonl")
+    inbox.decide(aid, bool(body.get("approve")),
+                 by=body.get("by", "operator-web"))
+    return approvals()
 
 
 # ------------------------------------------------------------- programs
@@ -87,6 +131,58 @@ def halt_state() -> dict:
 def programs() -> dict:
     ws = get_ws()
     return views.workspace(ws)
+
+
+class ProgramIn(BaseModel):
+    program: str
+    objective: str = ""
+    modality: str = ""
+    metric: str = "ic50"
+    unit: str = ""
+    direction: str = "min"
+    gate_value: float = 20.0
+    mode: str = "autonomous"
+    autonomy: str = "act"
+    k: int = 2
+    rounds: int = 2
+    candidates: str = ""
+
+    class Config:
+        extra = "allow"
+
+
+@app.post("/api/programs")
+def save_program(body: ProgramIn) -> dict:
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    doc = body.model_dump()
+    doc["custom"] = True          # the web form is the custom-problem form
+    slug = program_cfg._slug(doc.get("program"))
+    existing = {x["slug"]: x for x in program_cfg.list_programs()}
+    prev = existing.get(slug)
+    if prev and prev.get("attachments") and prev.get("mode") != doc["mode"]:
+        raise HTTPException(
+            409, f"Execution mode is locked: '{doc['program']}' has "
+            f"{len(prev['attachments'])} attached experiment(s).")
+    program_cfg.save(doc)
+    program_cfg.save_program_record(doc)
+    publish_workspace("program_updated", {"slug": slug})
+    return {"slug": slug, "gate_summary": program_cfg.gate_summary(doc)}
+
+
+@app.post("/api/programs/{slug}/launch")
+def launch_program(slug: str) -> dict:
+    existing = {p["slug"]: p for p in program_cfg.list_programs()}
+    prow = existing.get(slug)
+    if not prow:
+        raise HTTPException(404, f"program {slug} not found")
+    doc = prow.get("program") or {}
+    if doc.get("mode") != "autonomous":
+        raise HTTPException(400, "guided programs launch via the wizard")
+    from bionexus.api.launch import spawn_campaign
+    eid = spawn_campaign(doc, prow["name"])
+    publish_workspace("experiment_added", {"eid": eid})
+    return {"eid": eid}
 
 
 # ---------------------------------------------------------- experiments
@@ -144,6 +240,67 @@ def experiment_trace(eid: str, lines: int = 30) -> dict:
     all_lines = logf.read_text(errors="replace").splitlines()
     tail = all_lines[-lines:]
     return {"lines": tail, "truncated": len(all_lines) > lines}
+
+
+# ---------------------------------------------------------------- wizard
+@app.post("/api/wizard/sessions")
+def wizard_create(body: dict) -> dict:
+    from bionexus.api import wizard_sessions
+    return wizard_sessions.create_session(
+        body.get("question", ""), body.get("target", "user-target"),
+        body.get("claim", "causal"))
+
+
+@app.get("/api/wizard/sessions/{sid}")
+def wizard_get(sid: str) -> dict:
+    from bionexus.api import wizard_sessions
+    try:
+        return wizard_sessions.get_session(sid)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.post("/api/wizard/sessions/{sid}/design")
+def wizard_design(sid: str, body: dict) -> dict:
+    from bionexus.api import wizard_sessions
+    try:
+        return wizard_sessions.design(
+            sid, body.get("site"), int(body.get("half_life", 120)),
+            bool(body.get("edited_frac")), bool(body.get("mimetic")),
+            body.get("controls") or [], body.get("mechanism", ""),
+            body.get("refutation", ""), body.get("citation", ""))
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.post("/api/wizard/sessions/{sid}/execute")
+def wizard_execute(sid: str) -> dict:
+    from bionexus.api import wizard_sessions
+    try:
+        return wizard_sessions.execute(sid)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+
+
+@app.post("/api/wizard/sessions/{sid}/upload")
+async def wizard_upload(sid: str, file: "UploadFile") -> dict:
+    from bionexus.api import wizard_sessions
+    try:
+        return wizard_sessions.upload(sid, file.filename,
+                                      await file.read())
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.post("/api/wizard/sessions/{sid}/analyze")
+def wizard_analyze(sid: str, body: dict) -> dict:
+    from bionexus.api import wizard_sessions
+    try:
+        return wizard_sessions.analyze(sid, body.get("selected") or [])
+    except KeyError as e:
+        raise HTTPException(404, str(e))
 
 
 # ------------------------------------------------------------------ SSE

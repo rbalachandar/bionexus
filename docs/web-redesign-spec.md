@@ -178,3 +178,9 @@ Streamlit.
   verified against the real completed CAR-T campaign; typecheck+build
   green. Note: evidence renders as verdicts table + files list;
   interactive curves (recharts) deferred to P1.6 follow-up in P2.
+- P2 ✅ complete: POST /api/programs (mode-lock 409) + /launch
+  (server-side spawn with spec/link/SSE), wizard sessions API (6 steps,
+  wizard_sessions table, provenance via wizard_chain) + React wizard,
+  approvals inbox + operator halt (engage/lift) with banner;
+  Playwright-verified end-to-end: form -> launch -> live page ->
+  SSE completion swap -> verdicts/reviewer/record.

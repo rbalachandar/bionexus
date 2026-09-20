@@ -243,7 +243,7 @@ def gate_threshold_um(doc: dict | None = None) -> float:
     """The potency bar for the selected gate, in µM (the lab unit).
     Custom problems: the gate value in its own unit (numeric only)."""
     doc = doc or load()
-    if doc.get("custom"):
+    if doc.get("custom") or "target" not in doc:
         return float(doc.get("gate_value", 20.0))
     nm = doc["hit_ic50_nm"] if doc["gate"] == "hit" else doc["lead_ic50_nm"]
     return float(nm) / 1000.0
@@ -267,7 +267,7 @@ def gate_symbol(doc: dict | None = None) -> str:
 
 def gate_summary(doc: dict | None = None) -> str:
     doc = doc or load()
-    if doc.get("custom"):
+    if doc.get("custom") or "target" not in doc:
         obj = doc.get("objective") or doc.get("target")
         mod = f"[{doc['modality']}] " if doc.get("modality") else ""
         return (f"{doc['program']} · {mod}{obj} · gate: {doc['metric']} "

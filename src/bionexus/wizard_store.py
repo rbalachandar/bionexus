@@ -91,6 +91,13 @@ class WizardStore:
             self._conn.commit()
         return eid
 
+    def set_status(self, eid: str, status: str) -> None:
+        with self._lock:
+            self._conn.execute(
+                "UPDATE experiments SET status=?, updated_at=? WHERE id=?",
+                (status, time.time(), eid))
+            self._conn.commit()
+
     def register_agent(self, eid: str, objective: str, log: str,
                        autonomy: str = "act", pid: int | None = None,
                        status: str = "executing",
