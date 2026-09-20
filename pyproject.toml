@@ -17,7 +17,6 @@ sandbox-agentenv = []  # adapter uses stdlib urllib; extra kept as a marker
 sandbox-opensandbox = ["opensandbox>=0.1"]
 models-openai = ["httpx>=0.27"]
 bio-rdkit = ["rdkit>=2023.9"]
-ui = ["streamlit>=1.30", "streamlit-antd-components>=0.2"]
 api = ["fastapi>=0.115", "uvicorn>=0.30", "httpx>=0.27",
        "python-multipart>=0.0.9"]
 lab-imaging = ["numpy>=1.24"]

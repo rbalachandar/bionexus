@@ -1,9 +1,9 @@
-"""Pure read-models for the web API (P0.1).
+"""Pure read-models for the web API.
 
-Extracted from webview.py so the FastAPI layer can serve the same
-information the Streamlit UI renders — without importing streamlit.
-Every function here is JSON-able-in, JSON-able-out and unit-tested
-against real campaign branches (tests/test_views.py).
+Extracted from the original Streamlit view layer so the FastAPI layer
+serves exactly the information the workbench rendered. Every function
+is JSON-able-in, JSON-able-out and unit-tested against real campaign
+branches (tests/test_views.py).
 """
 from __future__ import annotations
 
