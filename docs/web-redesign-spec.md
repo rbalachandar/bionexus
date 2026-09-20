@@ -164,3 +164,17 @@ fire -> return {eid}.
 Exit criteria per phase: P0 curl+SSE on real branches; P1 React parity
 on same data; P2 full flow React-only; P3 CI green with zero
 Streamlit.
+
+## Status
+
+- P0 ✅ complete (ed89713..7fbfd7b): views.py read-models (parity-
+  verified), pipeline_cards (incl. terminal-verdict precedence fix),
+  narrative_data, experiment_detail/workspace assemblers, FastAPI read
+  API, poll-based SSE watcher + replay (subprocess-safe by design).
+- P1 ✅ complete: web/ Vite+React+TS scaffold (design tokens from
+  BRAND.md), workspace route (programs/trees/groups/archived),
+  experiment route (strips, DMTA chips + rounds, pipeline cards, record
+  of this run, live trace), SSE-driven query invalidation. Playwright-
+  verified against the real completed CAR-T campaign; typecheck+build
+  green. Note: evidence renders as verdicts table + files list;
+  interactive curves (recharts) deferred to P1.6 follow-up in P2.
