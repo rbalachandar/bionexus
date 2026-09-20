@@ -21,7 +21,7 @@ pip install -e ".[sandbox-agentenv]"  # AgentENV fork/snapshot sandboxes
 bn connect scan /path/to/reader_share   # what instrument is this?
 bn read results.csv --csv out.csv --html report.html   # analyze an export
 pip install "bionexuslab[ui]"           # streamlit for the workbench
-streamlit run Overview.py               # the workbench: approvals, experiments, live agents
+make api            # the web app: workspace, launches, live agents (:8000)
 # (headless alternative: bn serve)
 bn templates                            # campaign presets
 bn auto --template dose-response-screen --field compounds=C1,C2,C3 \

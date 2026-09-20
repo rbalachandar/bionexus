@@ -62,7 +62,7 @@ bn connect scan <share>                # detect instruments writing into a folde
 bn watch <outbox>                      # agent notices device outputs as they land
 bn templates                           # campaign presets — no JSON needed
 bn auto --template dose-response-screen --field compounds=C1,C2,C3
-bn serve                               # headless cockpit (or: streamlit run Overview.py)
+make api                               # web app on :8000 (API + SPA)
 bn diary <branch>                      # campaign as a lab-notebook narrative
 bn prove <branch> --html out.html      # tamper-evident provenance + shareable report
 bn prove <branch> --eln out.csv        # ELN-ready export (Benchling/SISSYO-friendly)
@@ -283,7 +283,7 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
 |---|---|
 | ![Problem workspace](assets/screenshots/workspace.png) | ![Experiment record](assets/screenshots/experiment.png) |
 
-- **`streamlit run Overview.py`** — the single portal, all local, no accounts,
+- **`make api`** — the single web portal (React + FastAPI), all local, no accounts,
   no cloud. The Experiments section is a **Problem workspace**: your problem
   trees as an interactive hierarchy (every node shows its roll-up status and
   run budget; clicking a leaf opens its experiment page under a lineage

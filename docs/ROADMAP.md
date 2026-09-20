@@ -167,7 +167,7 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 ## Session bootstrap
 ```sh
 make test-unit                      # 31 tests green as of this writing
-streamlit run Overview.py           # workbench (:8501)
+make api                            # web app (:8000)
 git log --oneline -10               # recent context
 ```
 Key files: `Overview.py` (router UI), `src/bionexus/webview.py` (shared

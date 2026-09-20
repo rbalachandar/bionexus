@@ -12,8 +12,30 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install pydantic pytest && pip install -e . --no-deps
+      - run: pip install pydantic pytest fastapi httpx && pip install -e . --no-deps
       - run: python -m pytest tests/ -q    # includes the anti-bloat import scan
+
+  api:  # web backend: endpoints + SSE over seeded stores
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pydantic pytest fastapi httpx && pip install -e . --no-deps
+      - run: python -m pytest tests/test_api.py tests/test_views.py -q
+
+  web:  # React SPA: typecheck + production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: npm ci
+        working-directory: web
+      - run: npm run typecheck
+        working-directory: web
+      - run: npm run build
+        working-directory: web
 
   e2e:  # P8: full DMTA flow + templates + recording playback on the virtual lab
     runs-on: ubuntu-latest
