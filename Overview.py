@@ -961,14 +961,11 @@ def experiment_view() -> None:
             render_experiment_pipeline(logf, _pid,
                                        running=(status == "running"),
                                        store=store, eid=row["id"])
-            with st.expander("Trace log", expanded=False):
-                if logf.is_file():
-                    tail = logf.read_text(
-                        errors="replace").splitlines()[-30:]
-                    st.code("\n".join(tail) or "(waiting for output...)",
-                            language=None)
-                else:
-                    st.caption("(no log written yet)")
+            # campaign finished while we were watching: a full page run
+            # is needed to flip status and render the final evidence
+            _now_status, _ = agent_row_status(row)
+            if status == "running" and _now_status != "running":
+                st.rerun(scope="app")
         _live_block()
 
         # evidence narrative: after the pipeline; rendered once per page
@@ -978,6 +975,20 @@ def experiment_view() -> None:
         _logtail = (logf.read_text(errors="replace").splitlines()[-200:]
                     if logf.is_file() else [])
         narrative.render(recs or [], _logtail)
+
+        # trace log: last section, always at the bottom; live while the
+        # campaign runs
+        @st.fragment(run_every="15s" if status == "running" else None)
+        def _trace_block():
+            with st.expander("Trace log", expanded=False):
+                if logf.is_file():
+                    tail = logf.read_text(
+                        errors="replace").splitlines()[-30:]
+                    st.code("\n".join(tail) or "(waiting for output...)",
+                            language=None)
+                else:
+                    st.caption("(no log written yet)")
+        _trace_block()
     else:
         p = row["payload"]
         t1, t2 = st.columns([5, 1.2])
