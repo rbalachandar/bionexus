@@ -734,3 +734,178 @@ def narrative_data(recs, log_lines=(), data_dir=".data") -> dict:
         "No recorded plate files found for these runs — evidence "
         "curves unavailable (honestly shown, not simulated)."}
     return out
+
+
+# --------------------------------------------- experiment/workspace detail
+def experiment_detail(eid: str, wizard_store, provenance_db: str | Path
+                      = PROVENANCE_DB) -> dict | None:
+    """Full experiment read-model: registry row + campaign spec + program
+    relation + provenance merge. Precedence: provenance problem_defined
+    overrides campaign_specs for objective/constraints; the spec always
+    supplies k/rounds/autonomy/candidate policy."""
+    row = wizard_store.get(eid)
+    if not row:
+        return None
+    payload = row["payload"] or {}
+    ag = payload.get("agent") or {}
+    spec = wizard_store.get_campaign_spec(eid)
+    logf = Path(ag["log"]) if ag.get("log") else None
+    problem_id = ag.get("problem_id")
+    if logf is not None:
+        problem_id = resolve_problem(ag, logf) or problem_id
+    # relational fallback: a campaign root link names the branch even
+    # when the registry row carries no log/payload problem id
+    if not problem_id:
+        from bionexus import program as program_cfg
+        for p in program_cfg.list_programs():
+            for l in program_cfg.links_for(p["slug"]):
+                if l["eid"] == eid and l.get("campaign_root"):
+                    problem_id = l["campaign_root"]
+                    break
+            if problem_id:
+                break
+
+    recs = []
+    branch = f"problem/{problem_id}" if problem_id else None
+    if branch and Path(provenance_db).exists():
+        from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+        try:
+            recs = SqliteProvenanceStore(str(provenance_db)) \
+                .branch_records(branch)
+        except Exception:
+            recs = []
+    pdef = next((r.decision for r in recs
+                 if r.event_type.value == "problem_defined"), None)
+
+    objective = (pdef or {}).get("objective") \
+        or (spec or {}).get("objective") \
+        or row.get("question")
+    constraints = (pdef or {}).get("constraints") \
+        if pdef and pdef.get("constraints") else \
+        ((spec or {}).get("constraints") or [])
+
+    # program relation: which program links this experiment
+    program = None
+    try:
+        from bionexus import program as program_cfg
+        _slug = (spec or {}).get("program_slug")
+        if not _slug:
+            for p in program_cfg.list_programs():
+                if any(a.get("eid") == eid
+                       for a in p.get("attachments", [])):
+                    _slug = p["slug"]
+                    break
+        if _slug:
+            _prow = next((p for p in program_cfg.list_programs()
+                          if p["slug"] == _slug), None)
+            if _prow:
+                _pd = _prow.get("program") or {}
+                program = {
+                    "slug": _slug, "name": _prow["name"],
+                    "gate": {"metric": _pd.get("metric"),
+                             "direction": _pd.get("direction"),
+                             "value": _pd.get("gate_value"),
+                             "unit": _pd.get("unit"),
+                             "symbol": program_cfg.gate_symbol(_pd)},
+                    "modality": _pd.get("modality"),
+                    "mode": _pd.get("mode")}
+    except Exception:
+        program = None
+
+    cards = pipeline_cards(recs) if recs else []
+    return {
+        "id": eid,
+        "question": row.get("question"),
+        "status": row_status(row),
+        "registry_status": row.get("status"),
+        "updated_at": row.get("updated_at"),
+        "agent": {"autonomy": ag.get("autonomy", "act"),
+                  "problem_id": problem_id,
+                  "log_path": ag.get("log")},
+        "branch": branch,
+        "record_count": len(recs),
+        "program": program,
+        "spec": {"objective": (spec or {}).get("objective"),
+                 "program_slug": (spec or {}).get("program_slug"),
+                 "k": (spec or {}).get("k"),
+                 "rounds": (spec or {}).get("rounds"),
+                 "autonomy": (spec or {}).get("autonomy"),
+                 "hypothesis_source": (spec or {}).get("hypothesis_source"),
+                 "n_candidates": (spec or {}).get("n_candidates"),
+                 "modality": (spec or {}).get("modality"),
+                 "constraints": (spec or {}).get("constraints") or []}
+        if spec else None,
+        "objective": objective,
+        "constraints": constraints or [],
+        "success_metric": (pdef or {}).get("success_metric")
+        or (spec or {}).get("success_metric"),
+        "counts": dmta_counts(recs),
+        "rounds": [{"round": n, "candidates": c}
+                   for n, c in round_markers(recs)],
+        "cards": cards,
+    }
+
+
+def workspace(wizard_store, provenance_db: str | Path = PROVENANCE_DB,
+              include_archived: bool = False) -> dict:
+    """Workspace read-model: programs (with links + status tallies),
+    campaign groups for unlinked rows, archived expander list."""
+    from bionexus import program as program_cfg
+    rows = wizard_store.ongoing() + wizard_store.finished(500)
+    archived = [e for e in rows if (e["payload"] or {}).get("archived")]
+    live = [e for e in rows if not (e["payload"] or {}).get("archived")]
+    rows_by_eid = {e["id"]: e for e in live}
+    trees, leaf_pids = problem_trees(provenance_db)
+
+    programs = []
+    linked_eids: set = set()
+    for p in program_cfg.list_programs():
+        links = program_cfg.links_for(p["slug"])
+        atts = []
+        tally: dict[str, int] = {}
+        for l in links:
+            linked_eids.add(l["eid"])
+            e = rows_by_eid.get(l["eid"])
+            st = row_status(e) if e else (l.get("status") or "archived")
+            tally[st] = tally.get(st, 0) + 1
+            atts.append({"eid": l["eid"], "role": l["role"],
+                         "campaign_root": l["campaign_root"],
+                         "question": l["question"] or
+                         (e or {}).get("question"),
+                         "status": st,
+                         "live": e is not None})
+        doc = p.get("program") or {}
+        programs.append({
+            "slug": p["slug"], "name": p["name"],
+            "objective": doc.get("objective"),
+            "gate_summary": p.get("gate_summary"),
+            "modality": doc.get("modality"),
+            "mode": doc.get("mode", "autonomous"),
+            "links": atts,
+            "tally": tally})
+
+    # trees not linked to any program render at top level
+    linked_roots = {a["campaign_root"] for p in programs
+                    for a in p["links"] if a["role"] == "campaign"
+                    and a["campaign_root"]}
+    for t in trees:
+        t["linked_program"] = next(
+            (p["slug"] for p in programs
+             if any(a["campaign_root"] == t["root_id"] and
+                    a["role"] == "campaign" for a in p["links"])), None)
+        t["is_linked"] = bool(t["linked_program"]) or \
+            t["root_id"] in linked_roots
+
+    standalone = [e for e in live
+                  if (e["payload"].get("agent") or {}).get("problem_id")
+                  not in leaf_pids and e["id"] not in linked_eids]
+    groups = {"autonomous": [], "guided": []}
+    for e in standalone:
+        groups["autonomous" if (e["payload"].get("agent") or {})
+               else "guided"].append(
+            {"eid": e["id"], "question": e["question"],
+             "status": row_status(e)})
+    return {"programs": programs, "trees": trees,
+            "groups": {k: v for k, v in groups.items() if v},
+            "archived": [{"eid": e["id"], "question": e["question"]}
+                         for e in archived] if include_archived else []}

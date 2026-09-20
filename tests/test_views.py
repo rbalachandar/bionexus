@@ -151,3 +151,61 @@ def test_pipeline_cards_states(tmp_path):
     assert "None" not in bare["head"]
     assert bare["statement"] == "no candidate yet"
     assert bare["gate_label"] is not None
+
+
+def test_experiment_detail_and_workspace(tmp_path):
+    """The API assemblers: experiment detail merges spec + program +
+    provenance with precedence; workspace groups programs/trees/rows."""
+    from bionexus import program as program_cfg
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    from bionexus.views import experiment_detail, workspace
+    from bionexus.wizard_store import WizardStore
+
+    ws = WizardStore()
+    program_cfg.save_program_record(
+        {"program": "WS-1", "custom": True, "objective": "make it strong",
+         "modality": "material", "metric": "strength_mpa",
+         "direction": "max", "gate_value": 70, "unit": "MPa",
+         "mode": "autonomous"})
+    eid = "ws-exp-1"
+    ws._conn.execute(
+        "INSERT OR REPLACE INTO experiments VALUES (?,?,?,?,?,?)",
+        (eid, 0, 0, "executing", "make it strong", "{}"))
+    ws._conn.commit()
+    ws.register_agent(eid, "make it strong", log="", autonomy="act")
+    ws.set_campaign_spec(eid, objective="make it strong",
+                         program_slug="ws-1",
+                         constraints=[{"name": "strength_mpa",
+                                       "description": ">= 70 MPa"}],
+                         k=2, rounds=2, autonomy="act",
+                         hypothesis_source="agent", n_candidates=0,
+                         modality="material")
+    program_cfg.record_launch("WS-1", "prob-ws1", "make it strong")
+    program_cfg.link_leaf("WS-1", eid, campaign_root="prob-ws1",
+                          question="make it strong", status="executing")
+    # provenance branch: problem_defined should OVERRIDE the spec
+    db = tmp_path / "prov.db"
+    store = SqliteProvenanceStore(str(db))
+    store.append(record_for(
+        Envelope(experiment_branch_id="problem/prob-ws1"),
+        EventType.problem_defined, system_actor("test"),
+        decision={"objective": "registered objective",
+                  "constraints": [{"name": "strength_mpa",
+                                   "description": ">= 70 MPa"}]}))
+
+    detail = experiment_detail(eid, ws, db)
+    assert detail["program"]["slug"] == "ws-1"
+    assert detail["program"]["gate"]["value"] == 70
+    assert detail["spec"]["k"] == 2
+    assert detail["objective"] == "registered objective"   # provenance wins
+    assert detail["counts"] is not None
+
+    wsview = workspace(ws, db)
+    prog = next(p for p in wsview["programs"] if p["slug"] == "ws-1")
+    assert {a["eid"] for a in prog["links"]} == {eid, "prob-ws1"}
+    assert prog["tally"] == {"executing": 2}
+    # the unlinked-row groups must not contain the linked experiment
+    for g in wsview["groups"].values():
+        assert all(x["eid"] != eid for x in g)
