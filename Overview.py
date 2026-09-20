@@ -287,13 +287,24 @@ def overview_view() -> None:
             help="autonomous: the LLM proposes hypotheses and runs the "
                  "DMTA loops. guided: you define the problem through the "
                  "wizard. Locked once experiments are attached.")
+        from bionexus.modality import PACKS, get_pack
         tp_mod = st.columns(1)[0]
-        modality = tp_mod.text_input(
-            "Modality", doc.get("modality", ""), key="tpp_modality",
-            help="optional, free text: small molecule, biologic, cell "
-                 "therapy, agrochemical, material — words the Make step "
-                 "and reports use")
-        from bionexus.modality import get_pack
+        _known = list(PACKS) + ["Other"]
+        _cur = doc.get("modality", "") or ""
+        _sel = _cur if _cur in PACKS else ("Other" if _cur else "small molecule")
+        _midx = _known.index(_sel)
+        modality = tp_mod.selectbox(
+            "Modality", _known, index=_midx, key="tpp_modality",
+            help="drives Make wording, Test assays and gate rules")
+        if modality == "Other":
+            modality = tp_mod.text_input(
+                "Custom modality", value=_cur if _cur not in PACKS else "",
+                key="tpp_modality_other",
+                help="free text — words the Make step and reports use")
+            modality = (modality or "").strip()
+        else:
+            modality = modality.strip().lower() if modality != "mRNA" \
+                else "mRNA"
         _pack = get_pack(modality)
         if _pack:
             st.caption(f"pack: {_pack.production_action} in Make · Test "

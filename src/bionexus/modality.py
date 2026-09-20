@@ -71,4 +71,9 @@ PACKS: dict[str, ModalityPack] = {
 
 
 def get_pack(modality: str) -> ModalityPack | None:
-    return PACKS.get((modality or "").lower().strip())
+    """Case- and whitespace-tolerant lookup (mRNA pack included)."""
+    m = (modality or "").strip()
+    if not m:
+        return None
+    return PACKS.get(m) or next(
+        (p for k, p in PACKS.items() if k.lower() == m.lower()), None)
