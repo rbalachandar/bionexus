@@ -237,6 +237,39 @@ def experiment_record(eid: str) -> dict:
     return views.narrative_data(recs, log_lines)
 
 
+@app.post("/api/trees/{root_id}/archive")
+def archive_tree(root_id: str) -> dict:
+    """Retire a problem tree from the workspace: every live leaf
+    experiment is archived (kept, provenance intact)."""
+    ws = get_ws()
+    trees, _ = views.problem_trees()
+    tree = next((t for t in trees if t["root_id"] == root_id), None)
+    if tree is None:
+        raise HTTPException(404, f"tree {root_id} not found")
+    leaf_pids = {pid for stats in tree["leaf_stats"].values()
+                 for pid in stats.get("pids", [])}
+    n = 0
+    for row in ws.ongoing() + ws.finished(500):
+        pid = (row["payload"].get("agent") or {}).get("problem_id")
+        if pid in leaf_pids and not (row["payload"].get("archived")):
+            ws.set_archived(row["id"], True)
+            n += 1
+    publish_workspace("workspace", {"kind": "tree_archived",
+                                    "root": root_id, "archived": n})
+    return {"root": root_id, "archived_experiments": n}
+
+
+@app.post("/api/experiments/{eid}/archive")
+def archive_experiment(eid: str) -> dict:
+    ws = get_ws()
+    if not ws.get(eid):
+        raise HTTPException(404, f"experiment {eid} not found")
+    ws.set_archived(eid, True)
+    publish_workspace("workspace", {"kind": "experiment_archived",
+                                    "eid": eid})
+    return {"eid": eid, "archived": True}
+
+
 @app.get("/api/experiments/{eid}/evidence/{run_id}.csv")
 def experiment_evidence_csv(eid: str, run_id: str):
     """Serve this run's recorded plate file (raw instrument export)."""

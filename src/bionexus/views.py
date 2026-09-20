@@ -860,6 +860,21 @@ def workspace(wizard_store,
     rows_by_eid = {e["id"]: e for e in live}
     trees, leaf_pids = problem_trees(provenance_db)
 
+    # retired-tree filter (as the workbench had it): a tree whose every
+    # leaf lost its registry row leaves the workspace — provenance and
+    # the Archived section still hold the history
+    live_leaf_pids = set()
+    for e in live:
+        pid = (e["payload"].get("agent") or {}).get("problem_id")
+        if pid:
+            live_leaf_pids.add(pid)
+    def _leaves(t):
+        parents = {n["parent"] for n in t["nodes"] if n["parent"]}
+        return [n for n in t["nodes"] if n["id"] not in parents]
+    trees = [t for t in trees if not _leaves(t) or any(
+        f'{t["root_id"]}-{leaf["id"]}' in live_leaf_pids
+        for leaf in _leaves(t))]
+
     programs = []
     linked_eids: set = set()
     for p in program_cfg.list_programs():

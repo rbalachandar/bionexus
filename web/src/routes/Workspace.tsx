@@ -17,6 +17,35 @@ function tallyText(tally: Record<string, number>) {
   return parts.length ? parts.join(' · ') : 'no experiments yet'
 }
 
+function ArchiveButton({ onArchive, label, confirmLabel, small }: {
+  onArchive: () => Promise<void>
+  label: string
+  confirmLabel: string
+  small?: boolean
+}) {
+  const [armed, setArmed] = useState(false)
+  const [busy, setBusy] = useState(false)
+  return (
+    <button
+      className={armed ? 'danger' : ''}
+      style={{ fontSize: small ? 10 : 11, whiteSpace: 'nowrap',
+        padding: small ? '1px 6px' : undefined }}
+      disabled={busy}
+      onClick={async () => {
+        if (armed) {
+          setBusy(true)
+          await onArchive()
+          setBusy(false)
+        } else {
+          setArmed(true)
+          setTimeout(() => setArmed(false), 6000)   // auto-disarm
+        }
+      }}>
+      {armed ? confirmLabel : label}
+    </button>
+  )
+}
+
 function ProgramHeader({ p }: { p: ProgramOut }) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
@@ -150,12 +179,18 @@ export default function Workspace({ initialForm = false }: {
 
       {ws.trees.filter((t) => !t.is_linked).map((t) => (
         <section key={t.root_id} className="card" style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-            <Activity size={16} color="var(--amber)" />
-            <strong>{t.objective}</strong>
-            <span className="muted" style={{ fontSize: 12 }}>
-              {t.rollup[t.root_id] ?? 'open'}
-            </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+              <Activity size={16} color="var(--amber)" />
+              <strong>{t.objective}</strong>
+              <span className="muted" style={{ fontSize: 12 }}>
+                {t.rollup[t.root_id] ?? 'open'}
+              </span>
+            </div>
+            <ArchiveButton onArchive={async () => {
+              await fetch(`/api/trees/${t.root_id}/archive`, { method: 'POST' })
+              qc.invalidateQueries({ queryKey: ['workspace'] })
+            }} label="Delete tree" confirmLabel="Delete tree + archive experiments?" />
           </div>
           <div style={{ marginLeft: 24 }}>
             <TreeBlock tree={t} />
@@ -182,6 +217,10 @@ export default function Workspace({ initialForm = false }: {
                   {e.question || e.eid}
                 </a>
                 {statusChip(e.status)}
+                <ArchiveButton small onArchive={async () => {
+                  await fetch(`/api/experiments/${e.eid}/archive`, { method: 'POST' })
+                  qc.invalidateQueries({ queryKey: ['workspace'] })
+                }} label="✕" confirmLabel="archive?" />
               </div>
             ))}
           </div>
