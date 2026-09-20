@@ -41,6 +41,7 @@ function ArchiveButton({ onArchive, label, confirmLabel, small }: {
           setTimeout(() => setArmed(false), 6000)   // auto-disarm
         }
       }}>
+      {!small && <Trash2 size={12} />}
       {armed ? confirmLabel : label}
     </button>
   )
@@ -190,7 +191,7 @@ export default function Workspace({ initialForm = false }: {
             <ArchiveButton onArchive={async () => {
               await fetch(`/api/trees/${t.root_id}/archive`, { method: 'POST' })
               qc.invalidateQueries({ queryKey: ['workspace'] })
-            }} label="Delete tree" confirmLabel="Delete tree + archive experiments?" />
+            }} label="Delete" confirmLabel="Confirm delete?" />
           </div>
           <div style={{ marginLeft: 24 }}>
             <TreeBlock tree={t} />
