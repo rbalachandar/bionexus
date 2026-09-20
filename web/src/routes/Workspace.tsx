@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Activity, ChevronRight, FlaskConical, Target, Users } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { api } from '../api/client'
 import ProgramForm from './ProgramForm'
@@ -67,6 +67,7 @@ export default function Workspace({ initialForm = false }: {
   const q = useQuery({ queryKey: ['workspace'], queryFn: api.workspace })
   const qc = useQueryClient()
   const [showForm, setShowForm] = useState(initialForm)
+  const [armDelete, setArmDelete] = useState<string | null>(null)
   if (q.isLoading) return <p className="muted">Loading…</p>
   if (q.isError) return <p className="chip failed">API unreachable — is uvicorn on :8000?</p>
   const ws = q.data!
@@ -100,7 +101,32 @@ export default function Workspace({ initialForm = false }: {
 
       {ws.programs.map((p) => (
         <section key={p.slug} className="card" style={{ marginBottom: 12 }}>
-          <ProgramHeader p={p} />
+          <div style={{ display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', gap: 10 }}>
+            <ProgramHeader p={p} />
+            <button
+              className={armDelete === p.slug ? 'danger' : ''}
+              style={{ display: 'inline-flex', gap: 5, alignItems: 'center',
+                fontSize: 11, whiteSpace: 'nowrap' }}
+              title={armDelete === p.slug
+                ? 'click again to delete — experiments are kept'
+                : 'delete this program (experiments are kept)'}
+              onClick={async () => {
+                if (armDelete === p.slug) {
+                  const r = await fetch(`/api/programs/${p.slug}`,
+                    { method: 'DELETE' })
+                  if (r.ok) {
+                    setArmDelete(null)
+                    qc.invalidateQueries({ queryKey: ['workspace'] })
+                  }
+                } else {
+                  setArmDelete(p.slug)
+                }
+              }}>
+              <Trash2 size={12} />
+              {armDelete === p.slug ? 'Confirm delete?' : 'Delete'}
+            </button>
+          </div>
           {p.links.filter((l) => l.role === 'leaf').length === 0 && (
             <p className="muted" style={{ fontSize: 12, margin: '6px 0 0 24px' }}>
               no experiments yet — open the Program page in the workbench to launch

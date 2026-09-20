@@ -151,6 +151,26 @@ def launches_by_program() -> dict:
     return out
 
 
+def delete_program(program_name: str) -> bool:
+    """Delete a program: relations + program row go, experiments survive
+    unlinked, and a tombstone is appended to provenance."""
+    slug = _slug(program_name)
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    from bionexus.wizard_store import WizardStore
+    ws = WizardStore()
+    if ws.get_program(slug) is None:
+        return False
+    ws.delete_program(slug)
+    SqliteProvenanceStore("bionexus.db").append(record_for(
+        Envelope(experiment_branch_id=f"programs/{slug}"),
+        EventType.problem_defined, system_actor("program"),
+        decision={"kind": "program_deleted", "program_id": slug,
+                  "name": program_name}))
+    return True
+
+
 def links_for(program_name: str) -> list[dict]:
     """All program_experiments relations for a program slug."""
     from bionexus.wizard_store import WizardStore

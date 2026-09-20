@@ -128,6 +128,22 @@ class WizardStore:
                  name, json.dumps(doc), now))
             self._conn.commit()
 
+    def delete_program(self, slug: str) -> None:
+        """Remove the program and its links (relations cascade via FK;
+        experiments survive unlinked)."""
+        with self._lock:
+            self._conn.execute("PRAGMA foreign_keys=ON")
+            self._conn.execute(
+                "DELETE FROM program_experiments WHERE program_slug=?",
+                (slug,))
+            # campaign specs survive with the experiment; detach the program
+            self._conn.execute(
+                "UPDATE campaign_specs SET program_slug=NULL "
+                "WHERE program_slug=?", (slug,))
+            self._conn.execute(
+                "DELETE FROM programs WHERE slug=?", (slug,))
+            self._conn.commit()
+
     def get_program(self, slug: str) -> dict | None:
         row = self._conn.execute(
             "SELECT doc FROM programs WHERE slug=?", (slug,)).fetchone()

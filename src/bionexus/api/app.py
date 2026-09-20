@@ -170,6 +170,15 @@ def save_program(body: ProgramIn) -> dict:
     return {"slug": slug, "gate_summary": program_cfg.gate_summary(doc)}
 
 
+@app.delete("/api/programs/{slug}")
+def delete_program_route(slug: str) -> dict:
+    ok = program_cfg.delete_program(slug)
+    if not ok:
+        raise HTTPException(404, f"program {slug} not found")
+    publish_workspace("program_deleted", {"slug": slug})
+    return {"deleted": slug}
+
+
 @app.post("/api/programs/{slug}/launch")
 def launch_program(slug: str) -> dict:
     existing = {p["slug"]: p for p in program_cfg.list_programs()}

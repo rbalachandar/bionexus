@@ -221,3 +221,40 @@ def client_get_workspace():
     from bionexus.api.app import app
     with TestClient(app) as c:
         return c.get("/api/programs").json()
+
+
+def test_program_delete(tmp_path):
+    """DELETE /api/programs/{slug}: relations + program go (experiments
+    survive), tombstone in provenance, 404 when already gone."""
+    from bionexus import program as program_cfg
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.api.app import app
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    from bionexus.wizard_store import WizardStore
+
+    ws = WizardStore()
+    program_cfg.save_program_record(
+        {"program": "Del-Api", "custom": True, "objective": "o",
+         "metric": "m", "direction": "max", "gate_value": 1, "unit": "u",
+         "mode": "autonomous"})
+    ws._conn.execute(
+        "INSERT OR REPLACE INTO experiments VALUES (?,?,?,?,?,?)",
+        ("del-keep", 0, 0, "failed", "kept", "{}"))
+    ws._conn.commit()
+    program_cfg.link_leaf("Del-Api", "del-keep", campaign_root=None,
+                          question="kept")
+
+    with TestClient(app) as c:
+        r = c.delete("/api/programs/del-api")
+        assert r.status_code == 200 and r.json()["deleted"] == "del-api"
+        assert c.delete("/api/programs/del-api").status_code == 404
+    assert ws.get_program("del-api") is None
+    assert ws.program_links("del-api") == []
+    assert ws._conn.execute(
+        "SELECT COUNT(*) FROM experiments WHERE id='del-keep'"
+    ).fetchone()[0] == 1
+    recs = SqliteProvenanceStore("bionexus.db").branch_records(
+        "programs/del-api")
+    assert any((r.decision or {}).get("kind") == "program_deleted"
+               for r in recs)
