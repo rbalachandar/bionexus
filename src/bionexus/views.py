@@ -737,8 +737,9 @@ def narrative_data(recs, log_lines=(), data_dir=".data") -> dict:
 
 
 # --------------------------------------------- experiment/workspace detail
-def experiment_detail(eid: str, wizard_store, provenance_db: str | Path
-                      = PROVENANCE_DB) -> dict | None:
+def experiment_detail(eid: str, wizard_store,
+          provenance_db: str | Path | None = None) -> dict | None:
+    provenance_db = provenance_db or PROVENANCE_DB
     """Full experiment read-model: registry row + campaign spec + program
     relation + provenance merge. Precedence: provenance problem_defined
     overrides campaign_specs for objective/constraints; the spec always
@@ -846,8 +847,10 @@ def experiment_detail(eid: str, wizard_store, provenance_db: str | Path
     }
 
 
-def workspace(wizard_store, provenance_db: str | Path = PROVENANCE_DB,
+def workspace(wizard_store,
+              provenance_db: str | Path | None = None,
               include_archived: bool = False) -> dict:
+    provenance_db = provenance_db or PROVENANCE_DB
     """Workspace read-model: programs (with links + status tallies),
     campaign groups for unlinked rows, archived expander list."""
     from bionexus import program as program_cfg
