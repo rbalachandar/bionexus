@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Activity, ChevronRight, FlaskConical, Target, Users } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Plus, Rocket } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { api } from '../api/client'
 import ProgramForm from './ProgramForm'
@@ -67,25 +66,9 @@ export default function Workspace({ initialForm = false }: {
   const q = useQuery({ queryKey: ['workspace'], queryFn: api.workspace })
   const qc = useQueryClient()
   const [showForm, setShowForm] = useState(initialForm)
-  const [launching, setLaunching] = useState('')
-  const nav = useNavigate()
   if (q.isLoading) return <p className="muted">Loading…</p>
   if (q.isError) return <p className="chip failed">API unreachable — is uvicorn on :8000?</p>
   const ws = q.data!
-
-  async function launch(slug: string, mode: string) {
-    setLaunching(slug)
-    if (mode === 'guided') {
-      nav('/wizard')
-      return
-    }
-    const r = await fetch(`/api/programs/${slug}/launch`, { method: 'POST' })
-    setLaunching('')
-    if (r.ok) {
-      const { eid } = await r.json()
-      nav(`/experiments/${eid}`)
-    }
-  }
 
   return (
     <main>
@@ -115,16 +98,7 @@ export default function Workspace({ initialForm = false }: {
 
       {ws.programs.map((p) => (
         <section key={p.slug} className="card" style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <ProgramHeader p={p} />
-            <button disabled={launching === p.slug}
-              onClick={() => launch(p.slug, p.mode)}
-              style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12 }}>
-              <Rocket size={13} />
-              {launching === p.slug ? 'Launching…'
-                : p.mode === 'autonomous' ? 'Launch campaign' : 'Open wizard'}
-            </button>
-          </div>
+          <ProgramHeader p={p} />
           {p.links.filter((l) => l.role === 'leaf').length === 0 && (
             <p className="muted" style={{ fontSize: 12, margin: '6px 0 0 24px' }}>
               no experiments yet — open the Program page in the workbench to launch

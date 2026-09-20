@@ -21,8 +21,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <Link to="/" style={{ fontSize: 18, fontWeight: 700 }}>bionexus</Link>
         <nav style={{ display: 'flex', gap: 12, fontSize: 13 }}>
           <Link to="/">Workspace</Link>
-          <Link to="/wizard">Wizard</Link>
-          <Link to="/approvals">Approvals</Link>
+
         </nav>
         <span className="muted" style={{ fontSize: 12 }}>
           agents run the scientific method
