@@ -9,7 +9,7 @@ import asyncio
 import json
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -26,17 +26,25 @@ app.add_middleware(
 
 # ------------------------------------------------------------- SSE broker
 _subscribers: set[asyncio.Queue] = set()
+_broker: asyncio.Queue = asyncio.Queue()
+_watcher_task = None
 
 
-def publish(topic: str, kind: str, payload: dict) -> None:
-    """Fan out to live subscribers and persist for reconnect replay."""
-    event = {"topic": topic, "kind": kind, "payload": payload,
-             "id": int(payload.get("_id") or 0)}
-    for q in list(_subscribers):
-        try:
-            q.put_nowait(event)
-        except Exception:
-            _subscribers.discard(q)
+@app.on_event("startup")
+async def _start_watcher():
+    global _watcher_task
+    from bionexus.api.sse import watcher_loop
+    if _watcher_task is None:
+        _watcher_task = asyncio.create_task(watcher_loop(_broker))
+        asyncio.create_task(_pump())
+
+
+async def _pump():
+    """Move watcher events to every subscriber queue."""
+    while True:
+        ev = await _broker.get()
+        for q in list(_subscribers):
+            q.put_nowait(ev)
 
 
 def get_ws() -> WizardStore:
@@ -140,15 +148,26 @@ def experiment_trace(eid: str, lines: int = 30) -> dict:
 
 # ------------------------------------------------------------------ SSE
 @app.get("/api/events")
-async def events(topics: str = "workspace") -> StreamingResponse:
+async def events(
+        request: Request,
+        topics: str = "workspace") -> StreamingResponse:
     """Server-sent events. topics: comma-separated
-    (campaign:<eid>, workspace, approvals)."""
+    (campaign:<eid>, workspace, approvals). Replays missed events when
+    a Last-Event-ID header is present."""
+    from bionexus.api.sse import replay_events
     wanted = {t.strip() for t in topics.split(",") if t.strip()}
+    last_id = 0
+    lid = request.headers.get("Last-Event-ID")
+    if lid and lid.isdigit():
+        last_id = int(lid)
     q: asyncio.Queue = asyncio.Queue()
     _subscribers.add(q)
 
     async def gen():
         try:
+            for ev in replay_events(last_id, wanted):
+                yield (f"id: {ev['id']}\nevent: {ev['kind']}\n"
+                       f"data: {json.dumps(ev['payload'])}\n\n")
             while True:
                 try:
                     ev = await asyncio.wait_for(q.get(), timeout=15)

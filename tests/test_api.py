@@ -86,3 +86,50 @@ def test_pipeline_and_trace(client):
     rec = client.get("/api/experiments/api-exp-1/record").json()
     assert rec["title"] == "The record of this run"
     assert "trust" in rec
+
+
+def test_sse_watch_and_replay(tmp_path, monkeypatch):
+    """watch_once diffs store state into events; record_event/replay
+    give Last-Event-ID semantics."""
+    from bionexus.api import sse
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    from bionexus.wizard_store import WizardStore
+
+    from bionexus import program as program_cfg
+    ws = WizardStore()
+    program_cfg.save_program_record(
+        {"program": "Sse-1", "custom": True, "objective": "objective",
+         "metric": "m", "direction": "max", "gate_value": 1, "unit": "u",
+         "mode": "autonomous"})
+    ws.register_agent("sse-exp-1", "objective", log="", autonomy="act")
+    ws.set_campaign_spec("sse-exp-1", objective="objective",
+                         program_slug="sse-1", hypothesis_source="agent")
+    program_cfg.record_launch("Sse-1", "prob-sse1", "objective")
+    program_cfg.link_leaf("Sse-1", "sse-exp-1", campaign_root="prob-sse1",
+                          question="objective")
+    prov = SqliteProvenanceStore(str(tmp_path / "prov.db"))
+    prov.append(record_for(
+        Envelope(experiment_branch_id="problem/prob-sse1"),
+        EventType.problem_defined, system_actor("test"),
+        decision={"objective": "o"}))
+
+    snap1, events1 = sse.watch_once(None, ws, prov)
+    print("\nDBG rows:", ws._conn.execute(
+        "SELECT id FROM experiments").fetchall())
+    print("DBG snap:", snap1)
+    assert events1 == []                       # first tick only snapshots
+    # branch grows -> a records event for that campaign
+    prov.append(record_for(
+        Envelope(experiment_branch_id="problem/prob-sse1"),
+        EventType.lab_run, system_actor("test"), run_id="run-9"))
+    snap2, events2 = sse.watch_once(snap1, ws, prov)
+    assert any(e["kind"] == "records" for e in events2)
+
+    # replay: record events, then read back after an id marker
+    i1 = sse.record_event("campaign:sse-exp-1", "status", {"x": 1})
+    i2 = sse.record_event("workspace", "experiment_added", {"eid": "e"})
+    back = sse.replay_events(i1, {"workspace"})
+    assert [e["kind"] for e in back] == ["experiment_added"]
+    assert back[0]["id"] == i2
