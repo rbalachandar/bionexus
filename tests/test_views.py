@@ -103,3 +103,51 @@ def test_row_status_log_and_pid(tmp_path):
 def test_problem_trees_shape(prov_db):
     trees, leaf_pids = problem_trees(prov_db)
     assert trees == [] and leaf_pids == set()   # no problem-tree env yet
+
+
+def test_pipeline_cards_states(tmp_path):
+    """Cards classify each hypothesis into exactly one state, in
+    proposed order, with verdict/CI/margin attached."""
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    from bionexus.views import pipeline_cards
+    db = tmp_path / "prov.db"
+    store = SqliteProvenanceStore(str(db))
+
+    def rec(branch, et, **decision):
+        store.append(record_for(
+            Envelope(experiment_branch_id=branch),
+            et, system_actor("test"), decision=decision))
+
+    b = "problem/prob-card1"
+    rec(b, EventType.hypothesis_proposed, hypothesis_id="h-conf",
+        candidate="C-conf", statement="C-conf — will work",
+        predicted=">= 5", criteria={"threshold": 5.0})
+    rec(b, EventType.hypothesis_proposed, hypothesis_id="h-ref",
+        candidate="C-ref", statement="C-ref — will fail",
+        criteria={"threshold": 5.0})
+    rec(b, EventType.hypothesis_proposed, statement="no candidate yet",
+        criteria={"threshold": 5.0})
+    rec(b, EventType.hypotheses_filtered, decisions=[
+        {"hypothesis_id": "h-conf", "selected": True},
+        {"hypothesis_id": "h-ref", "selected": False}])
+    rec(b, EventType.hypothesis_validated, hypothesis_id="h-conf",
+        verdict="confirmed", observed=7.1, observed_ci=[5.9, 8.9])
+    rec(b, EventType.hypothesis_invalidated, hypothesis_id="h-ref",
+        verdict="refuted", observed=1.2)
+    cards = pipeline_cards(SqliteProvenanceStore(str(db)).branch_records(b))
+    by_key = {c["key"]: c for c in cards}
+    assert len(cards) == 3
+    assert by_key["h-conf"]["state"] == "confirmed"
+    assert by_key["h-conf"]["verdict"]["observed"] == 7.1
+    assert by_key["h-conf"]["verdict"]["margin"] in (
+        "clear margin", "narrow margin", "borderline: CI spans the gate")
+    assert by_key["h-conf"]["selected"] is True
+    assert by_key["h-ref"]["state"] == "refuted"
+    # candidate-less variant: statement becomes the label, never None
+    bare = next(c for c in cards if c["key"] == "no candidate yet")
+    assert bare["state"] == "proposed"
+    assert "None" not in bare["head"]
+    assert bare["statement"] == "no candidate yet"
+    assert bare["gate_label"] is not None

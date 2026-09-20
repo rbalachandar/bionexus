@@ -243,3 +243,237 @@ def problem_trees(db_path: str | Path = PROVENANCE_DB) -> tuple[list, set]:
 def wizard_db_path() -> Path:
     """The registry DB path, honoring BIONEXUS_DATA_DIR."""
     return DATA_DIR / "wizard.db"
+
+
+# ---------------------------------------------------- hypothesis pipeline
+def _verdict_rank(v) -> int:
+    """Terminal verdicts outrank preliminary ones."""
+    v = str(v or "").lower()
+    return {"confirmed": 3, "refuted": 3, "invalidated": 3,
+            "validated": 2, "inconclusive": 1}.get(v, 0)
+
+
+def pipeline_data(recs) -> dict:
+    """The computation behind the Hypothesis Pipeline: maps of
+    proposed/filtered/tested/refused hypotheses plus run attribution.
+    Port of the bookkeeping half of webview._pipeline_body."""
+    proposed: dict[str, dict] = {}
+    filtered: dict[str, dict] = {}
+    run_map: dict[str, list[str]] = {}
+    tested: dict[str, dict] = {}
+    refused: dict[str, str] = {}
+    gates = 0
+    gov_events: list[tuple] = []
+    run_ts: dict[str, float] = {}
+    run_instr: dict[str, str] = {}
+    for r in recs:
+        d = r.decision or {}
+        et = r.event_type.value
+        art_id = r.artifact.artifact_id if r.artifact else None
+        art_meta = r.artifact.metadata if r.artifact else {}
+        ts = getattr(getattr(r, "envelope", None), "created_at", None)
+        if et == "lab_run" and d.get("run_id"):
+            run_ts[d["run_id"]] = ts or 0
+        if et == "hypothesis_proposed":
+            # variant records carry statement/predicted but no candidate
+            # (candidates are attributed later, at synthesis/round time);
+            # fall back to a numbered label, never the string "None"
+            _stmt0 = str(d.get("statement")
+                         or d.get("parent_statement") or "")
+            hid = (d.get("hypothesis_id") or art_id
+                   or d.get("candidate") or _stmt0[:48]
+                   or f"hyp-{len(proposed) + 1}")
+            proposed[hid] = {**d,
+                             "candidate": d.get("candidate")
+                             or art_meta.get("candidate"),
+                             "statement": _stmt0,
+                             "predicted": d.get("predicted")
+                             or art_meta.get("predicted"),
+                             "ts": ts}
+        elif et == "hypotheses_filtered":
+            for dec in d.get("decisions", []):
+                if dec.get("hypothesis_id"):
+                    filtered[dec["hypothesis_id"]] = dec
+        elif et == "lab_run" and d.get("run_id"):
+            run_ts[d["run_id"]] = ts or 0
+            run_instr[d["run_id"]] = d.get("instrument", "")
+        elif et == "hypothesis_tested":
+            hid = d.get("hypothesis_id") or art_id
+            if d.get("run_id"):
+                run_map.setdefault(hid, []).append(d["run_id"])
+            # verdict-bearing reads (confirmation analyses) carry no
+            # hypothesis_id: identity lives in the artifact metadata
+            if d.get("verdict"):
+                cand = (d.get("candidate") or art_meta.get("candidate")
+                        or "")
+                key = hid or cand
+                if key:
+                    tested.setdefault(key, {
+                        "verdict": d["verdict"],
+                        "candidate": cand,
+                        "observed": d.get("observed"),
+                        "ci": d.get("observed_ci"),
+                        "derivation": d.get("derivation"),
+                        "evidence": d.get("evidence_run_id")
+                        or d.get("run_id")})
+        elif et in ("hypothesis_validated", "hypothesis_invalidated"):
+            hid = d.get("hypothesis_id") or d.get("id") or art_id
+            cand = (d.get("candidate") or art_meta.get("candidate")
+                    or "")
+            if hid:
+                tested[hid] = {"verdict": d.get("verdict", et),
+                               "candidate": cand,
+                               "observed": d.get("observed")
+                               or d.get("ic50_um"),
+                               "ci": d.get("observed_ci"),
+                               "derivation": d.get("derivation"),
+                               "evidence": d.get("evidence_run_id")}
+        elif et == "stage_transition" \
+                and str(d.get("stage", "")).startswith("round-") \
+                and d.get("verdicts"):
+            # round-complete markers carry the AUTHORITATIVE per-candidate
+            # verdict (confirmation records may lack any hypothesis_id /
+            # candidate linkage)
+            for cand, v in (d.get("verdicts") or {}).items():
+                key = f"cand::{cand}"
+                cur = tested.get(key)
+                if not cur or _verdict_rank(v) >= _verdict_rank(
+                        cur.get("verdict")):
+                    tested[key] = {"verdict": str(v),
+                                   "candidate": str(cand),
+                                   "observed": None, "ci": None,
+                                   "derivation": None, "evidence": None}
+        elif et == "gate_decision":
+            if d.get("kind") in ("safety_refusal", "operator_declined",
+                                 "advisory_escalation"):
+                for sm in d.get("samples", []):
+                    refused[sm] = d.get("reason", "refused")
+            else:
+                gates += 1
+                if d.get("kind") in ("halt_refusal", "authorization",
+                                     "failure-mode"):
+                    gov_events.append((ts or 0, d))
+    return {"proposed": proposed, "filtered": filtered,
+            "run_map": run_map, "tested": tested, "refused": refused,
+            "gates": gates, "gov_events": gov_events,
+            "run_ts": run_ts, "run_instr": run_instr}
+
+
+def _ci_margin(ci, threshold) -> str:
+    """Margin text for a CI against a pre-registered gate."""
+    if ci and threshold and None not in ci and ci[1] > ci[0]:
+        width = ci[1] - ci[0]
+        edge = min(abs(ci[0] - threshold), abs(ci[1] - threshold))
+        if ci[0] <= threshold <= ci[1]:
+            return " · borderline: CI spans the gate"
+        return (" · narrow margin" if edge < width else " · clear margin")
+    return ""
+
+
+def pipeline_cards(recs) -> list[dict]:
+    """Card dicts for the Hypothesis Pipeline, in proposed order.
+    State machine: confirmed/validated/inconclusive/refuted/refused/
+    in_lab/selected/not_selected/proposed. Port of the decision half of
+    webview._pipeline_body."""
+    data = pipeline_data(recs)
+    proposed, filtered = data["proposed"], data["filtered"]
+    tested, refused = data["tested"], data["refused"]
+    run_map = data["run_map"]
+    cand2round = {cand: rnd for rnd, cands in round_markers(recs)
+                  for cand in cands}
+    tested_by_cand: dict = {}
+    for _v in tested.values():
+        _c = _v.get("candidate")
+        if not _c:
+            continue
+        _cur = tested_by_cand.get(_c)
+        if not _cur or _verdict_rank(_v.get("verdict")) >= _verdict_rank(
+                _cur.get("verdict")):
+            tested_by_cand[_c] = _v
+    from bionexus.derivation import criteria_label, metric_label
+    cards = []
+    for hid, hp in proposed.items():
+        sel = filtered.get(hid)
+        cand = hp.get("candidate")
+        head = cand or hid
+        stmt = str(hp.get("statement", ""))
+        stmt = re.sub(rf"^{re.escape(str(head))}\s*(\([^)]*\))?\s*[—-]\s*",
+                      "", stmt)
+        verd = tested.get(hid) or {}
+        verd_c = tested_by_cand.get(str(cand), {})
+        # a candidate-keyed terminal verdict (orthogonal confirmation /
+        # round roll-up) outranks an earlier preliminary hid-keyed one
+        if _verdict_rank(verd_c.get("verdict")) > _verdict_rank(
+                verd.get("verdict")):
+            verd = verd_c
+        v = (verd.get("verdict") or "").lower()
+        ci = verd.get("ci")
+        ci_txt = (f" (95% CI {ci[0]}–{ci[1]})" if ci else "")
+        unit_lbl = metric_label(((verd.get("derivation") or {})
+                                 .get("derived") or {}).get("metric"))
+        margin = _ci_margin(ci, (hp.get("criteria") or {}).get("threshold"))
+        observed = verd.get("observed")
+        obs_txt = (f" — {unit_lbl} {observed}{ci_txt}"
+                   if observed is not None else "")
+        if v == "confirmed":
+            state = "confirmed"
+            stage = "confirmed by orthogonal assay" + obs_txt + margin
+        elif v == "validated":
+            state = "validated"
+            stage = "validated (preliminary)" + obs_txt + margin
+        elif v == "inconclusive":
+            state = "inconclusive"
+            stage = "inconclusive — CI straddles the threshold" \
+                    + f" ({unit_lbl} {observed}{ci_txt})" \
+                    if observed is not None else \
+                    "inconclusive — CI straddles the threshold"
+        elif v in ("refuted", "invalidated"):
+            state = "refuted"
+            stage = "refuted" + f" ({unit_lbl} {observed}{ci_txt})" \
+                if observed is not None else "refuted"
+            stage = "refuted" + (f" ({unit_lbl} {observed}{ci_txt})"
+                                 if observed is not None else "") + margin
+        elif refused.get(str(cand)):
+            state = "refused"
+            stage = ("refused by gate — "
+                     + refused[str(cand)][:70])
+        elif run_map.get(hid):
+            state = "in_lab"
+            stage = "in lab"
+        elif sel and sel.get("selected"):
+            state = "selected"
+            stage = "selected — awaiting submission"
+        elif sel:
+            state = "not_selected"
+            stage = "not selected"
+        else:
+            state = "proposed"
+            stage = "proposed"
+        crit = hp.get("criteria") or {}
+        cards.append({
+            "key": hid,
+            "candidate": cand,
+            "head": str(head),
+            "statement": stmt,
+            "predicted": hp.get("predicted"),
+            "mechanism": hp.get("mechanism"),
+            "citation": hp.get("citation"),
+            "citation_status": hp.get("citation_status"),
+            "citation_detail": hp.get("citation_detail"),
+            "refutation_condition": hp.get("refutation_condition"),
+            "gate_label": criteria_label(crit.get("metric"),
+                                         crit.get("direction"),
+                                         crit["threshold"])
+            if crit.get("threshold") is not None else None,
+            "threshold": crit.get("threshold"),
+            "verdict": {"status": v or None,
+                        "observed": observed,
+                        "ci": list(ci) if ci else None,
+                        "unit_label": unit_lbl,
+                        "margin": margin.strip(" ·")} if verd else None,
+            "stage": stage,
+            "state": state,
+            "round": cand2round.get(str(cand)),
+            "selected": bool(sel and sel.get("selected")),
+        })
+    return cards
