@@ -1,6 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { Activity, ChevronRight, FlaskConical, Users } from 'lucide-react'
+import { Activity, ChevronRight, FlaskConical, Target, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { Plus, Rocket } from 'lucide-react'
+import { useState } from 'react'
 import { api } from '../api/client'
+import ProgramForm from './ProgramForm'
 import type { ProblemTreeOut, ProgramOut } from '../api/client'
 
 function statusChip(status: string) {
@@ -56,22 +61,70 @@ function TreeBlock({ tree }: { tree: ProblemTreeOut }) {
   return <div>{roots.map((r) => render(r.id, 0))}</div>
 }
 
-export default function Workspace() {
+export default function Workspace({ initialForm = false }: {
+  initialForm?: boolean
+}) {
   const q = useQuery({ queryKey: ['workspace'], queryFn: api.workspace })
+  const qc = useQueryClient()
+  const [showForm, setShowForm] = useState(initialForm)
+  const [launching, setLaunching] = useState('')
+  const nav = useNavigate()
   if (q.isLoading) return <p className="muted">Loading…</p>
   if (q.isError) return <p className="chip failed">API unreachable — is uvicorn on :8000?</p>
   const ws = q.data!
 
+  async function launch(slug: string, mode: string) {
+    setLaunching(slug)
+    if (mode === 'guided') {
+      nav('/wizard')
+      return
+    }
+    const r = await fetch(`/api/programs/${slug}/launch`, { method: 'POST' })
+    setLaunching('')
+    if (r.ok) {
+      const { eid } = await r.json()
+      nav(`/experiments/${eid}`)
+    }
+  }
+
   return (
     <main>
-      <h1 style={{ fontSize: 20, margin: '0 0 4px' }}>Programs</h1>
-      <p className="muted" style={{ margin: '0 0 14px', fontSize: 12 }}>
-        Program ▸ campaign ▸ problem ▸ experiment — click an experiment to open it
-      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <div>
+          <h1 style={{ fontSize: 20, margin: '0 0 2px' }}>Programs</h1>
+          <p className="muted" style={{ margin: 0, fontSize: 12 }}>
+            Program ▸ campaign ▸ problem ▸ experiment — click an experiment to open it
+          </p>
+        </div>
+        <button className="primary" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}
+          onClick={() => setShowForm((s) => !s)}>
+          <Plus size={15} /> New program
+        </button>
+      </div>
+
+      {showForm && (
+        <section className="card" style={{ marginBottom: 12 }}>
+          <h2 style={{ fontSize: 15, margin: '0 0 8px', display: 'flex', gap: 6, alignItems: 'center' }}>
+            <Target size={15} color="var(--teal)" /> New program — pick the
+            launch type: autonomous (agent runs the DMTA loop) or guided
+            (wizard)
+          </h2>
+          <ProgramForm onLaunched={() => { setShowForm(false); qc.invalidateQueries() }} />
+        </section>
+      )}
 
       {ws.programs.map((p) => (
         <section key={p.slug} className="card" style={{ marginBottom: 12 }}>
-          <ProgramHeader p={p} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <ProgramHeader p={p} />
+            <button disabled={launching === p.slug}
+              onClick={() => launch(p.slug, p.mode)}
+              style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12 }}>
+              <Rocket size={13} />
+              {launching === p.slug ? 'Launching…'
+                : p.mode === 'autonomous' ? 'Launch campaign' : 'Open wizard'}
+            </button>
+          </div>
           {p.links.filter((l) => l.role === 'leaf').length === 0 && (
             <p className="muted" style={{ fontSize: 12, margin: '6px 0 0 24px' }}>
               no experiments yet — open the Program page in the workbench to launch

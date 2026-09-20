@@ -11,7 +11,9 @@ interface ModalityPack {
   notes: string
 }
 
-export default function ProgramForm() {
+export default function ProgramForm({ onLaunched }: {
+  onLaunched?: () => void
+} = {}) {
   const qc = useQueryClient()
   const nav = useNavigate()
   const packsQ = useQuery({
@@ -56,13 +58,14 @@ export default function ProgramForm() {
       if (!r.ok) throw new Error((await r.json()).detail ?? 'save failed')
       const { slug } = await r.json()
       if (mode !== 'autonomous') {
-        // guided mode: wizard is ported in P2.4; land on workspace for now
-        nav('/')
+        onLaunched?.()
+        nav('/wizard')
         return
       }
       const lr = await fetch(`/api/programs/${slug}/launch`, { method: 'POST' })
       if (!lr.ok) throw new Error((await lr.json()).detail ?? 'launch failed')
       const { eid } = await lr.json()
+      onLaunched?.()
       nav(`/experiments/${eid}`)
     } catch (e) {
       setError(String(e))
@@ -74,15 +77,7 @@ export default function ProgramForm() {
   const canLaunch = name.trim() && objective.trim() && !busy
 
   return (
-    <main>
-      <h1 style={{ fontSize: 20, display: 'flex', gap: 8, alignItems: 'center' }}>
-        <Target size={18} color="var(--teal)" /> New program
-      </h1>
-      <p className="muted" style={{ fontSize: 12 }}>
-        Program ▸ Problem ▸ Hypothesis ▸ Experiment — define what winning
-        looks like, then launch.
-      </p>
-
+    <div style={{ display: 'grid', gap: 10 }}>
       <div className="card" style={{ display: 'grid', gap: 10, maxWidth: 720 }}>
         <label>
           Program name *
@@ -179,7 +174,7 @@ export default function ProgramForm() {
           </span>
         </div>
       </div>
-    </main>
+    </div>
   )
 }
 

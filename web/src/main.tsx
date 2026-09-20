@@ -21,7 +21,6 @@ function Shell({ children }: { children: React.ReactNode }) {
         <Link to="/" style={{ fontSize: 18, fontWeight: 700 }}>bionexus</Link>
         <nav style={{ display: 'flex', gap: 12, fontSize: 13 }}>
           <Link to="/">Workspace</Link>
-          <Link to="/programs/new">New program</Link>
           <Link to="/wizard">Wizard</Link>
           <Link to="/approvals">Approvals</Link>
         </nav>
@@ -42,7 +41,7 @@ export default function App() {
         <Shell>
           <Routes>
             <Route path="/" element={<Workspace />} />
-            <Route path="/programs/new" element={<ProgramForm />} />
+            <Route path="/programs/new" element={<Workspace initialForm />} />
             <Route path="/wizard" element={<Wizard />} />
             <Route path="/approvals" element={<Approvals />} />
             <Route path="/experiments/:eid" element={<Experiment />} />
