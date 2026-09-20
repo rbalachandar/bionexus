@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from bionexus import program as program_cfg
 from bionexus import views
@@ -228,6 +228,25 @@ def experiment_record(eid: str) -> dict:
     return views.narrative_data(recs, log_lines)
 
 
+@app.get("/api/experiments/{eid}/evidence/{run_id}.csv")
+def experiment_evidence_csv(eid: str, run_id: str):
+    """Serve this run's recorded plate file (raw instrument export)."""
+    detail = views.experiment_detail(eid, get_ws())
+    if detail is None:
+        raise HTTPException(404, f"experiment {eid} not found")
+    prov = get_prov()
+    recs = prov.branch_records(detail["branch"]) \
+        if detail["branch"] and prov else []
+    data = views.narrative_data(recs, [], data_dir=str(DATA_DIR))
+    for curve in data["evidence"]["curves"]:
+        if curve["run_id"] == run_id:
+            path = Path(curve["path"])
+            if path.is_file():
+                return FileResponse(path, media_type="text/csv",
+                                    filename=f"{run_id}.csv")
+    raise HTTPException(404, f"no recorded plate file for run {run_id}")
+
+
 @app.get("/api/experiments/{eid}/trace")
 def experiment_trace(eid: str, lines: int = 30) -> dict:
     detail = views.experiment_detail(eid, get_ws())
@@ -248,7 +267,8 @@ def wizard_create(body: dict) -> dict:
     from bionexus.api import wizard_sessions
     return wizard_sessions.create_session(
         body.get("question", ""), body.get("target", "user-target"),
-        body.get("claim", "causal"))
+        body.get("claim", "causal_modification"),
+        program=body.get("program"))
 
 
 @app.get("/api/wizard/sessions/{sid}")

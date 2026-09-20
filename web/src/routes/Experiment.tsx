@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Activity } from 'lucide-react'
 import { api } from '../api/client'
 import type { ExperimentDetail } from '../api/client'
+import EvidenceCurves from '../components/EvidenceCurves'
 import { useCampaignEvents } from '../api/useEvents'
 
 function Chip({ status }: { status: string }) {
@@ -192,7 +193,7 @@ export default function Experiment() {
     queryKey: ['record', eid],
     queryFn: () => api.record(eid!),
     enabled: !!eid,
-  })
+  }) as { data: any | undefined; isLoading: boolean; isError: boolean }
   const status = q.data?.status
   const running = status === 'running' || status === 'executing'
   useCampaignEvents(eid, running)
@@ -249,6 +250,9 @@ export default function Experiment() {
       <PipelineCards cards={d.cards} />
 
       {record.data && <RecordOfThisRun record={record.data} />}
+      {record.data?.evidence?.curves?.length > 0 && (
+        <EvidenceCurves eid={d.id} curves={record.data.evidence.curves} />
+      )}
 
       <TraceLog eid={d.id} active={running} />
     </main>

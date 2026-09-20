@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { api } from '../api/client'
 import ProgramForm from './ProgramForm'
+import { ApprovalsBanner } from './Approvals'
 import type { ProblemTreeOut, ProgramOut } from '../api/client'
 
 function statusChip(status: string) {
@@ -72,6 +73,7 @@ export default function Workspace({ initialForm = false }: {
 
   return (
     <main>
+      <ApprovalsBanner />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <div>
           <h1 style={{ fontSize: 20, margin: '0 0 2px' }}>Programs</h1>

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 
 const inputStyle: React.CSSProperties = {
   display: 'block', width: '100%', marginTop: 2, marginBottom: 4,
@@ -14,6 +15,8 @@ const CLAIMS = ['causal_modification', 'gain_of_function',
 
 export default function Wizard() {
   const nav = useNavigate()
+  const [params] = useSearchParams()
+  const program = params.get('program') ?? ''
   const [sid, setSid] = useState('')
   const [eid, setEid] = useState('')
   const [step, setStep] = useState(1)
@@ -58,6 +61,12 @@ export default function Wizard() {
     return (
       <main>
         <h1 style={{ fontSize: 20 }}>1 · Define the problem</h1>
+        {program && (
+          <p className="muted" style={{ fontSize: 12 }}>
+            guided launch under program <strong>{program}</strong> — the
+            experiment will be linked to it
+          </p>
+        )}
         <div className="card" style={{ maxWidth: 640, display: 'grid', gap: 10 }}>
           <label>Scientific question *
             <textarea value={question} onChange={(e) => setQuestion(e.target.value)}
@@ -79,7 +88,7 @@ export default function Wizard() {
             <button className="primary" disabled={!question.trim()}
               onClick={async () => {
                 const r = await call('/api/wizard/sessions',
-                  { question, target, claim })
+                  { question, target, claim, program })
                 if (r) { setSid(r.sid); setEid(r.eid); setStep(2) }
               }}>
               Continue →

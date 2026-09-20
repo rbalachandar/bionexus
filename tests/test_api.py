@@ -184,3 +184,40 @@ def test_wizard_session_flow(tmp_path):
         kinds = [(x.decision or {}).get("kind") for x in recs
                  if x.event_type.value == "gate_decision"]
         assert "wizard_verdict" in kinds
+
+
+def test_wizard_session_links_program(tmp_path):
+    """Guided wizard sessions launched from a program link the resulting
+    experiment to it (program_experiments + campaign_spec)."""
+    from fastapi.testclient import TestClient
+
+    from bionexus import program as program_cfg
+    from bionexus.api.app import app
+    from bionexus.wizard_store import WizardStore
+
+    ws = WizardStore()
+    program_cfg.save_program_record(
+        {"program": "Guide-1", "custom": True, "objective": "guided obj",
+         "metric": "m", "direction": "max", "gate_value": 1, "unit": "u",
+         "mode": "autonomous", "k": 3, "rounds": 1})
+    with TestClient(app) as c:
+        r = c.post("/api/wizard/sessions", json={
+            "question": "guided question?", "target": "t",
+            "claim": "causal_modification", "program": "Guide-1"})
+        assert r.status_code == 200
+        eid = r.json()["eid"]
+        links = program_cfg.links_for("guide-1")
+        assert any(l["eid"] == eid for l in links)
+        spec = ws.get_campaign_spec(eid)
+        assert spec and spec["program_slug"] == "guide-1"
+        # the workspace nests it under the program
+        data = client_get_workspace()
+        prog = next(p for p in data["programs"] if p["slug"] == "guide-1")
+        assert any(a["eid"] == eid for a in prog["links"])
+
+
+def client_get_workspace():
+    from fastapi.testclient import TestClient
+    from bionexus.api.app import app
+    with TestClient(app) as c:
+        return c.get("/api/programs").json()

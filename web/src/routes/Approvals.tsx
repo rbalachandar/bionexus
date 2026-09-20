@@ -108,3 +108,42 @@ export default function Approvals() {
     </main>
   )
 }
+
+export function ApprovalsBanner() {
+  const qc = useQueryClient()
+  const q = useQuery({ queryKey: ['approvals'], queryFn: () =>
+    fetch('/api/approvals').then((r) => r.json()) })
+  const [busy, setBusy] = useState(false)
+  const pending = q.data?.pending ?? []
+  if (q.isLoading || pending.length === 0) return null
+  async function decide(id: string, approve: boolean) {
+    setBusy(true)
+    await fetch(`/api/approvals/${id}/decide`, { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approve }) })
+    qc.invalidateQueries({ queryKey: ['approvals'] })
+    setBusy(false)
+  }
+  return (
+    <div className="card" style={{ borderColor: 'var(--amber)', marginBottom: 12 }}>
+      <strong style={{ display: 'block', marginBottom: 6 }}>
+        Pending approvals ({pending.length})
+      </strong>
+      {pending.map((a: any) => (
+        <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center', padding: '4px 0', gap: 10 }}>
+          <div style={{ fontSize: 12 }}>
+            <strong>{a.title}</strong>
+            {a.detail && <span className="muted"> — {a.detail}</span>}
+          </div>
+          <div style={{ display: 'flex', gap: 6, whiteSpace: 'nowrap' }}>
+            <button className="primary" disabled={busy}
+              onClick={() => decide(a.id, true)}>Approve</button>
+            <button className="danger" disabled={busy}
+              onClick={() => decide(a.id, false)}>Deny</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}

@@ -36,14 +36,33 @@ def _ws() -> WizardStore:
     return WizardStore()
 
 
-def create_session(question: str, target: str, claim: str) -> dict:
-    """Step 1: define the problem; creates the registry experiment too."""
+def create_session(question: str, target: str, claim: str,
+                   program: str | None = None) -> dict:
+    """Step 1: define the problem; creates the registry experiment too.
+    When launched from a program (guided), the experiment is linked to
+    it relationally so it nests in the workspace like any campaign."""
     from bionexus.experiment import ClaimType
     if claim not in {c.value for c in ClaimType}:
         claim = ClaimType.causal_modification.value
     ensure_tables()
     ws = _ws()
     eid = ws.create(question, claim, target)
+    if program:
+        try:
+            from bionexus import program as program_cfg
+            from bionexus.wizard_store import WizardStore as _WS
+            _w = _WS()
+            _pdoc = _w.get_program(program_cfg._slug(program)) or {}
+            _w.set_campaign_spec(
+                eid, objective=question,
+                program_slug=program_cfg._slug(program),
+                k=int(_pdoc.get("k", 2)), rounds=int(_pdoc.get("rounds", 2)),
+                autonomy="act", hypothesis_source="config",
+                n_candidates=0, modality=_pdoc.get("modality") or None)
+            program_cfg.link_leaf(program, eid, campaign_root=None,
+                                  question=question, status="designing")
+        except Exception:
+            pass
     sid = f"wsn-{uuid.uuid4().hex[:8]}"
     doc = {"question": question, "target": target, "claim": claim,
            "eid": eid, "controls": [], "selected": []}

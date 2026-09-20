@@ -59,7 +59,7 @@ export default function ProgramForm({ onLaunched }: {
       const { slug } = await r.json()
       if (mode !== 'autonomous') {
         onLaunched?.()
-        nav('/wizard')
+        nav(`/wizard?program=${encodeURIComponent(slug)}`)
         return
       }
       const lr = await fetch(`/api/programs/${slug}/launch`, { method: 'POST' })
