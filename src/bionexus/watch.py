@@ -212,7 +212,8 @@ class AutoAnalysisAgent:
                                 method="property readout at highest dose",
                                 criteria_metric=crit.metric,
                                 criteria_direction=crit.direction,
-                                criteria_threshold=crit.threshold)})
+                                criteria_threshold=crit.threshold),
+                            "direction": crit.direction})
                     verdicts.append((hyp.hypothesis_id, hyp.candidate,
                                      hyp.status, prop_value))
                     unit = ""

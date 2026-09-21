@@ -209,3 +209,39 @@ def test_experiment_detail_and_workspace(tmp_path):
     # the unlinked-row groups must not contain the linked experiment
     for g in wsview["groups"].values():
         assert all(x["eid"] != eid for x in g)
+
+
+def test_reviewer_direction_aware_max_gate():
+    """A max-direction verdict (observed >= gate) must NOT be flagged
+    label-vs-data — the reviewer reads `direction` from the record."""
+    from bionexus.reviewer import review_campaign
+    from types import SimpleNamespace as NS
+
+    def rec(et, **d):
+        return NS(event_type=NS(value=et), decision=d,
+                  artifact=None)
+
+    recs = [
+        rec("problem_defined", objective="maximize potency"),
+        rec("lab_run", run_id="run-1"),
+        rec("hypothesis_tested", hypothesis_id="h1", candidate="C1",
+            verdict="validated", run_id="run-1"),
+        rec("hypothesis_validated", hypothesis_id="h1", candidate="C1",
+            verdict="confirmed", metric="potency_pct", direction="max",
+            threshold=80.0, observed=363.2, evidence_run_id="run-1"),
+    ]
+    review = review_campaign(recs)
+    label_findings = [f for f in review["findings"]
+                      if f["kind"] == "label-vs-data"]
+    assert label_findings == []
+    # sanity: min-direction with the same numbers IS a contradiction
+    recs_min = [recs[0], recs[1],
+                rec("hypothesis_tested", hypothesis_id="h1",
+                    candidate="C1", verdict="validated", run_id="run-1"),
+                rec("hypothesis_validated", hypothesis_id="h1",
+                    candidate="C1", verdict="confirmed", metric="ic50_um",
+                    direction="min", threshold=80.0, observed=363.2,
+                    evidence_run_id="run-1")]
+    review_min = review_campaign(recs_min)
+    assert any(f["kind"] == "label-vs-data"
+               for f in review_min["findings"])

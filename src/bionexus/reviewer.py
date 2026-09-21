@@ -45,7 +45,8 @@ def review_campaign(recs) -> dict:
                              "observed": d.get("observed"),
                              "ci": d.get("observed_ci"),
                              "threshold": d.get("threshold"),
-                             "direction": d.get("direction", "min"),
+                             "metric": d.get("metric"),
+                             "direction": d.get("direction"),
                              "candidate": str(cand) if cand else None,
                              "evidence": d.get("evidence_run_id"),
                              "event": et}
@@ -53,20 +54,34 @@ def review_campaign(recs) -> dict:
             if cand:
                 tests[str(cand)] = tests.get(str(cand), 0) + 1
 
+    # pre-registered gate directions: constraint descriptions carry the
+    # comparison (>= / <=); verdict records may omit direction, so the
+    # pre-registration wins as the fallback
+    gate_dirs: dict[str, str] = {}
+    for r in recs:
+        if r.event_type.value == "problem_defined":
+            for c in (r.decision or {}).get("constraints") or []:
+                if c.get("name"):
+                    gate_dirs[c["name"]] = (
+                        "max" if ">=" in (c.get("description") or "")
+                        else "min")
+
     for key, v in verdicts.items():
         cand = v.get("candidate") or key
         verdict, observed, ci = v.get("verdict"), v.get("observed"), v.get("ci")
         gate = v.get("threshold")
+        direction = v.get("direction") or gate_dirs.get(
+            v.get("metric") or "", "min")
 
         # 1. label vs observation vs gate — direction-aware: min-metrics
         # (ic50) want observed below the gate; max-metrics (tensile
         # strength, t_half, yield) want it above. Inconclusive is exempt.
-        worse_than_gate = (observed > gate if v.get("direction", "min")
-                           == "min" else observed < gate)
+        worse_than_gate = (observed > gate if direction == "min"
+                           else observed < gate)
         if verdict in ("validated", "confirmed") and observed is not None \
                 and gate is not None and worse_than_gate:
             if not (ci and ci[0] <= gate <= ci[1]):
-                sym = ">" if v.get("direction", "min") == "min" else "<"
+                sym = ">" if direction == "min" else "<"
                 findings.append({
                     "severity": "critical", "kind": "label-vs-data",
                     "candidate": cand,

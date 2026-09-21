@@ -555,6 +555,7 @@ class HypothesisTracker:
         env = Envelope(experiment_branch_id=h.branch_id)
         decision = {
             "metric": h.criteria.metric if h.criteria else "value",
+            "direction": h.criteria.direction if h.criteria else "min",
             "threshold": h.criteria.threshold if h.criteria else None,
             "observed": h.observed_value,
             "observed_ci": list(h.observed_ci) if h.observed_ci else None,
