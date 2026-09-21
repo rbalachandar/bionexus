@@ -10,6 +10,8 @@ function Chip({ status }: { status: string }) {
   return <span className={`chip ${status}`}>{status.replace('_', ' ')}</span>
 }
 
+const BRIEF_STATES = new Set(['proposed', 'not_selected'])
+
 function PipelineCards({ cards }: { cards: ExperimentDetail['cards'] }) {
   if (cards.length === 0)
     return (
@@ -18,36 +20,73 @@ function PipelineCards({ cards }: { cards: ExperimentDetail['cards'] }) {
         come from your candidate list).
       </p>
     )
+  const detailed = cards.filter((c) => !BRIEF_STATES.has(c.state))
+  const brief = cards.filter((c) => BRIEF_STATES.has(c.state))
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
-      {cards.map((c) => (
-        <div key={c.key} className="card" style={{ padding: '10px 12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-            <span>
-              <strong>{c.candidate ?? c.head}</strong>
-              {c.statement && <span> — {c.statement}</span>}
-            </span>
-            <span className={`chip ${c.state}`} style={{ whiteSpace: 'nowrap' }}>
-              {c.stage}
-            </span>
+    <div style={{ maxWidth: 780 }}>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {detailed.map((c) => (
+          <div key={c.key} className="card" style={{ padding: '10px 12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+              <span>
+                <strong>{c.candidate ?? c.head}</strong>
+                {c.statement && <span> — {c.statement}</span>}
+              </span>
+              <span style={{ whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600,
+                color: c.state === 'confirmed' || c.state === 'validated'
+                  ? 'var(--ok)'
+                  : c.state === 'refuted' || c.state === 'refused'
+                  ? 'var(--bad)'
+                  : c.state === 'inconclusive' ? 'var(--warn)'
+                  : 'var(--muted)' }}>
+                {c.stage}
+              </span>
+            </div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+              {c.round && <div>tested in round {c.round}</div>}
+              {c.gate_label && <div>gate: {c.gate_label}</div>}
+              {(c.mechanism || c.refutation_condition || c.citation ||
+                c.predicted) && (
+                <details style={{ marginTop: 2 }}>
+                  <summary style={{ cursor: 'pointer', fontSize: 11 }}>
+                    hypothesis details
+                  </summary>
+                  <div style={{ marginTop: 4 }}>
+                    {c.predicted && <div>predicted: {c.predicted}</div>}
+                    {c.mechanism && <div>mechanism: {c.mechanism}</div>}
+                    {c.refutation_condition && (
+                      <div>refuted if: {c.refutation_condition}</div>)}
+                    {c.citation && (
+                      <div>
+                        citation: {c.citation}
+                        {c.citation_status === 'invalid' && (
+                          <strong style={{ color: 'var(--bad)' }}> FABRICATED</strong>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </details>
+              )}
+            </div>
           </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-            {c.predicted && <div>predicted: {c.predicted}</div>}
-            {c.mechanism && <div>mechanism: {c.mechanism}</div>}
-            {c.refutation_condition && <div>refuted if: {c.refutation_condition}</div>}
-            {c.citation && (
-              <div>
-                citation: {c.citation}
-                {c.citation_status === 'invalid' && (
-                  <strong style={{ color: 'var(--bad)' }}> FABRICATED</strong>
-                )}
-              </div>
-            )}
-            {c.gate_label && <div>gate: {c.gate_label}</div>}
-            {c.round && <div>tested in round {c.round}</div>}
-          </div>
+        ))}
+      </div>
+      {brief.length > 0 && (
+        <div className="card" style={{ padding: '8px 12px', marginTop: detailed.length ? 8 : 0 }}>
+          {brief.map((c) => (
+            <div key={c.key}
+              style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '2px 0' }}>
+              <span className={`chip ${c.state}`} style={{ fontSize: 10 }}>
+                {c.state === 'proposed' ? 'proposed' : 'not selected'}
+              </span>
+              <span style={{ fontSize: 12 }}>
+                <strong>{c.candidate ?? c.head}</strong>
+                {c.statement ? ` — ${c.statement.slice(0, 110)}${c.statement.length > 110 ? '…' : ''}` : ''}
+              </span>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   )
 }
