@@ -287,7 +287,7 @@ export default function Experiment() {
         <Chip status={d.status} />
       </div>
       <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-        ID: <code>{d.id}</code> · agent · autonomy: {d.agent.autonomy}
+        ID: <code>{d.id}</code>
       </p>
       {d.program && (
         <p style={{ fontSize: 13 }}>
