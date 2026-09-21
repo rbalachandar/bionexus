@@ -287,6 +287,10 @@ class WizardStore:
         cur = self._conn.execute(
             "DELETE FROM experiments "
             "WHERE payload LIKE '%\"archived\": true%'")
+        # drop program links whose experiment no longer exists
+        self._conn.execute(
+            "DELETE FROM program_experiments WHERE experiment_id NOT IN "
+            "(SELECT id FROM experiments)")
         self._conn.commit()
         return cur.rowcount
 
