@@ -61,11 +61,15 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
   ]
   return (
     <div style={{ margin: '10px 0' }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+        gap: 6, maxWidth: 720 }}>
         {chips.map(([label, v]) => (
-          <span key={label} className="chip">
-            <strong>DMTA · {label}</strong>&nbsp;{v}
-          </span>
+          <div key={label} className="card"
+            style={{ padding: '6px 10px', display: 'grid', gap: 0 }}>
+            <span className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
+              letterSpacing: '0.04em' }}>DMTA · {label}</span>
+            <span style={{ fontSize: 13 }}>{v}</span>
+          </div>
         ))}
       </div>
       {rounds.length > 0 && (
@@ -105,11 +109,11 @@ function RecordOfThisRun({ record }: { record: Record<string, any> }) {
       {record.verdicts && (
         <>
           <h3 style={{ fontSize: 14 }}>Analyze — verdicts</h3>
-          <table style={{ fontSize: 12, borderCollapse: 'collapse' }}>
+          <table className="data-table">
             <thead>
               <tr>
                 {Object.keys(record.verdicts.rows[0] ?? {}).map((k) => (
-                  <th key={k} style={{ textAlign: 'left', paddingRight: 14 }}>{k}</th>
+                  <th key={k}>{k}</th>
                 ))}
               </tr>
             </thead>
@@ -117,7 +121,7 @@ function RecordOfThisRun({ record }: { record: Record<string, any> }) {
               {record.verdicts.rows.map((r: any, i: number) => (
                 <tr key={i}>
                   {Object.values(r).map((v, j) => (
-                    <td key={j} style={{ paddingRight: 14 }}>{String(v ?? '—')}</td>
+                    <td key={j}>{String(v ?? '—')}</td>
                   ))}
                 </tr>
               ))}
@@ -142,12 +146,21 @@ function RecordOfThisRun({ record }: { record: Record<string, any> }) {
               </span>
             )}
           </p>
-          {record.reviewer.findings?.map((f: any, i: number) => (
-            <p key={i} style={{ fontSize: 12, margin: '2px 0' }}>
-              <strong>{f.severity}</strong> · {f.kind}
-              {f.candidate ? ` · ${f.candidate}` : ''} — {f.detail}
-            </p>
-          ))}
+          {(record.reviewer.findings?.length ?? 0) > 0 && (
+            <table className="data-table">
+              <thead>
+                <tr><th>severity</th><th>kind</th><th>candidate</th><th>detail</th></tr>
+              </thead>
+              <tbody>
+                {record.reviewer.findings.map((f: any, i: number) => (
+                  <tr key={i}>
+                    <td>{f.severity}</td><td>{f.kind}</td>
+                    <td>{f.candidate ?? '—'}</td><td>{f.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           {record.reviewer.llm && (
             <p className="muted" style={{ fontSize: 12 }}>
               LLM reviewer (advisory) — {record.reviewer.llm.model}:{' '}
