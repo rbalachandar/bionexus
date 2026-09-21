@@ -54,4 +54,15 @@ button.danger { color: var(--bad); }
 .chip.failed, .chip.refuted, .chip.refused { color: var(--bad); border-color: var(--bad); }
 .chip.interrupted { color: var(--warn); border-color: var(--warn); }
 .muted { color: var(--muted); }
+table.data-table {
+  border-collapse: collapse; font-size: 12px; width: 100%;
+}
+table.data-table th, table.data-table td {
+  text-align: left; padding: 5px 12px 5px 0;
+  border-bottom: 1px solid var(--line);
+}
+table.data-table th {
+  color: var(--muted); font-weight: 600; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
 .hairline { border-top: 1px solid var(--line); margin: 10px 0; }

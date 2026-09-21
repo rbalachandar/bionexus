@@ -479,6 +479,27 @@ def pipeline_cards(recs) -> list[dict]:
     return cards
 
 
+def _rounds_with_verdicts(recs) -> list[dict]:
+    """Rounds with tested candidates AND the round's verdict map (from
+    the round-N-complete stage markers)."""
+    rounds = [{"round": n, "candidates": c, "verdicts": {}}
+              for n, c in round_markers(recs)]
+    for r in recs:
+        d = r.decision or {}
+        stage = str(d.get("stage", ""))
+        if r.event_type.value == "stage_transition" \
+                and stage.startswith("round-") and d.get("verdicts"):
+            try:
+                n = int(stage.split("-")[1])
+            except (ValueError, IndexError):
+                continue
+            for rd in rounds:
+                if rd["round"] == n:
+                    rd["verdicts"] = {str(k): str(v) for k, v
+                                      in (d.get("verdicts") or {}).items()}
+    return rounds
+
+
 # --------------------------------------------------------- narrative data
 def narrative_data(recs, log_lines=(), data_dir=".data") -> dict:
     """Read-model for 'The record of this run'. Port of narrative.render:
@@ -841,8 +862,7 @@ def experiment_detail(eid: str, wizard_store,
         "success_metric": (pdef or {}).get("success_metric")
         or (spec or {}).get("success_metric"),
         "counts": dmta_counts(recs),
-        "rounds": [{"round": n, "candidates": c}
-                   for n, c in round_markers(recs)],
+        "rounds": _rounds_with_verdicts(recs),
         "cards": cards,
     }
 

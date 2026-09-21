@@ -52,7 +52,7 @@ function PipelineCards({ cards }: { cards: ExperimentDetail['cards'] }) {
   )
 }
 
-function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds: { round: number; candidates: string[] }[] }) {
+function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds: { round: number; candidates: string[]; verdicts: Record<string, string> }[] }) {
   const chips: [string, number | string][] = [
     ['Design', `${counts.proposed ?? 0} proposed · ${counts.selected ?? 0} selected`],
     ['Make', `${counts.submitted ?? 0} submitted`],
@@ -69,18 +69,26 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
         ))}
       </div>
       {rounds.length > 0 && (
-        <table style={{ marginTop: 8, fontSize: 12, borderCollapse: 'collapse' }}>
+        <table className="data-table" style={{ marginTop: 8 }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left' }}>round</th>
-              <th style={{ textAlign: 'left' }}>tested</th>
+              <th>round</th>
+              <th>tested</th>
+              <th>verdicts</th>
             </tr>
           </thead>
           <tbody>
             {rounds.map((r) => (
               <tr key={r.round}>
-                <td style={{ paddingRight: 12 }}>{r.round}</td>
+                <td>{r.round}</td>
                 <td>{r.candidates.join(', ')}</td>
+                <td>
+                  {Object.entries(r.verdicts).map(([c, v]) => (
+                    <span key={c} className={`chip ${v}`} style={{ marginRight: 6, fontSize: 11 }}>
+                      {c}: {v}
+                    </span>
+                  )) || '—'}
+                </td>
               </tr>
             ))}
           </tbody>

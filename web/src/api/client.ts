@@ -90,7 +90,7 @@ export interface ExperimentDetail {
   constraints: { name: string; description: string }[]
   success_metric: string | null
   counts: Record<string, number>
-  rounds: { round: number; candidates: string[] }[]
+  rounds: { round: number; candidates: string[]; verdicts: Record<string, string> }[]
   cards: PipelineCard[]
 }
 
