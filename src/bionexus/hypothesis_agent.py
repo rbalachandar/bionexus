@@ -176,16 +176,30 @@ def propose_families_with_agent(
         say(f"family '{fid}' (confidence {family_scores[fid]:.2f}): "
             f"{fam.get('parent_statement', '')[:80]}")
         for v in fam.get("variants", [])[:max_variants_per_family]:
+            _assay = str(coerce_assay_type(
+                v.get("assay_type", "binding")).value)
+            if _gate is None:
+                _spec_criteria = None
+            elif _assay == "ic50_um" or _assay in (
+                    "binding", "enzymatic", "cytotoxicity", "counterscreen"):
+                # dose-response assay: the fit produces ic50_um, lower is
+                # better — keep the classic convention
+                _spec_criteria = {"metric": "ic50_um", "direction": "min",
+                                  "threshold": float(
+                                      v.get("predicted_value")
+                                      or _gate["threshold"])}
+            else:
+                # property assay: read in the program's metric/direction
+                _spec_criteria = {"metric": _gate["metric"],
+                                  "direction": _gate["direction"],
+                                  "threshold": float(
+                                      v.get("predicted_value")
+                                      or _gate["threshold"])}
             spec = {
                 "statement": v.get("statement", ""),
                 "candidate": v.get("candidate", ""),
-                "assay_type": str(coerce_assay_type(
-                    v.get("assay_type", "binding")).value),
-                "criteria": ({"metric": _gate["metric"],
-                              "direction": _gate["direction"],
-                              "threshold": float(v.get("predicted_value")
-                                                 or _gate["threshold"])}
-                             if _gate else None),
+                "assay_type": _assay,
+                "criteria": _spec_criteria,
                 "predicted": v.get("predicted", v.get("statement", "")),
                 "predicted_value": v.get("predicted_value"),
                 "rationale": v.get("rationale", ""),

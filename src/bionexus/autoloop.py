@@ -277,8 +277,16 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             say(f"round {round_no}: nothing selected — stopping")
             break
         if _crit is not None:
+            from bionexus.adapters.lab.simulator import DOSE_RESPONSE_ASSAYS
             for h in selected:
-                h.criteria = _crit.model_copy()
+                if h.assay_type in DOSE_RESPONSE_ASSAYS:
+                    # IC50-style assay: the Hill fit produces ic50_um and
+                    # lower-is-better, whatever the constraint is named
+                    h.criteria = SuccessCriteria(
+                        metric="ic50_um", direction="min",
+                        threshold=float(_con.limit))
+                else:
+                    h.criteria = _crit.model_copy()
         say(f"round {round_no}: testing "
             f"{[h.candidate for h in selected]} "
             f"({len(remaining)} candidates remain)")
