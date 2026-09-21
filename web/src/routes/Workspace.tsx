@@ -1,15 +1,14 @@
-import { useQuery } from '@tanstack/react-query'
-import { Activity, ChevronRight, FlaskConical, Target, Users } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2 } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Activity, ChevronRight, FlaskConical, Plus, Target, Trash2, Users } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
-import ProgramForm from './ProgramForm'
-import { ApprovalsBanner } from './Approvals'
 import type { ProblemTreeOut, ProgramOut } from '../api/client'
+import { Badge, EmptyState, PageHeader, Skeleton } from '../components/ui'
+import ProgramForm from './ProgramForm'
 
 function statusChip(status: string) {
-  return <span className={`chip ${status}`}>{status}</span>
+  return <Badge status={status} />
 }
 
 function tallyText(tally: Record<string, number>) {
@@ -17,44 +16,57 @@ function tallyText(tally: Record<string, number>) {
   return parts.length ? parts.join(' · ') : 'no experiments yet'
 }
 
-function ArchiveButton({ onArchive, label, confirmLabel, small }: {
-  onArchive: () => Promise<void>
-  label: string
-  confirmLabel: string
-  small?: boolean
+function ProgramCard({ p, onDelete, deleting }: {
+  p: ProgramOut
+  onDelete: (slug: string) => void
+  deleting: string | null
 }) {
-  const [armed, setArmed] = useState(false)
-  const [busy, setBusy] = useState(false)
+  const nav = useNavigate()
+  const done = p.tally['completed'] ?? 0
+  const running = p.tally['running'] ?? 0
+  const total = Object.values(p.tally).reduce((a, b) => a + b, 0)
   return (
-    <button
-      className={armed ? 'danger' : ''}
-      style={{ fontSize: small ? 10 : 11, whiteSpace: 'nowrap',
-        padding: small ? '1px 6px' : undefined }}
-      disabled={busy}
-      onClick={async () => {
-        if (armed) {
-          setBusy(true)
-          await onArchive()
-          setBusy(false)
-        } else {
-          setArmed(true)
-          setTimeout(() => setArmed(false), 6000)   // auto-disarm
-        }
-      }}>
-      {!small && <Trash2 size={12} />}
-      {armed ? confirmLabel : label}
-    </button>
-  )
-}
-
-function ProgramHeader({ p }: { p: ProgramOut }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-      <Activity size={16} color="var(--teal)" />
-      <strong>{p.name}</strong>
-      <span className="muted" style={{ fontSize: 12 }}>
-        {tallyText(p.tally)} · mode: {p.mode}
-      </span>
+    <div className="card" style={{ display: 'grid', gap: 10, cursor: 'pointer' }}
+      onClick={() => nav('/')}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--brand-border)')}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0 }}>
+          <Target size={15} color="var(--brand)" style={{ flex: 'none' }} />
+          <strong style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {p.name}
+          </strong>
+        </div>
+        <button
+          className={deleting === p.slug ? 'danger' : ''}
+          style={{ fontSize: 11, padding: '2px 8px', display: 'inline-flex',
+            gap: 4, alignItems: 'center', flex: 'none' }}
+          title={deleting === p.slug
+            ? 'click again to delete — experiments are kept'
+            : 'delete this program (experiments are kept)'}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (deleting === p.slug) onDelete(p.slug)
+            else onDelete(`arm:${p.slug}`)
+          }}>
+          <Trash2 size={11} />
+          {deleting === p.slug ? 'Confirm?' : ''}
+        </button>
+      </div>
+      <div className="muted" style={{ fontSize: 12, overflow: 'hidden',
+        textOverflow: 'ellipsis', display: 'flex', gap: 6 }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {p.objective ?? p.gate_summary}
+        </span>
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        {p.modality && <span className="chip">{p.modality}</span>}
+        <span className="chip">{p.mode}</span>
+        {running > 0 && <Badge status="running">{running} running</Badge>}
+        <span className="muted" style={{ fontSize: 11, marginLeft: 'auto' }}>
+          {total === 0 ? 'no experiments yet' : `${total} experiment(s)${done ? ` · ${done} completed` : ''}`}
+        </span>
+      </div>
     </div>
   )
 }
@@ -71,17 +83,15 @@ function TreeBlock({ tree }: { tree: ProblemTreeOut }) {
       <div key={id} style={{ marginLeft: depth * 18 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '2px 0' }}>
           {isLeaf ? (
-            <FlaskConical size={13} color="var(--teal)" />
+            <FlaskConical size={13} color="var(--brand)" />
           ) : (
             <ChevronRight size={13} color="var(--muted)" />
           )}
           <span style={{ fontSize: 13 }}>{n.objective}</span>
-          <span className="muted" style={{ fontSize: 11 }}>
+          <span className="muted mono" style={{ fontSize: 11 }}>
             {n.status}
-            {n.metric ? ` · gate ${n.metric} ${n.direction === 'min' ? '≤' : '≥'} ${n.gate}` : ''}
-            {isLeaf
-              ? ` · ${stat?.runs ?? 0}/${alloc} runs`
-              : ''}
+            {n.metric ? ` · ${n.metric} ${n.direction === 'min' ? '≤' : '≥'} ${n.gate}` : ''}
+            {isLeaf ? ` · ${stat?.runs ?? 0}/${alloc} runs` : ''}
           </span>
         </div>
         {kids(id).map((k) => render(k.id, depth + 1))}
@@ -96,102 +106,111 @@ export default function Workspace({ initialForm = false }: {
 }) {
   const q = useQuery({ queryKey: ['workspace'], queryFn: api.workspace })
   const qc = useQueryClient()
+  const nav = useNavigate()
   const [showForm, setShowForm] = useState(initialForm)
-  const [armDelete, setArmDelete] = useState<string | null>(null)
-  if (q.isLoading) return <p className="muted">Loading…</p>
-  if (q.isError) return <p className="chip failed">API unreachable — is uvicorn on :8000?</p>
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  async function doDelete(slug: string) {
+    const r = await fetch(`/api/programs/${slug}`, { method: 'DELETE' })
+    if (r.ok) {
+      setDeleting(null)
+      qc.invalidateQueries({ queryKey: ['workspace'] })
+    } else {
+      setDeleting(null)
+    }
+  }
+
+  if (q.isLoading) {
+    return (
+      <main style={{ display: 'grid', gap: 12 }}>
+        <Skeleton w={220} h={24} />
+        <Skeleton w="100%" h={110} />
+        <Skeleton w="100%" h={110} />
+      </main>
+    )
+  }
+  if (q.isError)
+    return <EmptyState title="API unreachable"
+      hint="Start the backend: make api (uvicorn on :8000)" />
+
   const ws = q.data!
+  const runningTotal = Object.values(ws.groups)
+    .flat().filter((e) => e.status === 'running').length
+  const verdictTotal = Object.values(ws.groups)
+    .flat().length
 
   return (
     <main>
-      <ApprovalsBanner />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <div>
-          <h1 style={{ fontSize: 20, margin: '0 0 2px' }}>Programs</h1>
-          <p className="muted" style={{ margin: 0, fontSize: 12 }}>
-            Program ▸ campaign ▸ problem ▸ experiment — click an experiment to open it
-          </p>
-        </div>
-        <button className="primary" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}
-          onClick={() => setShowForm((s) => !s)}>
-          <Plus size={15} /> New program
-        </button>
+      <PageHeader title="Programs" eyebrow="Workspace"
+        right={
+          <button className="primary" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}
+            onClick={() => setShowForm((s) => !s)}>
+            <Plus size={15} /> New program
+          </button>
+        } />
+
+      {/* live stats band */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+        gap: 8, maxWidth: 640, marginBottom: 'var(--s4)' }}>
+        {[
+          ['Programs', ws.programs.length],
+          ['Running', runningTotal],
+          ['Experiments', verdictTotal],
+        ].map(([label, n]) => (
+          <div key={String(label)} className="card"
+            style={{ padding: '8px 14px', display: 'flex', gap: 8, alignItems: 'baseline' }}>
+            <span className="mono" style={{ fontSize: 20, fontWeight: 600 }}>{n}</span>
+            <span className="muted" style={{ fontSize: 11, textTransform: 'uppercase',
+              letterSpacing: '0.04em' }}>{label}</span>
+          </div>
+        ))}
       </div>
 
       {showForm && (
-        <section className="card" style={{ marginBottom: 12 }}>
+        <section className="card" style={{ marginBottom: 'var(--s4)' }}>
           <h2 style={{ fontSize: 15, margin: '0 0 8px', display: 'flex', gap: 6, alignItems: 'center' }}>
-            <Target size={15} color="var(--teal)" /> New program — pick the
+            <Target size={15} color="var(--brand)" /> New program — pick the
             launch type: autonomous (agent runs the DMTA loop) or guided
             (wizard)
           </h2>
-          <ProgramForm onLaunched={() => { setShowForm(false); qc.invalidateQueries() }} />
+          <ProgramForm onDone={() => { setShowForm(false); qc.invalidateQueries() }} />
         </section>
       )}
 
-      {ws.programs.map((p) => (
-        <section key={p.slug} className="card" style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between',
-            alignItems: 'center', gap: 10 }}>
-            <ProgramHeader p={p} />
-            <button
-              className={armDelete === p.slug ? 'danger' : ''}
-              style={{ display: 'inline-flex', gap: 5, alignItems: 'center',
-                fontSize: 11, whiteSpace: 'nowrap' }}
-              title={armDelete === p.slug
-                ? 'click again to delete — experiments are kept'
-                : 'delete this program (experiments are kept)'}
-              onClick={async () => {
-                if (armDelete === p.slug) {
-                  const r = await fetch(`/api/programs/${p.slug}`,
-                    { method: 'DELETE' })
-                  if (r.ok) {
-                    setArmDelete(null)
-                    qc.invalidateQueries({ queryKey: ['workspace'] })
-                  }
-                } else {
-                  setArmDelete(p.slug)
-                }
-              }}>
-              <Trash2 size={12} />
-              {armDelete === p.slug ? 'Confirm delete?' : 'Delete'}
+      {/* program grid */}
+      {ws.programs.length > 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns:
+          'repeat(auto-fill, minmax(340px, 1fr))', gap: 10, marginBottom: 'var(--s5)' }}>
+          {ws.programs.map((p) => (
+            <ProgramCard key={p.slug} p={p} deleting={deleting}
+              onDelete={(slug) => {
+                if (slug.startsWith('arm:')) setDeleting(slug.slice(4))
+                else doDelete(slug)
+              }} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon={<Target size={28} />}
+          title="No programs yet"
+          hint="Define a program — objective, gate, modality — then launch an autonomous campaign or the guided wizard."
+          action={
+            <button className="primary" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}
+              onClick={() => setShowForm(true)}>
+              <Plus size={15} /> New program
             </button>
-          </div>
-          {p.links.filter((l) => l.role === 'leaf').length === 0 && (
-            <p className="muted" style={{ fontSize: 12, margin: '6px 0 0 24px' }}>
-              no experiments yet — open the Program page in the workbench to launch
-            </p>
-          )}
-          <div style={{ marginLeft: 24 }}>
-            {p.links
-              .filter((l) => l.role === 'leaf')
-              .map((l) => (
-                <div key={l.eid} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 0' }}>
-                  <FlaskConical size={13} color="var(--teal)" />
-                  <a href={`/experiments/${l.eid}`} style={{ fontSize: 13 }}>
-                    {l.question || l.eid}
-                  </a>
-                  {statusChip(l.status)}
-                </div>
-              ))}
-          </div>
-        </section>
-      ))}
+          } />
+      )}
 
+      {/* activity: free trees + groups */}
       {ws.trees.filter((t) => !t.is_linked).map((t) => (
-        <section key={t.root_id} className="card" style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-              <Activity size={16} color="var(--amber)" />
-              <strong>{t.objective}</strong>
-              <span className="muted" style={{ fontSize: 12 }}>
-                {t.rollup[t.root_id] ?? 'open'}
-              </span>
-            </div>
-            <ArchiveButton onArchive={async () => {
-              await fetch(`/api/trees/${t.root_id}/archive`, { method: 'POST' })
-              qc.invalidateQueries({ queryKey: ['workspace'] })
-            }} label="Delete" confirmLabel="Confirm delete?" />
+        <section key={t.root_id} className="card" style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+            <Activity size={15} color="var(--brand)" />
+            <strong style={{ fontSize: 13 }}>{t.objective}</strong>
+            <span className="muted mono" style={{ fontSize: 11 }}>
+              {t.rollup[t.root_id] ?? 'open'}
+            </span>
           </div>
           <div style={{ marginLeft: 24 }}>
             <TreeBlock tree={t} />
@@ -200,37 +219,31 @@ export default function Workspace({ initialForm = false }: {
       ))}
 
       {Object.entries(ws.groups).map(([group, entries]) => (
-        <section key={group} className="card" style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-            <Users size={16} color="var(--amber)" />
-            <strong>
+        <section key={group} className="card" style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+            <Users size={15} color="var(--muted)" />
+            <strong style={{ fontSize: 13 }}>
               {group === 'autonomous' ? 'Autonomous campaigns' : 'Guided experiments'}
             </strong>
-            <span className="muted" style={{ fontSize: 12 }}>
+            <span className="muted" style={{ fontSize: 11 }}>
               {entries.length} experiment(s)
             </span>
           </div>
-          <div style={{ marginLeft: 24 }}>
-            {entries.map((e) => (
-              <div key={e.eid} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 0' }}>
-                <FlaskConical size={13} color="var(--teal)" />
-                <a href={`/experiments/${e.eid}`} style={{ fontSize: 13 }}>
-                  {e.question || e.eid}
-                </a>
-                {statusChip(e.status)}
-                <ArchiveButton small onArchive={async () => {
-                  await fetch(`/api/experiments/${e.eid}/archive`, { method: 'POST' })
-                  qc.invalidateQueries({ queryKey: ['workspace'] })
-                }} label="✕" confirmLabel="archive?" />
-              </div>
-            ))}
-          </div>
+          {entries.map((e) => (
+            <div key={e.eid}
+              style={{ display: 'flex', alignItems: 'baseline', gap: 8,
+                padding: '5px 0 5px 24px', borderBottom: '1px solid var(--border)' }}>
+              <FlaskConical size={12} color="var(--brand)" />
+              <a href={`/experiments/${e.eid}`} style={{ fontSize: 13 }}>{e.question || e.eid}</a>
+              {statusChip(e.status)}
+            </div>
+          ))}
         </section>
       ))}
 
       {ws.archived.length > 0 && (
         <details className="card">
-          <summary style={{ cursor: 'pointer' }}>
+          <summary style={{ cursor: 'pointer', fontSize: 12 }}>
             Archived ({ws.archived.length}) — retired from the working set
           </summary>
           {ws.archived.map((a) => (

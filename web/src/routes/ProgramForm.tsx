@@ -11,8 +11,9 @@ interface ModalityPack {
   notes: string
 }
 
-export default function ProgramForm({ onLaunched }: {
+export default function ProgramForm({ onLaunched, onDone }: {
   onLaunched?: () => void
+  onDone?: () => void
 } = {}) {
   const qc = useQueryClient()
   const nav = useNavigate()
@@ -57,6 +58,7 @@ export default function ProgramForm({ onLaunched }: {
       })
       if (!r.ok) throw new Error((await r.json()).detail ?? 'save failed')
       const { slug } = await r.json()
+      onDone?.()
       if (mode !== 'autonomous') {
         onLaunched?.()
         nav(`/wizard?program=${encodeURIComponent(slug)}`)
