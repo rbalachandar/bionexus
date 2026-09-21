@@ -159,6 +159,17 @@ def propose_families_with_agent(
     families_in = doc.get("families", [])[:max_families]
     family_scores: dict[str, float] = {}
     specs: list[dict[str, Any]] = []
+    # the program's primary hard constraint is the gate: variant criteria
+    # inherit its metric/direction (threshold stays the variant's own
+    # predicted value when the agent declared one)
+    _con = next((c for c in problem.constraints if c.kind == "hard"
+                 and c.limit is not None), None)
+    _gate = None
+    if _con is not None:
+        _gate = {"metric": _con.name,
+                 "direction": "max" if ">=" in (_con.description or "")
+                 else "min",
+                 "threshold": float(_con.limit)}
     for fam in families_in:
         fid = str(fam.get("family", f"fam-{len(family_scores)}"))[:40]
         family_scores[fid] = float(fam.get("confidence", 0.5))
@@ -170,6 +181,11 @@ def propose_families_with_agent(
                 "candidate": v.get("candidate", ""),
                 "assay_type": str(coerce_assay_type(
                     v.get("assay_type", "binding")).value),
+                "criteria": ({"metric": _gate["metric"],
+                              "direction": _gate["direction"],
+                              "threshold": float(v.get("predicted_value")
+                                                 or _gate["threshold"])}
+                             if _gate else None),
                 "predicted": v.get("predicted", v.get("statement", "")),
                 "predicted_value": v.get("predicted_value"),
                 "rationale": v.get("rationale", ""),

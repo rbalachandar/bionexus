@@ -409,12 +409,25 @@ def pipeline_cards(recs) -> list[dict]:
         # round roll-up) outranks an earlier preliminary hid-keyed one
         if _verdict_rank(verd_c.get("verdict")) > _verdict_rank(
                 verd.get("verdict")):
-            verd = verd_c
+            # terminal candidate verdict wins on STATUS; keep the
+            # preliminary readout's observed/CI when the terminal record
+            # carries none (round roll-ups don't repeat the number)
+            verd = {**verd, **verd_c,
+                    "observed": verd_c.get("observed")
+                    if verd_c.get("observed") is not None
+                    else verd.get("observed"),
+                    "ci": verd_c.get("ci") or verd.get("ci"),
+                    "evidence": verd_c.get("evidence")
+                    or verd.get("evidence"),
+                    "derivation": verd_c.get("derivation")
+                    or verd.get("derivation")}
         v = (verd.get("verdict") or "").lower()
         ci = verd.get("ci")
         ci_txt = (f" (95% CI {ci[0]}–{ci[1]})" if ci else "")
-        unit_lbl = metric_label(((verd.get("derivation") or {})
-                                 .get("derived") or {}).get("metric"))
+        _der = verd.get("derivation") or {}
+        unit_lbl = metric_label(
+            (_der.get("derived") or {}).get("metric")
+            or _der.get("criteria_metric") or _der.get("metric"))
         margin = _ci_margin(ci, (hp.get("criteria") or {}).get("threshold"))
         observed = verd.get("observed")
         obs_txt = (f" — {unit_lbl} {observed}{ci_txt}"

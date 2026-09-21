@@ -12,7 +12,10 @@ function Chip({ status }: { status: string }) {
 
 const BRIEF_STATES = new Set(['proposed', 'not_selected'])
 
-function PipelineCards({ cards }: { cards: ExperimentDetail['cards'] }) {
+function PipelineCards({ cards, budgetNote }: {
+  cards: ExperimentDetail['cards']
+  budgetNote?: string
+}) {
   if (cards.length === 0)
     return (
       <p className="muted" style={{ fontSize: 12 }}>
@@ -81,7 +84,7 @@ function PipelineCards({ cards }: { cards: ExperimentDetail['cards'] }) {
                 <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
                   letterSpacing: '0.04em', marginBottom: 2 }}>
                   {state === 'proposed'
-                    ? `Proposed — not yet tested (${group.length})`
+                    ? `Proposed — not tested in this campaign (${group.length}${budgetNote ? `; budget ${budgetNote}` : ''})`
                     : `Designed but not selected (${group.length})`}
                 </div>
                 {group.map((c) => (
@@ -111,13 +114,15 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
   ]
   return (
     <div style={{ margin: '10px 0' }}>
+      <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
+        letterSpacing: '0.04em', marginBottom: 4 }}>DMTA loop</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
         gap: 6, maxWidth: 720 }}>
         {chips.map(([label, v]) => (
           <div key={label} className="card"
             style={{ padding: '6px 10px', display: 'grid', gap: 0 }}>
             <span className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
-              letterSpacing: '0.04em' }}>DMTA · {label}</span>
+              letterSpacing: '0.04em' }}>{label}</span>
             <span style={{ fontSize: 13 }}>{v}</span>
           </div>
         ))}
@@ -293,19 +298,22 @@ export default function Experiment() {
         </p>
       )}
       {d.spec && (
-        <>
-          <p className="muted" style={{ fontSize: 12, margin: '2px 0' }}>
-            objective: {d.objective} · constraints:{' '}
-            {d.constraints.map((c) => `${c.name}: ${c.description}`).join(' · ') || '—'}
-          </p>
-          <p className="muted" style={{ fontSize: 12, margin: '2px 0' }}>
-            budget: top-{d.spec.k} hypotheses/round · {d.spec.rounds} DMTA rounds ·
-            autonomy: {d.spec.autonomy} · candidates:{' '}
-            {d.spec.hypothesis_source === 'agent'
-              ? 'agent-proposed candidates'
-              : `${d.spec.n_candidates} named candidates`}
-          </p>
-        </>
+        <div className="card" style={{ margin: '8px 0', padding: '10px 14px', maxWidth: 780 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '3px 12px', fontSize: 12 }}>
+            <span className="muted">Objective</span>
+            <span>{d.objective}</span>
+            <span className="muted">Constraints</span>
+            <span>{d.constraints.map((c) => `${c.name}: ${c.description}`).join(' · ') || '—'}</span>
+            <span className="muted">Success</span>
+            <span>{d.success_metric ?? '—'}</span>
+            <span className="muted">Budget</span>
+            <span>top-{d.spec.k} hypotheses/round · {d.spec.rounds} DMTA rounds ·
+              autonomy: {d.spec.autonomy} · candidates:{' '}
+              {d.spec.hypothesis_source === 'agent'
+                ? 'agent-proposed'
+                : `${d.spec.n_candidates} named`}</span>
+          </div>
+        </div>
       )}
       {running && (
         <p className="chip running" style={{ marginTop: 8 }}>
@@ -318,7 +326,8 @@ export default function Experiment() {
       <h2 style={{ fontSize: 16 }}>
         <Activity size={15} color="var(--teal)" /> Hypothesis pipeline
       </h2>
-      <PipelineCards cards={d.cards} />
+      <PipelineCards cards={d.cards}
+        budgetNote={d.spec ? `top-${d.spec.k} hypotheses/round × ${d.spec.rounds} round${d.spec.rounds > 1 ? 's' : ''}` : ''} />
 
       {record.data && <RecordOfThisRun record={record.data} />}
       {record.data?.evidence?.curves?.length > 0 && (
