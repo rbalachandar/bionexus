@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { Activity } from 'lucide-react'
 import { api } from '../api/client'
@@ -157,7 +157,10 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
   )
 }
 
-function RecordOfThisRun({ record }: { record: Record<string, any> }) {
+function RecordOfThisRun({ record, onRereview }: {
+  record: Record<string, any>
+  onRereview: () => Promise<void>
+}) {
   return (
     <section>
       <h2 style={{ fontSize: 16 }}>{record.title ?? 'The record of this run'}</h2>
@@ -189,7 +192,13 @@ function RecordOfThisRun({ record }: { record: Record<string, any> }) {
       )}
       {record.reviewer && (
         <>
-          <h3 style={{ fontSize: 14 }}>Reviewer pass</h3>
+          <h3 style={{ fontSize: 14, display: 'flex', gap: 10, alignItems: 'center' }}>
+            Reviewer pass
+            <button style={{ fontSize: 11 }} disabled={record.isFetching}
+              onClick={onRereview}>
+              Re-run review
+            </button>
+          </h3>
           <p style={{ fontSize: 12, margin: '4px 0' }}>
             {record.reviewer.findings?.length === 0 ? (
               <span style={{ color: 'var(--ok)' }}>
@@ -259,6 +268,7 @@ function TraceLog({ eid, active }: { eid: string; active: boolean }) {
 }
 
 export default function Experiment() {
+  const qc = useQueryClient()
   const { eid } = useParams<{ eid: string }>()
   const q = useQuery({
     queryKey: ['experiment', eid],
@@ -329,7 +339,11 @@ export default function Experiment() {
       <PipelineCards cards={d.cards}
         budgetNote={d.spec ? `top-${d.spec.k} hypotheses/round × ${d.spec.rounds} round${d.spec.rounds > 1 ? 's' : ''}` : ''} />
 
-      {record.data && <RecordOfThisRun record={record.data} />}
+      {record.data && <RecordOfThisRun record={record.data}
+        onRereview={async () => {
+          await fetch(`/api/experiments/${d.id}/rereview`, { method: 'POST' })
+          qc.invalidateQueries({ queryKey: ['record', eid] })
+        }} />}
       {record.data?.evidence?.curves?.length > 0 && (
         <EvidenceCurves eid={d.id} curves={record.data.evidence.curves}
           metric={d.program?.gate.metric ?? null} />

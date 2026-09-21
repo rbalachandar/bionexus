@@ -289,6 +289,38 @@ def experiment_evidence_csv(eid: str, run_id: str):
     raise HTTPException(404, f"no recorded plate file for run {run_id}")
 
 
+@app.post("/api/experiments/{eid}/rereview")
+def experiment_rereview(eid: str) -> dict:
+    """Re-run the deterministic reviewer on the branch and append a
+    fresh review_report (the latest one wins on the page). Honest
+    re-audit: findings are re-derived from recorded evidence."""
+    detail = views.experiment_detail(eid, get_ws())
+    if detail is None:
+        raise HTTPException(404, f"experiment {eid} not found")
+    if not detail["branch"] or not Path("bionexus.db").exists():
+        raise HTTPException(409, "no provenance branch to review")
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    from bionexus.reviewer import review_campaign
+    prov = SqliteProvenanceStore("bionexus.db")
+    recs = prov.branch_records(detail["branch"])
+    review = review_campaign(recs)
+    prov.append(record_for(
+        Envelope(experiment_branch_id=detail["branch"]),
+        EventType.stage_transition, system_actor("reviewer"),
+        decision={"kind": "review_report", "review": review["review"],
+                  "critical": review["critical"],
+                  "warnings": review["warnings"],
+                  "verdicts_reviewed": review["verdicts_reviewed"],
+                  "findings": review["findings"],
+                  "rerun": True}))
+    return {"critical": review["critical"],
+            "warnings": review["warnings"],
+            "verdicts_reviewed": review["verdicts_reviewed"],
+            "findings": review["findings"]}
+
+
 @app.get("/api/experiments/{eid}/trace")
 def experiment_trace(eid: str, lines: int = 30) -> dict:
     detail = views.experiment_detail(eid, get_ws())
