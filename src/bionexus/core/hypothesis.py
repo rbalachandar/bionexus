@@ -471,6 +471,18 @@ class HypothesisTracker:
                   or m.unit == criteria.metric)),
             None,
         )
+        if value is None and criteria.metric not in ("ic50_um", "value"):
+            # property metric: read the recorded value at the HIGHEST
+            # dose (dose ladders carry conc_um in derived metrics)
+            doses = [(m.derived_metrics.get("conc_um"), m.value)
+                     for m in result.measurements
+                     if m.sample_id == h.candidate
+                     and isinstance(m.derived_metrics.get("conc_um"), (int, float))]
+            if doses:
+                value = max(doses)[1]
+            else:
+                value = next((m.value for m in result.measurements
+                              if m.sample_id == h.candidate), None)
         h.observed_value = value
         h.qc_passed = qc_ok
         h.evidence_run_id = result.run_id

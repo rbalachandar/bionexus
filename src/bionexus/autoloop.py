@@ -115,6 +115,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                         evidence_run=h.evidence_run_id)
 
     tracker = HypothesisTracker(store, actor, on_verdict=_on_verdict)
+
     safety = SafetyEngine()
     from bionexus.governance import AuthorizationMatrix, HaltSwitch
     gov = {"matrix": AuthorizationMatrix(), "halt": HaltSwitch()}
@@ -192,6 +193,19 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         portfolio = tracker.propose_portfolio(problem, cfg.hypotheses or [])
         base_fn = cfg.score_fn or (lambda h: 0.5)
         score_fn = lambda h: base_fn(h) + flywheel.prior_bonus(h.family)
+    # metric-aware criteria: the problem's primary hard constraint is the
+    # pre-registered gate — thread it into every hypothesis so verdicts
+    # read the program's metric/direction, never a hardcoded IC50
+    _con = next((c for c in problem.constraints if c.kind == "hard"
+                 and c.limit is not None), None)
+    _crit = None
+    if _con is not None:
+        from bionexus.core.hypothesis import SuccessCriteria
+        _crit = SuccessCriteria(
+            metric=_con.name,
+            direction="max" if ">=" in (_con.description or "") else "min",
+            threshold=float(_con.limit))
+
     # 1. rounds: select -> design+submit -> analyze; each round feeds the next
     synth_cache: dict[str, dict] = {}
     _submit = gateway.submit
@@ -262,6 +276,9 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         if not selected:
             say(f"round {round_no}: nothing selected — stopping")
             break
+        if _crit is not None:
+            for h in selected:
+                h.criteria = _crit.model_copy()
         say(f"round {round_no}: testing "
             f"{[h.candidate for h in selected]} "
             f"({len(remaining)} candidates remain)")

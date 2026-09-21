@@ -160,6 +160,72 @@ class AutoAnalysisAgent:
         if self.tracker:
             for hyp in self.tracker.hypotheses.values():
                 match = result.analysis["compounds"].get(hyp.candidate)
+                crit = hyp.criteria
+                # property metrics (potency_pct, tensile, ...) read the
+                # recorded value at the HIGHEST dose directly; only
+                # IC50-style metrics use the Hill fit
+                prop_value = None
+                if crit and crit.metric not in ("ic50_um", "value"):
+                    # records may be dicts (labread) or Measurement
+                    # models (simulator); read both shapes uniformly
+                    def _recs():
+                        for m in result.records:
+                            if isinstance(m, dict):
+                                yield m
+                            else:
+                                yield m.model_dump()
+                    cand_vals = []
+                    any_val = None
+                    for rec in _recs():
+                        if rec.get("sample") != hyp.candidate:
+                            continue
+                        if rec.get("control"):
+                            continue
+                        if any_val is None:
+                            any_val = rec.get("value")
+                        conc = rec.get("conc_um")
+                        val = rec.get("value")
+                        if isinstance(conc, (int, float)) and \
+                                isinstance(val, (int, float)):
+                            cand_vals.append((conc, val))
+                    if cand_vals:
+                        prop_value = max(cand_vals)[1]
+                    elif any_val is not None:
+                        prop_value = any_val
+                if prop_value is not None and hyp.status in (
+                        "proposed", "designed", "tested"):
+                    hyp.observed_value = prop_value
+                    hyp.observed_ci = None
+                    hyp.evidence_run_id = event.path.stem
+                    hyp.qc_passed = (result.z_prime or 0) >= 0.5
+                    if crit:
+                        hyp.status = crit.classify(prop_value, None)
+                    if hasattr(self.tracker, "record_outcome"):
+                        from bionexus.derivation import build
+                        inst, ver = self._instrument()
+                        self.tracker.record_outcome(hyp, extra={
+                            "derivation": build(
+                                instrument=inst, version=ver,
+                                quantity=crit.metric,
+                                counts={"wells": len(result.records)},
+                                metric=crit.metric,
+                                method="property readout at highest dose",
+                                criteria_metric=crit.metric,
+                                criteria_direction=crit.direction,
+                                criteria_threshold=crit.threshold)})
+                    verdicts.append((hyp.hypothesis_id, hyp.candidate,
+                                     hyp.status, prop_value))
+                    unit = ""
+                    for rec in result.records:
+                        d_ = rec if isinstance(rec, dict) else rec.model_dump()
+                        if d_.get("sample") == hyp.candidate:
+                            unit = d_.get("unit", "")
+                            break
+                    self.notify(f"hypothesis {hyp.hypothesis_id} "
+                                f"({hyp.candidate}): {hyp.status.upper()} — "
+                                f"{crit.metric} {prop_value} {unit} vs "
+                                f"threshold {crit.threshold}")
+                    continue
                 if match and hyp.status in ("proposed", "designed", "tested") and match["ic50_um"]:
                     # attach evidence directly (measurement already fitted)
                     hyp.observed_value = match["ic50_um"]
@@ -339,6 +405,52 @@ class AutoAnalysisAgent:
         from bionexus.labread import read_plate
         cand, primary = conf["candidate"], conf["primary_ic50"]
         result = read_plate(event.path, max_response=self.max_response)
+        hyp_tmp0 = next((h for h in (self.tracker.hypotheses.values()
+                                     if self.tracker else [])
+                         if h.candidate == cand), None)
+        crit0 = hyp_tmp0.criteria if hyp_tmp0 else None
+        if crit0 is not None and crit0.metric not in ("ic50_um", "value"):
+            # property metric: the confirmation readout is the recorded
+            # value at the highest dose of the orthogonal run, compared
+            # like-for-like; the gate decides, not a ratio
+            vals = []
+            for m in result.records:
+                d_ = m if isinstance(m, dict) else m.model_dump()
+                if d_.get("sample") == cand and not d_.get("control"):
+                    vals.append(d_.get("value"))
+            secondary = max((v for v in vals
+                             if isinstance(v, (int, float))), default=None)
+            secondary_ci = None
+            primary_ci = None
+            ratio = 1.0 if secondary is not None else None
+            agreed = ratio is not None
+            qc_ok = (result.z_prime or 0) >= 0.5
+            hyp_tmp = hyp_tmp0
+            pri_status = hyp_tmp.status if hyp_tmp else "tested"
+            cls = (crit0.classify(secondary, None)
+                   if secondary is not None else "inconclusive")
+            if not qc_ok or secondary is None:
+                status = "inconclusive"
+            elif pri_status in ("validated", "confirmed"):
+                status = "confirmed" if cls == "validated" else "refuted"
+            else:
+                status = "refuted" if cls == "invalidated" else "confirmed"
+            unit = next((d_.get("unit", "") for d_ in
+                         (m if isinstance(m, dict) else m.model_dump()
+                          for m in result.records)
+                         if d_.get("sample") == cand), "")
+            self.notify(f"orthogonal confirmation for {cand}: "
+                        f"{crit0.metric} {secondary} {unit} vs threshold "
+                        f"{crit0.threshold} -> {status.upper()}")
+            if self.tracker:
+                for hyp in self.tracker.hypotheses.values():
+                    if hyp.candidate == cand:
+                        hyp.observed_value = secondary
+                        hyp.evidence_run_id = event.path.stem
+                        hyp.qc_passed = qc_ok
+                        hyp.status = status
+                        hyp.observed_ci = None
+                return {"candidate": cand, "status": status}
         match = result.analysis["compounds"].get(cand) or {}
         secondary = match.get("ic50_um")
         secondary_ci = match.get("ic50_ci")

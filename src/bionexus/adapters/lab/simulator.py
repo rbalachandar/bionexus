@@ -159,9 +159,10 @@ class SimulatorLab:
                 if assay == "counterscreen" and value > 20:
                     controls_passed = False
             derived: dict[str, float] = {}
+            if not is_control:
+                derived["conc_um"] = conc
             if assay in DOSE_RESPONSE_ASSAYS and not is_control:
                 derived["ic50_um"] = round(ic50, 3)
-                derived["conc_um"] = conc
             measurements.append(
                 Measurement(
                     sample_id=sample.sample_id,
