@@ -15,13 +15,46 @@ Shape (all keys optional, so any domain can fill what it knows):
 from __future__ import annotations
 
 
-_UNIT_SUFFIX = {"um": "µM", "nm": "nM", "us": "µs", "ct": "Ct"}
+_UNIT_SUFFIX = {"um": "µM", "nm": "nM", "us": "µs", "ct": "Ct",
+                "mpa": "MPa", "pct": "%", "nm2": "nm²"}
+
+# machine metric -> human wording (verdicts read like the program's goal)
+_METRIC_WORDS = {
+    "potency_pct": "potency",
+    "potency": "potency",
+    "tensile_strength_mpa": "tensile strength",
+    "tensile": "tensile strength",
+    "strength_mpa": "strength",
+    "conductivity": "conductivity",
+    "density": "density",
+    "thermal_stability": "thermal stability",
+    "stability": "stability",
+    "aggregation": "aggregation",
+    "immunogenicity": "immunogenicity",
+    "expression": "expression",
+    "sterility": "sterility",
+    "phenotype_stability": "phenotype stability",
+    "organism_dose_response": "organism response",
+    "phytotoxicity": "phytotoxicity",
+    "fold_change": "fold change",
+    "ic50_um": "IC50",
+    "ic50": "IC50",
+}
 
 
 def metric_label(metric: str | None) -> str:
-    """ic50_um -> 'IC50 (µM)'; fold_change -> 'fold change'."""
+    """Machine metric -> human wording: ic50_um -> 'IC50 (µM)';
+    potency_pct -> 'potency (%)'; tensile_strength_mpa ->
+    'tensile strength (MPa)'. Unknown metrics prettify."""
     if not metric:
         return "value"
+    m = metric.strip().lower()
+    if m in _METRIC_WORDS:
+        base = _METRIC_WORDS[m]
+        suffix = m.split("_")[-1]
+        if suffix in _UNIT_SUFFIX and suffix not in ("ct",):
+            return f"{base} ({_UNIT_SUFFIX[suffix]})"
+        return base
     parts = metric.split("_")
     if len(parts) > 1 and parts[-1].lower() in _UNIT_SUFFIX:
         return (f"{'_'.join(parts[:-1]).upper()} "
