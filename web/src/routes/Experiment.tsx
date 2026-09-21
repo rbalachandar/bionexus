@@ -73,18 +73,29 @@ function PipelineCards({ cards }: { cards: ExperimentDetail['cards'] }) {
       </div>
       {brief.length > 0 && (
         <div className="card" style={{ padding: '8px 12px', marginTop: detailed.length ? 8 : 0 }}>
-          {brief.map((c) => (
-            <div key={c.key}
-              style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '2px 0' }}>
-              <span className={`chip ${c.state}`} style={{ fontSize: 10 }}>
-                {c.state === 'proposed' ? 'proposed' : 'not selected'}
-              </span>
-              <span style={{ fontSize: 12 }}>
-                <strong>{c.candidate ?? c.head}</strong>
-                {c.statement ? ` — ${c.statement.slice(0, 110)}${c.statement.length > 110 ? '…' : ''}` : ''}
-              </span>
-            </div>
-          ))}
+          {(['proposed', 'not_selected'] as const).map((state) => {
+            const group = brief.filter((c) => c.state === state)
+            if (group.length === 0) return null
+            return (
+              <div key={state} style={state === 'not_selected' ? { marginTop: 8 } : undefined}>
+                <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
+                  letterSpacing: '0.04em', marginBottom: 2 }}>
+                  {state === 'proposed'
+                    ? `Proposed — not yet tested (${group.length})`
+                    : `Designed but not selected (${group.length})`}
+                </div>
+                {group.map((c) => (
+                  <div key={c.key}
+                    style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '2px 0' }}>
+                    <span style={{ fontSize: 12 }}>
+                      <strong>{c.candidate ?? c.head}</strong>
+                      {c.statement ? ` — ${c.statement.slice(0, 110)}${c.statement.length > 110 ? '…' : ''}` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

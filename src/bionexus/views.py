@@ -397,8 +397,12 @@ def pipeline_cards(recs) -> list[dict]:
         cand = hp.get("candidate")
         head = cand or hid
         stmt = str(hp.get("statement", ""))
+        # the label is often a truncation of the statement itself —
+        # strip any leading duplication before cosmetics
+        if stmt.startswith(str(head)):
+            stmt = stmt[len(str(head)):].strip(" \u2014-·:")
         stmt = re.sub(rf"^{re.escape(str(head))}\s*(\([^)]*\))?\s*[—-]\s*",
-                      "", stmt)
+                      "", stmt) or head   # statement was the label itself
         verd = tested.get(hid) or {}
         verd_c = tested_by_cand.get(str(cand), {})
         # a candidate-keyed terminal verdict (orthogonal confirmation /
