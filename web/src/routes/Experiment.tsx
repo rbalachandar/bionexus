@@ -331,7 +331,8 @@ export default function Experiment() {
 
       {record.data && <RecordOfThisRun record={record.data} />}
       {record.data?.evidence?.curves?.length > 0 && (
-        <EvidenceCurves eid={d.id} curves={record.data.evidence.curves} />
+        <EvidenceCurves eid={d.id} curves={record.data.evidence.curves}
+          metric={d.program?.gate.metric ?? null} />
       )}
 
       <TraceLog eid={d.id} active={running} />

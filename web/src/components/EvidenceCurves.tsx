@@ -9,6 +9,23 @@ interface Curve {
 
 interface Pt { conc: number; value: number }
 
+const METRIC_WORDS: Record<string, string> = {
+  potency_pct: 'potency (%)', potency: 'potency',
+  tensile_strength_mpa: 'tensile strength (MPa)',
+  strength_mpa: 'strength (MPa)', density: 'density',
+  thermal_stability: 'thermal stability', stability: 'stability',
+  aggregation: 'aggregation', immunogenicity: 'immunogenicity',
+  expression: 'expression', sterility: 'sterility',
+  phenotype_stability: 'phenotype stability',
+  organism_dose_response: 'organism response',
+  phytotoxicity: 'phytotoxicity', ic50_um: 'IC50 (µM)', ic50: 'IC50',
+}
+
+function metricLabel(metric?: string | null): string {
+  if (!metric) return 'response'
+  return METRIC_WORDS[metric.toLowerCase()] ?? metric.replace(/_/g, ' ')
+}
+
 function parseConc(raw: string): number {
   // '0.5uM' / '10uM' / '500nM' / '2' — recorded well concentrations
   const m = raw.trim().toLowerCase().match(/^([\d.]+)\s*(nm|um|µm|m)?$/)
@@ -58,8 +75,9 @@ function parseCsv(text: string, candidate: string): Pt[] {
   return pts
 }
 
-function CurveSvg({ pts, verdict, width = 300, height = 170 }: {
-  pts: Pt[]; verdict: string | null; width?: number; height?: number
+function CurveSvg({ pts, verdict, ylabel = 'response', width = 300, height = 170 }: {
+  pts: Pt[]; verdict: string | null; ylabel?: string
+  width?: number; height?: number
 }) {
   const geom = useMemo(() => {
     const pad = { l: 38, r: 10, t: 12, b: 26 }
@@ -99,15 +117,16 @@ function CurveSvg({ pts, verdict, width = 300, height = 170 }: {
         <circle key={i} cx={geom.X(p.conc)} cy={geom.Y(p.value)} r="3" fill={color} />
       ))}
       <text x={width - 10} y={16} fontSize="9" textAnchor="end" fill="var(--muted)">
-        log conc (µM) vs response
+        log dose (µM) → {ylabel}
       </text>
     </svg>
   )
 }
 
-export default function EvidenceCurves({ eid, curves }: {
+export default function EvidenceCurves({ eid, curves, metric }: {
   eid: string
   curves: Curve[]
+  metric?: string | null
 }) {
   if (!curves.length) return null
   return (
@@ -115,7 +134,7 @@ export default function EvidenceCurves({ eid, curves }: {
       <h3 style={{ fontSize: 14, margin: '10px 0 6px' }}>Analyze — evidence</h3>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         {curves.map((c) => (
-          <CurveCard key={c.run_id} eid={eid} curve={c} />
+          <CurveCard key={c.run_id} eid={eid} curve={c} metric={metric} />
         ))}
       </div>
       <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>
@@ -126,7 +145,9 @@ export default function EvidenceCurves({ eid, curves }: {
   )
 }
 
-function CurveCard({ eid, curve }: { eid: string; curve: Curve }) {
+function CurveCard({ eid, curve, metric }: {
+  eid: string; curve: Curve; metric?: string | null
+}) {
   const q = useQuery({
     queryKey: ['evidence', eid, curve.run_id],
     queryFn: () =>
@@ -150,7 +171,8 @@ function CurveCard({ eid, curve }: { eid: string; curve: Curve }) {
       {q.isLoading ? (
         <div className="muted" style={{ fontSize: 11, width: 300, height: 170 }}>loading…</div>
       ) : (
-        <CurveSvg pts={pts} verdict={curve.verdict} />
+        <CurveSvg pts={pts} verdict={curve.verdict}
+          ylabel={metricLabel(metric)} />
       )}
     </div>
   )
