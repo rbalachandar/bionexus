@@ -247,9 +247,15 @@ function RecordOfThisRun({ record, onRereview }: {
   )
 }
 
-function TraceLog({ eid, active }: { eid: string; active: boolean }) {
+function TraceLog({ eid, active, revision }: {
+  eid: string
+  active: boolean
+  revision: number
+}) {
   const q = useQuery({
-    queryKey: ['trace', eid],
+    // revision (record fetch timestamp) in the key: whenever any other
+    // section updates, the trace re-pulls too — nothing goes stale
+    queryKey: ['trace', eid, revision],
     queryFn: () => api.trace(eid),
     enabled: true,
     refetchInterval: active ? 5000 : false,
@@ -274,12 +280,13 @@ export default function Experiment() {
     queryKey: ['experiment', eid],
     queryFn: () => api.experiment(eid!),
     enabled: !!eid,
+    refetchInterval: 10000,   // safety net if SSE drops; cheap read
   })
   const record = useQuery({
     queryKey: ['record', eid],
     queryFn: () => api.record(eid!),
     enabled: !!eid,
-  }) as { data: any | undefined; isLoading: boolean; isError: boolean }
+  }) as { data: any | undefined; isLoading: boolean; isError: boolean; dataUpdatedAt: number; isFetching: boolean; refetch: () => unknown }
   const status = q.data?.status
   const running = status === 'running' || status === 'executing'
   useCampaignEvents(eid, running)
@@ -342,14 +349,19 @@ export default function Experiment() {
       {record.data && <RecordOfThisRun record={record.data}
         onRereview={async () => {
           await fetch(`/api/experiments/${d.id}/rereview`, { method: 'POST' })
-          qc.invalidateQueries({ queryKey: ['record', eid] })
+          // everything on the page derives from these queries — refresh all
+          for (const key of [['record', eid], ['experiment', eid],
+            ['pipeline', eid], ['trace', eid]]) {
+            qc.invalidateQueries({ queryKey: key })
+          }
         }} />}
       {record.data?.evidence?.curves?.length > 0 && (
         <EvidenceCurves eid={d.id} curves={record.data.evidence.curves}
           metric={d.program?.gate.metric ?? null} />
       )}
 
-      <TraceLog eid={d.id} active={running} />
+      <TraceLog eid={d.id} active={running}
+        revision={record.dataUpdatedAt} />
     </main>
   )
 }
