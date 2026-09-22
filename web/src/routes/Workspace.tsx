@@ -265,12 +265,21 @@ export default function Workspace({ initialForm = false }: {
       {/* activity: free trees + groups */}
       {ws.trees.filter((t) => !t.is_linked).map((t) => (
         <section key={t.root_id} className="card" style={{ marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-            <Activity size={15} color="var(--brand)" />
-            <strong style={{ fontSize: 13 }}>{t.objective}</strong>
-            <span className="muted mono" style={{ fontSize: 11 }}>
-              {t.rollup[t.root_id] ?? 'open'}
-            </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
+              <Activity size={15} color="var(--brand)" />
+              <strong style={{ fontSize: 13, overflow: 'hidden',
+                textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.objective}</strong>
+              <span className="muted mono" style={{ fontSize: 11 }}>
+                {t.rollup[t.root_id] ?? 'open'}
+              </span>
+            </div>
+            <ArchiveButton small label="Delete" confirmLabel="Confirm delete?"
+              onConfirm={async () => {
+                await fetch(`/api/trees/${t.root_id}/archive`, { method: 'POST' })
+                qc.invalidateQueries({ queryKey: ['workspace'] })
+              }} />
           </div>
           <div style={{ marginLeft: 24 }}>
             <TreeBlock tree={t} />
