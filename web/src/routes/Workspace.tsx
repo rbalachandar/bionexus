@@ -55,17 +55,20 @@ function ProgramCard({ p, onDelete, deleting }: {
   const done = p.tally['completed'] ?? 0
   const running = p.tally['running'] ?? 0
   const total = Object.values(p.tally).reduce((a, b) => a + b, 0)
+  const [open, setOpen] = useState(false)
+  const leaves = p.links.filter((l) => l.role === 'leaf')
   return (
-    <div className="card" style={{ display: 'grid', gap: 10, cursor: 'pointer' }}
-      onClick={() => nav('/')}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--brand-border)')}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}>
+    <div className="card" style={{ display: 'grid', gap: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0,
+          cursor: 'pointer', flex: 1 }} onClick={() => setOpen((o) => !o)}>
           <Target size={15} color="var(--brand)" style={{ flex: 'none' }} />
           <strong style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {p.name}
           </strong>
+          <ChevronRight size={13} color="var(--muted)"
+            style={{ flex: 'none', transform: open ? 'rotate(90deg)' : 'none',
+              transition: 'transform var(--speed) var(--ease)' }} />
         </div>
         <button
           className={deleting === p.slug ? 'danger' : ''}
@@ -97,6 +100,26 @@ function ProgramCard({ p, onDelete, deleting }: {
           {total === 0 ? 'no experiments yet' : `${total} experiment(s)${done ? ` · ${done} completed` : ''}`}
         </span>
       </div>
+      {open && (
+        <div style={{ display: 'grid', gap: 4, borderTop: '1px solid var(--border)',
+          paddingTop: 8 }}>
+          {leaves.length === 0 && (
+            <span className="muted" style={{ fontSize: 12 }}>
+              no experiments yet — launch one from the New-program form
+            </span>
+          )}
+          {leaves.map((l) => (
+            <div key={l.eid} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <FlaskConical size={12} color="var(--brand)" />
+              <a href={`/experiments/${l.eid}`} style={{ fontSize: 12 }}
+                onClick={(e) => e.stopPropagation()}>
+                {l.question || l.eid}
+              </a>
+              <Badge status={l.status} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -210,7 +233,8 @@ export default function Workspace({ initialForm = false }: {
       {/* program grid */}
       {ws.programs.length > 0 ? (
         <div style={{ display: 'grid', gridTemplateColumns:
-          'repeat(auto-fill, minmax(340px, 1fr))', gap: 10, marginBottom: 'var(--s5)' }}>
+          'repeat(auto-fill, minmax(340px, 1fr))', gap: 10,
+          alignItems: 'start', marginBottom: 'var(--s5)' }}>
           {ws.programs.map((p) => (
             <ProgramCard key={p.slug} p={p} deleting={deleting}
               onDelete={(slug) => {
