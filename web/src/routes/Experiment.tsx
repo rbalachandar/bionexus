@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Activity } from 'lucide-react'
+import { Activity, Target } from 'lucide-react'
 import { api } from '../api/client'
 import type { ExperimentDetail } from '../api/client'
 import EvidenceCurves from '../components/EvidenceCurves'
@@ -116,14 +117,23 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
     <div style={{ margin: '10px 0' }}>
       <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
         letterSpacing: '0.04em', marginBottom: 4 }}>DMTA loop</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-        gap: 6, maxWidth: 720 }}>
-        {chips.map(([label, v]) => (
-          <div key={label} className="card"
-            style={{ padding: '6px 10px', display: 'grid', gap: 0 }}>
-            <span className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
-              letterSpacing: '0.04em' }}>{label}</span>
-            <span style={{ fontSize: 13 }}>{v}</span>
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 0,
+        maxWidth: 760, marginBottom: 'var(--s2)' }}>
+        {chips.map(([label, v], i) => (
+          <div key={label} style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+            <div style={{ flex: 1, border: '1px solid var(--border)',
+              background: 'var(--surface)', borderRadius: 'var(--radius)',
+              padding: '7px 12px' }}>
+              <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
+                letterSpacing: '0.05em' }}>
+                {i + 1} · {label}
+              </div>
+              <div style={{ fontSize: 12 }}>{v}</div>
+            </div>
+            {i < chips.length - 1 && (
+              <div style={{ width: 14, height: 1, background: 'var(--border-strong)',
+                flex: 'none' }} />
+            )}
           </div>
         ))}
       </div>
@@ -157,49 +167,66 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
   )
 }
 
-function RecordOfThisRun({ record, onRereview }: {
+function RecordOfThisRun({ record, onRereview, eid }: {
   record: Record<string, any>
   onRereview: () => Promise<void>
+  eid: string
 }) {
+  const [tab, setTab] = useState<'verdicts' | 'evidence' | 'reviewer' | 'trust'>('verdicts')
+  const tabs: [string, typeof tab, boolean][] = [
+    ['Verdicts', 'verdicts', !!record.verdicts],
+    ['Evidence', 'evidence', !!record.evidence],
+    ['Reviewer', 'reviewer', !!record.reviewer],
+    ['Trust', 'trust', !!record.trust],
+  ]
   return (
     <section>
       <h2 style={{ fontSize: 16 }}>{record.title ?? 'The record of this run'}</h2>
-      {record.verdicts && (
-        <>
-          <h3 style={{ fontSize: 14 }}>Analyze — verdicts</h3>
-          <table className="data-table">
-            <thead>
-              <tr>
-                {Object.keys(record.verdicts.rows[0] ?? {}).map((k) => (
-                  <th key={k}>{k}</th>
+      <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--border)',
+        marginBottom: 10 }}>
+        {tabs.map(([label, key, has]) => (
+          <button key={key} onClick={() => setTab(key)}
+            style={{
+              border: 'none', background: 'transparent', borderRadius: 0,
+              padding: '6px 12px', fontSize: 12, fontWeight: 500,
+              color: tab === key ? 'var(--brand)' : 'var(--muted)',
+              borderBottom: tab === key
+                ? '2px solid var(--brand)' : '2px solid transparent',
+              opacity: has ? 1 : 0.45,
+            }}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'verdicts' && record.verdicts && (
+        <table className="data-table">
+          <thead>
+            <tr>
+              {Object.keys(record.verdicts.rows[0] ?? {}).map((k) => (
+                <th key={k}>{k}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {record.verdicts.rows.map((r: any, i: number) => (
+              <tr key={i}>
+                {Object.values(r).map((v, j) => (
+                  <td key={j}>{String(v ?? '—')}</td>
                 ))}
               </tr>
-            </thead>
-            <tbody>
-              {record.verdicts.rows.map((r: any, i: number) => (
-                <tr key={i}>
-                  {Object.values(r).map((v, j) => (
-                    <td key={j}>{String(v ?? '—')}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="muted" style={{ fontSize: 12 }}>
-            {record.verdicts.claimed} claimed · {record.verdicts.abstained} abstained/refused
-          </p>
-        </>
+            ))}
+          </tbody>
+        </table>
       )}
-      {record.reviewer && (
+      {tab === 'verdicts' && record.verdicts && (
+        <p className="muted" style={{ fontSize: 12 }}>
+          {record.verdicts.claimed} claimed · {record.verdicts.abstained} abstained/refused
+        </p>
+      )}
+      {tab === 'evidence' && <EvidenceTable record={record} />}
+      {tab === 'reviewer' && record.reviewer && (
         <>
-          <h3 style={{ fontSize: 14, display: 'flex', gap: 10, alignItems: 'center' }}>
-            Reviewer pass
-            <button style={{ fontSize: 11 }} disabled={record.isFetching}
-              onClick={onRereview}>
-              Re-run review
-            </button>
-          </h3>
-          <p style={{ fontSize: 12, margin: '4px 0' }}>
+          <p style={{ fontSize: 13, margin: '4px 0' }}>
             {record.reviewer.findings?.length === 0 ? (
               <span style={{ color: 'var(--ok)' }}>
                 Independent review ({record.reviewer.review}): {record.reviewer.verdicts_reviewed} verdict(s) audited — no findings.
@@ -225,6 +252,12 @@ function RecordOfThisRun({ record, onRereview }: {
               </tbody>
             </table>
           )}
+          <div style={{ margin: '8px 0 0' }}>
+            <button style={{ fontSize: 11 }} disabled={record.isFetching}
+              onClick={onRereview}>
+              Re-run review
+            </button>
+          </div>
           {record.reviewer.llm && (
             <p className="muted" style={{ fontSize: 12 }}>
               LLM reviewer (advisory) — {record.reviewer.llm.model}:{' '}
@@ -235,15 +268,47 @@ function RecordOfThisRun({ record, onRereview }: {
           )}
         </>
       )}
-      {record.trust && (
-        <>
-          <h3 style={{ fontSize: 14 }}>Trust checks</h3>
-          {record.trust.checks.map((c: string, i: number) => (
-            <p key={i} className="muted" style={{ fontSize: 12, margin: '2px 0' }}>• {c}</p>
-          ))}
-        </>
+      {tab === 'trust' && record.trust && (
+        record.trust.checks.map((c: string, i: number) => (
+          <p key={i} className="muted" style={{ fontSize: 12, margin: '2px 0' }}>• {c}</p>
+        ))
       )}
     </section>
+  )
+}
+
+function EvidenceTable({ record }: { record: Record<string, any> }) {
+  return (
+    <>
+      {record.reviewer && (
+        <p style={{ fontSize: 13, margin: '4px 0' }}>
+          {record.reviewer.findings?.length === 0 ? (
+            <span style={{ color: 'var(--ok)' }}>
+              Independent review ({record.reviewer.review}): {record.reviewer.verdicts_reviewed} verdict(s) audited — no findings.
+            </span>
+          ) : (
+            <span style={{ color: record.reviewer.critical ? 'var(--bad)' : 'var(--warn)' }}>
+              {record.reviewer.critical} critical / {record.reviewer.warnings} warnings
+            </span>
+          )}
+        </p>
+      )}
+      {(record.reviewer?.findings?.length ?? 0) > 0 && (
+        <table className="data-table">
+          <thead>
+            <tr><th>severity</th><th>kind</th><th>candidate</th><th>detail</th></tr>
+          </thead>
+          <tbody>
+            {record.reviewer.findings.map((f: any, i: number) => (
+              <tr key={i}>
+                <td>{f.severity}</td><td>{f.kind}</td>
+                <td>{f.candidate ?? '—'}</td><td>{f.detail}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </>
   )
 }
 
@@ -299,20 +364,34 @@ export default function Experiment() {
   return (
     <main>
       <a href="/" className="muted" style={{ fontSize: 12 }}>← All experiments</a>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: '8px 0 2px' }}>
-        <h1 style={{ fontSize: 19, margin: 0 }}>{d.question}</h1>
-        <Chip status={d.status} />
-      </div>
-      <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-        ID: <code>{d.id}</code>
-      </p>
-      {d.program && (
-        <p style={{ fontSize: 13 }}>
-          <strong>Program: {d.program.name}</strong> · gate:{' '}
-          {d.program.gate.metric} {d.program.gate.symbol} {d.program.gate.value}{' '}
-          {d.program.gate.unit} · modality: {d.program.modality ?? '—'} · mode:{' '}
-          {d.program.mode}
+      <div style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg)',
+        padding: '10px 0 8px', borderBottom: '1px solid var(--border)',
+        marginBottom: 'var(--s3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <h1 style={{ fontSize: 'var(--fs-lg)', margin: 0, fontWeight: 650,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            flex: 1, minWidth: 0 }}>
+            {d.question}
+          </h1>
+          <Chip status={d.status} />
+        </div>
+        <p className="muted" style={{ fontSize: 11, margin: '2px 0 0' }}>
+          {d.program && <><strong style={{ color: 'var(--ink-2)' }}>{d.program.name}</strong> · </>}
+          <span className="mono">ID: {d.id}</span>
         </p>
+      </div>
+      {d.program && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 'var(--s2)' }}>
+          <span className="chip" style={{ background: 'var(--brand-tint)',
+            borderColor: 'var(--brand-border)', color: 'var(--brand)' }}>
+            <Target size={11} /> {d.program.name}
+          </span>
+          <span className="chip mono">
+            gate {d.program.gate.symbol} {d.program.gate.value} {d.program.gate.unit}
+          </span>
+          {d.program.modality && <span className="chip">{d.program.modality}</span>}
+          <span className="chip">{d.program.mode}</span>
+        </div>
       )}
       {d.spec && (
         <div className="card" style={{ margin: '8px 0', padding: '10px 14px', maxWidth: 780 }}>
@@ -346,7 +425,7 @@ export default function Experiment() {
       <PipelineCards cards={d.cards}
         budgetNote={d.spec ? `top-${d.spec.k} hypotheses/round × ${d.spec.rounds} round${d.spec.rounds > 1 ? 's' : ''}` : ''} />
 
-      {record.data && <RecordOfThisRun record={record.data}
+      {record.data && <RecordOfThisRun record={record.data} eid={d.id}
         onRereview={async () => {
           await fetch(`/api/experiments/${d.id}/rereview`, { method: 'POST' })
           // everything on the page derives from these queries — refresh all
