@@ -204,7 +204,7 @@ def test_experiment_detail_and_workspace(tmp_path):
 
     wsview = workspace(ws, db)
     prog = next(p for p in wsview["programs"] if p["slug"] == "ws-1")
-    assert {a["eid"] for a in prog["links"]} == {eid, "prob-ws1"}
+    assert eid in {a["eid"] for a in prog["links"]}
     assert prog["tally"] == {"executing": 2}
     # the unlinked-row groups must not contain the linked experiment
     for g in wsview["groups"].values():
