@@ -167,7 +167,13 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
   )
 }
 
-function RecordOfThisRun({ record, onRereview, eid }: {
+function RecordOfThisRun({ record, onRereview, eid, metric, gate }: {
+  record: Record<string, any>
+  onRereview: () => Promise<void>
+  eid: string
+  metric?: string | null
+  gate?: number | null
+}) {
   record: Record<string, any>
   onRereview: () => Promise<void>
   eid: string
@@ -237,6 +243,7 @@ function RecordOfThisRun({ record, onRereview, eid }: {
         ? empty('No evidence recorded — no plate files found for this run.')
         : record.evidence.curves?.length > 0
           ? <EvidenceCurves eid={eid} curves={record.evidence.curves}
+            metric={metric} gate={gate}
               metric={record.evidence.metric} />
           : empty(record.evidence.empty_note ??
               'No recorded plate files found for these runs.'))}
@@ -415,6 +422,8 @@ export default function Experiment() {
         budgetNote={d.spec ? `top-${d.spec.k} hypotheses/round × ${d.spec.rounds} round${d.spec.rounds > 1 ? 's' : ''}` : ''} />
 
       {record.data && <RecordOfThisRun record={record.data} eid={d.id}
+        metric={d.program?.gate.metric ?? null}
+        gate={d.program?.gate.value ?? null}
         onRereview={async () => {
           await fetch(`/api/experiments/${d.id}/rereview`, { method: 'POST' })
           // everything on the page derives from these queries — refresh all

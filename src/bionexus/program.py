@@ -227,6 +227,11 @@ def _migrate_from_provenance(ws) -> None:
         if not latest:
             continue
         slug = br.split("/", 1)[1]
+        # a deletion tombstone on the branch means the program was
+        # intentionally removed — never resurrect it
+        if any((r.decision or {}).get("kind") == "program_deleted"
+               for r in recs):
+            continue
         doc = latest.get("program", {})
         name = latest.get("name", latest.get("program_id", slug))
         ws.upsert_program(slug, name, doc)

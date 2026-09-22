@@ -258,3 +258,34 @@ def test_program_delete(tmp_path):
         "programs/del-api")
     assert any((r.decision or {}).get("kind") == "program_deleted"
                for r in recs)
+
+
+def test_delete_last_program_does_not_resurrect(tmp_path):
+    """Deleting the last program must not re-import tombstoned programs
+    from provenance (the auto-migration only runs on an empty table)."""
+    from fastapi.testclient import TestClient
+
+    from bionexus import program as program_cfg
+    from bionexus.api.app import app
+
+    with TestClient(app) as c:
+        # create two programs, delete both
+        for name in ("Resurrect-A", "Resurrect-B"):
+            r = c.post("/api/programs", json={
+                "program": name, "objective": "o", "custom": True,
+                "metric": "m", "direction": "max", "gate_value": 1,
+                "unit": "u", "mode": "autonomous"})
+            assert r.status_code == 200
+        assert c.delete("/api/programs/resurrect-a").status_code == 200
+        assert c.delete("/api/programs/resurrect-b").status_code == 200
+        # the table is now empty -> migration would run on next list:
+        # tombstoned programs must stay dead
+        slugs = [p["slug"] for p in program_cfg.list_programs()]
+        assert "resurrect-a" not in slugs
+        assert "resurrect-b" not in slugs
+        # and the workspace reports none of them (other tests' programs
+        # may legitimately exist in the shared data dir)
+        data = c.get("/api/programs").json()
+        slugs_ws = [p["slug"] for p in data["programs"]]
+        assert "resurrect-a" not in slugs_ws
+        assert "resurrect-b" not in slugs_ws
