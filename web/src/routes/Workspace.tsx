@@ -56,7 +56,7 @@ function ProgramCard({ p, onDelete, deleting }: {
   const running = p.tally['running'] ?? 0
   const total = Object.values(p.tally).reduce((a, b) => a + b, 0)
   const [collapsed, setCollapsed] = useState(false)
-  const leaves = p.links.filter((l) => l.role === 'leaf')
+  const leaves = p.links.filter((l) => l.role === 'leaf' && l.live !== false)
   const open = !collapsed
   return (
     <div className="card" style={{ display: 'grid', gap: 10 }}>
@@ -196,8 +196,7 @@ export default function Workspace({ initialForm = false }: {
   const ws = q.data!
   const runningTotal = Object.values(ws.groups)
     .flat().filter((e) => e.status === 'running').length
-  const verdictTotal = Object.values(ws.groups)
-    .flat().length
+  const verdictTotal = ws.experiments_total ?? 0
 
   return (
     <main>

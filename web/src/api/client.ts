@@ -44,6 +44,7 @@ export interface ProblemTreeOut {
 }
 
 export interface Workspace {
+  experiments_total?: number
   programs: ProgramOut[]
   trees: ProblemTreeOut[]
   groups: Record<'autonomous' | 'guided', { eid: string; question: string; status: string }[]>

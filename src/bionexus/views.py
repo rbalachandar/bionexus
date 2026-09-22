@@ -977,6 +977,7 @@ def workspace(wizard_store,
             {"eid": e["id"], "question": e["question"],
              "status": row_status(e)})
     return {"programs": programs, "trees": trees,
+            "experiments_total": len(live),
             "groups": {k: v for k, v in groups.items() if v},
             "archived": [{"eid": e["id"], "question": e["question"]}
                          for e in archived] if include_archived else []}
