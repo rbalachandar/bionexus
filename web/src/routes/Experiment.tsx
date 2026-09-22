@@ -179,6 +179,9 @@ function RecordOfThisRun({ record, onRereview, eid }: {
     ['Reviewer', 'reviewer', !!record.reviewer],
     ['Trust', 'trust', !!record.trust],
   ]
+  const empty = (msg: string) => (
+    <p className="muted" style={{ fontSize: 12 }}>{msg}</p>
+  )
   return (
     <section>
       <h2 style={{ fontSize: 16 }}>{record.title ?? 'The record of this run'}</h2>
@@ -186,96 +189,117 @@ function RecordOfThisRun({ record, onRereview, eid }: {
         marginBottom: 10 }}>
         {tabs.map(([label, key, has]) => (
           <button key={key} onClick={() => setTab(key)}
+            title={has ? undefined : 'nothing recorded for this section'}
             style={{
               border: 'none', background: 'transparent', borderRadius: 0,
               padding: '6px 12px', fontSize: 12, fontWeight: 500,
+              cursor: has ? 'pointer' : 'not-allowed',
               color: tab === key ? 'var(--brand)' : 'var(--muted)',
               borderBottom: tab === key
                 ? '2px solid var(--brand)' : '2px solid transparent',
-              opacity: has ? 1 : 0.45,
+              opacity: has ? 1 : 0.4,
             }}>
             {label}
           </button>
         ))}
       </div>
-      {tab === 'verdicts' && record.verdicts && (
-        <table className="data-table">
-          <thead>
-            <tr>
-              {Object.keys(record.verdicts.rows[0] ?? {}).map((k) => (
-                <th key={k}>{k}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {record.verdicts.rows.map((r: any, i: number) => (
-              <tr key={i}>
-                {Object.values(r).map((v, j) => (
-                  <td key={j}>{String(v ?? '—')}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      {tab === 'verdicts' && record.verdicts && (
-        <p className="muted" style={{ fontSize: 12 }}>
-          {record.verdicts.claimed} claimed · {record.verdicts.abstained} abstained/refused
-        </p>
-      )}
-      {tab === 'reviewer' && record.reviewer && (
-        <>
-          <p style={{ fontSize: 13, margin: '4px 0' }}>
-            {record.reviewer.findings?.length === 0 ? (
-              <span style={{ color: 'var(--ok)' }}>
-                Independent review ({record.reviewer.review}): {record.reviewer.verdicts_reviewed} verdict(s) audited — no findings.
-              </span>
-            ) : (
-              <span style={{ color: record.reviewer.critical ? 'var(--bad)' : 'var(--warn)' }}>
-                {record.reviewer.critical} critical / {record.reviewer.warnings} warnings
-              </span>
-            )}
-          </p>
-          {(record.reviewer.findings?.length ?? 0) > 0 && (
+
+      {tab === 'verdicts' && (!record.verdicts
+        ? empty('No verdicts recorded yet — nothing to audit.')
+        : (
+          <>
             <table className="data-table">
               <thead>
-                <tr><th>severity</th><th>kind</th><th>candidate</th><th>detail</th></tr>
+                <tr>
+                  {Object.keys(record.verdicts.rows[0] ?? {}).map((k) => (
+                    <th key={k}>{k}</th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
-                {record.reviewer.findings.map((f: any, i: number) => (
+                {record.verdicts.rows.map((r: any, i: number) => (
                   <tr key={i}>
-                    <td>{f.severity}</td><td>{f.kind}</td>
-                    <td>{f.candidate ?? '—'}</td><td>{f.detail}</td>
+                    {Object.values(r).map((v, j) => (
+                      <td key={j}>{String(v ?? '—')}</td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
-          <div style={{ margin: '8px 0 0' }}>
-            <button style={{ fontSize: 11 }} disabled={record.isFetching}
-              onClick={onRereview}>
-              Re-run review
-            </button>
-          </div>
-          {record.reviewer.llm && (
             <p className="muted" style={{ fontSize: 12 }}>
-              LLM reviewer (advisory) — {record.reviewer.llm.model}:{' '}
-              {record.reviewer.llm.unavailable
-                ? `unavailable (${record.reviewer.llm.unavailable})`
-                : `${record.reviewer.llm.flags?.length ?? 0} flag(s)`}
+              {record.verdicts.claimed} claimed ·{' '}
+              {record.verdicts.abstained} abstained/refused
             </p>
-          )}
-        </>
-      )}
-      {tab === 'trust' && record.trust && (
-        record.trust.checks.map((c: string, i: number) => (
-          <p key={i} className="muted" style={{ fontSize: 12, margin: '2px 0' }}>• {c}</p>
-        ))
-      )}
+          </>
+        ))}
+
+      {tab === 'evidence' && (!record.evidence
+        ? empty('No evidence recorded — no plate files found for this run.')
+        : record.evidence.curves?.length > 0
+          ? <EvidenceCurves eid={eid} curves={record.evidence.curves}
+              metric={record.evidence.metric} />
+          : empty(record.evidence.empty_note ??
+              'No recorded plate files found for these runs.'))}
+
+      {tab === 'reviewer' && (!record.reviewer
+        ? empty('No reviewer pass recorded for this run yet.')
+        : (
+          <>
+            <p style={{ fontSize: 13, margin: '4px 0' }}>
+              {record.reviewer.findings?.length === 0 ? (
+                <span style={{ color: 'var(--ok)' }}>
+                  Independent review ({record.reviewer.review}):{' '}
+                  {record.reviewer.verdicts_reviewed} verdict(s) audited — no findings.
+                </span>
+              ) : (
+                <span style={{ color: record.reviewer.critical
+                  ? 'var(--bad)' : 'var(--warn)' }}>
+                  {record.reviewer.critical} critical / {record.reviewer.warnings} warnings
+                </span>
+              )}
+            </p>
+            {(record.reviewer.findings?.length ?? 0) > 0 && (
+              <table className="data-table">
+                <thead>
+                  <tr><th>severity</th><th>kind</th><th>candidate</th><th>detail</th></tr>
+                </thead>
+                <tbody>
+                  {record.reviewer.findings.map((f: any, i: number) => (
+                    <tr key={i}>
+                      <td>{f.severity}</td><td>{f.kind}</td>
+                      <td>{f.candidate ?? '—'}</td><td>{f.detail}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {record.reviewer.llm && (
+              <p className="muted" style={{ fontSize: 12 }}>
+                LLM reviewer (advisory) — {record.reviewer.llm.model}:{' '}
+                {record.reviewer.llm.unavailable
+                  ? `unavailable (${record.reviewer.llm.unavailable})`
+                  : `${record.reviewer.llm.flags?.length ?? 0} flag(s)`}
+              </p>
+            )}
+            <div style={{ margin: '8px 0 0' }}>
+              <button style={{ fontSize: 11 }} disabled={record.isFetching}
+                onClick={onRereview}>
+                Re-run review
+              </button>
+            </div>
+          </>
+        ))}
+
+      {tab === 'trust' && (!record.trust
+        ? empty('No trust checks recorded for this run yet.')
+        : record.trust.checks.map((c: string, i: number) => (
+            <p key={i} className="muted" style={{ fontSize: 12, margin: '2px 0' }}>
+              • {c}
+            </p>
+          )))}
     </section>
   )
 }
-
 
 function TraceLog({ eid, active, revision }: {
   eid: string
@@ -399,11 +423,6 @@ export default function Experiment() {
             qc.invalidateQueries({ queryKey: key })
           }
         }} />}
-      {record.data?.evidence?.curves?.length > 0 && (
-        <EvidenceCurves eid={d.id} curves={record.data.evidence.curves}
-          metric={d.program?.gate.metric ?? null}
-          gate={d.program?.gate.value ?? null} />
-      )}
 
       <TraceLog eid={d.id} active={running}
         revision={record.dataUpdatedAt} />
