@@ -16,6 +16,36 @@ function tallyText(tally: Record<string, number>) {
   return parts.length ? parts.join(' · ') : 'no experiments yet'
 }
 
+function ArchiveButton({ label, confirmLabel, small, onConfirm }: {
+  label: string
+  confirmLabel: string
+  small?: boolean
+  onConfirm: () => Promise<void>
+}) {
+  const [armed, setArmed] = useState(false)
+  const [busy, setBusy] = useState(false)
+  return (
+    <button
+      className={armed ? 'danger' : ''}
+      style={{ fontSize: small ? 10 : 11, padding: small ? '1px 7px' : undefined,
+        whiteSpace: 'nowrap', flex: 'none' }}
+      disabled={busy}
+      title={armed ? 'click again to confirm' : undefined}
+      onClick={async () => {
+        if (armed) {
+          setBusy(true)
+          await onConfirm()
+          setBusy(false)
+        } else {
+          setArmed(true)
+          setTimeout(() => setArmed(false), 6000)
+        }
+      }}>
+      {armed ? confirmLabel : label}
+    </button>
+  )
+}
+
 function ProgramCard({ p, onDelete, deleting }: {
   p: ProgramOut
   onDelete: (slug: string) => void
@@ -229,6 +259,15 @@ export default function Workspace({ initialForm = false }: {
               {entries.length} experiment(s)
             </span>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 0 4px' }}>
+            <ArchiveButton small label="Archive all" confirmLabel={`Archive all ${entries.length}?`}
+              onConfirm={async () => {
+                for (const e of entries) {
+                  await fetch(`/api/experiments/${e.eid}/archive`, { method: 'POST' })
+                }
+                qc.invalidateQueries({ queryKey: ['workspace'] })
+              }} />
+          </div>
           {entries.map((e) => (
             <div key={e.eid}
               style={{ display: 'flex', alignItems: 'baseline', gap: 8,
@@ -236,6 +275,11 @@ export default function Workspace({ initialForm = false }: {
               <FlaskConical size={12} color="var(--brand)" />
               <a href={`/experiments/${e.eid}`} style={{ fontSize: 13 }}>{e.question || e.eid}</a>
               {statusChip(e.status)}
+              <ArchiveButton small label="✕" confirmLabel="archive?"
+                onConfirm={async () => {
+                  await fetch(`/api/experiments/${e.eid}/archive`, { method: 'POST' })
+                  qc.invalidateQueries({ queryKey: ['workspace'] })
+                }} />
             </div>
           ))}
         </section>
