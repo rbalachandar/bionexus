@@ -59,7 +59,8 @@ function ProgramCard({ p, onDelete, deleting }: {
   const leaves = p.links.filter((l) => l.role === 'leaf' && l.live !== false)
   const open = !collapsed
   return (
-    <div className="card" style={{ display: 'grid', gap: 10 }}>
+    <div className="card" style={{ display: 'grid', gap: 10, width: '100%',
+      marginBottom: 10, breakInside: 'avoid' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0,
           cursor: 'pointer', flex: 1 }} onClick={() => setCollapsed((c) => !c)}>
@@ -238,9 +239,8 @@ export default function Workspace({ initialForm = false }: {
 
       {/* program grid */}
       {ws.programs.length > 0 ? (
-        <div style={{ display: 'grid', gridTemplateColumns:
-          'repeat(auto-fill, minmax(340px, 1fr))', gap: 10,
-          alignItems: 'start', marginBottom: 'var(--s5)' }}>
+        <div style={{ columns: '3 340px', columnGap: 10,
+        marginBottom: 'var(--s5)' }}>
           {ws.programs.map((p) => (
             <ProgramCard key={p.slug} p={p} deleting={deleting}
               onDelete={(slug) => {
