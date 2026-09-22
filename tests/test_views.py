@@ -205,7 +205,7 @@ def test_experiment_detail_and_workspace(tmp_path):
     wsview = workspace(ws, db)
     prog = next(p for p in wsview["programs"] if p["slug"] == "ws-1")
     assert eid in {a["eid"] for a in prog["links"]}
-    assert prog["tally"] == {"executing": 2}
+    assert prog["tally"] == {"executing": 1}   # leaf links only
     # the unlinked-row groups must not contain the linked experiment
     for g in wsview["groups"].values():
         assert all(x["eid"] != eid for x in g)
