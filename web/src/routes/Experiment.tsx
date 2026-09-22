@@ -167,12 +167,13 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
   )
 }
 
-function RecordOfThisRun({ record, onRereview, eid, metric, gate }: {
+function RecordOfThisRun({ record, onRereview, eid, metric, gate, running }: {
   record: Record<string, any>
   onRereview: () => Promise<void>
   eid: string
   metric?: string | null
   gate?: number | null
+  running?: boolean
 }) {
   const [tab, setTab] = useState<'verdicts' | 'evidence' | 'reviewer' | 'trust'>('verdicts')
   const tabs: [string, typeof tab, boolean][] = [
@@ -182,7 +183,9 @@ function RecordOfThisRun({ record, onRereview, eid, metric, gate }: {
     ['Trust', 'trust', !!record.trust],
   ]
   const empty = (msg: string) => (
-    <p className="muted" style={{ fontSize: 12 }}>{msg}</p>
+    <p className="muted" style={{ fontSize: 12 }}>
+      {running ? `${msg} — the campaign is still running; this fills in as rounds complete.` : msg}
+    </p>
   )
   return (
     <section>

@@ -55,7 +55,9 @@ def replay_events(last_id: int, topics: set[str], limit: int = 200) -> list:
 
 
 def _branch_for(ws: WizardStore, eid: str) -> str | None:
-    """Problem id for an experiment: payload, else the program relation."""
+    """Problem id for an experiment: payload, else the program relation,
+    else resolved from the agent log (in-flight campaigns register the
+    problem branch only after the first round starts)."""
     row = ws.get(eid)
     if not row:
         return None
@@ -67,14 +69,27 @@ def _branch_for(ws: WizardStore, eid: str) -> str | None:
         for l in program_cfg.links_for(p["slug"]):
             if l["eid"] == eid and l.get("campaign_root"):
                 return l["campaign_root"]
+    log = ag.get("log")
+    if log and Path(log).is_file():
+        from bionexus.views import resolve_problem
+        pid = resolve_problem({}, Path(log))
+        if pid:
+            return pid
     return None
 
 
 def _snapshot(ws: WizardStore, prov) -> dict:
-    """Cheap state fingerprint: experiment rows + branch record counts."""
+    """State fingerprint: experiments (with LIVE log-derived status —
+    the registry status column never changes after 'executing') +
+    branch record counts."""
+    from bionexus.views import row_status
     rows = ws._conn.execute(
-        "SELECT id, status, updated_at FROM experiments").fetchall()
-    exps = {r[0]: {"status": r[1], "updated_at": r[2]} for r in rows}
+        "SELECT id, status, updated_at, payload FROM experiments").fetchall()
+    exps = {}
+    for r in rows:
+        exps[r[0]] = {"status": row_status(
+            {"payload": json.loads(r[3]) if r[3] else {},
+             "status": r[1]}), "updated_at": r[2]}
     counts: dict[str, int] = {}         # problem_id -> record count
     eid_by_pid: dict[str, str] = {}
     if prov is not None:

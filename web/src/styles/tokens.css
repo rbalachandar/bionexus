@@ -69,6 +69,7 @@
 html { -webkit-font-smoothing: antialiased; }
 body {
   margin: 0;
+  zoom: 1.12;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-ui);
