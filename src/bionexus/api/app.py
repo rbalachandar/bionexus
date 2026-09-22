@@ -190,8 +190,9 @@ def launch_program(slug: str) -> dict:
         raise HTTPException(400, "guided programs launch via the wizard")
     from bionexus.api.launch import spawn_campaign
     eid = spawn_campaign(doc, prow["name"])
-    publish_workspace("experiment_added", {"eid": eid})
-    return {"eid": eid}
+    if eid:
+        publish_workspace("experiment_added", {"eid": eid})
+    return {"eid": eid, "decomposed": eid is None}
 
 
 # ---------------------------------------------------------- experiments

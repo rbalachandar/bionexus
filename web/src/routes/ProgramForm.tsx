@@ -37,6 +37,7 @@ export default function ProgramForm({ onLaunched, onDone }: {
   const [k, setK] = useState(2)
   const [rounds, setRounds] = useState(2)
   const [candidates, setCandidates] = useState('')
+  const [decompose, setDecompose] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -50,7 +51,7 @@ export default function ProgramForm({ onLaunched, onDone }: {
       const doc = {
         program: name, objective, modality: effectiveModality, metric,
         unit, direction, gate_value: gateValue, mode, autonomy,
-        k, rounds, candidates,
+        k, rounds, candidates, decompose: decompose && mode === 'autonomous',
       }
       const r = await fetch('/api/programs', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -157,6 +158,13 @@ export default function ProgramForm({ onLaunched, onDone }: {
                 onChange={(e) => setRounds(Number(e.target.value))} style={inputStyle} />
             </label>
           </div>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center',
+              marginTop: 4 }}>
+              <input type="checkbox" checked={decompose}
+                onChange={(e) => setDecompose(e.target.checked)} />
+              Let the agent split the objective into sub-problems (problem
+              tree, runs longer)
+            </label>
           <label style={{ display: 'block', marginTop: 8 }}>
             Candidates (optional — empty = agent proposes them)
             <input value={candidates} onChange={(e) => setCandidates(e.target.value)}

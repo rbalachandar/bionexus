@@ -54,12 +54,17 @@ def build_cfg(doc: dict) -> dict:
     return cfg
 
 
-def spawn_campaign(doc: dict, program_name: str) -> str:
-    """Spawn the bn-auto subprocess + record registry/spec/links.
-    Returns the campaign eid."""
+def spawn_campaign(doc: dict, program_name: str) -> str | None:
+    """Spawn the campaign subprocess + record registry/spec/links.
+    decompose=True runs the plan flow instead: the agent splits the
+    objective into a guarded problem tree and executes the leaves
+    (each leaf links to the program via BN_PROGRAM). Returns the
+    campaign eid, or None for decomposed launches."""
     from bionexus import program as program_cfg
     from bionexus.serve import save_campaign_index
     ensure_dirs()
+    if doc.get("decompose"):
+        return _spawn_plan(doc, program_name)
     cid = f"cmp-{int(time.time())}-{uuid.uuid4().hex[:4]}"
     cfg = build_cfg(doc)
     cfgpath = CAMPAIGN_DIR / f"{cid}.json"
@@ -103,6 +108,24 @@ def spawn_campaign(doc: dict, program_name: str) -> str:
                 "objective": objective, "log": str(logf)}
     save_campaign_index(idx)
     return cid
+
+
+def _spawn_plan(doc: dict, program_name: str) -> None:
+    """Decompose launch: bn plan (agent tree decomposition) runs the
+    leaves; BN_PROGRAM links every leaf to the program."""
+    import os as _os
+    cands = ",".join(c.strip() for c in
+                     (doc.get("candidates") or "").split(",") if c.strip())
+    cmd = [sys.executable, "-m", "bionexus.cli", "plan",
+           "--objective", doc.get("objective") or "optimize",
+           "--model", "anthropic", "--run", "--autonomy", "act"]
+    if cands:
+        cmd += ["--candidates", cands]
+    logf = CAMPAIGN_DIR / f"plan-{int(time.time())}.log"
+    env = {**_os.environ, "BN_PROGRAM": program_name,
+           "PYTHONPATH": str(Path.cwd() / "src")}
+    subprocess.Popen(cmd, stdout=open(logf, "ab", buffering=0),
+                     stderr=subprocess.STDOUT, cwd=str(Path.cwd()), env=env)
 
 
 def campaign_index() -> dict:

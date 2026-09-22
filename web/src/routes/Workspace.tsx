@@ -87,9 +87,9 @@ function ProgramCard({ p, onDelete, deleting }: {
           {deleting === p.slug ? 'Confirm?' : ''}
         </button>
       </div>
-      <div className="muted" style={{ fontSize: 12, overflow: 'hidden',
-        textOverflow: 'ellipsis', display: 'flex', gap: 6 }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div className="muted" style={{ fontSize: 12 }}>
+        <span style={{ display: '-webkit-box', WebkitLineClamp: 3,
+          WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {p.objective ?? p.gate_summary}
         </span>
       </div>

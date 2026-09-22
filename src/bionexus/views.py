@@ -920,6 +920,8 @@ def workspace(wizard_store,
         tally: dict[str, int] = {}
         for l in links:
             linked_eids.add(l["eid"])
+            if l["role"] != "leaf":
+                continue               # campaign roots are containers
             e = rows_by_eid.get(l["eid"])
             st = row_status(e) if e else (l.get("status") or "archived")
             tally[st] = tally.get(st, 0) + 1

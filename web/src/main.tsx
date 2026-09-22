@@ -17,8 +17,9 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ minHeight: '100vh' }}>
       <header style={{
-        background: 'var(--ink)', color: '#fff',
-        padding: '0 28px', height: 52,
+        background: '#1e293b', color: '#fff',
+        padding: '0 40px', height: 54,
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
         display: 'flex', alignItems: 'center', gap: 28,
       }}>
         <Link to="/" style={{ display: 'inline-flex', gap: 9, alignItems: 'center' }}>
@@ -44,7 +45,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           agents run the scientific method
         </span>
       </header>
-      <main style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 28px 48px' }}>
+      <main style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 40px 48px' }}>
         <HaltBanner />
         {children}
       </main>
