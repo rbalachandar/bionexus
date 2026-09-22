@@ -55,13 +55,14 @@ function ProgramCard({ p, onDelete, deleting }: {
   const done = p.tally['completed'] ?? 0
   const running = p.tally['running'] ?? 0
   const total = Object.values(p.tally).reduce((a, b) => a + b, 0)
-  const [open, setOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const leaves = p.links.filter((l) => l.role === 'leaf')
+  const open = !collapsed
   return (
     <div className="card" style={{ display: 'grid', gap: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0,
-          cursor: 'pointer', flex: 1 }} onClick={() => setOpen((o) => !o)}>
+          cursor: 'pointer', flex: 1 }} onClick={() => setCollapsed((c) => !c)}>
           <Target size={15} color="var(--brand)" style={{ flex: 'none' }} />
           <strong style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {p.name}

@@ -15,21 +15,39 @@ const qc = new QueryClient({
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px 16px' }}>
-      <header style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 18 }}>
-        <Link to="/" style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
-          <img src="/bionexus-mark.png" alt="" width={30} height={30} />
-          <span style={{ fontSize: 17, fontWeight: 700 }}>bionexus</span>
+    <div style={{ minHeight: '100vh' }}>
+      <header style={{
+        background: 'var(--ink)', color: '#fff',
+        padding: '0 28px', height: 52,
+        display: 'flex', alignItems: 'center', gap: 28,
+      }}>
+        <Link to="/" style={{ display: 'inline-flex', gap: 9, alignItems: 'center' }}>
+          <img src="/bionexus-mark.png" alt="" width={26} height={26} />
+          <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>bionexus</span>
         </Link>
-        <nav style={{ display: 'flex', gap: 14, fontSize: 13 }}>
-          <Link to="/">Workspace</Link>
+        <nav style={{ display: 'flex', gap: 4, fontSize: 13 }}>
+          <Link to="/" style={{ color: '#cbd5e1', padding: '5px 12px',
+            borderRadius: 6 }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
+              e.currentTarget.style.color = '#fff'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.color = '#cbd5e1'
+            }}>
+            Workspace
+          </Link>
         </nav>
-        <span className="muted" style={{ fontSize: 12, marginLeft: 'auto' }}>
+        <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic',
+          marginLeft: 'auto' }}>
           agents run the scientific method
         </span>
       </header>
-      <HaltBanner />
-      {children}
+      <main style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 28px 48px' }}>
+        <HaltBanner />
+        {children}
+      </main>
     </div>
   )
 }
