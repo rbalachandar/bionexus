@@ -56,10 +56,33 @@ export default function Wizard() {
     return r.json()
   }
 
+  const StepBar = ({ current }: { current: number }) => (
+    <div style={{ display: 'flex', gap: 4, marginBottom: 14, maxWidth: 640 }}>
+      {[1, 2, 3, 4, 5, 6].map((n) => (
+        <div key={n} style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{
+            height: 3, borderRadius: 2, marginBottom: 4,
+            background: n < current ? 'var(--brand)'
+              : n === current ? 'var(--brand)' : 'var(--border)',
+            opacity: n === current ? 1 : n < current ? 0.55 : 1,
+          }} />
+          <span className="muted" style={{
+            fontSize: 10,
+            color: n === current ? 'var(--brand)' : 'var(--muted)',
+            fontWeight: n === current ? 600 : 400,
+          }}>
+            {['problem', 'design', 'readiness', 'execute', 'upload', 'analyze'][n - 1]}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+
   // step 1
   if (!sid) {
     return (
       <main>
+        <StepBar current={1} />
         <h1 style={{ fontSize: 20 }}>1 · Define the problem</h1>
         {program && (
           <p className="muted" style={{ fontSize: 12 }}>
@@ -103,6 +126,7 @@ export default function Wizard() {
   if (step === 2) {
     return (
       <main>
+        <StepBar current={ 2 } />
         <h1 style={{ fontSize: 20 }}>2 · Design the experiment</h1>
         <p className="muted" style={{ fontSize: 12 }}>
           session {sid} · experiment {eid}
@@ -161,6 +185,7 @@ export default function Wizard() {
     const blocked = readiness?.verdict === 'blocked'
     return (
       <main>
+        <StepBar current={ 3 } />
         <h1 style={{ fontSize: 20 }}>3 · Readiness check</h1>
         <div className="card" style={{ maxWidth: 640 }}>
           <h3 style={{ margin: '0 0 8px' }}>
@@ -191,6 +216,7 @@ export default function Wizard() {
   if (step === 4) {
     return (
       <main>
+        <StepBar current={ 4 } />
         <h1 style={{ fontSize: 20 }}>4 · Execute</h1>
         <div className="card" style={{ maxWidth: 640 }}>
           <p>
@@ -212,6 +238,7 @@ export default function Wizard() {
   if (step === 5) {
     return (
       <main>
+        <StepBar current={ 5 } />
         <h1 style={{ fontSize: 20 }}>5 · Upload instrument export</h1>
         <div className="card" style={{ maxWidth: 640, display: 'grid', gap: 10 }}>
           <input type="file" accept=".csv,.tsv,.xlsx"

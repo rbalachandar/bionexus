@@ -79,8 +79,9 @@ export default function ProgramForm({ onLaunched, onDone }: {
   const canLaunch = name.trim() && objective.trim() && !busy
 
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
-      <div className="card" style={{ display: 'grid', gap: 10, maxWidth: 720 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px',
+      gap: 14, alignItems: 'start' }}>
+      <div className="card" style={{ display: 'grid', gap: 10 }}>
         <label>
           Program name *
           <input value={name} onChange={(e) => setName(e.target.value)}
@@ -174,6 +175,25 @@ export default function ProgramForm({ onLaunched, onDone }: {
               ? 'spawns the campaign immediately and opens it'
               : 'opens the guided wizard'}
           </span>
+        </div>
+      </div>
+
+      <div className="card" style={{
+        position: 'sticky', top: 16, display: 'grid', gap: 8,
+        borderColor: 'var(--brand-border)', background: 'var(--brand-tint)' }}>
+        <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
+          letterSpacing: '0.05em' }}>Launch summary</div>
+        <div style={{ fontSize: 12, display: 'grid', gap: 5 }}>
+          <div><strong>{name || '—'}</strong></div>
+          <div className="muted">{objective || 'objective not set'}</div>
+          <div className="hairline" style={{ margin: 0 }} />
+          <div>gate: <span className="mono">{metric} {direction === 'min' ? '≤' : '≥'} {gateValue} {unit}</span></div>
+          <div>modality: {effectiveModality || '—'}</div>
+          <div>mode: {mode} · autonomy: {autonomy}</div>
+          <div>budget: top-{k}/round × {rounds} round{rounds > 1 ? 's' : ''}</div>
+          <div>candidates: {candidates.trim()
+            ? `${candidates.split(',').filter((s) => s.trim()).length} named`
+            : 'agent-proposed'}</div>
         </div>
       </div>
     </div>
