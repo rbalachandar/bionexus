@@ -205,6 +205,10 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             metric=_con.name,
             direction="max" if ">=" in (_con.description or "") else "min",
             threshold=float(_con.limit))
+        if _crit.metric not in ("ic50_um", "value") and lab is not None \
+                and hasattr(lab, "set_property_gate"):
+            lab.set_property_gate(_crit.metric, _crit.direction,
+                                  _crit.threshold)
 
     # 1. rounds: select -> design+submit -> analyze; each round feeds the next
     synth_cache: dict[str, dict] = {}
@@ -529,14 +533,23 @@ def _export_instrument_file(inbox: Path, run_id: str, candidate: str,
     rng = random.Random(f"{run_id}:{candidate}:v{noise_variant}")
     n_rep = getattr(lab, "replicates", 3) if lab is not None else 3
     lines = ["Well ID,Compound,Conc (uM),RFU", "A1,ctrl,10,100", "A2,ctrl,10,104"]
+    # property-gate campaigns: the export reads the lab's property true
+    # value (dose-independent, straddles the gate) — NOT the IC50 curve
+    gate = getattr(lab, "_property_gate", None) if lab is not None else None
+    prop_mode = bool(gate)
+    true_prop = lab._property_true_value(run_id, candidate) \
+        if prop_mode else None
     true_ic50 = None
     if lab is not None and hasattr(lab, "true_ic50_um"):
         true_ic50 = lab.true_ic50_um(run_id, candidate)
     well = 3
     for c in concentrations:
         conc = float(str(c).rstrip("uM"))
-        base = (500.0 / (1.0 + true_ic50 / max(conc, 1e-6))) if true_ic50 \
-            else 110 + concentrations.index(c) * 90
+        if prop_mode:
+            base = true_prop
+        else:
+            base = (500.0 / (1.0 + true_ic50 / max(conc, 1e-6))) if true_ic50 \
+                else 110 + concentrations.index(c) * 90
         for _ in range(n_rep):          # real plates have replicate wells
             noise = rng.gauss(0.0, max(4.0, base * 0.05))
             lines.append(f"A{well},{candidate},{c},{max(0.0, base + noise):.1f}")

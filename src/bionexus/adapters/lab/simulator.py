@@ -133,10 +133,31 @@ class SimulatorLab:
         key = self._compound_key(protocol_id, sample_id)
         return (key % 100) < self.interference_rate * 100
 
+    def set_property_gate(self, metric: str, direction: str,
+                          threshold: float) -> None:
+        """When the campaign's gate is a property metric (potency, Tm,
+        expression...), simulate candidate true values that STRADDLE the
+        gate — roughly half pass, half fail — instead of arbitrary
+        dose-response numbers. Dose-independent readout."""
+        self._property_gate = {"metric": metric, "direction": direction,
+                               "threshold": float(threshold)}
+
+    def _property_true_value(self, protocol_id: str, sample_id: str) -> float:
+        # seeded by CANDIDATE only: a construct's true property value is
+        # fixed — replicate/confirmation runs sample noise around it
+        key = self._compound_key("property-truth", sample_id)
+        gate = self._property_gate["threshold"]
+        # spread candidates across 0.55x–1.45x of the gate, seeded/stable
+        factor = 0.55 + (key % 1000) / 1000.0 * 0.9
+        return gate * factor
+
     def fetch_results(self, run_id: str) -> AssayResult:
         protocol = self._runs[run_id]
         assay = protocol.assay_type.value
         max_resp, unit, noise = ASSAY_PROFILE.get(assay, ASSAY_PROFILE["custom"])
+        gate = getattr(self, "_property_gate", None)
+        property_mode = bool(gate and gate["metric"] not in
+                             ("ic50_um", "value"))
         measurements: list[Measurement] = []
         controls_passed = True
 
@@ -148,8 +169,14 @@ class SimulatorLab:
             draws = []
             for rep in range(1, self.replicates + 1):
                 rng = random.Random(self._compound_key(run_id + f"r{rep}", sample.sample_id + str(conc)))
-                value = self._response(assay, max_resp, conc, ic50, sample.sample_id, run_id)
-                value += rng.gauss(0, noise)
+                if property_mode and not is_control:
+                    # property readout: dose-independent true value per
+                    # candidate, stable across replicates + noise
+                    true_v = self._property_true_value(run_id, sample.sample_id)
+                    value = true_v + rng.gauss(0, noise)
+                else:
+                    value = self._response(assay, max_resp, conc, ic50, sample.sample_id, run_id)
+                    value += rng.gauss(0, noise)
                 draws.append(value)
             value = sorted(draws)[len(draws) // 2]  # median of replicates
             flags: list[MeasurementFlag] = []
