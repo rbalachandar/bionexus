@@ -75,8 +75,9 @@ function parseCsv(text: string, candidate: string): Pt[] {
   return pts
 }
 
-function CurveSvg({ pts, verdict, ylabel = 'response', width = 300, height = 170 }: {
-  pts: Pt[]; verdict: string | null; ylabel?: string
+function CurveSvg({ pts, verdict, gate, gateLabel, ylabel = 'response', width = 300, height = 170 }: {
+  pts: Pt[]; verdict: string | null; gate?: number | null
+  gateLabel?: string | null; ylabel?: string
   width?: number; height?: number
 }) {
   const geom = useMemo(() => {
@@ -85,7 +86,9 @@ function CurveSvg({ pts, verdict, ylabel = 'response', width = 300, height = 170
     const xs = pts.map((p) => Math.log10(p.conc))
     const ys = pts.map((p) => p.value)
     const x0 = Math.min(...xs) - 0.15, x1 = Math.max(...xs) + 0.15
-    const y0 = Math.min(0, ...ys), y1 = Math.max(...ys) * 1.15 || 1
+    const gateVal = typeof gate === 'number' && Number.isFinite(gate) ? gate : null
+    const y0 = Math.min(0, ...ys, gateVal ?? 0)
+    const y1 = Math.max(...ys, gateVal ?? 0) * 1.15 || 1
     const X = (v: number) =>
       pad.l + ((Math.log10(v) - x0) / (x1 - x0 || 1)) * (width - pad.l - pad.r)
     const Y = (v: number) =>
@@ -93,7 +96,8 @@ function CurveSvg({ pts, verdict, ylabel = 'response', width = 300, height = 170
     const path = pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.conc)},${Y(p.value)}`).join(' ')
     const ticks = [0.1, 1, 10, 100, 1000].filter(
       (t) => Math.log10(t) >= x0 && Math.log10(t) <= x1)
-    return { X, Y, path, y0, y1, ticks, pts }
+    const gateY = gateVal !== null ? Y(gateVal) : null
+    return { X, Y, path, y0, y1, ticks, pts, gateY }
   }, [pts, width, height])
 
   if (!geom) return <span className="muted" style={{ fontSize: 11 }}>no plottable wells</span>
@@ -112,6 +116,18 @@ function CurveSvg({ pts, verdict, ylabel = 'response', width = 300, height = 170
           {v.toFixed(0)}
         </text>
       ))}
+      {geom.gateY !== null && (
+        <g>
+          <line x1={34} y1={geom.gateY} x2={width - 10} y2={geom.gateY}
+            stroke="var(--warn)" strokeDasharray="4 3" strokeWidth="1" />
+          <text x={width - 10} y={geom.gateY - 4} fontSize="8.5"
+            textAnchor="end" fill="var(--warn)">
+            {gateLabel ?? 'gate'}
+          </text>
+        </g>
+      )}
+      <path d={`${geom.path} L${geom.X(pts[pts.length - 1].conc)},${height - 26} L${geom.X(pts[0].conc)},${height - 26} Z`}
+        fill={color} opacity="0.07" stroke="none" />
       <path d={geom.path} fill="none" stroke={color} strokeWidth="1.6" />
       {geom.pts.map((p, i) => (
         <circle key={i} cx={geom.X(p.conc)} cy={geom.Y(p.value)} r="3" fill={color} />
@@ -123,10 +139,11 @@ function CurveSvg({ pts, verdict, ylabel = 'response', width = 300, height = 170
   )
 }
 
-export default function EvidenceCurves({ eid, curves, metric }: {
+export default function EvidenceCurves({ eid, curves, metric, gate }: {
   eid: string
   curves: Curve[]
   metric?: string | null
+  gate?: number | null
 }) {
   if (!curves.length) return null
   return (
@@ -134,7 +151,8 @@ export default function EvidenceCurves({ eid, curves, metric }: {
       <h3 style={{ fontSize: 14, margin: '10px 0 6px' }}>Analyze — evidence</h3>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         {curves.map((c) => (
-          <CurveCard key={c.run_id} eid={eid} curve={c} metric={metric} />
+          <CurveCard key={c.run_id} eid={eid} curve={c} metric={metric}
+            gate={gate} />
         ))}
       </div>
       <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>
@@ -145,8 +163,8 @@ export default function EvidenceCurves({ eid, curves, metric }: {
   )
 }
 
-function CurveCard({ eid, curve, metric }: {
-  eid: string; curve: Curve; metric?: string | null
+function CurveCard({ eid, curve, metric, gate }: {
+  eid: string; curve: Curve; metric?: string | null; gate?: number | null
 }) {
   const q = useQuery({
     queryKey: ['evidence', eid, curve.run_id],
@@ -171,7 +189,8 @@ function CurveCard({ eid, curve, metric }: {
       {q.isLoading ? (
         <div className="muted" style={{ fontSize: 11, width: 300, height: 170 }}>loading…</div>
       ) : (
-        <CurveSvg pts={pts} verdict={curve.verdict}
+        <CurveSvg pts={pts} verdict={curve.verdict} gate={gate}
+          gateLabel={metric ? `gate ${metric}` : 'gate'}
           ylabel={metricLabel(metric)} />
       )}
     </div>

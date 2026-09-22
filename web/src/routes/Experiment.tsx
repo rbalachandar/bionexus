@@ -223,7 +223,6 @@ function RecordOfThisRun({ record, onRereview, eid }: {
           {record.verdicts.claimed} claimed · {record.verdicts.abstained} abstained/refused
         </p>
       )}
-      {tab === 'evidence' && <EvidenceTable record={record} />}
       {tab === 'reviewer' && record.reviewer && (
         <>
           <p style={{ fontSize: 13, margin: '4px 0' }}>
@@ -277,40 +276,6 @@ function RecordOfThisRun({ record, onRereview, eid }: {
   )
 }
 
-function EvidenceTable({ record }: { record: Record<string, any> }) {
-  return (
-    <>
-      {record.reviewer && (
-        <p style={{ fontSize: 13, margin: '4px 0' }}>
-          {record.reviewer.findings?.length === 0 ? (
-            <span style={{ color: 'var(--ok)' }}>
-              Independent review ({record.reviewer.review}): {record.reviewer.verdicts_reviewed} verdict(s) audited — no findings.
-            </span>
-          ) : (
-            <span style={{ color: record.reviewer.critical ? 'var(--bad)' : 'var(--warn)' }}>
-              {record.reviewer.critical} critical / {record.reviewer.warnings} warnings
-            </span>
-          )}
-        </p>
-      )}
-      {(record.reviewer?.findings?.length ?? 0) > 0 && (
-        <table className="data-table">
-          <thead>
-            <tr><th>severity</th><th>kind</th><th>candidate</th><th>detail</th></tr>
-          </thead>
-          <tbody>
-            {record.reviewer.findings.map((f: any, i: number) => (
-              <tr key={i}>
-                <td>{f.severity}</td><td>{f.kind}</td>
-                <td>{f.candidate ?? '—'}</td><td>{f.detail}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </>
-  )
-}
 
 function TraceLog({ eid, active, revision }: {
   eid: string
@@ -436,7 +401,8 @@ export default function Experiment() {
         }} />}
       {record.data?.evidence?.curves?.length > 0 && (
         <EvidenceCurves eid={d.id} curves={record.data.evidence.curves}
-          metric={d.program?.gate.metric ?? null} />
+          metric={d.program?.gate.metric ?? null}
+          gate={d.program?.gate.value ?? null} />
       )}
 
       <TraceLog eid={d.id} active={running}
