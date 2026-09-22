@@ -174,10 +174,6 @@ function RecordOfThisRun({ record, onRereview, eid, metric, gate }: {
   metric?: string | null
   gate?: number | null
 }) {
-  record: Record<string, any>
-  onRereview: () => Promise<void>
-  eid: string
-}) {
   const [tab, setTab] = useState<'verdicts' | 'evidence' | 'reviewer' | 'trust'>('verdicts')
   const tabs: [string, typeof tab, boolean][] = [
     ['Verdicts', 'verdicts', !!record.verdicts],
@@ -243,8 +239,7 @@ function RecordOfThisRun({ record, onRereview, eid, metric, gate }: {
         ? empty('No evidence recorded — no plate files found for this run.')
         : record.evidence.curves?.length > 0
           ? <EvidenceCurves eid={eid} curves={record.evidence.curves}
-            metric={metric} gate={gate}
-              metric={record.evidence.metric} />
+            metric={metric} gate={gate} />
           : empty(record.evidence.empty_note ??
               'No recorded plate files found for these runs.'))}
 
