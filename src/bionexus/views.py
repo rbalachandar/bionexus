@@ -912,6 +912,20 @@ def workspace(wizard_store,
         f'{t["root_id"]}-{leaf["id"]}' in live_leaf_pids
         for leaf in _leaves(t))]
 
+    # map leaf -> experiment eid so the FE can link sub-problems
+    pid_to_eid = {}
+    for e in live:
+        pid = (e["payload"].get("agent") or {}).get("problem_id")
+        if pid:
+            pid_to_eid[pid] = e["id"]
+    for t in trees:
+        for leaf in _leaves(t):
+            for pid in [f'{t["root_id"]}-{leaf["id"]}',
+                        f'{t["root_id"]}-{leaf["id"]}-{leaf["id"]}']:
+                if pid in pid_to_eid:
+                    t.setdefault("leaf_stats", {}).setdefault(
+                        leaf["id"], {})["eid"] = pid_to_eid[pid]
+
     programs = []
     linked_eids: set = set()
     for p in program_cfg.list_programs():

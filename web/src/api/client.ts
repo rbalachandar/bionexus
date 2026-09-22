@@ -27,6 +27,7 @@ export interface TreeLeafStat {
   ok: number
   blocked: string | null
   pids: string[]
+  eid?: string
 }
 
 export interface ProblemTreeOut {

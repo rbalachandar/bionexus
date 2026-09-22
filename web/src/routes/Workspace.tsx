@@ -103,7 +103,7 @@ function ProgramCard({ p, onDelete, deleting }: {
       </div>
       {open && (
         <div style={{ display: 'grid', gap: 4, borderTop: '1px solid var(--border)',
-          paddingTop: 8 }}>
+          paddingTop: 8, maxHeight: 180, overflowY: 'auto' }}>
           {leaves.length === 0 && (
             <span className="muted" style={{ fontSize: 12 }}>
               no experiments yet — launch one from the New-program form
@@ -141,7 +141,13 @@ function TreeBlock({ tree }: { tree: ProblemTreeOut }) {
           ) : (
             <ChevronRight size={13} color="var(--muted)" />
           )}
-          <span style={{ fontSize: 13 }}>{n.objective}</span>
+          {isLeaf && stat?.eid ? (
+            <a href={`/experiments/${stat.eid}`} style={{ fontSize: 13 }}>
+              {n.objective}
+            </a>
+          ) : (
+            <span style={{ fontSize: 13 }}>{n.objective}</span>
+          )}
           <span className="muted mono" style={{ fontSize: 11 }}>
             {n.status}
             {n.metric ? ` · ${n.metric} ${n.direction === 'min' ? '≤' : '≥'} ${n.gate}` : ''}
