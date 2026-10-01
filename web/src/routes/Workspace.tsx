@@ -100,14 +100,15 @@ function TasteLines({ taste, compact }: { taste: TasteReport; compact?: boolean 
     <div style={{ display: 'grid', gap: 2 }}>
       <div className="muted" style={{ fontSize: compact ? 10 : 11,
         textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-        Selection taste — {taste.n} decisions · {taste.accepted} accepted
+        Selection profile — {taste.n} decisions · {taste.accepted} accepted
         {' '}({Math.round(taste.overall_rate * 100)}%) · advisory
       </div>
       {rows.map((r) => (
-        <div key={r.key} style={{ display: 'flex', gap: 8, alignItems: 'baseline',
-          fontSize: compact ? 11 : 12 }}>
-          <span style={{ flex: 'none' }}>{LABEL[r.key]}</span>
-          <span className="mono" style={{ marginLeft: 'auto', flex: 'none' }}>
+        <div key={r.key} style={{ display: 'flex', flexWrap: 'wrap',
+          gap: '2px 10px', alignItems: 'baseline', fontSize: compact ? 11 : 12 }}>
+          <span>{LABEL[r.key]}</span>
+          <span className="mono" style={{ marginLeft: 'auto',
+            textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>
             accepted with: {Math.round(r.s.rate! * 100)}% · without:{' '}
             {r.s.rate_without !== null
               ? `${Math.round(r.s.rate_without! * 100)}%` : '—'}
