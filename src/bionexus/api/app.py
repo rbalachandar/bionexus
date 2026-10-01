@@ -133,6 +133,20 @@ def programs() -> dict:
     return views.workspace(ws)
 
 
+@app.get("/api/taste")
+def taste() -> dict:
+    """Taste distillation (advisory): accept-rate deltas by hypothesis
+    feature across all campaigns + proposed prompt amendments. Never
+    applied — display only."""
+    from bionexus.taste import taste_report
+    try:
+        return taste_report()
+    except Exception as exc:  # noqa: BLE001
+        return {"n": 0, "accepted": 0, "overall_rate": 0.0,
+                "by_feature": {}, "families": {},
+                "amendments": [], "error": str(exc)}
+
+
 class ProgramIn(BaseModel):
     program: str
     objective: str = ""

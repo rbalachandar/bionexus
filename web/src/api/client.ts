@@ -105,6 +105,17 @@ export interface ExperimentDetail {
   eliminated?: { candidate: string; reason: string; score: number | null }[]
 }
 
+export interface TasteReport {
+  n: number
+  accepted: number
+  overall_rate: number
+  by_feature: Record<string, { n: number; rate: number | null;
+    rate_without: number | null }>
+  families: Record<string, { n: number; accepted: number }>
+  amendments: string[]
+  error?: string
+}
+
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(path)
   if (!r.ok) throw new Error(`${path}: ${r.status}`)
@@ -113,6 +124,7 @@ async function get<T>(path: string): Promise<T> {
 
 export const api = {
   workspace: () => get<Workspace>('/api/programs'),
+  taste: () => get<TasteReport>('/api/taste'),
   experiment: (eid: string) => get<ExperimentDetail>(`/api/experiments/${eid}`),
   trace: (eid: string) =>
     get<{ lines: string[]; truncated: boolean }>(`/api/experiments/${eid}/trace`),

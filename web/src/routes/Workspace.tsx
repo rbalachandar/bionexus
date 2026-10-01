@@ -190,6 +190,53 @@ function ProgramCard({ p, onDelete, deleting }: {
   )
 }
 
+function TasteCard() {
+  const q = useQuery({ queryKey: ['taste'], queryFn: api.taste,
+    staleTime: 60_000 })
+  if (q.isLoading || q.isError || !q.data || q.data.n < 6) return null
+  const d = q.data
+  const rows = (['mechanism', 'refutation', 'citation_verified'] as const)
+    .map((k) => ({ key: k, s: d.by_feature[k] }))
+    .filter((r) => r.s?.rate !== null && r.s?.rate !== undefined)
+  const LABEL: Record<string, string> = { mechanism: 'mechanism stated',
+    refutation: 'refutation condition', citation_verified: 'citation verified' }
+  return (
+    <details className="card" style={{ marginBottom: 'var(--s4)' }}>
+      <summary style={{ cursor: 'pointer', fontSize: 13, display: 'flex',
+        gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <strong>Selection taste</strong>
+        <span className="muted" style={{ fontSize: 11 }}>
+          {d.n} portfolio decisions · {d.accepted} accepted
+          ({Math.round(d.overall_rate * 100)}%) — advisory, nothing applied
+        </span>
+      </summary>
+      <div style={{ display: 'grid', gap: 2, paddingTop: 8 }}>
+        {rows.map((r) => (
+          <div key={r.key} style={{ display: 'flex', gap: 8, alignItems: 'baseline',
+            fontSize: 12 }}>
+            <span style={{ flex: 'none' }}>{LABEL[r.key]}</span>
+            <span className="mono" style={{ marginLeft: 'auto', flex: 'none' }}>
+              {Math.round(r.s.rate! * 100)}% accepted
+              {r.s.rate_without !== null
+                && ` vs ${Math.round(r.s.rate_without! * 100)}% without`}
+              <span className="muted"> (n={r.s.n})</span>
+            </span>
+          </div>
+        ))}
+        {d.amendments.length > 0 && (
+          <div style={{ marginTop: 6, display: 'grid', gap: 2 }}>
+            {d.amendments.map((a) => (
+              <div key={a} className="muted" style={{ fontSize: 11.5 }}>
+                • {a}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </details>
+  )
+}
+
 function TreeBlock({ tree }: { tree: ProblemTreeOut }) {
   const roots = tree.nodes.filter((n) => !n.parent)
   const kids = (id: string) => tree.nodes.filter((n) => n.parent === id)
@@ -300,6 +347,9 @@ export default function Workspace({ initialForm = false }: {
           <ProgramForm onDone={() => { setShowForm(false); qc.invalidateQueries() }} />
         </section>
       )}
+
+      {/* selection taste (advisory) — hides itself below 6 decisions */}
+      <TasteCard />
 
       {/* program grid */}
       {ws.programs.length > 0 ? (
