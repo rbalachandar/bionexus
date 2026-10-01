@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Activity, ShieldAlert, Target } from 'lucide-react'
+import { ShieldAlert, Target } from 'lucide-react'
 import { api } from '../api/client'
 import type { ExperimentDetail } from '../api/client'
 import EvidenceCurves from '../components/EvidenceCurves'
@@ -137,8 +137,25 @@ function PipelineCards({ cards, budgetNote }: {
   )
 }
 
-function PendingApprovals({ eid, active }: { eid: string; active: boolean }) {
-  const qc = useQueryClient()
+/** Page band: numbered eyebrow + hairline rule — gives the experiment
+ * page explicit visual boundaries instead of a loose row of cards. */
+function Section({ n, title, children }: {
+  n: number; title: string; children: React.ReactNode
+}) {
+  return (
+    <section style={{ marginTop: 'var(--s4)', maxWidth: 980,
+      borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+      <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
+        letterSpacing: '0.06em', marginBottom: 8 }}>
+        <span style={{ color: 'var(--brand)', fontWeight: 600 }}>{n}</span>
+        {' · '}{title}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function PendingApprovals({ eid, active }: { eid: string; active: boolean }) {  const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['approvals-inline', eid],
     queryFn: () => fetch('/api/approvals').then((r) => r.json()),
@@ -189,7 +206,7 @@ function PendingApprovals({ eid, active }: { eid: string; active: boolean }) {
   )
 }
 
-function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds: { round: number; candidates: string[]; verdicts: Record<string, string> }[] }) {
+function DmtaCounts({ counts, rounds, bare }: { counts: Record<string, number>; rounds: { round: number; candidates: string[]; verdicts: Record<string, string> }[]; bare?: boolean }) {
   const chips: [string, number | string][] = [
     ['Design', `${counts.proposed ?? 0} proposed · ${counts.selected ?? 0} selected`],
     ['Make', `${counts.submitted ?? 0} submitted`],
@@ -209,9 +226,11 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
   const elim = selected > 0 && judged > 0
     ? Math.round((1 - judged / selected) * 100) : null
   return (
-    <div style={{ margin: '10px 0' }}>
-      <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
-        letterSpacing: '0.04em', marginBottom: 4 }}>DMTA loop</div>
+    <div style={bare ? undefined : { margin: '10px 0' }}>
+      {!bare && (
+        <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
+          letterSpacing: '0.04em', marginBottom: 4 }}>DMTA loop</div>
+      )}
       <div style={{ display: 'flex', alignItems: 'stretch', gap: 0,
         maxWidth: 980, marginBottom: 'var(--s2)' }}>
         {chips.map(([label, v], i) => (
@@ -297,7 +316,6 @@ function RecordOfThisRun({ record, onRereview, eid, metric, gate, running }: {
   )
   return (
     <section>
-      <h2 style={{ fontSize: 16 }}>{record.title ?? 'The record of this run'}</h2>
       <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--border)',
         marginBottom: 10 }}>
         {tabs.map(([label, key, has]) => (
@@ -428,15 +446,12 @@ function TraceLog({ eid, active, revision }: {
     refetchInterval: active ? 5000 : false,
   })
   return (
-    <details style={{ marginTop: 12 }}>
-      <summary style={{ cursor: 'pointer', fontSize: 13 }}>Trace log</summary>
-      <pre
-        className="card"
-        style={{ fontSize: 11, whiteSpace: 'pre-wrap', maxHeight: 320, overflow: 'auto' }}
-      >
-        {q.data?.lines?.join('\n') || '(waiting for output...)'}
-      </pre>
-    </details>
+    <pre
+      className="card"
+      style={{ fontSize: 11, whiteSpace: 'pre-wrap', maxHeight: 320, overflow: 'auto' }}
+    >
+      {q.data?.lines?.join('\n') || '(waiting for output...)'}
+    </pre>
   )
 }
 
@@ -495,84 +510,95 @@ export default function Experiment() {
           <span className="chip">{d.program.mode}</span>
         </div>
       )}
-      {d.spec && (
-        <div className="card" style={{ margin: '8px 0', padding: '10px 14px', maxWidth: 980 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '3px 12px', fontSize: 12 }}>
-            <span className="muted">Objective</span>
-            <span>{d.objective}</span>
-            <span className="muted">Constraints</span>
-            <span>{d.constraints.map((c) => `${c.name}: ${c.description}`).join(' · ') || '—'}</span>
-            <span className="muted">Success</span>
-            <span>{d.success_metric ?? '—'}</span>
-            <span className="muted">Budget</span>
-            <span>top-{d.spec.k} hypotheses/round · {d.spec.rounds} DMTA rounds ·
-              autonomy: {d.spec.autonomy} · candidates:{' '}
-              {d.spec.hypothesis_source === 'agent'
-                ? 'agent-proposed'
-                : `${d.spec.n_candidates} named`}</span>
+      <Section n={1} title="Campaign setup">
+        {d.spec && (
+          <div className="card" style={{ padding: '10px 14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '3px 12px', fontSize: 12 }}>
+              <span className="muted">Objective</span>
+              <span>{d.objective}</span>
+              <span className="muted">Constraints</span>
+              <span>{d.constraints.map((c) => `${c.name}: ${c.description}`).join(' · ') || '—'}</span>
+              <span className="muted">Success</span>
+              <span>{d.success_metric ?? '—'}</span>
+              <span className="muted">Budget</span>
+              <span>top-{d.spec.k} hypotheses/round · {d.spec.rounds} DMTA rounds ·
+                autonomy: {d.spec.autonomy} · candidates:{' '}
+                {d.spec.hypothesis_source === 'agent'
+                  ? 'agent-proposed'
+                  : `${d.spec.n_candidates} named`}</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+        {running && (
+          <p className="chip running" style={{ marginTop: 8 }}>
+            In progress — this page updates as the agent works.
+          </p>
+        )}
+      </Section>
+
       {running && (
-        <p className="chip running" style={{ marginTop: 8 }}>
-          In progress — this page updates as the agent works.
-        </p>
+        <Section n={2} title="Approvals">
+          <PendingApprovals eid={d.id} active={running} />
+        </Section>
       )}
 
-      <PendingApprovals eid={d.id} active={running} />
+      <Section n={running ? 3 : 2} title="DMTA loop">
+        <DmtaCounts counts={d.counts} rounds={d.rounds} bare />
+      </Section>
 
-      <DmtaCounts counts={d.counts} rounds={d.rounds} />
+      <Section n={running ? 4 : 3} title="Hypothesis pipeline">
+        <PipelineCards cards={d.cards}
+          budgetNote={d.spec ? `top-${d.spec.k} hypotheses/round × ${d.spec.rounds} round${d.spec.rounds > 1 ? 's' : ''}` : ''} />
 
-      <h2 style={{ fontSize: 16 }}>
-        <Activity size={15} color="var(--teal)" /> Hypothesis pipeline
-      </h2>
-      <PipelineCards cards={d.cards}
-        budgetNote={d.spec ? `top-${d.spec.k} hypotheses/round × ${d.spec.rounds} round${d.spec.rounds > 1 ? 's' : ''}` : ''} />
+        {(d.eliminated?.length ?? 0) > 0 && (
+          <details style={{ marginTop: 12 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 13,
+              display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+              <span className="chip" style={{ color: 'var(--muted)' }}>
+                Eliminated ({d.eliminated!.length})
+              </span>
+              <span className="muted" style={{ fontSize: 11 }}>
+                designed but not selected — with the filter's reasons
+              </span>
+            </summary>
+            <div className="card" style={{ padding: '8px 12px', marginTop: 6,
+              display: 'grid', gap: 2 }}>
+              {d.eliminated!.map((e) => (
+                <div key={e.candidate} style={{ display: 'flex', gap: 10,
+                  alignItems: 'baseline', fontSize: 12, padding: '2px 0' }}>
+                  <span className="mono" style={{ flex: 'none' }}>{e.candidate}</span>
+                  <span className="muted" style={{ minWidth: 0 }}>
+                    {e.reason}</span>
+                  {e.score !== null && e.score !== undefined && (
+                    <span className="muted mono" style={{ marginLeft: 'auto',
+                      flex: 'none', fontSize: 11 }}>
+                      score {e.score}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+      </Section>
 
-      {(d.eliminated?.length ?? 0) > 0 && (
-        <details style={{ marginTop: 12, maxWidth: 980 }}>
-          <summary style={{ cursor: 'pointer', fontSize: 13,
-            display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-            <span className="chip" style={{ color: 'var(--muted)' }}>
-              Eliminated ({d.eliminated!.length})
-            </span>
-            <span className="muted" style={{ fontSize: 11 }}>
-              designed but not selected — with the filter's reasons
-            </span>
-          </summary>
-          <div className="card" style={{ padding: '8px 12px', marginTop: 6,
-            display: 'grid', gap: 2 }}>
-            {d.eliminated!.map((e) => (
-              <div key={e.candidate} style={{ display: 'flex', gap: 10,
-                alignItems: 'baseline', fontSize: 12, padding: '2px 0' }}>
-                <span className="mono" style={{ flex: 'none' }}>{e.candidate}</span>
-                <span className="muted" style={{ minWidth: 0 }}>
-                  {e.reason}</span>
-                {e.score !== null && e.score !== undefined && (
-                  <span className="muted mono" style={{ marginLeft: 'auto',
-                    flex: 'none', fontSize: 11 }}>
-                    score {e.score}</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
+      {record.data && <Section n={running ? 5 : 4} title="The record of this run">
+        <RecordOfThisRun record={record.data} eid={d.id}
+          metric={d.program?.gate.metric ?? null}
+          gate={d.program?.gate.value ?? null}
+          onRereview={async () => {
+            await fetch(`/api/experiments/${d.id}/rereview`, { method: 'POST' })
+            // everything on the page derives from these queries — refresh all
+            for (const key of [['record', eid], ['experiment', eid],
+              ['pipeline', eid], ['trace', eid]]) {
+              qc.invalidateQueries({ queryKey: key })
+            }
+          }} />}
+      </Section>
 
-      {record.data && <RecordOfThisRun record={record.data} eid={d.id}
-        metric={d.program?.gate.metric ?? null}
-        gate={d.program?.gate.value ?? null}
-        onRereview={async () => {
-          await fetch(`/api/experiments/${d.id}/rereview`, { method: 'POST' })
-          // everything on the page derives from these queries — refresh all
-          for (const key of [['record', eid], ['experiment', eid],
-            ['pipeline', eid], ['trace', eid]]) {
-            qc.invalidateQueries({ queryKey: key })
-          }
-        }} />}
-
-      <TraceLog eid={d.id} active={running}
-        revision={record.dataUpdatedAt} />
+      <Section n={running ? 6 : 5} title="Trace log">
+        <TraceLog eid={d.id} active={running}
+          revision={record.dataUpdatedAt} />
+      </Section>
     </main>
   )
 }
