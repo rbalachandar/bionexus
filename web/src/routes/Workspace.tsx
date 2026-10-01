@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { ProblemTreeOut, ProgramOut, TasteReport } from '../api/client'
-import { Badge, EmptyState, PageHeader, Skeleton, VERDICT_GLYPH } from '../components/ui'
+import { Badge, EmptyState, Skeleton, VERDICT_GLYPH } from '../components/ui'
 import ProgramForm from './ProgramForm'
 
 function ArchiveButton({ label, confirmLabel, small, onConfirm }: {
@@ -321,29 +321,23 @@ export default function Workspace({ initialForm = false }: {
 
   return (
     <main>
-      <PageHeader title="Programs" eyebrow="Workspace"
-        right={
-          <button className="primary" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}
-            onClick={() => setShowForm((s) => !s)}>
-            <Plus size={15} /> New program
-          </button>
-        } />
-
-      {/* live stats band */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-        gap: 8, marginBottom: 'var(--s4)' }}>
-        {[
-          ['Programs', ws.programs.length],
-          ['Running', runningTotal],
-          ['Experiments', verdictTotal],
-        ].map(([label, n]) => (
-          <div key={String(label)} className="card"
-            style={{ padding: '8px 14px', display: 'flex', gap: 8, alignItems: 'baseline' }}>
-            <span className="mono" style={{ fontSize: 20, fontWeight: 600 }}>{n}</span>
-            <span className="muted" style={{ fontSize: 11, textTransform: 'uppercase',
-              letterSpacing: '0.04em' }}>{label}</span>
-          </div>
-        ))}
+      <div style={{ display: 'flex', justifyContent: 'space-between',
+        alignItems: 'baseline', gap: 12, marginBottom: 'var(--s2)' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 14,
+          minWidth: 0, flexWrap: 'wrap' }}>
+          <h1 style={{ fontSize: 'var(--fs-xl)', margin: 0, fontWeight: 650 }}>
+            Workspace
+          </h1>
+          <span className="muted mono" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+            {ws.programs.length} program{ws.programs.length === 1 ? '' : 's'}
+            {' · '}{runningTotal} running{' · '}{verdictTotal} experiment{verdictTotal === 1 ? '' : 's'}
+          </span>
+        </div>
+        <button className="primary" style={{ display: 'inline-flex', gap: 6,
+          alignItems: 'center', flex: 'none' }}
+          onClick={() => setShowForm((s) => !s)}>
+          <Plus size={15} /> New program
+        </button>
       </div>
 
       {showForm && (
