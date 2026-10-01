@@ -13,6 +13,8 @@ autonomy levels:
 """
 from __future__ import annotations
 
+import json
+import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -96,6 +98,41 @@ class CampaignReport:
 
 
 from bionexus.core.contracts.models import coerce_assay_type
+
+
+def announce_branch(eid: str, problem_id: str) -> None:
+    """Map a workbench experiment id to the problem branch a campaign is
+    about to write, so the API watcher can stream records incrementally
+    instead of resolving the branch from logs only after the run ends.
+    Best-effort: never breaks a campaign."""
+    try:
+        if not eid or not problem_id:
+            return
+        from bionexus.paths import CAMPAIGN_DIR
+        CAMPAIGN_DIR.mkdir(parents=True, exist_ok=True)
+        f = CAMPAIGN_DIR / "branch-map.json"
+        m = {}
+        if f.exists():
+            try:
+                m = json.loads(f.read_text())
+            except Exception:
+                m = {}
+        if m.get(eid) == problem_id:
+            return
+        m[eid] = problem_id
+        f.write_text(json.dumps(m))
+    except Exception:
+        pass
+
+
+def announced_branches() -> dict:
+    """Read the campaign-id -> problem-branch map (empty if absent)."""
+    try:
+        from bionexus.paths import CAMPAIGN_DIR
+        f = CAMPAIGN_DIR / "branch-map.json"
+        return json.loads(f.read_text()) if f.exists() else {}
+    except Exception:
+        return {}
 
 
 def run_campaign(cfg: CampaignConfig, lab: Any,
@@ -209,6 +246,13 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                 and hasattr(lab, "set_property_gate"):
             lab.set_property_gate(_crit.metric, _crit.direction,
                                   _crit.threshold)
+
+    # announce the branch for live streaming: the API watcher maps the
+    # campaign id to this problem branch the moment it exists, so the
+    # workbench streams records incrementally instead of at the end
+    _cid = os.environ.get("BN_CAMPAIGN_ID")
+    if _cid:
+        announce_branch(_cid, problem.problem_id)
 
     # 1. rounds: select -> design+submit -> analyze; each round feeds the next
     synth_cache: dict[str, dict] = {}

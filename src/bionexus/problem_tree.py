@@ -317,7 +317,8 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
     on the root branch. Resumable: achieved leaves are skipped."""
     from pathlib import Path
 
-    from bionexus.autoloop import CampaignConfig, ResourceBudget, run_campaign
+    from bionexus.autoloop import (CampaignConfig, ResourceBudget,
+                                   announce_branch, run_campaign)
     from bionexus.core.contracts import Envelope, EventType
     from bionexus.core.hypothesis import Constraint, ProblemStatement
     from bionexus.core.interfaces import record_for, system_actor
@@ -399,6 +400,10 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
             budget=budget)
         say(f"leaf {leaf.id}: '{leaf.objective[:50]}' — "
             f"{budget.max_total_runs} runs allocated")
+        # the leaf's workbench id, announced BEFORE the campaign runs so
+        # the API watcher streams its records while it is still in flight
+        leaf_eid = f"tree-{tree.root.id}-{leaf.id}"
+        announce_branch(leaf_eid, problem.problem_id)
         # per-leaf log: the leaf's Trace log is its own campaign diary
         from bionexus.paths import CAMPAIGN_DIR, ensure_dirs
         ensure_dirs()
@@ -415,7 +420,7 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
         try:
             from bionexus.wizard_store import WizardStore
             _ws = WizardStore()
-            _eid = f"tree-{tree.root.id}-{leaf.id}"
+            _eid = leaf_eid
             _root_name = tree.root.objective.split(":")[0].strip()[:40]
             import os as _os
             _status = ("completed" if leaf.status == "achieved"

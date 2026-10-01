@@ -54,10 +54,25 @@ def replay_events(last_id: int, topics: set[str], limit: int = 200) -> list:
             for r in rows if r[1] in topics]
 
 
+def _branch_map() -> dict:
+    """Campaign id -> problem branch, announced by the campaign itself
+    the moment its problem is defined (no log parsing needed)."""
+    from bionexus.paths import CAMPAIGN_DIR
+    f = CAMPAIGN_DIR / "branch-map.json"
+    if not f.exists():
+        return {}
+    try:
+        return json.loads(f.read_text())
+    except Exception:
+        return {}
+
+
 def _branch_for(ws: WizardStore, eid: str) -> str | None:
-    """Problem id for an experiment: payload, else the program relation,
-    else resolved from the agent log (in-flight campaigns register the
-    problem branch only after the first round starts)."""
+    """Problem id for an experiment: the campaign's own announcement,
+    else payload, else the program relation, else the agent log."""
+    bm = _branch_map()
+    if eid in bm:
+        return bm[eid]
     row = ws.get(eid)
     if not row:
         return None

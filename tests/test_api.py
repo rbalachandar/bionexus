@@ -116,9 +116,6 @@ def test_sse_watch_and_replay(tmp_path, monkeypatch):
         decision={"objective": "o"}))
 
     snap1, events1 = sse.watch_once(None, ws, prov)
-    print("\nDBG rows:", ws._conn.execute(
-        "SELECT id FROM experiments").fetchall())
-    print("DBG snap:", snap1)
     assert events1 == []                       # first tick only snapshots
     # branch grows -> a records event for that campaign
     prov.append(record_for(
@@ -133,6 +130,42 @@ def test_sse_watch_and_replay(tmp_path, monkeypatch):
     back = sse.replay_events(i1, {"workspace"})
     assert [e["kind"] for e in back] == ["experiment_added"]
     assert back[0]["id"] == i2
+
+
+def test_live_branch_announcement(tmp_path, monkeypatch):
+    """A campaign announces its branch the moment the problem is defined
+    (autoloop.announce_branch); the watcher then streams that branch's
+    records incrementally — no program link, payload, or log needed."""
+    from bionexus import paths
+    from bionexus.api import sse
+    from bionexus.autoloop import announce_branch, announced_branches
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    from bionexus.wizard_store import WizardStore
+
+    monkeypatch.setattr(paths, "CAMPAIGN_DIR", tmp_path / "campaigns")
+    ws = WizardStore()
+    ws.register_agent("cmp-live-1", "obj", log="", autonomy="act")
+    prov = SqliteProvenanceStore(str(tmp_path / "prov.db"))
+
+    # before the announcement the watcher cannot route the branch
+    snap0, _ = sse.watch_once(None, ws, prov)
+    assert "prob-live1" not in snap0["eid_by_pid"]
+
+    announce_branch("cmp-live-1", "prob-live1")
+    assert sse._branch_for(ws, "cmp-live-1") == "prob-live1"
+    announce_branch("cmp-live-2", "prob-live2")   # merges, never clobbers
+    assert announced_branches() == {"cmp-live-1": "prob-live1",
+                                    "cmp-live-2": "prob-live2"}
+
+    # records written after the announcement stream to the right campaign
+    prov.append(record_for(
+        Envelope(experiment_branch_id="problem/prob-live1"),
+        EventType.lab_run, system_actor("test"), run_id="run-1"))
+    snap1, events1 = sse.watch_once(snap0, ws, prov)
+    recs = [e for e in events1 if e["kind"] == "records"]
+    assert any(e["payload"]["branch"] == "problem/prob-live1" for e in recs)
 
 
 def test_wizard_session_flow(tmp_path):

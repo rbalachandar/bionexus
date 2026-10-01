@@ -71,9 +71,10 @@ def spawn_campaign(doc: dict, program_name: str) -> str | None:
     cfgpath.write_text(json.dumps(cfg, indent=1))
     logf = CAMPAIGN_DIR / f"{cid}.log"
 
-    env = {**__import__("os").environ, "BN_PROGRAM": program_name}
+    env = {**__import__("os").environ, "BN_PROGRAM": program_name,
+           "BN_CAMPAIGN_ID": cid}
     proc = subprocess.Popen(
-        [sys.executable, "-m", "bionexus.cli", "auto", str(cfgpath),
+        [sys.executable, "-u", "-m", "bionexus.cli", "auto", str(cfgpath),
          "--db", "bionexus.db", "--inbox", ".data/approvals.jsonl",
          "--yes"],
         stdout=open(logf, "ab", buffering=0), stderr=subprocess.STDOUT,
@@ -116,7 +117,7 @@ def _spawn_plan(doc: dict, program_name: str) -> None:
     import os as _os
     cands = ",".join(c.strip() for c in
                      (doc.get("candidates") or "").split(",") if c.strip())
-    cmd = [sys.executable, "-m", "bionexus.cli", "plan",
+    cmd = [sys.executable, "-u", "-m", "bionexus.cli", "plan",
            "--objective", doc.get("objective") or "optimize",
            "--model", "anthropic", "--run", "--autonomy", "act"]
     if cands:
@@ -124,6 +125,9 @@ def _spawn_plan(doc: dict, program_name: str) -> None:
     logf = CAMPAIGN_DIR / f"plan-{int(time.time())}.log"
     env = {**_os.environ, "BN_PROGRAM": program_name,
            "PYTHONPATH": str(Path.cwd() / "src")}
+    # a plan runs many leaves in ONE process: no single BN_CAMPAIGN_ID
+    # fits; each leaf announces its own branch via run_tree -> announce_branch
+    env.pop("BN_CAMPAIGN_ID", None)
     subprocess.Popen(cmd, stdout=open(logf, "ab", buffering=0),
                      stderr=subprocess.STDOUT, cwd=str(Path.cwd()), env=env)
 
