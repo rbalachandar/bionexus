@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bionexus.evals.harness import (TaskResult, register, run_offline_campaign,
+from bionexus.evals.harness import (PASS_THRESHOLD, TaskResult, register,
+                                    run_offline_campaign,
                                     score_confirmation_coverage,
                                     score_hit_recovery, score_verdict_honesty,
                                     verdict_records)
@@ -62,6 +63,58 @@ def _t_verdict_honesty():
 def _t_confirmation():
     _, _, recs = run_offline_campaign(COMPOUNDS, 20.0, 6, 42, INBOX)
     return score_confirmation_coverage(verdict_records(recs))
+
+
+@register("method-recall",
+          "positive-control recovery: a noisy surrogate ranks a 24-compound "
+          "pool; the campaign loop must surface most TRUE actives for "
+          "testing within budget (method validation before novel search)")
+def _t_method_recall():
+    import hashlib
+
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.evals.harness import TaskResult
+
+    seed, threshold = 11, 20.0
+    pool = [f"M-{i:02d}" for i in range(1, 25)]
+    truth = {c: SimulatorLab(seed=seed).true_ic50_um("x", c) for c in pool}
+    actives = sorted(c for c, t in truth.items() if t <= threshold)
+    if len(actives) < 3:
+        return TaskResult("method-recall", "known-active recovery", 0.0,
+                          True, notes=f"VACUOUS — only {len(actives)} "
+                          f"actives in the seeded pool")
+
+    def surrogate(c: str) -> float:
+        # deterministic, correlated with truth but imperfect (±35%) — a
+        # realistic pre-screen; the loop must still find the actives
+        h = int(hashlib.sha256(f"{seed}:{c}".encode()).hexdigest()[:8], 16)
+        return round(truth[c] * (1 + 0.35 * (((h % 2000) / 1000.0) - 1)), 3)
+
+    specs = [{"statement": f"{c} binds", "candidate": c,
+              "assay_type": "binding", "predicted": f"<= {threshold:g}",
+              "predicted_value": surrogate(c), "rationale": "surrogate"}
+             for c in pool]
+    _, lab, recs = run_offline_campaign(pool, threshold, 8, seed, INBOX,
+                                        specs=specs, rounds=2)
+    verdicts = verdict_records(recs)
+    recalled = [c for c in actives if c in verdicts]
+    recall = round(len(recalled) / len(actives), 3)
+    correct = sum(1 for c in recalled
+                  if verdicts[c].get("verdict") in ("validated", "confirmed"))
+    wrong = sum(1 for c in recalled
+                if verdicts[c].get("verdict") in ("invalidated", "refuted"))
+    abstained = len(recalled) - correct - wrong
+    score = round(0.7 * recall + 0.3 * (correct / len(recalled)) if recalled
+                  else 0.0, 3)
+    return TaskResult("method-recall",
+                      "known-active recovery under surrogate ranking",
+                      score, score >= PASS_THRESHOLD,
+                      {"actives_in_pool": len(actives), "recalled": recalled,
+                       "recall": recall, "correct": correct, "wrong": wrong,
+                       "abstained": abstained, "tested_total": len(verdicts),
+                       "pool": len(pool)},
+                      f"recall {recall:.2f} of {len(actives)} true actives "
+                      f"({wrong} confident miss(es), {abstained} abstained)")
 
 
 # ------------------------------------------------------------- models suite

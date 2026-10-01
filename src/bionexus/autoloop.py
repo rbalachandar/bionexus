@@ -228,7 +228,27 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         score_fn = lambda h: _base(h) + flywheel.prior_bonus(h.family)
     else:
         portfolio = tracker.propose_portfolio(problem, cfg.hypotheses or [])
-        base_fn = cfg.score_fn or (lambda h: 0.5)
+        # surrogate prior: rank config hypotheses by their own predicted
+        # value under the gate direction (lower predicted is better under a
+        # min-gate). Activates only when predictions differ — uniform
+        # predictions keep the old constant, so explanatory-bonus and
+        # flywheel tie-breaks are untouched.
+        _pvs = {getattr(h, "predicted_value", None) for h in portfolio}
+        _pvs.discard(None)
+        if cfg.score_fn is not None:
+            base_fn = cfg.score_fn
+        elif len(_pvs) > 1:
+            _con0 = next((c for c in problem.constraints if c.kind == "hard"
+                          and c.limit is not None), None)
+            _max_dir = ">=" in (_con0.description or "")
+            def base_fn(h, _md=_max_dir):
+                pv = getattr(h, "predicted_value", None)
+                if pv is None:
+                    return 0.5
+                pv = max(0.0, float(pv))
+                return (pv / (1.0 + pv)) if _md else (1.0 / (1.0 + pv))
+        else:
+            base_fn = lambda h: 0.5
         score_fn = lambda h: base_fn(h) + flywheel.prior_bonus(h.family)
     # metric-aware criteria: the problem's primary hard constraint is the
     # pre-registered gate — thread it into every hypothesis so verdicts

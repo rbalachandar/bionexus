@@ -56,11 +56,12 @@ function Shell({ children }: { children: React.ReactNode }) {
         </Link>
         <nav style={{ display: 'flex', gap: 4 }}>
           {navLink('/', 'Workspace')}
-          {navLink('/wizard', 'Wizard')}
         </nav>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8,
-          marginLeft: 'auto', fontSize: 12, color: '#7dd3e8' }}>
-          <span style={{ width: 24, height: 1, background: 'rgba(125,211,232,0.4)' }} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7,
+          marginLeft: 'auto', fontSize: 10, fontWeight: 600,
+          letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8aa3b5' }}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%',
+            background: '#7dd3e8', boxShadow: '0 0 6px rgba(125,211,232,0.8)' }} />
           agents run the scientific method
         </span>
         {(gov.data?.halted || (gov.data?.pending ?? 0) > 0) && (

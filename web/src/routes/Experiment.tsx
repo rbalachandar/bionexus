@@ -196,6 +196,18 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
     ['Test', `${counts.runs ?? 0} run(s) analyzed`],
     ['Analyze', `${counts.verdicts ?? 0} verdict(s)`],
   ]
+  const judged = (counts.validated ?? 0) + (counts.confirmed ?? 0)
+    + (counts.refuted ?? 0) + (counts.inconclusive ?? 0)
+  const selected = counts.selected ?? 0
+  const funnel: string[] = []
+  if ((counts.proposed ?? 0) > 0 || selected > 0) {
+    funnel.push(`${counts.proposed ?? 0} proposed`)
+    funnel.push(`${selected} selected`)
+    funnel.push(`${counts.runs ?? 0} tested`)
+    funnel.push(`${judged} judged`)
+  }
+  const elim = selected > 0 && judged > 0
+    ? Math.round((1 - judged / selected) * 100) : null
   return (
     <div style={{ margin: '10px 0' }}>
       <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
@@ -220,6 +232,19 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
           </div>
         ))}
       </div>
+      {funnel.length > 0 && (
+        <div className="muted mono" style={{ fontSize: 11, margin: '2px 0 10px',
+          display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
+          {funnel.map((s, i) => (
+            <span key={s} style={{ display: 'inline-flex', gap: 6 }}>
+              {i > 0 && <span style={{ color: 'var(--faint)' }}>→</span>}
+              <span>{s}</span>
+            </span>
+          ))}
+          {elim !== null && <span style={{ color: 'var(--brand)' }}>
+            · {elim}% of selected eliminated</span>}
+        </div>
+      )}
       {rounds.length > 0 && (
         <table className="data-table" style={{ marginTop: 8 }}>
           <thead>

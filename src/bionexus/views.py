@@ -126,6 +126,8 @@ def dmta_counts(recs) -> dict:
         c["verdicts"] += 1
         if v in ("validated", "confirmed"):
             c[v] += 1
+        elif v == "invalidated":
+            c["refuted"] += 1
         elif v in ("inconclusive", "refuted"):
             c[v] += 1
     return c

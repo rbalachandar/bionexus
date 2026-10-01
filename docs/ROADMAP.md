@@ -184,6 +184,39 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   dead provenance dbs (campaign/case_study/full_flow) deleted
 
 
+## Adopted from Anthropic's ART discovery post (Sep 2026)
+Claude agents mined 200k reverse transcriptases -> 3,500 candidates -> 20
+surviving reports -> 1 lab-tested system (novel CRISPR-like enzyme array).
+Gap analysis against our evals/funnel/governance:
+
+- [x] **Method-recall eval (positive controls before novel search)** —
+  Anthropic's agents must reproduce established results from public data
+  before searching for new systems. Ported as `method-recall` eval task:
+  24-compound pool, noisy surrogate ranking (deterministic ±35%), the
+  campaign loop must surface the seeded TRUE actives within budget.
+  Score = 0.7·recall + 0.3·verdict-accuracy on recalled actives; a
+  confident call against seeded truth costs score. First run: recall
+  1.0, 11/12 called correctly, score 0.975
+- [x] **Surrogate prior in portfolio selection** — the config path
+  ranked all hypotheses equally (`lambda h: 0.5`); it now ranks by each
+  hypothesis's own `predicted_value` under the gate direction, and
+  activates ONLY when predictions differ (uniform predictions keep the
+  legacy constant, so explanatory-bonus and flywheel tie-breaks are
+  untouched). `run_offline_campaign` gains a `rounds` parameter
+- [x] **Elimination funnel surfaced** — the experiment page shows
+  proposed → selected → tested → judged with the elimination rate of
+  selected hypotheses (a campaign confirming everything it tests is
+  under-ambitious; one eliminating everything has a broken filter).
+  dmta_counts now buckets `invalidated` under refuted (was silently
+  dropped from the verdict tally)
+- [ ] Candidate-report graveyard: eliminated hypotheses with filter
+  reasons shown in the UI ("Eliminated (n)" tab) — decisions are
+  already provenance-recorded, purely a read-model + FE task
+- [ ] Taste-distillation report: cluster accepted vs rejected wizard
+  hypotheses (mechanism/citation/family) and emit proposed prompt
+  amendments — tighten-only, reviewable (advisory-tier invariant)
+
+
 ## Do NOT (decided)
 - Multi-user/auth on the workbench — local-first is the point
 - Replacing Streamlit — graduate to FastAPI+React only if multi-user arrives

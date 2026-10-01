@@ -294,3 +294,50 @@ def test_citation_parsing_and_verification(tmp_path, monkeypatch):
         raise OSError("offline")
     v3 = citations.verify("PMID:99999999", fetch=dead_fetch)
     assert v3["status"] == "check-failed"      # network != fake
+
+
+def test_method_recall_and_surrogate_prior():
+    """Surrogate prior: heterogeneous predicted values steer selection
+    (lower predicted wins under a min-gate); the method-recall eval task
+    recovers the seeded true actives deterministically."""
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.evals import tasks as eval_tasks
+    from bionexus.evals.harness import run_offline_campaign
+    from pathlib import Path
+
+    # 1) prior ordering: the two lowest-predicted candidates are selected
+    specs = [{"statement": f"{c} binds", "candidate": c,
+              "assay_type": "binding", "predicted": "<= 20",
+              "predicted_value": pv, "rationale": "eval"}
+             for c, pv in [("P-low", 2.0), ("P-high", 900.0), ("P-tie", 5.0)]]
+    _, _, recs = run_offline_campaign(
+        ["P-low", "P-high", "P-tie"], 20.0, 2, 11, Path(".data/evals/inbox"),
+        specs=specs)
+    id2cand, selected = {}, set()
+    for r in recs:
+        if r.event_type.value == "hypothesis_proposed" and r.artifact:
+            id2cand[r.artifact.artifact_id] = \
+                (r.artifact.metadata or {}).get("candidate")
+        if r.event_type.value == "hypotheses_filtered":
+            for dec in (r.decision or {}).get("decisions", []):
+                if dec.get("selected"):
+                    selected.add(id2cand[dec["hypothesis_id"]])
+    assert "P-high" not in selected
+    assert {"P-low", "P-tie"} <= selected
+
+    # 2) the eval task itself: deterministic, recovers seeded actives
+    result = eval_tasks._t_method_recall()
+    assert result.metrics["recall"] >= 0.7, result.metrics
+    assert result.passed
+    # a confident call against seeded truth is allowed but costs score
+    assert result.score < 1.0 or result.metrics["wrong"] == 0
+
+    # 3) uniform predictions keep legacy tie-break behavior (constant 0.5)
+    flat = [{"statement": f"{c} binds", "candidate": c,
+             "assay_type": "binding", "predicted": "<= 20",
+             "predicted_value": 20.0, "rationale": "eval"}
+            for c in [f"E-{i:02d}" for i in range(1, 13)]]
+    _, _, recs2 = run_offline_campaign(
+        [s["candidate"] for s in flat], 20.0, 6, 11,
+        Path(".data/evals/inbox"), specs=flat)
+    assert any(r.event_type.value == "hypotheses_filtered" for r in recs2)
