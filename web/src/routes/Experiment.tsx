@@ -21,19 +21,17 @@ function unitOf(unitLabel: string | null) {
   return /\(([^)]+)\)/.exec(unitLabel)?.[1] ?? unitLabel
 }
 
-function PipelineCards({ cards, budgetNote }: {
+function PipelineCards({ cards }: {
   cards: ExperimentDetail['cards']
-  budgetNote?: string
 }) {
-  if (cards.length === 0)
+  const detailed = cards.filter((c) => !BRIEF_STATES.has(c.state))
+  if (detailed.length === 0)
     return (
       <p className="muted" style={{ fontSize: 12 }}>
-        No hypotheses yet — the agent proposes them in round 1 (or they
-        come from your candidate list).
+        No tested hypotheses yet — the agent proposes them in round 1 (or
+        they come from your candidate list).
       </p>
     )
-  const detailed = cards.filter((c) => !BRIEF_STATES.has(c.state))
-  const brief = cards.filter((c) => BRIEF_STATES.has(c.state))
   return (
     <div style={{ maxWidth: 980 }}>
       <div style={{ display: 'grid', gap: 8 }}>
@@ -103,37 +101,77 @@ function PipelineCards({ cards, budgetNote }: {
                 </div>
               )}
             </div>
+           </div>
+         ))}
+       </div>
+     </div>
+   )
+}
+
+/** One consolidated "not tested" list: proposed-but-unselected cards +
+ * filter-eliminated hypotheses merged by candidate, statement snippet
+ * joined with the filter's reason and score. Replaces the three
+ * overlapping blocks (proposed / not selected / eliminated). */
+function NotTested({ cards, eliminated, budgetNote }: {
+  cards: PipelineCard[]
+  eliminated: NonNullable<ExperimentDetail['eliminated']>
+  budgetNote?: string
+}) {
+  const brief = cards.filter((c) => BRIEF_STATES.has(c.state))
+  const byCand = new Map(eliminated.map((e) => [e.candidate, e]))
+  const rows: { cand: string; statement: string | null;
+    reason: string | null; score: number | null }[] = []
+  const seen = new Set<string>()
+  for (const c of brief) {
+    const cand = c.candidate ?? c.head
+    seen.add(cand)
+    const e = byCand.get(cand)
+    rows.push({ cand, statement: c.statement ?? null,
+      reason: e?.reason ?? (c.state === 'proposed'
+        ? `not selected — budget${budgetNote ? ` (${budgetNote})` : ''}`
+        : null), score: e?.score ?? null })
+  }
+  for (const e of eliminated)
+    if (!seen.has(e.candidate))
+      rows.push({ cand: e.candidate, statement: null,
+        reason: e.reason, score: e.score })
+  if (rows.length === 0) return null
+  return (
+    <details style={{ marginTop: 12 }}>
+      <summary style={{ cursor: 'pointer', fontSize: 13,
+        display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+        <span className="chip" style={{ color: 'var(--muted)' }}>
+          Not tested ({rows.length})
+        </span>
+        <span className="muted" style={{ fontSize: 11 }}>
+          proposed or cut by the filter — with the reasons
+        </span>
+      </summary>
+      <div className="card" style={{ padding: '8px 12px', marginTop: 6,
+        display: 'grid', gap: 2 }}>
+        {rows.map((r) => (
+          <div key={r.cand} style={{ display: 'flex', gap: 10,
+            alignItems: 'baseline', fontSize: 12, padding: '3px 0',
+            borderBottom: '1px solid var(--border)' }}>
+            <span className="mono" style={{ flex: 'none',
+              fontWeight: 600 }}>{r.cand}</span>
+            {r.statement && <span className="muted" style={{ minWidth: 0,
+              overflow: 'hidden', textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap' }}>{r.statement}</span>}
+            <span style={{ marginLeft: 'auto', display: 'flex', gap: 8,
+              alignItems: 'baseline', flex: 'none', maxWidth: '55%' }}>
+              {r.reason && <span className="muted" style={{ fontSize: 11,
+                overflow: 'hidden', textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap' }}>{r.reason}</span>}
+              {r.score !== null && r.score !== undefined && (
+                <span className="muted mono" style={{ fontSize: 11 }}>
+                  {r.score}</span>
+              )}
+            </span>
           </div>
         ))}
       </div>
-      {brief.length > 0 && (
-        <div className="card" style={{ padding: '8px 12px', marginTop: detailed.length ? 8 : 0 }}>
-          {(['proposed', 'not_selected'] as const).map((state) => {
-            const group = brief.filter((c) => c.state === state)
-            if (group.length === 0) return null
-            return (
-              <div key={state} style={state === 'not_selected' ? { marginTop: 8 } : undefined}>
-                <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
-                  letterSpacing: '0.04em', marginBottom: 2 }}>
-                  {state === 'proposed'
-                    ? `Proposed — not tested in this campaign (${group.length}${budgetNote ? `; budget ${budgetNote}` : ''})`
-                    : `Designed but not selected (${group.length})`}
-                </div>
-                {group.map((c) => (
-                  <div key={c.key}
-                    style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '2px 0' }}>
-                    <span style={{ fontSize: 12 }}>
-                      <strong>{c.candidate ?? c.head}</strong>
-                      {c.statement ? ` — ${c.statement.slice(0, 110)}${c.statement.length > 110 ? '…' : ''}` : ''}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
+    </details>
   )
 }
 
@@ -547,38 +585,10 @@ export default function Experiment() {
       </Section>
 
       <Section n={running ? 4 : 3} title="Hypothesis pipeline">
-        <PipelineCards cards={d.cards}
-          budgetNote={d.spec ? `top-${d.spec.k} hypotheses/round × ${d.spec.rounds} round${d.spec.rounds > 1 ? 's' : ''}` : ''} />
+        <PipelineCards cards={d.cards} />
 
-        {(d.eliminated?.length ?? 0) > 0 && (
-          <details style={{ marginTop: 12 }}>
-            <summary style={{ cursor: 'pointer', fontSize: 13,
-              display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-              <span className="chip" style={{ color: 'var(--muted)' }}>
-                Eliminated ({d.eliminated!.length})
-              </span>
-              <span className="muted" style={{ fontSize: 11 }}>
-                designed but not selected — with the filter's reasons
-              </span>
-            </summary>
-            <div className="card" style={{ padding: '8px 12px', marginTop: 6,
-              display: 'grid', gap: 2 }}>
-              {d.eliminated!.map((e) => (
-                <div key={e.candidate} style={{ display: 'flex', gap: 10,
-                  alignItems: 'baseline', fontSize: 12, padding: '2px 0' }}>
-                  <span className="mono" style={{ flex: 'none' }}>{e.candidate}</span>
-                  <span className="muted" style={{ minWidth: 0 }}>
-                    {e.reason}</span>
-                  {e.score !== null && e.score !== undefined && (
-                    <span className="muted mono" style={{ marginLeft: 'auto',
-                      flex: 'none', fontSize: 11 }}>
-                      score {e.score}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </details>
-        )}
+        <NotTested cards={d.cards} eliminated={d.eliminated ?? []}
+          budgetNote={d.spec ? `top-${d.spec.k}/round × ${d.spec.rounds}` : ''} />
       </Section>
 
       {record.data && (
