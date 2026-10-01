@@ -209,12 +209,24 @@ Gap analysis against our evals/funnel/governance:
   under-ambitious; one eliminating everything has a broken filter).
   dmta_counts now buckets `invalidated` under refuted (was silently
   dropped from the verdict tally)
-- [ ] Candidate-report graveyard: eliminated hypotheses with filter
-  reasons shown in the UI ("Eliminated (n)" tab) — decisions are
-  already provenance-recorded, purely a read-model + FE task
-- [ ] Taste-distillation report: cluster accepted vs rejected wizard
-  hypotheses (mechanism/citation/family) and emit proposed prompt
-  amendments — tighten-only, reviewable (advisory-tier invariant)
+- [x] Candidate-report graveyard: `experiment_detail.eliminated` carries
+  rejected hypotheses with the filter's recorded reasons (latest decision
+  per candidate wins); the experiment page shows an "Eliminated (n)"
+  expander — live on AgroX-1: diversity-cap and score reasons visible
+- [x] Parallel campaign harness: `bionexus/sweep.py` + `bn sweep` — fans
+  one problem across candidate shards, each a full gated campaign on its
+  own problem branch, folded into a `sweep-rollup` record on the parent
+  branch (tree-rollup pattern, so reviewer/workbench read it unchanged).
+  Sequential/deterministic today; api/launch.py subprocess fan-out is the
+  live parallel counterpart streaming via branch announcements
+- [x] Taste-distillation report: `bionexus/taste.py` + `bn taste` —
+  folds every portfolio decision across all branches into accept-rate
+  deltas by hypothesis feature (mechanism/refutation/citation-verified/
+  rationale) and never-selected families; emits deterministic advisory
+  amendments (tighten-only, human review required, nothing applied).
+  First real-data run (207 decisions): mechanism-stated hypotheses
+  accepted LESS (39% vs 56%) — exactly the kind of taste signal the
+  loop exists to surface
 
 
 ## Do NOT (decided)

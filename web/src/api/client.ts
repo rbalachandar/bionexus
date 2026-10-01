@@ -102,6 +102,7 @@ export interface ExperimentDetail {
   counts: Record<string, number>
   rounds: { round: number; candidates: string[]; verdicts: Record<string, string> }[]
   cards: PipelineCard[]
+  eliminated?: { candidate: string; reason: string; score: number | null }[]
 }
 
 async function get<T>(path: string): Promise<T> {

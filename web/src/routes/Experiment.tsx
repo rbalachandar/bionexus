@@ -529,6 +529,36 @@ export default function Experiment() {
       <PipelineCards cards={d.cards}
         budgetNote={d.spec ? `top-${d.spec.k} hypotheses/round × ${d.spec.rounds} round${d.spec.rounds > 1 ? 's' : ''}` : ''} />
 
+      {(d.eliminated?.length ?? 0) > 0 && (
+        <details style={{ marginTop: 12, maxWidth: 980 }}>
+          <summary style={{ cursor: 'pointer', fontSize: 13,
+            display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+            <span className="chip" style={{ color: 'var(--muted)' }}>
+              Eliminated ({d.eliminated!.length})
+            </span>
+            <span className="muted" style={{ fontSize: 11 }}>
+              designed but not selected — with the filter's reasons
+            </span>
+          </summary>
+          <div className="card" style={{ padding: '8px 12px', marginTop: 6,
+            display: 'grid', gap: 2 }}>
+            {d.eliminated!.map((e) => (
+              <div key={e.candidate} style={{ display: 'flex', gap: 10,
+                alignItems: 'baseline', fontSize: 12, padding: '2px 0' }}>
+                <span className="mono" style={{ flex: 'none' }}>{e.candidate}</span>
+                <span className="muted" style={{ minWidth: 0 }}>
+                  {e.reason}</span>
+                {e.score !== null && e.score !== undefined && (
+                  <span className="muted mono" style={{ marginLeft: 'auto',
+                    flex: 'none', fontSize: 11 }}>
+                    score {e.score}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
       {record.data && <RecordOfThisRun record={record.data} eid={d.id}
         metric={d.program?.gate.metric ?? null}
         gate={d.program?.gate.value ?? null}

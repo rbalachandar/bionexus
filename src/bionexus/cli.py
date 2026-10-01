@@ -401,6 +401,32 @@ def cmd_fixtures(args: argparse.Namespace) -> int:
     return 2
 
 
+def cmd_sweep(args: argparse.Namespace) -> int:
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.hypothesis import ProblemStatement
+    from bionexus.sweep import run_sweep
+    cands = [c.strip() for c in args.candidates.split(",") if c.strip()]
+    from pathlib import Path as _P
+    _dbp = _P(args.db)
+    _dbp.parent.mkdir(parents=True, exist_ok=True)
+    problem = ProblemStatement(objective=args.objective)
+    res = run_sweep(problem, cands, lambda: SimulatorLab(seed=args.seed),
+                    SqliteProvenanceStore(args.db), fan=args.fan,
+                    k_per_shard=args.k, threshold=args.gate,
+                    unit=args.unit, metric=args.metric, seed=args.seed,
+                    rounds=args.rounds, notify=print)
+    import json as _json
+    print(_json.dumps({"best": res["best"], "tally": res["tally"]}, indent=1))
+    return 0
+
+
+def cmd_taste(args: argparse.Namespace) -> int:
+    from bionexus.taste import render_taste, taste_report
+    print(render_taste(taste_report(args.db)))
+    return 0
+
+
 def cmd_reproduce(args: argparse.Namespace) -> int:
     from bionexus.reproduce import reproduce
     res = reproduce(args.branch, db_path=args.db)
@@ -806,6 +832,27 @@ def main(argv: list[str] | None = None) -> int:
     inst.add_argument("names", nargs="+")
     inst.add_argument("--dest", default=".agents/skills")
     sk.set_defaults(func=cmd_skills)
+
+    sw = sub.add_parser("sweep", help="fan one problem across candidate "
+                        "shards (parallel campaign harness) and roll up")
+    sw.add_argument("--objective", required=True)
+    sw.add_argument("--candidates", required=True,
+                    help="comma-separated candidate ids")
+    sw.add_argument("--gate", type=float, default=20.0)
+    sw.add_argument("--metric", default="potency")
+    sw.add_argument("--unit", default="uM")
+    sw.add_argument("--fan", type=int, default=3, help="number of shards")
+    sw.add_argument("--k", type=int, default=2, help="hypotheses per shard round")
+    sw.add_argument("--rounds", type=int, default=1)
+    sw.add_argument("--seed", type=int, default=0)
+    sw.add_argument("--db", default="bionexus.db")
+    sw.set_defaults(func=cmd_sweep)
+
+    ta = sub.add_parser("taste", help="what distinguishes accepted "
+                        "hypotheses? accept-rate deltas + advisory "
+                        "prompt amendments (tighten-only)")
+    ta.add_argument("--db", default="bionexus.db")
+    ta.set_defaults(func=cmd_taste)
 
     args = parser.parse_args(argv)
     try:

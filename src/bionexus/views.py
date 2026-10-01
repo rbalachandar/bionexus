@@ -843,6 +843,29 @@ def experiment_detail(eid: str, wizard_store,
     pdef = next((r.decision for r in recs
                  if r.event_type.value == "problem_defined"), None)
 
+    # graveyard: hypotheses the portfolio filter rejected, with reasons —
+    # elimination is evidence too, and the scientist should audit it
+    id2cand: dict[str, str] = {}
+    for r in recs:
+        if r.event_type.value == "hypothesis_proposed" and r.artifact:
+            cand = (r.artifact.metadata or {}).get("candidate")
+            if cand:
+                id2cand[r.artifact.artifact_id] = str(cand)
+    eliminated: dict[str, dict] = {}
+    for r in recs:
+        if r.event_type.value != "hypotheses_filtered":
+            continue
+        for dec in (r.decision or {}).get("decisions", []):
+            if dec.get("selected"):
+                continue
+            cand = id2cand.get(dec.get("hypothesis_id")) \
+                or dec.get("hypothesis_id")
+            eliminated[cand] = {
+                "candidate": cand,
+                "reason": dec.get("reason") or "not selected",
+                "score": dec.get("score")}
+    eliminated = list(eliminated.values())
+
     objective = (pdef or {}).get("objective") \
         or (spec or {}).get("objective") \
         or row.get("question")
@@ -908,6 +931,7 @@ def experiment_detail(eid: str, wizard_store,
         "counts": dmta_counts(recs),
         "rounds": _rounds_with_verdicts(recs),
         "cards": cards,
+        "eliminated": eliminated,
     }
 
 
