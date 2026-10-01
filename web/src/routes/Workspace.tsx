@@ -216,9 +216,9 @@ function TasteCard() {
             fontSize: 12 }}>
             <span style={{ flex: 'none' }}>{LABEL[r.key]}</span>
             <span className="mono" style={{ marginLeft: 'auto', flex: 'none' }}>
-              {Math.round(r.s.rate! * 100)}% accepted
+              accepted with: {Math.round(r.s.rate! * 100)}% · without:{' '}
               {r.s.rate_without !== null
-                && ` vs ${Math.round(r.s.rate_without! * 100)}% without`}
+                ? `${Math.round(r.s.rate_without! * 100)}%` : '—'}
               <span className="muted"> (n={r.s.n})</span>
             </span>
           </div>
@@ -348,9 +348,6 @@ export default function Workspace({ initialForm = false }: {
         </section>
       )}
 
-      {/* selection taste (advisory) — hides itself below 6 decisions */}
-      <TasteCard />
-
       {/* program grid */}
       {ws.programs.length > 0 ? (
         <div style={{ columns: '3 340px', columnGap: 10,
@@ -462,6 +459,10 @@ export default function Workspace({ initialForm = false }: {
           ))}
         </details>
       )}
+
+      {/* selection taste (advisory) — system-level meta, lives at the
+          bottom with the archived section; hides below 6 decisions */}
+      <TasteCard />
     </main>
   )
 }
