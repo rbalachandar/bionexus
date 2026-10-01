@@ -112,10 +112,9 @@ function PipelineCards({ cards }: {
  * filter-eliminated hypotheses merged by candidate, statement snippet
  * joined with the filter's reason and score. Replaces the three
  * overlapping blocks (proposed / not selected / eliminated). */
-function NotTested({ cards, eliminated, budgetNote }: {
+function NotTested({ cards, eliminated }: {
   cards: PipelineCard[]
   eliminated: NonNullable<ExperimentDetail['eliminated']>
-  budgetNote?: string
 }) {
   const brief = cards.filter((c) => BRIEF_STATES.has(c.state))
   const byCand = new Map(eliminated.map((e) => [e.candidate, e]))
@@ -124,11 +123,14 @@ function NotTested({ cards, eliminated, budgetNote }: {
   const seen = new Set<string>()
   for (const c of brief) {
     const cand = c.candidate ?? c.head
+    // family-level proposal statements carry no candidate: they were
+    // never testable units — their variants are the hypotheses
+    if (c.state === 'proposed' && !c.candidate) continue
     seen.add(cand)
     const e = byCand.get(cand)
     rows.push({ cand, statement: c.statement ?? null,
       reason: e?.reason ?? (c.state === 'proposed'
-        ? `not selected — budget${budgetNote ? ` (${budgetNote})` : ''}`
+        ? 'no recorded filter decision — budget exhausted before ranking'
         : null), score: e?.score ?? null })
   }
   for (const e of eliminated)
@@ -589,8 +591,7 @@ export default function Experiment() {
       <Section n={running ? 4 : 3} title="Hypothesis pipeline">
         <PipelineCards cards={d.cards} />
 
-        <NotTested cards={d.cards} eliminated={d.eliminated ?? []}
-          budgetNote={d.spec ? `top-${d.spec.k}/round × ${d.spec.rounds}` : ''} />
+        <NotTested cards={d.cards} eliminated={d.eliminated ?? []} />
       </Section>
 
       {record.data && (
