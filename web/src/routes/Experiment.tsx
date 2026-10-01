@@ -581,19 +581,21 @@ export default function Experiment() {
         )}
       </Section>
 
-      {record.data && <Section n={running ? 5 : 4} title="The record of this run">
-        <RecordOfThisRun record={record.data} eid={d.id}
-          metric={d.program?.gate.metric ?? null}
-          gate={d.program?.gate.value ?? null}
-          onRereview={async () => {
-            await fetch(`/api/experiments/${d.id}/rereview`, { method: 'POST' })
-            // everything on the page derives from these queries — refresh all
-            for (const key of [['record', eid], ['experiment', eid],
-              ['pipeline', eid], ['trace', eid]]) {
-              qc.invalidateQueries({ queryKey: key })
-            }
-          }} />}
-      </Section>
+      {record.data && (
+        <Section n={running ? 5 : 4} title="The record of this run">
+          <RecordOfThisRun record={record.data} eid={d.id}
+            metric={d.program?.gate.metric ?? null}
+            gate={d.program?.gate.value ?? null}
+            onRereview={async () => {
+              await fetch(`/api/experiments/${d.id}/rereview`, { method: 'POST' })
+              // everything on the page derives from these queries — refresh all
+              for (const key of [['record', eid], ['experiment', eid],
+                ['pipeline', eid], ['trace', eid]]) {
+                qc.invalidateQueries({ queryKey: key })
+              }
+            }} />
+        </Section>
+      )}
 
       <Section n={running ? 6 : 5} title="Trace log">
         <TraceLog eid={d.id} active={running}
