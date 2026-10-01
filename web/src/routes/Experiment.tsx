@@ -145,9 +145,9 @@ function Section({ n, title, children }: {
   return (
     <section style={{ marginTop: 'var(--s4)', maxWidth: 980,
       borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-      <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
-        letterSpacing: '0.06em', marginBottom: 8 }}>
-        <span style={{ color: 'var(--brand)', fontWeight: 600 }}>{n}</span>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)',
+        textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+        <span style={{ color: 'var(--brand)', fontWeight: 700 }}>{n}</span>
         {' · '}{title}
       </div>
       {children}
