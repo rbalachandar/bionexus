@@ -1,5 +1,13 @@
 import type { ReactNode } from 'react'
 
+/** One visual language for verdicts, shared by workspace rows and the
+ * experiment page: ✓ confirmed · ✗ refuted · ∅ abstained. */
+export const VERDICT_GLYPH: Record<string, string> = {
+  confirmed: '✓', validated: '✓',
+  refuted: '✗', invalidated: '✗', refused: '✗', failed: '✗',
+  inconclusive: '∅',
+}
+
 /** Status badge: dot + label, tinted. Pulse for running states. */
 export function Badge({ status, children }: { status: string; children?: ReactNode }) {
   return (

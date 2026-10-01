@@ -1,10 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Activity, Target } from 'lucide-react'
+import { Activity, ShieldAlert, Target } from 'lucide-react'
 import { api } from '../api/client'
 import type { ExperimentDetail } from '../api/client'
 import EvidenceCurves from '../components/EvidenceCurves'
+import { Badge, VERDICT_GLYPH } from '../components/ui'
 import { useCampaignEvents } from '../api/useEvents'
 
 function Chip({ status }: { status: string }) {
@@ -12,6 +13,13 @@ function Chip({ status }: { status: string }) {
 }
 
 const BRIEF_STATES = new Set(['proposed', 'not_selected'])
+
+/** "ORGANISM_DOSE_RESPONSE (%)" -> "%": the metric belongs to the gate
+ * label; the evidence strip only needs the unit. */
+function unitOf(unitLabel: string | null) {
+  if (!unitLabel) return ''
+  return /\(([^)]+)\)/.exec(unitLabel)?.[1] ?? unitLabel
+}
 
 function PipelineCards({ cards, budgetNote }: {
   cards: ExperimentDetail['cards']
@@ -27,49 +35,72 @@ function PipelineCards({ cards, budgetNote }: {
   const detailed = cards.filter((c) => !BRIEF_STATES.has(c.state))
   const brief = cards.filter((c) => BRIEF_STATES.has(c.state))
   return (
-    <div style={{ maxWidth: 780 }}>
+    <div style={{ maxWidth: 980 }}>
       <div style={{ display: 'grid', gap: 8 }}>
         {detailed.map((c) => (
-          <div key={c.key} className="card" style={{ padding: '10px 12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-              <span>
-                <strong>{c.candidate ?? c.head}</strong>
-                {c.statement && <span> — {c.statement}</span>}
+          <div key={c.key} className="card" style={{ padding: '10px 14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', gap: 10 }}>
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 8,
+                minWidth: 0 }}>
+                <strong style={{ flex: 'none' }}>{c.candidate ?? c.head}</strong>
+                {c.statement && <span className="muted" style={{
+                  overflow: 'hidden', textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap' }}>{c.statement}</span>}
               </span>
-              <span style={{ whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600,
-                color: c.state === 'confirmed' || c.state === 'validated'
-                  ? 'var(--ok)'
-                  : c.state === 'refuted' || c.state === 'refused'
-                  ? 'var(--bad)'
-                  : c.state === 'inconclusive' ? 'var(--warn)'
-                  : 'var(--muted)' }}>
-                {c.stage}
+              <span style={{ whiteSpace: 'nowrap', flex: 'none' }}>
+                <Badge status={c.state}>
+                  {`${VERDICT_GLYPH[c.state] ?? ''} ${c.state.replace(/_/g, ' ')}`.trim()}
+                </Badge>
               </span>
             </div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+            {(c.verdict && c.verdict.observed !== null) || c.gate_label ? (
+              <div className="mono" style={{ fontSize: 11.5, marginTop: 8,
+                display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'baseline',
+                background: 'var(--surface-2)', borderRadius: 6,
+                padding: '5px 10px' }}>
+                {c.verdict && c.verdict.observed !== null && (
+                  <span>observed <strong style={{
+                    color: c.state === 'confirmed' || c.state === 'validated'
+                      ? 'var(--ok)'
+                      : c.state === 'refuted' ? 'var(--bad)'
+                      : c.state === 'inconclusive' ? 'var(--warn)'
+                      : 'var(--ink)' }}>
+                    {c.verdict.observed} {unitOf(c.verdict.unit_label)}</strong></span>)}
+                {c.verdict?.ci && <span className="muted">
+                  95% CI {c.verdict.ci[0]}–{c.verdict.ci[1]}</span>}
+                {c.verdict?.margin && <span className="muted">{c.verdict.margin}</span>}
+                {c.gate_label && <span className="muted">gate: {c.gate_label}</span>}
+              </div>
+            ) : null}
+            <div className="muted" style={{ fontSize: 12, marginTop: 6,
+              display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)',
+              gap: 1 }}>
+              {c.stage && !BRIEF_STATES.has(c.state)
+                && c.stage !== c.state.replace(/_/g, ' ')
+                && <div>{c.stage.split(/\s+[—–]\s/)[0].trim()}</div>}
               {c.round && <div>tested in round {c.round}</div>}
-              {c.gate_label && <div>gate: {c.gate_label}</div>}
               {(c.mechanism || c.refutation_condition || c.citation ||
                 c.predicted) && (
-                <details style={{ marginTop: 2 }}>
-                  <summary style={{ cursor: 'pointer', fontSize: 11 }}>
-                    hypothesis details
-                  </summary>
-                  <div style={{ marginTop: 4 }}>
-                    {c.predicted && <div>predicted: {c.predicted}</div>}
-                    {c.mechanism && <div>mechanism: {c.mechanism}</div>}
-                    {c.refutation_condition && (
-                      <div>refuted if: {c.refutation_condition}</div>)}
-                    {c.citation && (
-                      <div>
-                        citation: {c.citation}
-                        {c.citation_status === 'invalid' && (
-                          <strong style={{ color: 'var(--bad)' }}> FABRICATED</strong>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </details>
+                <div style={{ display: 'grid',
+                  gridTemplateColumns: 'minmax(72px, auto) minmax(0, 1fr)',
+                  gap: '1px 10px', marginTop: 4 }}>
+                  {c.predicted && <>
+                    <span style={{ color: 'var(--faint)' }}>predicted</span>
+                    <span>{c.predicted}</span></>}
+                  {c.mechanism && <>
+                    <span style={{ color: 'var(--faint)' }}>mechanism</span>
+                    <span>{c.mechanism}</span></>}
+                  {c.refutation_condition && <>
+                    <span style={{ color: 'var(--faint)' }}>refuted if</span>
+                    <span>{c.refutation_condition}</span></>}
+                  {c.citation && <>
+                    <span style={{ color: 'var(--faint)' }}>citation</span>
+                    <span>{c.citation}
+                      {c.citation_status === 'invalid' && (
+                        <strong style={{ color: 'var(--bad)' }}> FABRICATED</strong>
+                      )}</span></>}
+                </div>
               )}
             </div>
           </div>
@@ -106,6 +137,58 @@ function PipelineCards({ cards, budgetNote }: {
   )
 }
 
+function PendingApprovals({ eid, active }: { eid: string; active: boolean }) {
+  const qc = useQueryClient()
+  const q = useQuery({
+    queryKey: ['approvals-inline', eid],
+    queryFn: () => fetch('/api/approvals').then((r) => r.json()),
+    enabled: active,
+    refetchInterval: 4000,
+  })
+  const pending: { id: string; title: string; detail: string }[] =
+    q.data?.pending ?? []
+  if (!active || pending.length === 0) return null
+  return (
+    <div className="card" style={{ borderColor: '#f59e0b', background: '#fffbeb',
+      padding: '10px 14px', margin: '10px 0', display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13,
+        fontWeight: 600 }}>
+        <ShieldAlert size={15} color="#d97706" />
+        Waiting on your approval — the campaign is paused at the gate
+      </div>
+      {pending.map((a) => (
+        <div key={a.id} style={{ display: 'flex', gap: 10, alignItems: 'center',
+          fontSize: 12 }}>
+          <span className="mono" style={{ flex: 'none' }}>{a.title}</span>
+          {a.detail && <span className="muted" style={{ minWidth: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {a.detail}</span>}
+          <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, flex: 'none' }}>
+            <button className="primary" style={{ fontSize: 11, padding: '3px 12px' }}
+              onClick={async () => {
+                await fetch(`/api/approvals/${a.id}/decide`, { method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ approve: true }) })
+                qc.invalidateQueries({ queryKey: ['approvals-inline', eid] })
+              }}>
+              Approve
+            </button>
+            <button style={{ fontSize: 11, padding: '3px 12px' }}
+              onClick={async () => {
+                await fetch(`/api/approvals/${a.id}/decide`, { method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ approve: false }) })
+                qc.invalidateQueries({ queryKey: ['approvals-inline', eid] })
+              }}>
+              Deny
+            </button>
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds: { round: number; candidates: string[]; verdicts: Record<string, string> }[] }) {
   const chips: [string, number | string][] = [
     ['Design', `${counts.proposed ?? 0} proposed · ${counts.selected ?? 0} selected`],
@@ -118,7 +201,7 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
       <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
         letterSpacing: '0.04em', marginBottom: 4 }}>DMTA loop</div>
       <div style={{ display: 'flex', alignItems: 'stretch', gap: 0,
-        maxWidth: 760, marginBottom: 'var(--s2)' }}>
+        maxWidth: 980, marginBottom: 'var(--s2)' }}>
         {chips.map(([label, v], i) => (
           <div key={label} style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
             <div style={{ flex: 1, border: '1px solid var(--border)',
@@ -154,7 +237,7 @@ function DmtaCounts({ counts, rounds }: { counts: Record<string, number>; rounds
                 <td>
                   {Object.entries(r.verdicts).map(([c, v]) => (
                     <span key={c} className={`chip ${v}`} style={{ marginRight: 6, fontSize: 11 }}>
-                      {c}: {v}
+                      {`${VERDICT_GLYPH[v] ?? ''} ${c}: ${v.replace(/_/g, ' ')}`.trim()}
                     </span>
                   )) || '—'}
                 </td>
@@ -388,7 +471,7 @@ export default function Experiment() {
         </div>
       )}
       {d.spec && (
-        <div className="card" style={{ margin: '8px 0', padding: '10px 14px', maxWidth: 780 }}>
+        <div className="card" style={{ margin: '8px 0', padding: '10px 14px', maxWidth: 980 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '3px 12px', fontSize: 12 }}>
             <span className="muted">Objective</span>
             <span>{d.objective}</span>
@@ -410,6 +493,8 @@ export default function Experiment() {
           In progress — this page updates as the agent works.
         </p>
       )}
+
+      <PendingApprovals eid={d.id} active={running} />
 
       <DmtaCounts counts={d.counts} rounds={d.rounds} />
 

@@ -4,17 +4,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { ProblemTreeOut, ProgramOut } from '../api/client'
-import { Badge, EmptyState, PageHeader, Skeleton } from '../components/ui'
+import { Badge, EmptyState, PageHeader, Skeleton, VERDICT_GLYPH } from '../components/ui'
 import ProgramForm from './ProgramForm'
-
-function statusChip(status: string) {
-  return <Badge status={status} />
-}
-
-function tallyText(tally: Record<string, number>) {
-  const parts = Object.entries(tally).map(([s, n]) => `${n} ${s}`)
-  return parts.length ? parts.join(' · ') : 'no experiments yet'
-}
 
 function ArchiveButton({ label, confirmLabel, small, onConfirm }: {
   label: string
@@ -46,18 +37,71 @@ function ArchiveButton({ label, confirmLabel, small, onConfirm }: {
   )
 }
 
+const NO_LABEL_STATUS = new Set(['completed', 'archived'])
+
+/** Leaf label: never re-print the program objective — campaigns are
+ * numbered and named by what they tested; tree leaves keep their own
+ * short objective head. */
+function leafLabel(question: string | null, objective: string | null,
+  i: number, candidates?: string[]) {
+  const cands = (candidates ?? []).slice(0, 3).join(', ') +
+    ((candidates?.length ?? 0) > 3 ? ` +${candidates!.length - 3}` : '')
+  if (!objective) return question ?? `Experiment ${i + 1}`
+  const q = question ?? ''
+  const head = q.split(/\s+[—–]\s/)[0].trim()
+  if (!q || q.trim() === objective.trim() || head === objective.trim())
+    return cands ? `Campaign ${i + 1} · ${cands}` : `Campaign ${i + 1}`
+  const label = head.length > 56 ? `${head.slice(0, 53)}…` : head
+  return cands ? `${label} · ${cands}` : label
+}
+
+/** Row tooltip: what this experiment actually did — not the objective
+ * the card above it already shows. */
+function leafTitle(l: { eid: string; question: string | null; runs?: number;
+  verdicts?: { confirmed: number; refuted: number; inconclusive: number };
+  candidates?: string[] }) {
+  const bits: string[] = []
+  if (l.candidates?.length) bits.push(`tested: ${l.candidates.join(', ')}`)
+  if (l.runs) bits.push(`${l.runs} runs`)
+  const v = l.verdicts
+  if (v && (v.confirmed || v.refuted || v.inconclusive))
+    bits.push(`✓${v.confirmed} ✗${v.refuted} ∅${v.inconclusive}`)
+  bits.push(l.eid)
+  return bits.join(' · ')
+}
+
+function VerdictTally({ v }: {
+  v?: { confirmed: number; refuted: number; inconclusive: number }
+}) {
+  if (!v) return null
+  const parts = [[v.confirmed, VERDICT_GLYPH.confirmed, 'var(--ok)'],
+    [v.refuted, VERDICT_GLYPH.refuted, 'var(--bad)'],
+    [v.inconclusive, VERDICT_GLYPH.inconclusive, 'var(--warn)']] as const
+  const shown = parts.filter(([n]) => n > 0)
+  if (shown.length === 0) return null
+  return (
+    <span className="mono" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
+      {shown.map(([n, g, c]) => (
+        <span key={g} style={{ color: c, marginRight: 6 }}>{g}{n}</span>
+      ))}
+    </span>
+  )
+}
+
 function ProgramCard({ p, onDelete, deleting }: {
   p: ProgramOut
   onDelete: (slug: string) => void
   deleting: string | null
 }) {
-  const nav = useNavigate()
   const done = p.tally['completed'] ?? 0
   const running = p.tally['running'] ?? 0
   const total = Object.values(p.tally).reduce((a, b) => a + b, 0)
   const [collapsed, setCollapsed] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const leaves = p.links.filter((l) => l.role === 'leaf' && l.live !== false)
   const open = !collapsed
+  const MAX_ROWS = 4
+  const shown = showAll ? leaves : leaves.slice(0, MAX_ROWS)
   return (
     <div className="card" style={{ display: 'grid', gap: 10, width: '100%',
       marginBottom: 10, breakInside: 'avoid' }}>
@@ -71,13 +115,19 @@ function ProgramCard({ p, onDelete, deleting }: {
           <ChevronRight size={13} color="var(--muted)"
             style={{ flex: 'none', transform: open ? 'rotate(90deg)' : 'none',
               transition: 'transform var(--speed) var(--ease)' }} />
+          {total > 0 && (
+            <span className="muted mono" style={{ fontSize: 11, whiteSpace: 'nowrap',
+              overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {total} exp{total === 1 ? '' : 's'}{done > 0 && ` · ${done} done`}
+            </span>
+          )}
         </div>
         <button
           className={deleting === p.slug ? 'danger' : ''}
           style={{ fontSize: 11, padding: '2px 8px', display: 'inline-flex',
             gap: 4, alignItems: 'center', flex: 'none' }}
           title={deleting === p.slug
-            ? 'click again to delete — experiments are kept'
+            ? 'click again to confirm — experiments are kept'
             : 'delete this program (experiments are kept)'}
           onClick={(e) => {
             e.stopPropagation()
@@ -95,31 +145,45 @@ function ProgramCard({ p, onDelete, deleting }: {
         </span>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        {p.modality && <span className="chip">{p.modality}</span>}
-        <span className="chip">{p.mode}</span>
+        {p.modality && <span className="chip meta">{p.modality}</span>}
+        <span className="chip meta">{p.mode}</span>
         {running > 0 && <Badge status="running">{running} running</Badge>}
-        <span className="muted" style={{ fontSize: 11, marginLeft: 'auto' }}>
-          {total === 0 ? 'no experiments yet' : `${total} experiment(s)${done ? ` · ${done} completed` : ''}`}
-        </span>
       </div>
       {open && (
-        <div style={{ display: 'grid', gap: 4, borderTop: '1px solid var(--border)',
-          paddingTop: 8, maxHeight: 180, overflowY: 'auto' }}>
+        <div style={{ display: 'grid', gap: 2, borderTop: '1px solid var(--border)',
+          paddingTop: 8 }}>
           {leaves.length === 0 && (
             <span className="muted" style={{ fontSize: 12 }}>
               no experiments yet — launch one from the New-program form
             </span>
           )}
-          {leaves.map((l) => (
-            <div key={l.eid} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-              <FlaskConical size={12} color="var(--brand)" />
-              <a href={`/experiments/${l.eid}`} style={{ fontSize: 12 }}
-                onClick={(e) => e.stopPropagation()}>
-                {l.question || l.eid}
-              </a>
-              <Badge status={l.status} />
-            </div>
+          {shown.map((l, i) => (
+            <a key={l.eid} href={`/experiments/${l.eid}`}
+              onClick={(e) => e.stopPropagation()}
+              title={leafTitle(l)}
+              style={{ display: 'grid', gridTemplateColumns: '7px minmax(0, 1fr) auto',
+                gap: 8, alignItems: 'center', padding: '3px 0', fontSize: 12 }}>
+              <span className={`dot ${l.status}`} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap' }}>
+                {leafLabel(l.question, p.objective, i, l.candidates)}
+              </span>
+              <span style={{ display: 'flex', gap: 8, alignItems: 'center',
+                justifySelf: 'end', whiteSpace: 'nowrap' }}>
+                <VerdictTally v={l.verdicts} />
+                <span className="muted mono" style={{ fontSize: 11 }}>
+                  {l.runs ?? 0} runs · r{l.rounds_done ?? 0}{l.rounds_planned ? `/${l.rounds_planned}` : ''}
+                </span>
+                {!NO_LABEL_STATUS.has(l.status) && <Badge status={l.status} />}
+              </span>
+            </a>
           ))}
+          {leaves.length > MAX_ROWS && !showAll && (
+            <button style={{ justifySelf: 'start', fontSize: 11, padding: '2px 8px',
+              marginTop: 2 }} onClick={() => setShowAll(true)}>
+              +{leaves.length - MAX_ROWS} more
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -211,7 +275,7 @@ export default function Workspace({ initialForm = false }: {
 
       {/* live stats band */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-        gap: 8, maxWidth: 640, marginBottom: 'var(--s4)' }}>
+        gap: 8, marginBottom: 'var(--s4)' }}>
         {[
           ['Programs', ws.programs.length],
           ['Running', runningTotal],
@@ -307,18 +371,30 @@ export default function Workspace({ initialForm = false }: {
                 qc.invalidateQueries({ queryKey: ['workspace'] })
               }} />
           </div>
-          {entries.map((e) => (
+          {entries.map((e, i) => (
             <div key={e.eid}
-              style={{ display: 'flex', alignItems: 'baseline', gap: 8,
-                padding: '5px 0 5px 24px', borderBottom: '1px solid var(--border)' }}>
-              <FlaskConical size={12} color="var(--brand)" />
-              <a href={`/experiments/${e.eid}`} style={{ fontSize: 13 }}>{e.question || e.eid}</a>
-              {statusChip(e.status)}
-              <ArchiveButton small label="✕" confirmLabel="archive?"
-                onConfirm={async () => {
-                  await fetch(`/api/experiments/${e.eid}/archive`, { method: 'POST' })
-                  qc.invalidateQueries({ queryKey: ['workspace'] })
-                }} />
+              style={{ display: 'grid', gridTemplateColumns: '7px minmax(0, 1fr) auto',
+                gap: 8, alignItems: 'center', padding: '4px 0 4px 24px',
+                borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+              <span className={`dot ${e.status}`} />
+              <a href={`/experiments/${e.eid}`} style={{
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                title={leafTitle(e)}>
+                {leafLabel(e.question, null, i, e.candidates)}
+              </a>
+              <span style={{ display: 'flex', gap: 8, alignItems: 'center',
+                whiteSpace: 'nowrap' }}>
+                <VerdictTally v={e.verdicts} />
+                <span className="muted mono" style={{ fontSize: 11 }}>
+                  {e.runs ?? 0} runs · r{e.rounds_done ?? 0}{e.rounds_planned ? `/${e.rounds_planned}` : ''}
+                </span>
+                {!NO_LABEL_STATUS.has(e.status) && <Badge status={e.status} />}
+                <ArchiveButton small label="✕" confirmLabel="archive?"
+                  onConfirm={async () => {
+                    await fetch(`/api/experiments/${e.eid}/archive`, { method: 'POST' })
+                    qc.invalidateQueries({ queryKey: ['workspace'] })
+                  }} />
+              </span>
             </div>
           ))}
         </section>

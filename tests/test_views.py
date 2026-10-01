@@ -211,6 +211,65 @@ def test_experiment_detail_and_workspace(tmp_path):
         assert all(x["eid"] != eid for x in g)
 
 
+def test_workspace_link_stats(tmp_path):
+    """Program links carry per-experiment execution stats (runs used,
+    rounds done/planned, verdict tally) so the workspace card can render
+    one dense aligned row instead of the repeated objective. Verdict
+    buckets: validated counts as confirmed, invalidated as refuted."""
+    from bionexus import program as program_cfg
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    from bionexus.views import workspace
+    from bionexus.wizard_store import WizardStore
+
+    ws = WizardStore()
+    program_cfg.save_program_record(
+        {"program": "LS-1", "custom": True, "objective": "obj",
+         "metric": "m", "direction": "min", "gate_value": 1, "unit": "u",
+         "mode": "autonomous"})
+    eid = "ls-exp-1"
+    ws.register_agent(eid, "obj", log="", autonomy="act")
+    ws.set_campaign_spec(eid, objective="obj", program_slug="ls-1",
+                         k=2, rounds=2, autonomy="act",
+                         hypothesis_source="config", n_candidates=2)
+    program_cfg.record_launch("LS-1", "prob-ls1", "obj")
+    program_cfg.link_leaf("LS-1", eid, campaign_root="prob-ls1",
+                          question="obj")
+    br = Envelope(experiment_branch_id="problem/prob-ls1")
+    store = SqliteProvenanceStore(str(tmp_path / "prov.db"))
+    store.append(record_for(br, EventType.stage_transition,
+                            system_actor("test"),
+                            decision={"kind": "round_start", "round": 1,
+                                      "candidates": ["A", "B"]}))
+    store.append(record_for(br, EventType.lab_run, system_actor("test"),
+                            decision={"run_id": "r-1"}))
+    store.append(record_for(br, EventType.lab_run, system_actor("test"),
+                            decision={"run_id": "r-2"}))
+    # A: confirmed then INVALIDATED on the same hypothesis -> refuted wins
+    store.append(record_for(br, EventType.hypothesis_tested,
+                            system_actor("test"),
+                            decision={"hypothesis_id": "hA",
+                                      "verdict": "confirmed"}))
+    store.append(record_for(br, EventType.hypothesis_invalidated,
+                            system_actor("test"),
+                            decision={"hypothesis_id": "hA",
+                                      "verdict": "invalidated"}))
+    store.append(record_for(br, EventType.hypothesis_validated,
+                            system_actor("test"),
+                            decision={"hypothesis_id": "hB",
+                                      "verdict": "validated"}))
+
+    prog = next(p for p in workspace(ws, tmp_path / "prov.db")["programs"]
+                if p["slug"] == "ls-1")
+    link = next(a for a in prog["links"] if a["eid"] == eid)
+    assert link["runs"] == 2
+    assert link["rounds_done"] == 1 and link["rounds_planned"] == 2
+    assert link["verdicts"] == {"confirmed": 1, "refuted": 1,
+                                "inconclusive": 0}
+    assert link["candidates"] == ["A", "B"]
+
+
 def test_reviewer_direction_aware_max_gate():
     """A max-direction verdict (observed >= gate) must NOT be flagged
     label-vs-data — the reviewer reads `direction` from the record."""

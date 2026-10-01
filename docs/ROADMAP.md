@@ -159,6 +159,31 @@ Status legend: `[ ]` open · `[~]` in progress · `[x]` done
   Tamper test proves appended records break verification
 - [x] `instrument_version` on every lab_run decision (SimulatorLab = sim-v1)
 
+## Workbench UX pass — Oct 2026
+- [x] Live branch announcement: campaigns publish eid→problem-branch to
+  `branch-map.json` at problem_defined (`autoloop.announce_branch`; the
+  decompose flow announces per leaf BEFORE its campaign runs) so the SSE
+  watcher streams records in-flight instead of post-hoc log parsing
+- [x] Workspace read-model: program links + standalone rows carry per-
+  experiment execution stats (runs, rounds done/planned, verdict tally
+  via `views.verdict_tally` — validated→confirmed, invalidated→refuted,
+  latest per hypothesis, tested-candidate list from round markers)
+- [x] Program cards: objective printed once (campaigns labeled by what
+  they tested, `Campaign 1 · SU-101, PPO-201 +2`), aligned 3-col dot
+  rows, neutral meta chips vs tinted status chips, header counter,
+  "+N more" instead of scrollbar, full-width stats band
+- [x] Experiment page: verdict chip parity + shared ✓/✗/∅ glyphs
+  (`VERDICT_GLYPH`), evidence strip (observed + CI + gate, metric once,
+  observed tinted by verdict), hypothesis details as a visible
+  definition grid, content column 780→980, wrapping data tables
+- [x] Governance surfaced in the loop: banner shows a contextual pill
+  only when approvals are pending / halt engaged; running experiment
+  pages render inline Approve/Deny for gate-mode submissions
+  (approvals were previously reachable only via the standalone page)
+- [x] Stale artifacts removed: zombie Streamlit processes killed,
+  dead provenance dbs (campaign/case_study/full_flow) deleted
+
+
 ## Do NOT (decided)
 - Multi-user/auth on the workbench — local-first is the point
 - Replacing Streamlit — graduate to FastAPI+React only if multi-user arrives

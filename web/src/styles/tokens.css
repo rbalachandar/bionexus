@@ -146,6 +146,18 @@ button.danger:hover { background: var(--bad-tint); border-color: var(--bad); }
 .chip.in_lab, .chip.selected { background: var(--brand-tint); border-color: var(--brand-border); color: var(--brand); }
 .chip.in_lab::before, .chip.selected::before { background: var(--brand); }
 
+/* metadata chips (modality/mode): no dot, lighter — status chips own the color */
+.chip.meta { color: var(--muted); font-weight: 400; }
+.chip.meta::before { content: none; }
+
+/* status dot for workspace experiment rows */
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.dot.running, .dot.executing { background: var(--running); animation: pulse 1.6s var(--ease) infinite; }
+.dot.completed, .dot.confirmed, .dot.validated { background: var(--ok); }
+.dot.failed, .dot.refuted, .dot.invalidated, .dot.refused { background: var(--bad); }
+.dot.interrupted, .dot.inconclusive, .dot.verdict_recorded { background: var(--warn); }
+.dot.in_lab, .dot.selected { background: var(--brand); }
+
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.4; transform: scale(0.75); }
@@ -159,8 +171,9 @@ table.data-table {
 table.data-table th, table.data-table td {
   text-align: left; padding: 7px 14px 7px 0;
   border-bottom: 1px solid var(--border);
-  white-space: nowrap;
 }
+table.data-table td { white-space: normal; min-width: 72px; max-width: 420px; }
+table.data-table th { white-space: nowrap; }
 table.data-table th {
   color: var(--muted); font-weight: 600; font-size: var(--fs-2xs);
   text-transform: uppercase; letter-spacing: 0.05em;

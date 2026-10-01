@@ -131,6 +131,31 @@ def dmta_counts(recs) -> dict:
     return c
 
 
+def verdict_tally(recs) -> dict[str, int]:
+    """Final verdicts — one per hypothesis (latest wins) — bucketed for
+    the workspace chips: confirmed (validated counts as confirmed),
+    refuted (invalidated/failed count as refuted), inconclusive."""
+    t = {"confirmed": 0, "refuted": 0, "inconclusive": 0}
+    final: dict[str, str] = {}
+    for r in recs:
+        d = r.decision or {}
+        if r.event_type.value in ("hypothesis_validated",
+                                  "hypothesis_invalidated",
+                                  "hypothesis_tested") and d.get("verdict"):
+            hid = d.get("hypothesis_id") \
+                or (r.artifact.artifact_id if r.artifact else None)
+            if hid:
+                final[hid] = str(d.get("verdict"))
+    for v in final.values():
+        if v in ("validated", "confirmed"):
+            t["confirmed"] += 1
+        elif v in ("refuted", "invalidated", "failed"):
+            t["refuted"] += 1
+        else:
+            t["inconclusive"] += 1
+    return t
+
+
 def round_markers(recs) -> list[tuple[int, list[str]]]:
     """[(round_no, [candidates])] sorted by round, from round_start
     markers."""
@@ -928,6 +953,64 @@ def workspace(wizard_store,
 
     programs = []
     linked_eids: set = set()
+    # per-link execution stats: branch resolution mirrors the SSE watcher
+    # (campaign announcement -> payload -> program relation -> agent log),
+    # record reads are cached per branch
+    prov = None
+    if Path(provenance_db).exists():
+        try:
+            from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+            prov = SqliteProvenanceStore(str(provenance_db))
+        except Exception:
+            prov = None
+    try:
+        from bionexus.autoloop import announced_branches
+        branch_map = announced_branches()
+    except Exception:
+        branch_map = {}
+    stats_cache: dict[str, dict] = {}
+
+    def link_stats(eid, e, l) -> dict:
+        if eid in stats_cache:
+            return stats_cache[eid]
+        out = {"runs": 0, "rounds_done": 0, "rounds_planned": None,
+               "verdicts": {"confirmed": 0, "refuted": 0, "inconclusive": 0},
+               "candidates": []}
+        try:
+            spec = wizard_store.get_campaign_spec(eid)
+            out["rounds_planned"] = (spec or {}).get("rounds")
+        except Exception:
+            pass
+        payload = (e or {}).get("payload") or {}
+        ag = payload.get("agent") or {}
+        pid = branch_map.get(eid) or ag.get("problem_id") \
+            or l.get("campaign_root")
+        if not pid and ag.get("log") and Path(ag["log"]).is_file():
+            pid = resolve_problem({}, Path(ag["log"]))
+        if prov is not None and pid:
+            key = f"problem/{pid}"
+            if key not in stats_cache:
+                try:
+                    recs = prov.branch_records(key)
+                except Exception:
+                    recs = []
+                cands: list[str] = []
+                for _n, cs in round_markers(recs):
+                    for c in cs:
+                        if str(c) not in cands:
+                            cands.append(str(c))
+                stats_cache[key] = {
+                    "runs": sum(1 for r in recs
+                                if r.event_type.value == "lab_run"
+                                and (r.decision or {}).get("run_id")),
+                    "rounds_done": len(round_markers(recs)),
+                    "verdicts": verdict_tally(recs),
+                    "candidates": cands,
+                }
+            out = {**out, **stats_cache[key]}
+        stats_cache[eid] = out
+        return out
+
     for p in program_cfg.list_programs():
         links = program_cfg.links_for(p["slug"])
         atts = []
@@ -944,7 +1027,8 @@ def workspace(wizard_store,
                          "question": l["question"] or
                          (e or {}).get("question"),
                          "status": st,
-                         "live": e is not None})
+                         "live": e is not None,
+                         **link_stats(l["eid"], e, l)})
         doc = p.get("program") or {}
         programs.append({
             "slug": p["slug"], "name": p["name"],
@@ -975,7 +1059,8 @@ def workspace(wizard_store,
         groups["autonomous" if (e["payload"].get("agent") or {})
                else "guided"].append(
             {"eid": e["id"], "question": e["question"],
-             "status": row_status(e)})
+             "status": row_status(e),
+             **link_stats(e["id"], e, {})})
     return {"programs": programs, "trees": trees,
             "experiments_total": len(live),
             "groups": {k: v for k, v in groups.items() if v},
