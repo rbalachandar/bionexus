@@ -150,24 +150,26 @@ function NotTested({ cards, eliminated, budgetNote }: {
       <div className="card" style={{ padding: '8px 12px', marginTop: 6,
         display: 'grid', gap: 2 }}>
         {rows.map((r) => (
-          <div key={r.cand} style={{ display: 'flex', gap: 10,
-            alignItems: 'baseline', fontSize: 12, padding: '3px 0',
-            borderBottom: '1px solid var(--border)' }}>
-            <span className="mono" style={{ flex: 'none',
-              fontWeight: 600 }}>{r.cand}</span>
-            {r.statement && <span className="muted" style={{ minWidth: 0,
-              overflow: 'hidden', textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap' }}>{r.statement}</span>}
-            <span style={{ marginLeft: 'auto', display: 'flex', gap: 8,
-              alignItems: 'baseline', flex: 'none', maxWidth: '55%' }}>
-              {r.reason && <span className="muted" style={{ fontSize: 11,
-                overflow: 'hidden', textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap' }}>{r.reason}</span>}
+          <div key={r.cand} style={{ display: 'grid', gap: 2,
+            padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'baseline',
+              minWidth: 0 }}>
+              <span className="mono" style={{ flex: 'none',
+                fontWeight: 600 }}>{r.cand}</span>
+              {r.reason && <span className="muted" title={r.reason}
+                style={{ fontSize: 11, minWidth: 0, overflow: 'hidden',
+                  textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {r.reason}</span>}
               {r.score !== null && r.score !== undefined && (
-                <span className="muted mono" style={{ fontSize: 11 }}>
-                  {r.score}</span>
+                <span className="muted mono" style={{ marginLeft: 'auto',
+                  flex: 'none', fontSize: 11 }}>
+                  score {r.score}</span>
               )}
-            </span>
+            </div>
+            {r.statement && <span className="muted" style={{
+              fontSize: 11.5, overflow: 'hidden', display: '-webkit-box',
+              WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+              {r.statement}</span>}
           </div>
         ))}
       </div>
