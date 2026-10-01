@@ -198,8 +198,10 @@ function TasteCard() {
   const rows = (['mechanism', 'refutation', 'citation_verified'] as const)
     .map((k) => ({ key: k, s: d.by_feature[k] }))
     .filter((r) => r.s?.rate !== null && r.s?.rate !== undefined)
-  const LABEL: Record<string, string> = { mechanism: 'mechanism stated',
-    refutation: 'refutation condition', citation_verified: 'citation verified' }
+  const LABEL: Record<string, string> = {
+    mechanism: 'mechanism stated',
+    refutation: 'refutation condition stated',
+    citation_verified: 'citation verified (PubMed)' }
   return (
     <details className="card" style={{ marginBottom: 'var(--s4)' }}>
       <summary style={{ cursor: 'pointer', fontSize: 13, display: 'flex',
