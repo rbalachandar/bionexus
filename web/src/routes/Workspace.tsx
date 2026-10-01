@@ -103,19 +103,32 @@ function TasteLines({ taste, compact }: { taste: TasteReport; compact?: boolean 
         Selection profile — {taste.n} decisions · {taste.accepted} accepted
         {' '}({Math.round(taste.overall_rate * 100)}%) · advisory
       </div>
-      {rows.map((r) => (
-        <div key={r.key} style={{ display: 'flex', flexWrap: 'wrap',
-          gap: '2px 10px', alignItems: 'baseline', fontSize: compact ? 11 : 12 }}>
-          <span>{LABEL[r.key]}</span>
-          <span className="mono" style={{ marginLeft: 'auto',
-            textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>
-            accepted with: {Math.round(r.s.rate! * 100)}% · without:{' '}
-            {r.s.rate_without !== null
-              ? `${Math.round(r.s.rate_without! * 100)}%` : '—'}
-            <span className="muted"> (n={r.s.n})</span>
-          </span>
-        </div>
-      ))}
+      {(() => {
+        const informative = rows.filter((r) => r.s.rate_without !== null)
+        if (informative.length === 0)
+          return (
+            <div className="muted" style={{ fontSize: 11 }}>
+              No within-program contrast: all {taste.n} hypotheses carry
+              the demanded features, so accept-rate deltas can't be
+              computed. {taste.accepted}/{taste.n} accepted.
+            </div>
+          )
+        return informative.map((r) => {
+          const same = Math.abs(r.s.rate! - r.s.rate_without!) < 0.005
+          return (
+            <div key={r.key} style={{ display: 'flex', flexWrap: 'wrap',
+              gap: '2px 10px', alignItems: 'baseline',
+              fontSize: compact ? 11 : 12 }}>
+              <span>{LABEL[r.key]}</span>
+              <span className="mono" style={{ marginLeft: 'auto',
+                textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>
+                {same ? 'no difference' : `accepted with: ${Math.round(r.s.rate! * 100)}% · without: ${Math.round(r.s.rate_without! * 100)}%`}
+                <span className="muted"> (n={r.s.n})</span>
+              </span>
+            </div>
+          )
+        })
+      })()}
       {taste.amendments.map((a) => (
         <div key={a} className="muted" style={{ fontSize: 11 }}>
           • {a}
