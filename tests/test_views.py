@@ -269,6 +269,31 @@ def test_workspace_link_stats(tmp_path):
                                 "inconclusive": 0}
     assert link["candidates"] == ["A", "B"]
 
+    # per-program taste slice: portfolio decisions on the program's
+    # branches fold into links' own accept-rate report
+    from bionexus.core.contracts import Envelope as _E
+    from bionexus.core.interfaces import record_for as _rf, system_actor as _sa
+    store.append(record_for(
+        _E(experiment_branch_id="problem/prob-ls1"),
+        EventType.hypothesis_proposed, _sa("test"),
+        artifact=__import__("bionexus.core.contracts", fromlist=["Artifact"])
+        .Artifact(artifact_id="hT1", kind=__import__(
+            "bionexus.core.contracts", fromlist=["ArtifactKind"])
+            .ArtifactKind.hypothesis, uri="mem://t1",
+            metadata={"candidate": "A"}),
+        decision={"statement": "A binds", "candidate": "A",
+                  "mechanism": "covalent"}))
+    store.append(record_for(
+        _E(experiment_branch_id="problem/prob-ls1"),
+        EventType.hypotheses_filtered, _sa("test"),
+        decision={"k": 1, "decisions": [
+            {"hypothesis_id": "hT1", "selected": True, "score": 0.9,
+             "reason": "top-k"}]}))
+    prog = next(p for p in workspace(ws, tmp_path / "prov.db")["programs"]
+                if p["slug"] == "ls-1")
+    assert prog["taste"]["n"] == 1 and prog["taste"]["accepted"] == 1
+    assert prog["taste"]["by_feature"]["mechanism"]["rate"] == 1.0
+
 
 def test_reviewer_direction_aware_max_gate():
     """A max-direction verdict (observed >= gate) must NOT be flagged

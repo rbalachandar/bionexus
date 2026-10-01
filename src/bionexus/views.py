@@ -995,13 +995,14 @@ def workspace(wizard_store,
     except Exception:
         branch_map = {}
     stats_cache: dict[str, dict] = {}
+    recs_by_branch: dict[str, list] = {}
 
     def link_stats(eid, e, l) -> dict:
         if eid in stats_cache:
             return stats_cache[eid]
         out = {"runs": 0, "rounds_done": 0, "rounds_planned": None,
                "verdicts": {"confirmed": 0, "refuted": 0, "inconclusive": 0},
-               "candidates": []}
+               "candidates": [], "branch": None}
         try:
             spec = wizard_store.get_campaign_spec(eid)
             out["rounds_planned"] = (spec or {}).get("rounds")
@@ -1020,6 +1021,7 @@ def workspace(wizard_store,
                     recs = prov.branch_records(key)
                 except Exception:
                     recs = []
+                recs_by_branch[key] = recs
                 cands: list[str] = []
                 for _n, cs in round_markers(recs):
                     for c in cs:
@@ -1032,6 +1034,7 @@ def workspace(wizard_store,
                     "rounds_done": len(round_markers(recs)),
                     "verdicts": verdict_tally(recs),
                     "candidates": cands,
+                    "branch": pid,
                 }
             out = {**out, **stats_cache[key]}
         stats_cache[eid] = out
@@ -1056,6 +1059,23 @@ def workspace(wizard_store,
                          "live": e is not None,
                          **link_stats(l["eid"], e, l)})
         doc = p.get("program") or {}
+        # per-program taste: accept-rate deltas over this program's own
+        # portfolio decisions (advisory read-only)
+        try:
+            from bionexus.taste import _features, fold_taste
+            feats_all: dict[str, dict] = {}
+            decisions_all: list[dict] = []
+            for a in atts:
+                recs = recs_by_branch.get(f"problem/{a.get('branch')}")
+                if not recs:
+                    continue
+                f, d = _features(recs)
+                feats_all.update(f)
+                decisions_all.extend(d)
+            taste = fold_taste(feats_all, decisions_all)
+        except Exception:
+            taste = {"n": 0, "accepted": 0, "overall_rate": 0.0,
+                     "by_feature": {}, "families": {}, "amendments": []}
         programs.append({
             "slug": p["slug"], "name": p["name"],
             "objective": doc.get("objective"),
@@ -1063,7 +1083,8 @@ def workspace(wizard_store,
             "modality": doc.get("modality"),
             "mode": doc.get("mode", "autonomous"),
             "links": atts,
-            "tally": tally})
+            "tally": tally,
+            "taste": taste})
 
     # trees not linked to any program render at top level
     linked_roots = {a["campaign_root"] for p in programs

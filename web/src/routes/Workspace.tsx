@@ -3,7 +3,7 @@ import { Activity, ChevronRight, FlaskConical, Plus, Target, Trash2, Users } fro
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
-import type { ProblemTreeOut, ProgramOut } from '../api/client'
+import type { ProblemTreeOut, ProgramOut, TasteReport } from '../api/client'
 import { Badge, EmptyState, PageHeader, Skeleton, VERDICT_GLYPH } from '../components/ui'
 import ProgramForm from './ProgramForm'
 
@@ -85,6 +85,42 @@ function VerdictTally({ v }: {
         <span key={g} style={{ color: c, marginRight: 6 }}>{g}{n}</span>
       ))}
     </span>
+  )
+}
+
+function TasteLines({ taste, compact }: { taste: TasteReport; compact?: boolean }) {
+  const rows = (['mechanism', 'refutation', 'citation_verified'] as const)
+    .map((k) => ({ key: k, s: taste.by_feature[k] }))
+    .filter((r) => r.s?.rate !== null && r.s?.rate !== undefined)
+  const LABEL: Record<string, string> = {
+    mechanism: 'mechanism stated',
+    refutation: 'refutation condition stated',
+    citation_verified: 'citation verified (PubMed)' }
+  return (
+    <div style={{ display: 'grid', gap: 2 }}>
+      <div className="muted" style={{ fontSize: compact ? 10 : 11,
+        textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        Selection taste — {taste.n} decisions · {taste.accepted} accepted
+        {' '}({Math.round(taste.overall_rate * 100)}%) · advisory
+      </div>
+      {rows.map((r) => (
+        <div key={r.key} style={{ display: 'flex', gap: 8, alignItems: 'baseline',
+          fontSize: compact ? 11 : 12 }}>
+          <span style={{ flex: 'none' }}>{LABEL[r.key]}</span>
+          <span className="mono" style={{ marginLeft: 'auto', flex: 'none' }}>
+            accepted with: {Math.round(r.s.rate! * 100)}% · without:{' '}
+            {r.s.rate_without !== null
+              ? `${Math.round(r.s.rate_without! * 100)}%` : '—'}
+            <span className="muted"> (n={r.s.n})</span>
+          </span>
+        </div>
+      ))}
+      {taste.amendments.map((a) => (
+        <div key={a} className="muted" style={{ fontSize: 11 }}>
+          • {a}
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -184,58 +220,15 @@ function ProgramCard({ p, onDelete, deleting }: {
               +{leaves.length - MAX_ROWS} more
             </button>
           )}
+          {p.taste && p.taste.n >= 6 && (
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8,
+              marginTop: 4 }}>
+              <TasteLines taste={p.taste} compact />
+            </div>
+          )}
         </div>
       )}
     </div>
-  )
-}
-
-function TasteCard() {
-  const q = useQuery({ queryKey: ['taste'], queryFn: api.taste,
-    staleTime: 60_000 })
-  if (q.isLoading || q.isError || !q.data || q.data.n < 6) return null
-  const d = q.data
-  const rows = (['mechanism', 'refutation', 'citation_verified'] as const)
-    .map((k) => ({ key: k, s: d.by_feature[k] }))
-    .filter((r) => r.s?.rate !== null && r.s?.rate !== undefined)
-  const LABEL: Record<string, string> = {
-    mechanism: 'mechanism stated',
-    refutation: 'refutation condition stated',
-    citation_verified: 'citation verified (PubMed)' }
-  return (
-    <details className="card" style={{ marginBottom: 'var(--s4)' }}>
-      <summary style={{ cursor: 'pointer', fontSize: 13, display: 'flex',
-        gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <strong>Selection taste</strong>
-        <span className="muted" style={{ fontSize: 11 }}>
-          {d.n} portfolio decisions · {d.accepted} accepted
-          ({Math.round(d.overall_rate * 100)}%) — advisory, nothing applied
-        </span>
-      </summary>
-      <div style={{ display: 'grid', gap: 2, paddingTop: 8 }}>
-        {rows.map((r) => (
-          <div key={r.key} style={{ display: 'flex', gap: 8, alignItems: 'baseline',
-            fontSize: 12 }}>
-            <span style={{ flex: 'none' }}>{LABEL[r.key]}</span>
-            <span className="mono" style={{ marginLeft: 'auto', flex: 'none' }}>
-              accepted with: {Math.round(r.s.rate! * 100)}% · without:{' '}
-              {r.s.rate_without !== null
-                ? `${Math.round(r.s.rate_without! * 100)}%` : '—'}
-              <span className="muted"> (n={r.s.n})</span>
-            </span>
-          </div>
-        ))}
-        {d.amendments.length > 0 && (
-          <div style={{ marginTop: 6, display: 'grid', gap: 2 }}>
-            {d.amendments.map((a) => (
-              <div key={a} className="muted" style={{ fontSize: 11.5 }}>
-                • {a}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </details>
   )
 }
 
@@ -462,9 +455,6 @@ export default function Workspace({ initialForm = false }: {
         </details>
       )}
 
-      {/* selection taste (advisory) — system-level meta, lives at the
-          bottom with the archived section; hides below 6 decisions */}
-      <TasteCard />
     </main>
   )
 }

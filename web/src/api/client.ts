@@ -23,6 +23,7 @@ export interface ProgramOut {
   mode: string
   links: ProgramLink[]
   tally: Record<string, number>
+  taste?: TasteReport
 }
 
 export interface TreeLeafStat {

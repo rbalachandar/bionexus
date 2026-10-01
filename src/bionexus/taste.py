@@ -45,25 +45,11 @@ def _features(recs) -> tuple[dict[str, dict], list[dict]]:
     return feats, decisions
 
 
-def taste_report(db_path: str | Path | None = None) -> dict:
-    """Aggregate accept/reject rates by hypothesis feature across all
-    provenance branches. Returns {n, accepted, overall_rate, by_feature,
-    families, amendments} — amendments are strings, advisory only."""
-    db_path = db_path or PROVENANCE_DB
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    store = SqliteProvenanceStore(str(db_path))
-    feats_all: dict[str, dict] = {}
-    decisions_all: list[dict] = []
-    for br in store.branches():
-        if not br.startswith("problem/"):
-            continue
-        try:
-            recs = store.branch_records(br)
-        except Exception:
-            continue
-        feats, decisions = _features(recs)
-        feats_all.update(feats)
-        decisions_all.extend(decisions)
+def fold_taste(feats_all: dict[str, dict],
+               decisions_all: list[dict]) -> dict:
+    """Aggregate feature rows + filter decisions into a taste report
+    ({n, accepted, overall_rate, by_feature, families, amendments}).
+    One decision per hypothesis (latest wins)."""
     # fold: one decision per hypothesis (latest wins)
     by_hid: dict[str, dict] = {}
     for d in decisions_all:
@@ -130,6 +116,28 @@ def taste_report(db_path: str | Path | None = None) -> dict:
             "overall_rate": round(overall, 3) if n else 0.0,
             "by_feature": by_feature, "families": fams,
             "amendments": amendments}
+
+
+def taste_report(db_path: str | Path | None = None) -> dict:
+    """Aggregate accept/reject rates by hypothesis feature across all
+    provenance branches. Returns {n, accepted, overall_rate, by_feature,
+    families, amendments} — amendments are strings, advisory only."""
+    db_path = db_path or PROVENANCE_DB
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    store = SqliteProvenanceStore(str(db_path))
+    feats_all: dict[str, dict] = {}
+    decisions_all: list[dict] = []
+    for br in store.branches():
+        if not br.startswith("problem/"):
+            continue
+        try:
+            recs = store.branch_records(br)
+        except Exception:
+            continue
+        feats, decisions = _features(recs)
+        feats_all.update(feats)
+        decisions_all.extend(decisions)
+    return fold_taste(feats_all, decisions_all)
 
 
 def render_taste(report: dict) -> str:
