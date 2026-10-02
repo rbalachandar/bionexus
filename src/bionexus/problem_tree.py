@@ -435,11 +435,12 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
                     from bionexus import program as _program
                     _program.link_leaf(_bn_prog, _eid, tree.root.id,
                                        leaf.objective, _status)
-                except Exception:
-                    pass
+                except Exception as _exc:
+                    say(f"warning: leaf {_eid} not linked to program "
+                        f"{_bn_prog}: {_exc}")
             _ws.link_problem(_eid, problem.problem_id)
-        except Exception:
-            pass
+        except Exception as _exc:
+            say(f"warning: leaf {leaf.id} registration incomplete: {_exc}")
         store.append(record_for(
             Envelope(experiment_branch_id=leaf.branch(tree.root.id),
                      parent_branch_id=root_branch),

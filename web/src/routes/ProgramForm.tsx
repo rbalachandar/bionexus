@@ -67,9 +67,11 @@ export default function ProgramForm({ onLaunched, onDone }: {
       }
       const lr = await fetch(`/api/programs/${slug}/launch`, { method: 'POST' })
       if (!lr.ok) throw new Error((await lr.json()).detail ?? 'launch failed')
-      const { eid } = await lr.json()
+      const { eid, decomposed } = await lr.json()
       onLaunched?.()
-      nav(`/experiments/${eid}`)
+      // decomposed launches fan out into leaf campaigns — there is no
+      // single experiment page to open; land on the workspace instead
+      nav(decomposed || !eid ? '/' : `/experiments/${eid}`)
     } catch (e) {
       setError(String(e))
     } finally {
