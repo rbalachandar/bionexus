@@ -5,7 +5,7 @@ import { ShieldAlert, Target } from 'lucide-react'
 import { api } from '../api/client'
 import type { ExperimentDetail, PipelineCard } from '../api/client'
 import EvidenceCurves from '../components/EvidenceCurves'
-import { Badge, VERDICT_GLYPH } from '../components/ui'
+import { Badge, Section, VERDICT_GLYPH } from '../components/ui'
 import { useCampaignEvents } from '../api/useEvents'
 
 function Chip({ status }: { status: string }) {
@@ -176,24 +176,6 @@ function NotTested({ cards, eliminated }: {
         ))}
       </div>
     </details>
-  )
-}
-
-/** Page band: numbered eyebrow + hairline rule — gives the experiment
- * page explicit visual boundaries instead of a loose row of cards. */
-function Section({ n, title, children }: {
-  n: number; title: string; children: React.ReactNode
-}) {
-  return (
-    <section style={{ marginTop: 'var(--s4)', maxWidth: 980,
-      borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)',
-        textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-        <span style={{ color: 'var(--brand)', fontWeight: 700 }}>{n}</span>
-        {' · '}{title}
-      </div>
-      {children}
-    </section>
   )
 }
 

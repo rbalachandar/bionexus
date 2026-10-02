@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { ShieldAlert } from 'lucide-react'
 import './styles/tokens.css'
 import Workspace from './routes/Workspace'
+import Program from './routes/Program'
 import ProgramForm from './routes/ProgramForm'
 import Wizard from './routes/Wizard'
 import Approvals, { HaltBanner } from './routes/Approvals'
@@ -94,6 +95,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Workspace />} />
             <Route path="/programs/new" element={<Workspace initialForm />} />
+            <Route path="/programs/:slug" element={<Program />} />
             <Route path="/wizard" element={<Wizard />} />
             <Route path="/approvals" element={<Approvals />} />
             <Route path="/experiments/:eid" element={<Experiment />} />

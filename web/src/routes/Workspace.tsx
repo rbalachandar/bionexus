@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Activity, ChevronRight, FlaskConical, Plus, Target, Trash2, Users } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWorkspaceEvents } from '../api/useEvents'
 import { api } from '../api/client'
 import type { ProgramLink, ProblemTreeOut, ProgramOut, TasteReport } from '../api/client'
-import { Badge, EmptyState, Skeleton, VERDICT_GLYPH } from '../components/ui'
+import { Badge, EmptyState, Skeleton } from '../components/ui'
+import { leafLabel, leafTitle, NO_LABEL_STATUS, VerdictTally } from '../components/program'
 import ProgramForm from './ProgramForm'
 
 function ArchiveButton({ label, confirmLabel, small, onConfirm }: {
@@ -35,57 +36,6 @@ function ArchiveButton({ label, confirmLabel, small, onConfirm }: {
       }}>
       {armed ? confirmLabel : label}
     </button>
-  )
-}
-
-const NO_LABEL_STATUS = new Set(['completed', 'archived'])
-
-/** Leaf label: never re-print the program objective — campaigns are
- * numbered and named by what they tested; tree leaves keep their own
- * short objective head. */
-function leafLabel(question: string | null, objective: string | null,
-  i: number, candidates?: string[]) {
-  const cands = (candidates ?? []).slice(0, 3).join(', ') +
-    ((candidates?.length ?? 0) > 3 ? ` +${candidates!.length - 3}` : '')
-  if (!objective) return question ?? `Experiment ${i + 1}`
-  const q = question ?? ''
-  const head = q.split(/\s+[—–]\s/)[0].trim()
-  if (!q || q.trim() === objective.trim() || head === objective.trim())
-    return cands ? `Campaign ${i + 1} · ${cands}` : `Campaign ${i + 1}`
-  const label = head.length > 56 ? `${head.slice(0, 53)}…` : head
-  return cands ? `${label} · ${cands}` : label
-}
-
-/** Row tooltip: what this experiment actually did — not the objective
- * the card above it already shows. */
-function leafTitle(l: { eid: string; question: string | null; runs?: number;
-  verdicts?: { confirmed: number; refuted: number; inconclusive: number };
-  candidates?: string[] }) {
-  const bits: string[] = []
-  if (l.candidates?.length) bits.push(`tested: ${l.candidates.join(', ')}`)
-  if (l.runs) bits.push(`${l.runs} runs`)
-  const v = l.verdicts
-  if (v && (v.confirmed || v.refuted || v.inconclusive))
-    bits.push(`✓${v.confirmed} ✗${v.refuted} ∅${v.inconclusive}`)
-  bits.push(l.eid)
-  return bits.join(' · ')
-}
-
-function VerdictTally({ v }: {
-  v?: { confirmed: number; refuted: number; inconclusive: number }
-}) {
-  if (!v) return null
-  const parts = [[v.confirmed, VERDICT_GLYPH.confirmed, 'var(--ok)'],
-    [v.refuted, VERDICT_GLYPH.refuted, 'var(--bad)'],
-    [v.inconclusive, VERDICT_GLYPH.inconclusive, 'var(--warn)']] as const
-  const shown = parts.filter(([n]) => n > 0)
-  if (shown.length === 0) return null
-  return (
-    <span className="mono" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
-      {shown.map(([n, g, c]) => (
-        <span key={g} style={{ color: c, marginRight: 6 }}>{g}{n}</span>
-      ))}
-    </span>
   )
 }
 
@@ -139,74 +89,46 @@ function TasteLines({ taste, compact }: { taste: TasteReport; compact?: boolean 
   )
 }
 
+
 function ProgramCard({ p, onDelete, deleting }: {
   p: ProgramOut
   onDelete: (slug: string) => void
   deleting: string | null
 }) {
+  const nav = useNavigate()
   const done = p.tally['completed'] ?? 0
   const running = p.tally['running'] ?? 0
   const total = Object.values(p.tally).reduce((a, b) => a + b, 0)
-  const [collapsed, setCollapsed] = useState(false)
-  const [showAll, setShowAll] = useState(false)
-  const leaves = p.links.filter((l) => l.role === 'leaf' && l.live !== false)
-  const open = !collapsed
-  const MAX_ROWS = 4
-  const shown = showAll ? leaves : leaves.slice(0, MAX_ROWS)
+  const hasTree = (p.trees?.length ?? (p.tree ? 1 : 0)) > 0
   return (
-    <div className="card" style={{ display: 'grid', gap: 10,
-      alignContent: 'start', width: '100%', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0,
-          cursor: 'pointer', flex: 1 }} onClick={() => setCollapsed((c) => !c)}>
-          <Target size={15} color="var(--brand)" style={{ flex: 'none' }} />
-          <strong style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {p.name}
-          </strong>
-          <ChevronRight size={13} color="var(--muted)"
-            style={{ flex: 'none', transform: open ? 'rotate(90deg)' : 'none',
-              transition: 'transform var(--speed) var(--ease)' }} />
-          {total > 0 && (
-            <span className="muted mono" style={{ fontSize: 11, whiteSpace: 'nowrap',
-              overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {total} exp{total === 1 ? '' : 's'}{done > 0 && ` · ${done} done`}
-            </span>
-          )}
-        </div>
-        {deleting === p.slug ? (
-          <span style={{ display: 'inline-flex', gap: 4, flex: 'none' }}>
-            <button className="danger" style={{ fontSize: 10, padding: '2px 7px' }}
-              title="delete the program; its experiments retire to the Archived section (recoverable)"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete(`archive:${p.slug}`)
-              }}>
-              + archive exps
-            </button>
-            <button className="danger" style={{ fontSize: 10, padding: '2px 7px' }}
-              title="delete the program AND its experiments from the workbench (irreversible; the provenance ledger keeps the audit trail)"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete(`purge:${p.slug}`)
-              }}>
-              delete exps
-            </button>
-          </span>
-        ) : (
-          <button
-            style={{ fontSize: 11, padding: '2px 8px', display: 'inline-flex',
-              gap: 4, alignItems: 'center', flex: 'none' }}
-            title="delete this program"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete(`arm:${p.slug}`)
-            }}>
-            <Trash2 size={11} />
-          </button>
-        )}
+    <div className="card" style={{ display: 'grid', gap: 8, width: '100%',
+      cursor: 'pointer', alignContent: 'start', overflow: 'hidden' }}
+      onClick={() => nav(`/programs/${p.slug}`)}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <Target size={15} color="var(--brand)" style={{ flex: 'none' }} />
+        <strong style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap' }}>{p.name}</strong>
+        {hasTree && <span className="muted mono" style={{ fontSize: 10,
+          flex: 'none' }}>tree</span>}
+        <span style={{ flex: 1 }} />
+        <span className="muted mono" style={{ fontSize: 11, flex: 'none' }}>
+          {total} exp{total === 1 ? '' : 's'}{done > 0 && ` · ${done} done`}
+        </span>
+        <button
+          className={deleting === p.slug ? 'danger' : ''}
+          style={{ fontSize: 11, padding: '2px 8px', flex: 'none' }}
+          title={deleting === p.slug ? 'click again to delete' : 'delete this program'}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (deleting === p.slug) onDelete(p.slug)
+            else onDelete(`arm:${p.slug}`)
+          }}>
+          <Trash2 size={11} />
+          {deleting === p.slug ? 'sure?' : ''}
+        </button>
       </div>
       <div className="muted" style={{ fontSize: 12 }}>
-        <span style={{ display: '-webkit-box', WebkitLineClamp: 3,
+        <span style={{ display: '-webkit-box', WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {p.objective ?? p.gate_summary}
         </span>
@@ -215,157 +137,11 @@ function ProgramCard({ p, onDelete, deleting }: {
         {p.modality && <span className="chip meta">{p.modality}</span>}
         <span className="chip meta">{p.mode}</span>
         {running > 0 && <Badge status="running">{running} running</Badge>}
+        {p.taste && p.taste.n > 0 && <span className="chip meta">
+          profile · {p.taste.n} decisions</span>}
+        <ChevronRight size={13} color="var(--muted)" style={{ marginLeft: 'auto' }} />
       </div>
-      {open && (
-        <div style={{ display: 'grid', gap: 2, borderTop: '1px solid var(--border)',
-          paddingTop: 8 }}>
-          {leaves.length === 0 && (
-            <span className="muted" style={{ fontSize: 12 }}>
-              no experiments yet — launch one from the New-program form
-            </span>
-          )}
-          {(p.trees?.length ?? (p.tree ? 1 : 0)) > 0
-            ? <ProgramTree p={p} />
-            : shown.map((l, i) => (
-              <LeafRow key={l.eid} l={l} i={i} p={p} />
-            ))}
-          {leaves.length > MAX_ROWS && !showAll && (
-            <button style={{ justifySelf: 'start', fontSize: 11, padding: '2px 8px',
-              marginTop: 2 }} onClick={() => setShowAll(true)}>
-              +{leaves.length - MAX_ROWS} more
-            </button>
-          )}
-          {p.taste && p.taste.n >= 6 && (
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8,
-              marginTop: 4 }}>
-              <TasteLines taste={p.taste} compact />
-            </div>
-          )}
-        </div>
-      )}
     </div>
-  )
-}
-
-/** Leaf experiment row (dot · label · tally · stats), shared by the flat
- * list and the program tree renderer. */
-function LeafRow({ l, i, p, indent }: { l: ProgramLink; i: number;
-  p: ProgramOut; indent?: number }) {
-  return (
-    <a key={l.eid} href={`/experiments/${l.eid}`}
-      onClick={(e) => e.stopPropagation()}
-      title={leafTitle(l)}
-      style={{ display: 'grid', gridTemplateColumns: '7px minmax(0, 1fr) auto',
-        gap: 8, alignItems: 'center', padding: '3px 0', fontSize: 12,
-        marginLeft: indent ?? 0 }}>
-      <span className={`dot ${l.status}`} />
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap' }}>
-        {leafLabel(l.question, p.objective, i, l.candidates)}
-      </span>
-      <span style={{ display: 'flex', gap: 8, alignItems: 'center',
-        justifySelf: 'end', flexWrap: 'wrap', justifyContent: 'flex-end',
-        minWidth: 0 }}>
-        <VerdictTally v={l.verdicts} />
-        <span className="muted mono" style={{ fontSize: 11 }}>
-          {l.runs ?? 0} runs · r{l.rounds_done ?? 0}{l.rounds_planned ? `/${l.rounds_planned}` : ''}
-        </span>
-        {!NO_LABEL_STATUS.has(l.status) && <Badge status={l.status} />}
-      </span>
-    </a>
-  )
-}
-
-/** Decomposed programs render their problem tree(s): sub-problems as
- * indented intermediate nodes, leaves as the same experiment rows.
- * Multiple trees (one per decomposed launch) render sequentially; the
- * whole tree section is row-capped like the flat list. */
-function ProgramTree({ p }: { p: ProgramOut }) {
-  const [showAll, setShowAll] = useState(false)
-  const MAX_ROWS = 10
-  const trees = p.trees ?? (p.tree ? [p.tree] : [])
-  const linkByEid = new Map(
-    p.links.filter((l) => l.role === 'leaf').map((l) => [l.eid, l]))
-  const used = new Set<string>()
-
-  const buildTree = (tree: ProblemTreeOut, multi: boolean): ReactNode[] => {
-    const kids = (id: string) => tree.nodes.filter((n) => n.parent === id)
-    const render = (id: string, depth: number): ReactNode[] => {
-      const n = tree.nodes.find((x) => x.id === id)!
-      const children = kids(id)
-      const indent = Math.min(depth, 3) * 14
-      if (children.length === 0) {
-        const eid = tree.leaf_stats[id]?.eid
-        const l = eid ? linkByEid.get(eid) : undefined
-        if (l) {
-          used.add(l.eid)
-          return [<LeafRow key={`${tree.root_id}-${id}`} l={l} i={depth}
-            p={p} indent={indent} />]
-        }
-        return [<div key={`${tree.root_id}-${id}`} style={{ marginLeft: indent,
-          display: 'flex', gap: 6, alignItems: 'baseline', padding: '2px 0',
-          fontSize: 11.5, minWidth: 0 }}>
-          <span className={`dot ${n.status}`} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap' }}>{n.objective}</span>
-          <span className="muted mono" style={{ fontSize: 10,
-            flexShrink: 0 }}>{n.status}</span>
-        </div>]
-      }
-      return [
-        <div key={`${tree.root_id}-${id}`} style={{ marginLeft: indent,
-          display: 'flex', gap: 6, alignItems: 'baseline', padding: '3px 0 1px',
-          minWidth: 0 }}>
-          <ChevronRight size={11} color="var(--muted)"
-            style={{ flex: 'none', transform: 'rotate(90deg)' }} />
-          <span className="muted" style={{ fontSize: 11, fontWeight: 600,
-            overflow: 'hidden', textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap' }}>{n.objective}</span>
-          {n.metric && <span className="muted mono" style={{ fontSize: 10,
-            flexShrink: 0 }}>
-            {n.metric} {n.direction === 'min' ? '≤' : '≥'} {n.gate}</span>}
-        </div>,
-        ...children.flatMap((c) => render(c.id, depth + 1)),
-      ]
-    }
-    const rows = tree.nodes.filter((x) => !x.parent)
-      .flatMap((r) => render(r.id, 0))
-    if (!multi) return rows
-    return [
-      <div key={`${tree.root_id}-hdr`} className="muted" style={{
-        fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em',
-        marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap' }}>
-        tree · {tree.objective}
-      </div>,
-      ...rows,
-    ]
-  }
-
-  let all: ReactNode[] = []
-  for (const t of trees) all = all.concat(buildTree(t, trees.length > 1))
-  const cap = showAll ? all.length : Math.min(all.length, MAX_ROWS)
-  const rest = p.links.filter((l) => l.role === 'leaf' && l.live !== false
-    && !used.has(l.eid))
-  return (
-    <>
-      {all.slice(0, cap)}
-      {all.length > cap && (
-        <button style={{ justifySelf: 'start', fontSize: 11,
-          padding: '2px 8px', marginTop: 2 }}
-          onClick={() => setShowAll(true)}>
-          +{all.length - cap} more (tree)
-        </button>
-      )}
-      {rest.length > 0 && (
-        <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
-          letterSpacing: '0.04em', marginTop: 4 }}>
-          {rest.length} separate campaign{rest.length === 1 ? '' : 's'} · not
-          part of any tree
-        </div>
-      )}
-      {rest.map((l, i) => <LeafRow key={l.eid} l={l} i={i} p={p} />)}
-    </>
   )
 }
 

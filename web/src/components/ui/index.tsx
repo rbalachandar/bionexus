@@ -60,6 +60,24 @@ export function PageHeader({ eyebrow, title, right }: {
   )
 }
 
+/** Page band: numbered eyebrow + hairline rule — explicit visual
+ * sectioning for detail pages. */
+export function Section({ n, title, children }: {
+  n: number; title: string; children: ReactNode
+}) {
+  return (
+    <section style={{ marginTop: 'var(--s4)', maxWidth: 980,
+      borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)',
+        textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+        <span style={{ color: 'var(--brand)', fontWeight: 700 }}>{n}</span>
+        {' · '}{title}
+      </div>
+      {children}
+    </section>
+  )
+}
+
 /** Definition row: label + value (meta cards). */
 export function DefRow({ label, children }: { label: string; children: ReactNode }) {
   return (

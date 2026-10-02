@@ -147,6 +147,16 @@ def taste() -> dict:
                 "amendments": [], "error": str(exc)}
 
 
+@app.get("/api/programs/{slug}")
+def program_detail(slug: str) -> dict:
+    ws = get_ws()
+    ws_view = views.workspace(ws)
+    prog = next((p for p in ws_view["programs"] if p["slug"] == slug), None)
+    if prog is None:
+        raise HTTPException(404, f"program {slug} not found")
+    return prog
+
+
 class ProgramIn(BaseModel):
     program: str
     objective: str = ""

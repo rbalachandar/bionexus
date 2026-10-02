@@ -127,6 +127,7 @@ async function get<T>(path: string): Promise<T> {
 
 export const api = {
   workspace: () => get<Workspace>('/api/programs'),
+  program: (slug: string) => get<ProgramOut>(`/api/programs/${slug}`),
   taste: () => get<TasteReport>('/api/taste'),
   experiment: (eid: string) => get<ExperimentDetail>(`/api/experiments/${eid}`),
   trace: (eid: string) =>
