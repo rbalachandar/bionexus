@@ -322,3 +322,30 @@ def test_delete_last_program_does_not_resurrect(tmp_path):
         slugs_ws = [p["slug"] for p in data["programs"]]
         assert "resurrect-a" not in slugs_ws
         assert "resurrect-b" not in slugs_ws
+
+
+def test_program_delete_purge_vs_archive(tmp_path):
+    """Program deletion modes: purge hard-removes linked experiments from
+    the registry; archive retires them (recoverable)."""
+    from bionexus import program as program_cfg
+    from bionexus.wizard_store import WizardStore
+
+    ws = WizardStore()
+    program_cfg.save_program_record(
+        {"program": "Purge-1", "custom": True, "objective": "o",
+         "metric": "ic50_um", "direction": "min", "gate_value": 20.0,
+         "unit": "uM", "mode": "autonomous"})
+    ws.register_agent("purge-exp-1", "o", log="", autonomy="act")
+    program_cfg.link_leaf("Purge-1", "purge-exp-1", campaign_root=None,
+                          question="o")
+
+    import bionexus.api.launch  # noqa: F401  (paths initialized)
+    from bionexus.api.app import app as _  # app import for parity
+    r = __import__("fastapi.testclient", fromlist=["TestClient"]) \
+        .TestClient(__import__("bionexus.api.app", fromlist=["app"]).app)
+    resp = r.delete("/api/programs/purge-1?purge=true")
+    assert resp.status_code == 200
+    assert resp.json()["purged_experiments"] == 1
+    assert ws.get("purge-exp-1") is None
+    assert program_cfg.list_programs() == [] or \
+        all(p["slug"] != "purge-1" for p in program_cfg.list_programs())

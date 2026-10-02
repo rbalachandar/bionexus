@@ -185,26 +185,33 @@ def save_program(body: ProgramIn) -> dict:
 
 
 @app.delete("/api/programs/{slug}")
-def delete_program_route(slug: str, archive: bool = False) -> dict:
-    """Delete a program. archive=True also retires every experiment
-    linked to it (leaves + tree roots) into the Archived section —
-    the workspace loses nothing; provenance stays intact either way."""
+def delete_program_route(slug: str, archive: bool = False,
+                         purge: bool = False) -> dict:
+    """Delete a program. archive=True retires its experiments into the
+    Archived section (recoverable). purge=True hard-removes them from
+    the workbench registry — the WORM provenance ledger keeps the audit
+    trail either way."""
     existing = {p["slug"]: p for p in program_cfg.list_programs()}
     if slug not in existing:
         raise HTTPException(404, f"program {slug} not found")
-    n_archived = 0
-    if archive:
-        ws = get_ws()
+    ws = get_ws()
+    n_touched = 0
+    if archive or purge:
         for l in program_cfg.links_for(slug):
-            if ws.get(l["eid"]) and not \
-                    ((ws.get(l["eid"])["payload"] or {}).get("archived")):
+            row = ws.get(l["eid"])
+            if not row or (row["payload"] or {}).get("archived"):
+                continue
+            if purge:
+                ws.delete_experiment(l["eid"])
+            else:
                 ws.set_archived(l["eid"], True)
-                n_archived += 1
+            n_touched += 1
     ok = program_cfg.delete_program(slug)
     if not ok:
         raise HTTPException(404, f"program {slug} not found")
     publish_workspace("program_deleted", {"slug": slug})
-    return {"deleted": slug, "archived_experiments": n_archived}
+    return {"deleted": slug, "archived_experiments": n_touched,
+            "purged_experiments": n_touched if purge else 0}
 
 
 @app.post("/api/programs/{slug}/launch")

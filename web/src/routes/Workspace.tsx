@@ -176,20 +176,20 @@ function ProgramCard({ p, onDelete, deleting }: {
         {deleting === p.slug ? (
           <span style={{ display: 'inline-flex', gap: 4, flex: 'none' }}>
             <button className="danger" style={{ fontSize: 10, padding: '2px 7px' }}
-              title="delete the program; its experiments archive to the Archived section"
+              title="delete the program; its experiments retire to the Archived section (recoverable)"
               onClick={(e) => {
                 e.stopPropagation()
                 onDelete(`archive:${p.slug}`)
               }}>
               + archive exps
             </button>
-            <button style={{ fontSize: 10, padding: '2px 7px' }}
-              title="delete the program; experiments stay in the workspace (trees scatter to free cards)"
+            <button className="danger" style={{ fontSize: 10, padding: '2px 7px' }}
+              title="delete the program AND its experiments from the workbench (irreversible; the provenance ledger keeps the audit trail)"
               onClick={(e) => {
                 e.stopPropagation()
-                onDelete(p.slug)
+                onDelete(`purge:${p.slug}`)
               }}>
-              keep exps
+              delete exps
             </button>
           </span>
         ) : (
@@ -416,9 +416,10 @@ export default function Workspace({ initialForm = false }: {
   const [showForm, setShowForm] = useState(initialForm)
   const [deleting, setDeleting] = useState<string | null>(null)
 
-  async function doDelete(slug: string, archive: boolean) {
-    const r = await fetch(`/api/programs/${slug}${archive ? '?archive=true' : ''}`,
-      { method: 'DELETE' })
+  async function doDelete(slug: string, mode: 'archive' | 'purge' | 'keep') {
+    const q = mode === 'archive' ? '?archive=true'
+      : mode === 'purge' ? '?purge=true' : ''
+    const r = await fetch(`/api/programs/${slug}${q}`, { method: 'DELETE' })
     if (r.ok) {
       setDeleting(null)
       qc.invalidateQueries({ queryKey: ['workspace'] })
@@ -488,10 +489,12 @@ export default function Workspace({ initialForm = false }: {
             <ProgramCard key={p.slug} p={p} deleting={deleting}
               onDelete={(slug) => {
                 if (slug.startsWith('archive:'))
-                  doDelete(slug.slice(8), true)
+                  doDelete(slug.slice(8), 'archive')
+                else if (slug.startsWith('purge:'))
+                  doDelete(slug.slice(6), 'purge')
                 else if (slug.startsWith('arm:'))
                   setDeleting(slug.slice(4))
-                else doDelete(slug, false)
+                else doDelete(slug, 'keep')
               }} />
           ))}
         </div>

@@ -162,8 +162,16 @@ class WizardStore:
         return self._conn.execute(
             "SELECT COUNT(*) FROM programs").fetchone()[0]
 
-    def link_experiment(self, program_slug: str, eid: str,
-                        role: str = "leaf", campaign_root: str | None = None,
+    def delete_experiment(self, eid: str) -> bool:
+        """Hard-remove an experiment row (registry only — the provenance
+        ledger is WORM and keeps the audit trail)."""
+        with self._lock:
+            cur = self._conn.execute(
+                "DELETE FROM experiments WHERE id=?", (eid,))
+            self._conn.commit()
+            return cur.rowcount > 0
+
+    def link_experiment(self, program_slug: str, eid: str,                        role: str = "leaf", campaign_root: str | None = None,
                         question: str = "", status: str = "executing") -> None:
         """The Program-Experiment relation: role 'campaign' marks a
         problem-tree ROOT (campaign container), role 'leaf' marks a
