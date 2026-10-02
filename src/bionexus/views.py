@@ -979,6 +979,7 @@ def workspace(wizard_store,
 
     programs = []
     linked_eids: set = set()
+    prog_roots: dict[str, set] = {}
     # per-link execution stats: branch resolution mirrors the SSE watcher
     # (campaign announcement -> payload -> program relation -> agent log),
     # record reads are cached per branch
@@ -1042,6 +1043,12 @@ def workspace(wizard_store,
 
     for p in program_cfg.list_programs():
         links = program_cfg.links_for(p["slug"])
+        # campaign-root links nest trees under the program — kept out of
+        # atts (roots are containers, not experiments) but needed for
+        # tree linkage
+        prog_roots[p["slug"]] = {
+            l["campaign_root"] for l in links
+            if l["role"] == "campaign" and l.get("campaign_root")}
         atts = []
         tally: dict[str, int] = {}
         for l in links:
@@ -1087,14 +1094,11 @@ def workspace(wizard_store,
             "taste": taste})
 
     # trees not linked to any program render at top level
-    linked_roots = {a["campaign_root"] for p in programs
-                    for a in p["links"] if a["role"] == "campaign"
-                    and a["campaign_root"]}
+    linked_roots = {r for roots in prog_roots.values() for r in roots}
     for t in trees:
         t["linked_program"] = next(
-            (p["slug"] for p in programs
-             if any(a["campaign_root"] == t["root_id"] and
-                    a["role"] == "campaign" for a in p["links"])), None)
+            (slug for slug, roots in prog_roots.items()
+             if t["root_id"] in roots), None)
         t["is_linked"] = bool(t["linked_program"]) or \
             t["root_id"] in linked_roots
 
