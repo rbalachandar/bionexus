@@ -92,7 +92,7 @@ function ProgramPage() {
           <ProgramTreeFull p={p} />
         ) : (
           <div style={{ display: 'grid' }}>
-            {leaves.map((l, i) => <LeafRow key={l.eid} l={l} i={i} p={p} />)}
+            {leaves.map((l, i) => <LeafRow key={l.eid} l={l} i={i} p={p} wide />)}
           </div>
         )}
       </Section>

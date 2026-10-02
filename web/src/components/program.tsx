@@ -7,17 +7,20 @@ export const NO_LABEL_STATUS = new Set(['completed', 'archived'])
 
 /** Leaf label: never re-print the program objective — campaigns are
  * numbered and named by what they tested; tree leaves keep their own
- * short objective head. */
+ * short objective head. `wide` (program page) drops the truncation. */
 export function leafLabel(question: string | null,
-  objective: string | null, i: number, candidates?: string[]) {
-  const cands = (candidates ?? []).slice(0, 3).join(', ') +
-    ((candidates?.length ?? 0) > 3 ? ` +${candidates!.length - 3}` : '')
+  objective: string | null, i: number, candidates?: string[],
+  wide = false) {
+  const cands = wide
+    ? (candidates ?? []).join(', ')
+    : (candidates ?? []).slice(0, 3).join(', ') +
+      ((candidates?.length ?? 0) > 3 ? ` +${candidates!.length - 3}` : '')
   if (!objective) return question ?? `Experiment ${i + 1}`
   const q = question ?? ''
   const head = q.split(/\s+[—–]\s/)[0].trim()
   if (!q || q.trim() === objective.trim() || head === objective.trim())
     return cands ? `Campaign ${i + 1} · ${cands}` : `Campaign ${i + 1}`
-  const label = head.length > 56 ? `${head.slice(0, 53)}…` : head
+  const label = !wide && head.length > 56 ? `${head.slice(0, 53)}…` : head
   return cands ? `${label} · ${cands}` : label
 }
 
@@ -55,19 +58,21 @@ export function VerdictTally({ v }: {
 }
 
 /** Leaf experiment row (dot · label · tally · stats · badge). */
-export function LeafRow({ l, i, p, indent }: { l: ProgramLink; i: number;
-  p: ProgramOut; indent?: number }) {
+export function LeafRow({ l, i, p, indent, wide }: { l: ProgramLink; i: number;
+  p: ProgramOut; indent?: number; wide?: boolean }) {
   return (
     <a key={l.eid} href={`/experiments/${l.eid}`}
       onClick={(e) => e.stopPropagation()}
       title={leafTitle(l)}
       style={{ display: 'grid', gridTemplateColumns: '7px minmax(0, 1fr) auto',
-        gap: 8, alignItems: 'center', padding: '3px 0', fontSize: 12,
-        marginLeft: indent ?? 0 }}>
-      <span className={`dot ${l.status}`} />
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap' }}>
-        {leafLabel(l.question, p.objective, i, l.candidates)}
+        gap: 8, alignItems: wide ? 'baseline' : 'center', padding: '3px 0',
+        fontSize: 12, marginLeft: indent ?? 0 }}>
+      <span className={`dot ${l.status}`} style={wide
+        ? { marginTop: 4 } : undefined} />
+      <span style={wide
+        ? { minWidth: 0 }
+        : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {leafLabel(l.question, p.objective, i, l.candidates, wide)}
       </span>
       <span style={{ display: 'flex', gap: 8, alignItems: 'center',
         justifySelf: 'end', flexWrap: 'wrap', justifyContent: 'flex-end',
@@ -103,7 +108,7 @@ export function ProgramTreeFull({ p }: { p: ProgramOut }) {
         if (l) {
           used.add(l.eid)
           return [<LeafRow key={`${tree.root_id}-${id}`} l={l} i={depth}
-            p={p} indent={indent} />]
+            p={p} indent={indent} wide />]
         }
         return [<div key={`${tree.root_id}-${id}`} style={{ marginLeft: indent,
           display: 'flex', gap: 6, alignItems: 'baseline', padding: '2px 0',
