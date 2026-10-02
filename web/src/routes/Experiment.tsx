@@ -504,7 +504,10 @@ export default function Experiment() {
 
   return (
     <main>
-      <a href="/" className="muted" style={{ fontSize: 12 }}>← All experiments</a>
+      <a href={d.program ? `/programs/${d.program.slug}` : '/'}
+        className="muted" style={{ fontSize: 12 }}>
+        ← {d.program ? d.program.name : 'All programs'}
+      </a>
       <div style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg)',
         padding: '10px 0 8px', borderBottom: '1px solid var(--border)',
         marginBottom: 'var(--s3)' }}>
