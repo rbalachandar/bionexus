@@ -24,6 +24,7 @@ export interface ProgramOut {
   links: ProgramLink[]
   tally: Record<string, number>
   taste?: TasteReport
+  tree?: ProblemTreeOut
 }
 
 export interface TreeLeafStat {

@@ -295,6 +295,53 @@ def test_workspace_link_stats(tmp_path):
     assert prog["taste"]["by_feature"]["mechanism"]["rate"] == 1.0
 
 
+def test_program_card_tree(tmp_path):
+    """A decomposed program attaches its problem tree: the card can
+    render sub-problems as sub-trees with leaves as experiment rows."""
+    from bionexus import program as program_cfg
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import Artifact, ArtifactKind, Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+    from bionexus.problem_tree import ProblemTree
+    from bionexus.views import workspace
+    from bionexus.wizard_store import WizardStore
+
+    ws = WizardStore()
+    program_cfg.save_program_record(
+        {"program": "TR-1", "custom": True, "objective": "root obj",
+         "metric": "m", "direction": "min", "gate_value": 1, "unit": "u",
+         "mode": "autonomous"})
+    t = ProblemTree.create("root obj", metric="m", gate=1.0)
+    t.add(t.root.id, objective="leaf one", metric="m", gate=1.0)
+    leaf = t.leaves()[0]
+    store = SqliteProvenanceStore(str(tmp_path / "prov.db"))
+    store.append(record_for(
+        Envelope(experiment_branch_id=f"problem/{t.root.id}"),
+        EventType.problem_defined, system_actor("planner"),
+        decision={"problem_id": t.root.id, "objective": "root obj",
+                  "environment": {"kind": "problem-tree",
+                                  "tree": t.model_dump()}}))
+    program_cfg.record_launch("TR-1", t.root.id, "root obj")
+    eid = "tree-exp-1"
+    ws.register_agent(eid, "leaf one", log="", autonomy="act")
+    pid = f"{t.root.id}-{leaf.id}"
+    ws._conn.execute(
+        "INSERT OR REPLACE INTO experiments VALUES (?,?,?,?,?,?)",
+        (eid, 0, 0, "executing", "leaf one",
+         '{"agent": {"problem_id": "%s", "log": ""}}' % pid))
+    ws._conn.commit()
+    program_cfg.link_leaf("TR-1", eid, campaign_root=t.root.id,
+                          question="leaf one")
+
+    prog = next(p for p in workspace(ws, tmp_path / "prov.db")["programs"]
+                if p["slug"] == "tr-1")
+    assert prog["tree"] is not None
+    assert prog["tree"]["root_id"] == t.root.id
+    assert any(n["id"] == leaf.id for n in prog["tree"]["nodes"])
+    # the leaf maps to its experiment for the card's clickable rows
+    assert prog["tree"]["leaf_stats"].get(leaf.id, {}).get("eid") == eid
+
+
 def test_reviewer_direction_aware_max_gate():
     """A max-direction verdict (observed >= gate) must NOT be flagged
     label-vs-data — the reviewer reads `direction` from the record."""

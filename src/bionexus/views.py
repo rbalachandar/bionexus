@@ -1098,6 +1098,15 @@ def workspace(wizard_store,
         t["is_linked"] = bool(t["linked_program"]) or \
             t["root_id"] in linked_roots
 
+    # programs whose launch decomposed render their problem tree inside
+    # the card (sub-problems as sub-trees, leaves as experiment rows)
+    for p in programs:
+        roots = {a["campaign_root"] for a in p["links"]
+                 if a.get("campaign_root")}
+        p["tree"] = next((t for t in trees
+                          if t["root_id"] in roots
+                          or t.get("linked_program") == p["slug"]), None)
+
     standalone = [e for e in live
                   if (e["payload"].get("agent") or {}).get("problem_id")
                   not in leaf_pids and e["id"] not in linked_eids]

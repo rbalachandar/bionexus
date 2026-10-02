@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Activity, ChevronRight, FlaskConical, Plus, Target, Trash2, Users } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
-import type { ProblemTreeOut, ProgramOut, TasteReport } from '../api/client'
+import type { ProgramLink, ProblemTreeOut, ProgramOut, TasteReport } from '../api/client'
 import { Badge, EmptyState, Skeleton, VERDICT_GLYPH } from '../components/ui'
 import ProgramForm from './ProgramForm'
 
@@ -207,27 +207,11 @@ function ProgramCard({ p, onDelete, deleting }: {
               no experiments yet — launch one from the New-program form
             </span>
           )}
-          {shown.map((l, i) => (
-            <a key={l.eid} href={`/experiments/${l.eid}`}
-              onClick={(e) => e.stopPropagation()}
-              title={leafTitle(l)}
-              style={{ display: 'grid', gridTemplateColumns: '7px minmax(0, 1fr) auto',
-                gap: 8, alignItems: 'center', padding: '3px 0', fontSize: 12 }}>
-              <span className={`dot ${l.status}`} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap' }}>
-                {leafLabel(l.question, p.objective, i, l.candidates)}
-              </span>
-              <span style={{ display: 'flex', gap: 8, alignItems: 'center',
-                justifySelf: 'end', whiteSpace: 'nowrap' }}>
-                <VerdictTally v={l.verdicts} />
-                <span className="muted mono" style={{ fontSize: 11 }}>
-                  {l.runs ?? 0} runs · r{l.rounds_done ?? 0}{l.rounds_planned ? `/${l.rounds_planned}` : ''}
-                </span>
-                {!NO_LABEL_STATUS.has(l.status) && <Badge status={l.status} />}
-              </span>
-            </a>
-          ))}
+          {p.tree && p.tree.nodes.length > 1
+            ? <ProgramTree p={p} />
+            : shown.map((l, i) => (
+              <LeafRow key={l.eid} l={l} i={i} p={p} />
+            ))}
           {leaves.length > MAX_ROWS && !showAll && (
             <button style={{ justifySelf: 'start', fontSize: 11, padding: '2px 8px',
               marginTop: 2 }} onClick={() => setShowAll(true)}>
@@ -243,6 +227,96 @@ function ProgramCard({ p, onDelete, deleting }: {
         </div>
       )}
     </div>
+  )
+}
+
+/** Leaf experiment row (dot · label · tally · stats), shared by the flat
+ * list and the program tree renderer. */
+function LeafRow({ l, i, p, indent }: { l: ProgramLink; i: number;
+  p: ProgramOut; indent?: number }) {
+  return (
+    <a key={l.eid} href={`/experiments/${l.eid}`}
+      onClick={(e) => e.stopPropagation()}
+      title={leafTitle(l)}
+      style={{ display: 'grid', gridTemplateColumns: '7px minmax(0, 1fr) auto',
+        gap: 8, alignItems: 'center', padding: '3px 0', fontSize: 12,
+        marginLeft: indent ?? 0 }}>
+      <span className={`dot ${l.status}`} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap' }}>
+        {leafLabel(l.question, p.objective, i, l.candidates)}
+      </span>
+      <span style={{ display: 'flex', gap: 8, alignItems: 'center',
+        justifySelf: 'end', whiteSpace: 'nowrap' }}>
+        <VerdictTally v={l.verdicts} />
+        <span className="muted mono" style={{ fontSize: 11 }}>
+          {l.runs ?? 0} runs · r{l.rounds_done ?? 0}{l.rounds_planned ? `/${l.rounds_planned}` : ''}
+        </span>
+        {!NO_LABEL_STATUS.has(l.status) && <Badge status={l.status} />}
+      </span>
+    </a>
+  )
+}
+
+/** Decomposed programs render their problem tree: sub-problems as
+ * indented intermediate nodes, leaves as the same experiment rows. */
+function ProgramTree({ p }: { p: ProgramOut }) {
+  const tree = p.tree!
+  const linkByEid = new Map(
+    p.links.filter((l) => l.role === 'leaf').map((l) => [l.eid, l]))
+  const kids = (id: string) => tree.nodes.filter((n) => n.parent === id)
+  const used = new Set<string>()
+  const render = (id: string, depth: number): ReactNode[] => {
+    const n = tree.nodes.find((x) => x.id === id)!
+    const children = kids(id)
+    if (children.length === 0) {
+      const eid = tree.leaf_stats[id]?.eid
+      const l = eid ? linkByEid.get(eid) : undefined
+      if (l) {
+        used.add(l.eid)
+        return [<LeafRow key={id} l={l} i={depth} p={p}
+          indent={depth * 16} />]
+      }
+      return [<div key={id} style={{ marginLeft: depth * 16, display: 'flex',
+        gap: 6, alignItems: 'baseline', padding: '2px 0', fontSize: 11.5 }}>
+        <span className={`dot ${n.status}`} />
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap' }}>{n.objective}</span>
+        <span className="muted mono" style={{ fontSize: 10 }}>
+          {n.status}</span>
+      </div>]
+    }
+    return [
+      <div key={id} style={{ marginLeft: depth * 16, display: 'flex',
+        gap: 6, alignItems: 'baseline', padding: '3px 0 1px' }}>
+        <ChevronRight size={11} color="var(--muted)"
+          style={{ flex: 'none', transform: 'rotate(90deg)' }} />
+        <span className="muted" style={{ fontSize: 11, fontWeight: 600,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {n.objective}
+        </span>
+        {n.metric && <span className="muted mono" style={{ fontSize: 10,
+          whiteSpace: 'nowrap' }}>
+          {n.metric} {n.direction === 'min' ? '≤' : '≥'} {n.gate}</span>}
+      </div>,
+      ...children.flatMap((c) => render(c.id, depth + 1)),
+    ]
+  }
+  const rows = tree.nodes.filter((x) => !x.parent)
+    .flatMap((r) => render(r.id, 0))
+  const rest = p.links.filter((l) => l.role === 'leaf' && l.live !== false
+    && !used.has(l.eid))
+  return (
+    <>
+      {rows}
+      {rest.length > 0 && (
+        <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
+          letterSpacing: '0.04em', marginTop: 4 }}>
+          outside the tree
+        </div>
+      )}
+      {rest.map((l, i) => <LeafRow key={l.eid} l={l} i={i} p={p} />)}
+    </>
   )
 }
 
