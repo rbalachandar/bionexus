@@ -109,15 +109,7 @@ function ProgramCard({ p, onDelete, deleting }: {
         <strong title={`${p.pid ?? p.slug} · ${p.slug}`}
           style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis',
           whiteSpace: 'nowrap' }}>{p.name}</strong>
-        <span className="muted mono" style={{ fontSize: 10, flex: 'none' }}>
-          {p.pid ?? p.slug}
-        </span>
-        {hasTree && <span className="muted mono" style={{ fontSize: 10,
-          flex: 'none' }}>tree</span>}
         <span style={{ flex: 1 }} />
-        <span className="muted mono" style={{ fontSize: 11, flex: 'none' }}>
-          {total} exp{total === 1 ? '' : 's'}{done > 0 && ` · ${done} done`}
-        </span>
         <button
           className={deleting === p.slug ? 'danger' : ''}
           style={{ fontSize: 11, padding: '2px 8px', flex: 'none' }}
@@ -130,6 +122,13 @@ function ProgramCard({ p, onDelete, deleting }: {
           <Trash2 size={11} />
           {deleting === p.slug ? 'sure?' : ''}
         </button>
+      </div>
+      <div className="muted mono" style={{ display: 'flex', gap: 8,
+        fontSize: 11, alignItems: 'baseline' }}>
+        {p.pid ?? p.slug}
+        {hasTree && <span>tree</span>}
+        <span style={{ flex: 1 }} />
+        <span>{total} exp{total === 1 ? '' : 's'}{done > 0 && ` · ${done} done`}</span>
       </div>
       <div className="muted" style={{ fontSize: 12 }}>
         <span style={{ display: '-webkit-box', WebkitLineClamp: 2,
