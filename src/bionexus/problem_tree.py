@@ -236,6 +236,69 @@ Reply ONLY with JSON:
     "gate": 0.0, "priority": 1.0, "rationale": "why this is its own question"}}
 ]}}"""
 
+RECURSE_PROMPT = """You are the study director refining a problem tree.
+Below are sub-problems of a program (index -> objective). A node stays a
+leaf only if it is independently testable with ONE measurement. If a node
+still hides two distinct questions, split it.
+
+{sub_problems_json}
+
+Guardrails: at most {max_children} children per node; prefer NOT to split.
+
+Reply ONLY with JSON:
+{{"splits": [
+  {{"index": 0,
+    "sub_problems": [
+      {{"objective": "...", "metric": "...", "direction": "min|max",
+        "gate": 0.0, "priority": 1.0}}
+    ]}}
+]}}
+Include an entry ONLY for nodes that must split; omit the rest."""
+
+
+def _recurse_decompose(tree: "ProblemTree", model: Any,
+                       node_ids: list[str], depth: int, say: Any) -> list[str]:
+    """One level of second-pass decomposition: ask which nodes at this
+    depth are still composites and split them. Returns the new frontier.
+    Guardrail failures in add() are announced and skipped."""
+    if not node_ids:
+        return []
+    from bionexus.core.contracts import Envelope, ToolInvocation
+    listing = [{"index": i, "objective": tree.nodes[nid].objective}
+               for i, nid in enumerate(node_ids)]
+    prompt = RECURSE_PROMPT.format(
+        sub_problems_json=json.dumps(listing, indent=1),
+        max_children=tree.limits.max_children)
+    inv = ToolInvocation(envelope=Envelope(experiment_branch_id="plan"),
+                         tool="c.fm.generate_molecules")
+    raw = model.generate(inv, prompt).output["text"]
+    import re
+    try:
+        doc = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
+    except Exception:
+        say("sub-decomposition: unparseable model reply — level stays flat")
+        return []
+    frontier: list[str] = []
+    for split in doc.get("splits", []):
+        try:
+            idx = int(split.get("index"))
+            parent = node_ids[idx]
+        except (TypeError, ValueError, IndexError):
+            continue
+        for s in (split.get("sub_problems") or [])[:tree.limits.max_children]:
+            try:
+                node = tree.add(parent,
+                                objective=str(s.get("objective", ""))[:160],
+                                metric=s.get("metric"),
+                                direction="max" if s.get("direction") == "max"
+                                else "min",
+                                gate=_num(s.get("gate")),
+                                priority=_num(s.get("priority"), 1.0) or 1.0)
+                frontier.append(node.id)
+            except Exception as exc:        # guardrails: depth/nodes caps
+                say(f"sub-split rejected: {exc}")
+    return frontier
+
 
 def decompose_with_agent(model: Any, objective: str, context: str = "",
                          limits: TreeLimits | None = None,
@@ -265,6 +328,18 @@ def decompose_with_agent(model: Any, objective: str, context: str = "",
                  gate=_num(s.get("gate")),
                  priority=_num(s.get("priority"), 1.0) or 1.0,
                  rationale=str(s.get("rationale", ""))[:200])
+    # recursive second pass: ask which sub-problems are still composites
+    # (bounded by max_depth and max_nodes; a model that cannot answer the
+    # refinement prompt leaves the level flat)
+    frontier = [n.id for n in tree.children(tree.root.id)]
+    depth = 1
+    while model is not None and frontier and depth < limits.max_depth:
+        say(f"decompose: asking which of {len(frontier)} level-{depth} "
+            f"sub-problems are still composites...")
+        frontier = _recurse_decompose(tree, model, frontier, depth, say)
+        depth += 1
+    if model is not None and len(tree.nodes) > 1:
+        say(f"tree: {len(tree.nodes)} nodes · {len(tree.leaves())} leaves")
     return tree
 
 

@@ -260,3 +260,50 @@ def test_materials_sweep_direction_aware():
     ets = {r.event_type.value for r in store.branch_records(rep["branch"])}
     assert {"problem_defined", "hypothesis_proposed", "lab_run",
             "hypothesis_validated"} <= ets
+
+
+def test_recursive_decompose_multilevel():
+    """Second-pass decomposition: a sub-problem that is still a composite
+    is split into its own children (depth-2 tree), bounded by max_depth.
+    A model that cannot answer the refinement prompt leaves it flat."""
+    import json
+
+    from bionexus.problem_tree import (ProblemTree, TreeLimits,
+                                       decompose_with_agent)
+
+    class SplittingModel:
+        def generate(self, inv, prompt):
+            class R:
+                output = {}
+            if '"splits"' in prompt:
+                R.output = {"text": json.dumps({"splits": [{
+                    "index": 0,
+                    "sub_problems": [
+                        {"objective": "child A", "metric": "ic50_um",
+                         "direction": "min", "gate": 10.0},
+                        {"objective": "child B", "metric": "ic50_um",
+                         "direction": "min", "gate": 5.0}]},
+                    {"index": 1,
+                     "sub_problems": [{"objective": "child C",
+                                       "metric": "solubility_uM",
+                                       "direction": "max", "gate": 50.0}]},
+                ]})}
+            else:
+                R.output = {"text": json.dumps({"sub_problems": [
+                    {"objective": "composite one", "metric": "ic50_um",
+                     "direction": "min", "gate": 10.0},
+                    {"objective": "composite two", "metric": "solubility_uM",
+                     "direction": "max", "gate": 50.0}]})}
+            return R()
+
+    tree = decompose_with_agent(SplittingModel(), "layered objective",
+                                limits=TreeLimits(max_depth=2),
+                                say=lambda m: None)
+    kids = tree.children(tree.root.id)
+    assert len(kids) == 2
+    grandkids = [c for k in kids for c in tree.children(k.id)]
+    assert len(grandkids) == 3
+    assert {g.objective for g in grandkids} == {"child A", "child B",
+                                                "child C"}
+    # leaves are the grandchildren — campaigns run at the finest level
+    assert {leaf.id for leaf in tree.leaves()} == {g.id for g in grandkids}
