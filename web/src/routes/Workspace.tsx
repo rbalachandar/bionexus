@@ -154,7 +154,7 @@ function ProgramCard({ p, onDelete, deleting }: {
   const shown = showAll ? leaves : leaves.slice(0, MAX_ROWS)
   return (
     <div className="card" style={{ display: 'grid', gap: 10,
-      alignContent: 'start', width: '100%' }}>
+      alignContent: 'start', width: '100%', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0,
           cursor: 'pointer', flex: 1 }} onClick={() => setCollapsed((c) => !c)}>
@@ -247,7 +247,8 @@ function LeafRow({ l, i, p, indent }: { l: ProgramLink; i: number;
         {leafLabel(l.question, p.objective, i, l.candidates)}
       </span>
       <span style={{ display: 'flex', gap: 8, alignItems: 'center',
-        justifySelf: 'end', whiteSpace: 'nowrap' }}>
+        justifySelf: 'end', flexWrap: 'wrap', justifyContent: 'flex-end',
+        minWidth: 0 }}>
         <VerdictTally v={l.verdicts} />
         <span className="muted mono" style={{ fontSize: 11 }}>
           {l.runs ?? 0} runs · r{l.rounds_done ?? 0}{l.rounds_planned ? `/${l.rounds_planned}` : ''}
