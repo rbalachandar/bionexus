@@ -176,9 +176,8 @@ export default function ProgramForm({ onLaunched, onDone }: {
             </p>
           )}
           <label style={{ display: 'block', marginTop: 8 }}>
-            Candidates (optional for single campaigns — the agent proposes
-            them; required for problem-tree launches, each leaf assays
-            these)
+            Candidates (optional — empty lets the agent propose its own
+            per leaf campaign)
             <input value={candidates} onChange={(e) => setCandidates(e.target.value)}
               style={inputStyle} placeholder="gefitinib, erlotinib" />
           </label>

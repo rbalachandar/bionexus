@@ -202,11 +202,6 @@ def launch_program(slug: str) -> dict:
     doc = prow.get("program") or {}
     if doc.get("mode") != "autonomous":
         raise HTTPException(400, "guided programs launch via the wizard")
-    if doc.get("decompose") and not (doc.get("candidates") or "").strip():
-        raise HTTPException(
-            400, "Decomposed launches test a candidate list — each leaf "
-                 "campaign assays the candidates you name. Add candidates "
-                 "to the program, or turn the problem tree off.")
     from bionexus.api.launch import spawn_campaign
     eid = spawn_campaign(doc, prow["name"])
     if eid:

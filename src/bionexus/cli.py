@@ -476,8 +476,9 @@ def cmd_plan(args: argparse.Namespace) -> int:
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
     cands = [{"sample_id": x.strip()} for x in args.candidates.split(",")
              if x.strip()]
-    if not cands:
-        print("--run needs --candidates", file=sys.stderr)
+    if not cands and model is None:
+        print("--run needs --candidates (or --model, for agent-proposed "
+              "hypotheses)")
         return 2
     summary = run_tree(tree, lambda: SimulatorLab(seed=args.seed),
                        SqliteProvenanceStore(args.db), candidates=cands,

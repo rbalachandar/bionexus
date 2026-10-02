@@ -428,10 +428,10 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
             say(f"leaf {leaf.id} already achieved — skipping (resumable)")
             continue
         specs = hyps.get(leaf.id) or []
-        if not specs:
-            leaf.status = "failed"
-            say(f"leaf {leaf.id}: no hypotheses available — recorded failed")
-            continue
+        # agent mode: a leaf with no config hypotheses (no candidate
+        # list given) proposes its own via the model — same contract as
+        # direct campaigns with hypothesis_source "agent"
+        agent_mode = not specs and model is not None
         cons = []
         if leaf.gate is not None and leaf.metric:
             cons = [Constraint(
@@ -465,8 +465,10 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
         k_eff = min(tree.limits.k_per_leaf, alloc.get(leaf.id, 2))
         cfg = CampaignConfig(
             problem=problem,
-            hypotheses=specs[: tree.limits.max_hypotheses_per_leaf],
-            hypothesis_source="config", model=model, candidates=candidates,
+            hypotheses=None if agent_mode
+            else specs[: tree.limits.max_hypotheses_per_leaf],
+            hypothesis_source="agent" if agent_mode else "config",
+            model=model, candidates=candidates,
             k=k_eff,
             rounds=(max(2, len(specs) // max(1, k_eff))
                     if not rounds else rounds),
