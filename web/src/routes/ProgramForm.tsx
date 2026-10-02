@@ -37,7 +37,7 @@ export default function ProgramForm({ onLaunched, onDone }: {
   const [k, setK] = useState(2)
   const [rounds, setRounds] = useState(2)
   const [candidates, setCandidates] = useState('')
-  const [decompose, setDecompose] = useState(false)
+  const [decompose, setDecompose] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -160,13 +160,21 @@ export default function ProgramForm({ onLaunched, onDone }: {
                 onChange={(e) => setRounds(Number(e.target.value))} style={inputStyle} />
             </label>
           </div>
+          {mode === 'autonomous' ? (
             <label style={{ display: 'flex', gap: 6, alignItems: 'center',
               marginTop: 4 }}>
               <input type="checkbox" checked={decompose}
                 onChange={(e) => setDecompose(e.target.checked)} />
-              Let the agent split the objective into sub-problems (problem
-              tree, runs longer)
+              Problem tree by default — the agent decides whether the
+              objective needs sub-problems (single-question objectives
+              stay one campaign). Uncheck to force a single campaign.
             </label>
+          ) : (
+            <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+              Guided (wizard) launches run as a single guided experiment —
+              no problem tree.
+            </p>
+          )}
           <label style={{ display: 'block', marginTop: 8 }}>
             Candidates (optional — empty = agent proposes them)
             <input value={candidates} onChange={(e) => setCandidates(e.target.value)}
