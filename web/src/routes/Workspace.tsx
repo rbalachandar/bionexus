@@ -154,7 +154,7 @@ function ProgramCard({ p, onDelete, deleting }: {
   const shown = showAll ? leaves : leaves.slice(0, MAX_ROWS)
   return (
     <div className="card" style={{ display: 'grid', gap: 10, width: '100%',
-      marginBottom: 10, breakInside: 'avoid' }}>
+      marginBottom: 0, width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0,
           cursor: 'pointer', flex: 1 }} onClick={() => setCollapsed((c) => !c)}>
@@ -456,10 +456,13 @@ export default function Workspace({ initialForm = false }: {
         </section>
       )}
 
-      {/* program grid */}
+      {/* program grid — equal-height rows: cards in a row stretch to the
+          same height so edges align (masonry columns went ragged once
+          cards carry trees/profiles of very different sizes) */}
       {ws.programs.length > 0 ? (
-        <div style={{ columns: '3 340px', columnGap: 10,
-        marginBottom: 'var(--s5)' }}>
+        <div style={{ display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+          gap: 10, alignItems: 'stretch', marginBottom: 'var(--s5)' }}>
           {ws.programs.map((p) => (
             <ProgramCard key={p.slug} p={p} deleting={deleting}
               onDelete={(slug) => {
