@@ -95,12 +95,16 @@ def fold_taste(feats_all: dict[str, dict],
         s = by_feature[key]
         if s["rate"] is None or s["rate_without"] is None:
             continue
+        cov = s["n"] / n if n else 0.0
         if s["rate"] > s["rate_without"] * 1.3 and s["n"] >= 3:
-            amendments.append(
-                f"hypotheses with {label} are accepted "
-                f"{s['rate'] / max(s['rate_without'], 1e-9):.1f}x more "
-                f"({s['rate']:.0%} vs {s['rate_without']:.0%}) — keep "
-                f"demanding it in the agent prompt")
+            # rewarded — only actionable when proposals lack headroom;
+            # near-universal coverage just confirms the existing prompt
+            if cov < 0.8:
+                amendments.append(
+                    f"{label} is the strongest acceptance signal so far "
+                    f"({s['rate']:.0%} vs {s['rate_without']:.0%}) but only "
+                    f"{cov:.0%} of proposals carry it — tightening the "
+                    f"generator's requirement has clear headroom")
         elif s["rate"] < s["rate_without"] * 0.7 and s["n"] >= 3:
             amendments.append(
                 f"hypotheses with {label} are accepted LESS "
