@@ -25,6 +25,7 @@ export interface ProgramOut {
   tally: Record<string, number>
   taste?: TasteReport
   tree?: ProblemTreeOut
+  trees?: ProblemTreeOut[]
 }
 
 export interface TreeLeafStat {

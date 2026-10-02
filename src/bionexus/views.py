@@ -1098,14 +1098,16 @@ def workspace(wizard_store,
         t["is_linked"] = bool(t["linked_program"]) or \
             t["root_id"] in linked_roots
 
-    # programs whose launch decomposed render their problem tree inside
-    # the card (sub-problems as sub-trees, leaves as experiment rows)
+    # programs whose launch decomposed render their problem tree(s) inside
+    # the card (sub-problems as sub-trees, leaves as experiment rows);
+    # multiple decomposed launches -> multiple trees
     for p in programs:
         roots = {a["campaign_root"] for a in p["links"]
                  if a.get("campaign_root")}
-        p["tree"] = next((t for t in trees
-                          if t["root_id"] in roots
-                          or t.get("linked_program") == p["slug"]), None)
+        p["trees"] = [t for t in trees
+                      if t["root_id"] in roots
+                      or t.get("linked_program") == p["slug"]]
+        p["tree"] = p["trees"][0] if p["trees"] else None
 
     standalone = [e for e in live
                   if (e["payload"].get("agent") or {}).get("problem_id")

@@ -207,7 +207,7 @@ function ProgramCard({ p, onDelete, deleting }: {
               no experiments yet — launch one from the New-program form
             </span>
           )}
-          {p.tree && p.tree.nodes.length > 1
+          {(p.trees?.length ?? (p.tree ? 1 : 0)) > 0
             ? <ProgramTree p={p} />
             : shown.map((l, i) => (
               <LeafRow key={l.eid} l={l} i={i} p={p} />
@@ -258,57 +258,87 @@ function LeafRow({ l, i, p, indent }: { l: ProgramLink; i: number;
   )
 }
 
-/** Decomposed programs render their problem tree: sub-problems as
- * indented intermediate nodes, leaves as the same experiment rows. */
+/** Decomposed programs render their problem tree(s): sub-problems as
+ * indented intermediate nodes, leaves as the same experiment rows.
+ * Multiple trees (one per decomposed launch) render sequentially; the
+ * whole tree section is row-capped like the flat list. */
 function ProgramTree({ p }: { p: ProgramOut }) {
-  const tree = p.tree!
+  const [showAll, setShowAll] = useState(false)
+  const MAX_ROWS = 10
+  const trees = p.trees ?? (p.tree ? [p.tree] : [])
   const linkByEid = new Map(
     p.links.filter((l) => l.role === 'leaf').map((l) => [l.eid, l]))
-  const kids = (id: string) => tree.nodes.filter((n) => n.parent === id)
   const used = new Set<string>()
-  const render = (id: string, depth: number): ReactNode[] => {
-    const n = tree.nodes.find((x) => x.id === id)!
-    const children = kids(id)
-    if (children.length === 0) {
-      const eid = tree.leaf_stats[id]?.eid
-      const l = eid ? linkByEid.get(eid) : undefined
-      if (l) {
-        used.add(l.eid)
-        return [<LeafRow key={id} l={l} i={depth} p={p}
-          indent={depth * 16} />]
+
+  const buildTree = (tree: ProblemTreeOut, multi: boolean): ReactNode[] => {
+    const kids = (id: string) => tree.nodes.filter((n) => n.parent === id)
+    const render = (id: string, depth: number): ReactNode[] => {
+      const n = tree.nodes.find((x) => x.id === id)!
+      const children = kids(id)
+      const indent = Math.min(depth, 3) * 14
+      if (children.length === 0) {
+        const eid = tree.leaf_stats[id]?.eid
+        const l = eid ? linkByEid.get(eid) : undefined
+        if (l) {
+          used.add(l.eid)
+          return [<LeafRow key={`${tree.root_id}-${id}`} l={l} i={depth}
+            p={p} indent={indent} />]
+        }
+        return [<div key={`${tree.root_id}-${id}`} style={{ marginLeft: indent,
+          display: 'flex', gap: 6, alignItems: 'baseline', padding: '2px 0',
+          fontSize: 11.5, minWidth: 0 }}>
+          <span className={`dot ${n.status}`} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap' }}>{n.objective}</span>
+          <span className="muted mono" style={{ fontSize: 10,
+            flexShrink: 0 }}>{n.status}</span>
+        </div>]
       }
-      return [<div key={id} style={{ marginLeft: depth * 16, display: 'flex',
-        gap: 6, alignItems: 'baseline', padding: '2px 0', fontSize: 11.5 }}>
-        <span className={`dot ${n.status}`} />
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap' }}>{n.objective}</span>
-        <span className="muted mono" style={{ fontSize: 10 }}>
-          {n.status}</span>
-      </div>]
+      return [
+        <div key={`${tree.root_id}-${id}`} style={{ marginLeft: indent,
+          display: 'flex', gap: 6, alignItems: 'baseline', padding: '3px 0 1px',
+          minWidth: 0 }}>
+          <ChevronRight size={11} color="var(--muted)"
+            style={{ flex: 'none', transform: 'rotate(90deg)' }} />
+          <span className="muted" style={{ fontSize: 11, fontWeight: 600,
+            overflow: 'hidden', textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap' }}>{n.objective}</span>
+          {n.metric && <span className="muted mono" style={{ fontSize: 10,
+            flexShrink: 0 }}>
+            {n.metric} {n.direction === 'min' ? '≤' : '≥'} {n.gate}</span>}
+        </div>,
+        ...children.flatMap((c) => render(c.id, depth + 1)),
+      ]
     }
+    const rows = tree.nodes.filter((x) => !x.parent)
+      .flatMap((r) => render(r.id, 0))
+    if (!multi) return rows
     return [
-      <div key={id} style={{ marginLeft: depth * 16, display: 'flex',
-        gap: 6, alignItems: 'baseline', padding: '3px 0 1px' }}>
-        <ChevronRight size={11} color="var(--muted)"
-          style={{ flex: 'none', transform: 'rotate(90deg)' }} />
-        <span className="muted" style={{ fontSize: 11, fontWeight: 600,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {n.objective}
-        </span>
-        {n.metric && <span className="muted mono" style={{ fontSize: 10,
-          whiteSpace: 'nowrap' }}>
-          {n.metric} {n.direction === 'min' ? '≤' : '≥'} {n.gate}</span>}
+      <div key={`${tree.root_id}-hdr`} className="muted" style={{
+        fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em',
+        marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap' }}>
+        tree · {tree.objective}
       </div>,
-      ...children.flatMap((c) => render(c.id, depth + 1)),
+      ...rows,
     ]
   }
-  const rows = tree.nodes.filter((x) => !x.parent)
-    .flatMap((r) => render(r.id, 0))
+
+  let all: ReactNode[] = []
+  for (const t of trees) all = all.concat(buildTree(t, trees.length > 1))
+  const cap = showAll ? all.length : Math.min(all.length, MAX_ROWS)
   const rest = p.links.filter((l) => l.role === 'leaf' && l.live !== false
     && !used.has(l.eid))
   return (
     <>
-      {rows}
+      {all.slice(0, cap)}
+      {all.length > cap && (
+        <button style={{ justifySelf: 'start', fontSize: 11,
+          padding: '2px 8px', marginTop: 2 }}
+          onClick={() => setShowAll(true)}>
+          +{all.length - cap} more (tree)
+        </button>
+      )}
       {rest.length > 0 && (
         <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
           letterSpacing: '0.04em', marginTop: 4 }}>

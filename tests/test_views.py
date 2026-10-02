@@ -337,6 +337,7 @@ def test_program_card_tree(tmp_path):
                 if p["slug"] == "tr-1")
     assert prog["tree"] is not None
     assert prog["tree"]["root_id"] == t.root.id
+    assert prog["trees"] == [prog["tree"]]
     assert any(n["id"] == leaf.id for n in prog["tree"]["nodes"])
     # the leaf maps to its experiment for the card's clickable rows
     assert prog["tree"]["leaf_stats"].get(leaf.id, {}).get("eid") == eid
