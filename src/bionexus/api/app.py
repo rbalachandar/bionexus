@@ -185,12 +185,26 @@ def save_program(body: ProgramIn) -> dict:
 
 
 @app.delete("/api/programs/{slug}")
-def delete_program_route(slug: str) -> dict:
+def delete_program_route(slug: str, archive: bool = False) -> dict:
+    """Delete a program. archive=True also retires every experiment
+    linked to it (leaves + tree roots) into the Archived section —
+    the workspace loses nothing; provenance stays intact either way."""
+    existing = {p["slug"]: p for p in program_cfg.list_programs()}
+    if slug not in existing:
+        raise HTTPException(404, f"program {slug} not found")
+    n_archived = 0
+    if archive:
+        ws = get_ws()
+        for l in program_cfg.links_for(slug):
+            if ws.get(l["eid"]) and not \
+                    ((ws.get(l["eid"])["payload"] or {}).get("archived")):
+                ws.set_archived(l["eid"], True)
+                n_archived += 1
     ok = program_cfg.delete_program(slug)
     if not ok:
         raise HTTPException(404, f"program {slug} not found")
     publish_workspace("program_deleted", {"slug": slug})
-    return {"deleted": slug}
+    return {"deleted": slug, "archived_experiments": n_archived}
 
 
 @app.post("/api/programs/{slug}/launch")

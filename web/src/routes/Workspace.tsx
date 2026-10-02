@@ -173,21 +173,37 @@ function ProgramCard({ p, onDelete, deleting }: {
             </span>
           )}
         </div>
-        <button
-          className={deleting === p.slug ? 'danger' : ''}
-          style={{ fontSize: 11, padding: '2px 8px', display: 'inline-flex',
-            gap: 4, alignItems: 'center', flex: 'none' }}
-          title={deleting === p.slug
-            ? 'click again to confirm — experiments are kept'
-            : 'delete this program (experiments are kept)'}
-          onClick={(e) => {
-            e.stopPropagation()
-            if (deleting === p.slug) onDelete(p.slug)
-            else onDelete(`arm:${p.slug}`)
-          }}>
-          <Trash2 size={11} />
-          {deleting === p.slug ? 'Confirm?' : ''}
-        </button>
+        {deleting === p.slug ? (
+          <span style={{ display: 'inline-flex', gap: 4, flex: 'none' }}>
+            <button className="danger" style={{ fontSize: 10, padding: '2px 7px' }}
+              title="delete the program; its experiments archive to the Archived section"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(`archive:${p.slug}`)
+              }}>
+              + archive exps
+            </button>
+            <button style={{ fontSize: 10, padding: '2px 7px' }}
+              title="delete the program; experiments stay in the workspace (trees scatter to free cards)"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(p.slug)
+              }}>
+              keep exps
+            </button>
+          </span>
+        ) : (
+          <button
+            style={{ fontSize: 11, padding: '2px 8px', display: 'inline-flex',
+              gap: 4, alignItems: 'center', flex: 'none' }}
+            title="delete this program"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(`arm:${p.slug}`)
+            }}>
+            <Trash2 size={11} />
+          </button>
+        )}
       </div>
       <div className="muted" style={{ fontSize: 12 }}>
         <span style={{ display: '-webkit-box', WebkitLineClamp: 3,
@@ -400,8 +416,9 @@ export default function Workspace({ initialForm = false }: {
   const [showForm, setShowForm] = useState(initialForm)
   const [deleting, setDeleting] = useState<string | null>(null)
 
-  async function doDelete(slug: string) {
-    const r = await fetch(`/api/programs/${slug}`, { method: 'DELETE' })
+  async function doDelete(slug: string, archive: boolean) {
+    const r = await fetch(`/api/programs/${slug}${archive ? '?archive=true' : ''}`,
+      { method: 'DELETE' })
     if (r.ok) {
       setDeleting(null)
       qc.invalidateQueries({ queryKey: ['workspace'] })
@@ -470,8 +487,11 @@ export default function Workspace({ initialForm = false }: {
           {ws.programs.map((p) => (
             <ProgramCard key={p.slug} p={p} deleting={deleting}
               onDelete={(slug) => {
-                if (slug.startsWith('arm:')) setDeleting(slug.slice(4))
-                else doDelete(slug)
+                if (slug.startsWith('archive:'))
+                  doDelete(slug.slice(8), true)
+                else if (slug.startsWith('arm:'))
+                  setDeleting(slug.slice(4))
+                else doDelete(slug, false)
               }} />
           ))}
         </div>
