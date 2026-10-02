@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Activity, ChevronRight, FlaskConical, Plus, Target, Trash2, Users } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useWorkspaceEvents } from '../api/useEvents'
 import { api } from '../api/client'
 import type { ProgramLink, ProblemTreeOut, ProgramOut, TasteReport } from '../api/client'
 import { Badge, EmptyState, Skeleton, VERDICT_GLYPH } from '../components/ui'
@@ -391,7 +392,9 @@ function TreeBlock({ tree }: { tree: ProblemTreeOut }) {
 export default function Workspace({ initialForm = false }: {
   initialForm?: boolean
 }) {
-  const q = useQuery({ queryKey: ['workspace'], queryFn: api.workspace })
+  const q = useQuery({ queryKey: ['workspace'], queryFn: api.workspace,
+    refetchInterval: 15000 })   // safety net; live updates via SSE
+  useWorkspaceEvents()
   const qc = useQueryClient()
   const nav = useNavigate()
   const [showForm, setShowForm] = useState(initialForm)
