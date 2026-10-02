@@ -153,8 +153,8 @@ function ProgramCard({ p, onDelete, deleting }: {
   const MAX_ROWS = 4
   const shown = showAll ? leaves : leaves.slice(0, MAX_ROWS)
   return (
-    <div className="card" style={{ display: 'grid', gap: 10, width: '100%',
-      marginBottom: 0, width: '100%' }}>
+    <div className="card" style={{ display: 'grid', gap: 10,
+      alignContent: 'start', width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0,
           cursor: 'pointer', flex: 1 }} onClick={() => setCollapsed((c) => !c)}>
