@@ -106,9 +106,12 @@ function ProgramCard({ p, onDelete, deleting }: {
       onClick={() => nav(`/programs/${p.slug}`)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <Target size={15} color="var(--brand)" style={{ flex: 'none' }} />
-        <strong title={`id: ${p.slug}`} style={{ fontSize: 14,
-          overflow: 'hidden', textOverflow: 'ellipsis',
+        <strong title={`${p.pid ?? p.slug} · ${p.slug}`}
+          style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis',
           whiteSpace: 'nowrap' }}>{p.name}</strong>
+        <span className="muted mono" style={{ fontSize: 10, flex: 'none' }}>
+          {p.pid ?? p.slug}
+        </span>
         {hasTree && <span className="muted mono" style={{ fontSize: 10,
           flex: 'none' }}>tree</span>}
         <span style={{ flex: 1 }} />

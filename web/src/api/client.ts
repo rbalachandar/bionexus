@@ -16,6 +16,7 @@ export interface ProgramLink {
 
 export interface ProgramOut {
   slug: string
+  pid?: string
   name: string
   objective: string | null
   gate_summary: string | null

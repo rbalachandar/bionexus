@@ -49,8 +49,8 @@ function ProgramPage() {
             <h1 style={{ fontSize: 'var(--fs-xl)', margin: 0, fontWeight: 650 }}>
               {p.name}
             </h1>
-            <span className="muted mono" title="unique program id"
-              style={{ fontSize: 11 }}>{p.slug}</span>
+            <span className="muted mono" title={`id ${p.slug}`}
+              style={{ fontSize: 11 }}>{p.pid ?? p.slug}</span>
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4,
             maxWidth: 760 }}>{p.objective ?? p.gate_summary}</div>

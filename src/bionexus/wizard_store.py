@@ -46,6 +46,12 @@ class WizardStore:
                 updated_at REAL NOT NULL
             )""")
         self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS meta (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )""")
+        self._backfill_program_ids()
+        self._conn.execute("""
             CREATE TABLE IF NOT EXISTS campaign_specs (
                 experiment_id    TEXT PRIMARY KEY
                     REFERENCES experiments(id) ON DELETE CASCADE,
@@ -118,9 +124,60 @@ class WizardStore:
         return eid
 
     # ------------------------------------------------ program relations
+    def _next_program_seq(self) -> int:
+        row = self._conn.execute(
+            "SELECT value FROM meta WHERE key='program_seq'").fetchone()
+        n = int(row[0]) + 1 if row else 1
+        self._conn.execute(
+            "INSERT INTO meta VALUES ('program_seq',?) "
+            "ON CONFLICT(key) DO UPDATE SET value=?",
+            (str(n), str(n)))
+        return n
+
+    def _backfill_program_ids(self) -> None:
+        """One-time: mint PRG-00N ids for programs created before the
+        counter existed, in creation order."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT slug, doc, created_at FROM programs "
+                "ORDER BY created_at, rowid").fetchall()
+            seq = 0
+            for slug, doc, _ in rows:
+                d = json.loads(doc)
+                if d.get("program_id"):
+                    seq = max(seq, int(d["program_id"].split("-")[1]))
+            for slug, doc, _ in rows:
+                d = json.loads(doc)
+                if d.get("program_id"):
+                    continue
+                seq += 1
+                d["program_id"] = f"PRG-{seq:03d}"
+                self._conn.execute(
+                    "UPDATE programs SET doc=? WHERE slug=?",
+                    (json.dumps(d), slug))
+            if seq:
+                self._conn.execute(
+                    "INSERT INTO meta VALUES ('program_seq',?) "
+                    "ON CONFLICT(key) DO UPDATE SET value=?",
+                    (str(seq), str(seq)))
+            self._conn.commit()
+
     def upsert_program(self, slug: str, name: str, doc: dict) -> None:
         with self._lock:
             now = time.time()
+            exists = self._conn.execute(
+                "SELECT 1 FROM programs WHERE slug=?", (slug,)).fetchone()
+            if not exists:
+                if not doc.get("program_id"):
+                    # every program gets a stable human id: PRG-001, PRG-002, …
+                    doc = {**doc,
+                           "program_id": f"PRG-{self._next_program_seq():03d}"}
+            elif not doc.get("program_id"):
+                prev = self._conn.execute(
+                    "SELECT doc FROM programs WHERE slug=?", (slug,)).fetchone()
+                pid = json.loads(prev[0]).get("program_id") if prev else None
+                if pid:
+                    doc = {**doc, "program_id": pid}
             self._conn.execute(
                 "INSERT INTO programs VALUES (?,?,?,?,?) "
                 "ON CONFLICT(slug) DO UPDATE SET name=?, doc=?, updated_at=?",

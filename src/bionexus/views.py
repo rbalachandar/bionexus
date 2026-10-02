@@ -1085,6 +1085,7 @@ def workspace(wizard_store,
                      "by_feature": {}, "families": {}, "amendments": []}
         programs.append({
             "slug": p["slug"], "name": p["name"],
+            "pid": doc.get("program_id", p["slug"]),
             "objective": doc.get("objective"),
             "gate_summary": p.get("gate_summary"),
             "modality": doc.get("modality"),
