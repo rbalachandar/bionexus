@@ -184,12 +184,19 @@ def save_program(body: ProgramIn) -> dict:
     slug = program_cfg._slug(doc.get("program"))
     existing = {x["slug"]: x for x in program_cfg.list_programs()}
     prev = existing.get(slug)
-    if prev and prev.get("attachments") and prev.get("mode") != doc["mode"]:
-        raise HTTPException(
-            409, f"Execution mode is locked: '{doc['program']}' has "
-            f"{len(prev['attachments'])} attached experiment(s).")
+    if prev and prev.get("attachments"):
+        # same name as an active program: never silently merge — mint a
+        # unique id (kappa-selective-binder-2) so both stay distinguishable
+        if prev.get("mode") != doc["mode"]:
+            raise HTTPException(
+                409, f"Execution mode is locked: '{doc['program']}' has "
+                f"{len(prev['attachments'])} attached experiment(s).")
+        n = 2
+        while f"{slug}-{n}" in existing:
+            n += 1
+        slug = f"{slug}-{n}"
     program_cfg.save(doc)
-    program_cfg.save_program_record(doc)
+    program_cfg.save_program_record(doc, slug=slug)
     publish_workspace("program_updated", {"slug": slug})
     return {"slug": slug, "gate_summary": program_cfg.gate_summary(doc)}
 

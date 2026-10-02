@@ -49,13 +49,13 @@ def _slug(name: str) -> str:
     return s[:48] or "program"
 
 
-def save_program_record(doc: dict) -> str:
+def save_program_record(doc: dict, slug: str | None = None) -> str:
     """Register/refresh a program as a shared provenance root. Returns
     the program branch id (programs/<slug>)."""
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
     from bionexus.core.contracts import Envelope, EventType
     from bionexus.core.interfaces import record_for, system_actor
-    slug = _slug(doc.get("program"))
+    slug = slug or _slug(doc.get("program"))
     branch = f"programs/{slug}"
     # relational row: the query source for the workspace
     from bionexus.wizard_store import WizardStore
