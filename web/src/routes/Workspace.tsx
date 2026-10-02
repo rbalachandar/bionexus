@@ -342,7 +342,8 @@ function ProgramTree({ p }: { p: ProgramOut }) {
       {rest.length > 0 && (
         <div className="muted" style={{ fontSize: 10, textTransform: 'uppercase',
           letterSpacing: '0.04em', marginTop: 4 }}>
-          outside the tree
+          {rest.length} separate campaign{rest.length === 1 ? '' : 's'} · not
+          part of any tree
         </div>
       )}
       {rest.map((l, i) => <LeafRow key={l.eid} l={l} i={i} p={p} />)}
