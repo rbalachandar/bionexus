@@ -136,22 +136,12 @@ export function ProgramTreeFull({ p }: { p: ProgramOut }) {
         ...children.flatMap((c) => render(c.id, depth + 1)),
       ]
     }
-    const rows = tree.nodes.filter((x) => !x.parent)
+    return tree.nodes.filter((x) => !x.parent)
       .flatMap((r) => render(r.id, 0))
-    if (!multi) return rows
-    return [
-      <div key={`${tree.root_id}-hdr`} className="muted" style={{
-        fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em',
-        marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap' }}>
-        tree · {tree.objective}
-      </div>,
-      ...rows,
-    ]
   }
 
   let all: React.ReactNode[] = []
-  for (const t of trees) all = all.concat(buildTree(t, trees.length > 1))
+  for (const t of trees) all = all.concat(buildTree(t, false))
   const rest = p.links.filter((l) => l.role === 'leaf' && l.live !== false
     && !used.has(l.eid))
   return (
