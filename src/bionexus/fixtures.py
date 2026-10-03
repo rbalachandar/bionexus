@@ -86,21 +86,34 @@ def verify(study_dir: str | Path) -> tuple[bool, list[str]]:
 # ------------------------------------------------------------- materialize
 
 def materialize(study_dir: str | Path) -> int:
-    """Copy frozen files to their live cache locations unless already
-    present. Live paths are recorded in the manifest as 'target'."""
+    """Restore frozen fixtures to their live cache locations. The frozen
+    copy is CHECKSUM-VERIFIED against the manifest before and after
+    materializing — a corrupt or edited .gz never becomes a cache file,
+    and an existing cache file that does not match the manifest is
+    replaced, not trusted. Returns the number of cache files written."""
+    import gzip
     study = Path(study_dir)
     root = study.resolve().parents[1]
+    entries = _entries(study)
+    if not entries:
+        raise FileNotFoundError("no fixtures manifest — run "
+                                "`bn fixtures freeze` first")
+    # 1. verify every frozen file BEFORE restoring any of it
+    ok, problems = verify(study)
+    if not ok:
+        raise ValueError("fixture integrity check failed: "
+                         + "; ".join(problems[:4]))
     n = 0
-    for e in _entries(study):
+    for e in entries:
         if not e.get("target"):
             continue
         target = root / e["target"]
         src = study / "fixtures" / (e["path"] + ".gz")
-        if not src.exists():
-            continue
-        if not target.exists():
-            import gzip
+        data = gzip.decompress(src.read_bytes())
+        if _sha_bytes(data) != e["sha256"]:
+            raise ValueError(f"fixture decompress mismatch: {e['path']}")
+        if not target.exists() or target.read_bytes() != data:
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(gzip.decompress(src.read_bytes()))
+            target.write_bytes(data)
             n += 1
     return n

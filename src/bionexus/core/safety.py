@@ -112,7 +112,11 @@ class DurcTargetRule:
         from bionexus.adapters.bio.tox_alerts import durc_screen
         blob = " ".join([protocol.title]
                         + [s.sample_id for s in protocol.samples]
-                        + [r.name for r in protocol.reagents])
+                        + [r.name for r in protocol.reagents]
+                        # metadata is text too: descriptions must not be a
+                        # DURC bypass channel
+                        + [str((s.metadata or {}).get("description", ""))
+                           for s in protocol.samples])
         hits = durc_screen(blob)
         if hits:
             return ("names a select agent / regulated toxin family: "

@@ -38,7 +38,15 @@ def review_campaign(recs) -> dict:
         cand = d.get("candidate") or art_meta.get("candidate")
         if et == "lab_run" and d.get("run_id"):
             runs.add(d["run_id"])
-        elif et in ("hypothesis_validated", "hypothesis_invalidated"):
+        elif et == "hypothesis_tested":
+            # any tested record (attach or legacy verdict) = an analyzed read
+            if cand:
+                tests[str(cand)] = tests.get(str(cand), 0) + 1
+        elif d.get("verdict") and et in (
+                "hypothesis_validated", "hypothesis_invalidated",
+                "hypothesis_inconclusive", "hypothesis_tested"):
+            # EVERY verdict is audited — including refuted confirmations and
+            # abstentions, which is exactly where the contradictions hide
             key = str(cand or d.get("hypothesis_id") or art_meta.get(
                 "candidate") or len(verdicts))
             verdicts[key] = {"verdict": d.get("verdict"),
@@ -50,9 +58,6 @@ def review_campaign(recs) -> dict:
                              "candidate": str(cand) if cand else None,
                              "evidence": d.get("evidence_run_id"),
                              "event": et}
-        elif et == "hypothesis_tested" and d.get("verdict"):
-            if cand:
-                tests[str(cand)] = tests.get(str(cand), 0) + 1
 
     # pre-registered gate directions: constraint descriptions carry the
     # comparison (>= / <=); verdict records may omit direction, so the
@@ -95,7 +100,8 @@ def review_campaign(recs) -> dict:
                              "detail": f"CI {ci} is inverted"})
 
         # 3. evidence linkage: a final verdict must point at a recorded run
-        if verdict in ("validated", "confirmed", "inconclusive") and runs:
+        if verdict in ("validated", "confirmed", "refuted", "invalidated",
+                       "inconclusive") and runs:
             ev = v.get("evidence")
             if not ev:
                 findings.append({"severity": "warning", "kind": "no-evidence",
@@ -143,6 +149,7 @@ def _campaign_summary(recs) -> dict:
         elif et == "gate_decision":
             refusals += 1
         elif et in ("hypothesis_validated", "hypothesis_invalidated",
+                    "hypothesis_inconclusive",
                     "hypothesis_tested") and (d.get("verdict") or cand):
             if d.get("verdict"):
                 verdicts.append({

@@ -341,3 +341,72 @@ def test_method_recall_and_surrogate_prior():
         [s["candidate"] for s in flat], 20.0, 6, 11,
         Path(".data/evals/inbox"), specs=flat)
     assert any(r.event_type.value == "hypotheses_filtered" for r in recs2)
+
+
+def test_record_outcome_events_follow_verdict_word(tmp_path):
+    """A verdict's EVENT TYPE follows its WORD: refuted lands as
+    hypothesis_invalidated, abstention as hypothesis_inconclusive — no
+    deciding record is ever filed under a bare 'tested' event."""
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.hypothesis import HypothesisTracker
+    from bionexus.core.interfaces import system_actor
+
+    store = SqliteProvenanceStore(str(tmp_path / "p.db"))
+    tracker = HypothesisTracker(store, system_actor("t"))
+    h = tracker.propose("C1 is potent", candidate="C1", assay_type="binding",
+                        predicted="< 20", predicted_value=20.0)
+    for status in ("validated", "confirmed", "invalidated", "refuted",
+                   "inconclusive"):
+        h.status = status
+        h.observed_value, h.observed_ci = 18.0, (10.0, 25.0)
+        tracker.record_outcome(h)
+    events = [r.event_type.value
+              for r in store.branch_records(h.branch_id)]
+    verdict_events = events[1:]  # skip hypothesis_proposed
+    assert verdict_events == [
+        "hypothesis_validated", "hypothesis_validated",
+        "hypothesis_invalidated", "hypothesis_invalidated",
+        "hypothesis_inconclusive"]
+    # every record carries its verdict word and the CI
+    for r in store.branch_records(h.branch_id):
+        if r.event_type.value != "hypothesis_proposed":
+            assert r.decision["verdict"]
+            assert r.decision["observed_ci"] == [10.0, 25.0]
+
+
+def test_verdict_lab_side_keeps_ci_and_fires_flywheel_hook(tmp_path):
+    """verdict() (the public/skills API) is at parity with record_outcome:
+    the CI lands on the hypothesis AND in provenance, and the flywheel
+    hook fires — lab-side verdicts teach the flywheel too."""
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import (AssayResult, Envelope, InstrumentInfo,
+                                         Measurement, RunStatus)
+    from bionexus.core.hypothesis import (HypothesisTracker, SuccessCriteria)
+    from bionexus.core.interfaces import system_actor
+
+    store = SqliteProvenanceStore(str(tmp_path / "p.db"))
+    seen = []
+    tracker = HypothesisTracker(store, system_actor("t"),
+                                on_verdict=lambda h: seen.append(h.status))
+    h = tracker.propose("C1 is potent", candidate="C1", assay_type="binding",
+                        predicted="< 20", predicted_value=20.0)
+    h.criteria = SuccessCriteria(metric="ic50_um", direction="min",
+                                 threshold=20.0)
+    result = AssayResult(
+        envelope=Envelope(experiment_branch_id=h.branch_id),
+        protocol_id="p-1", run_id="sim-1",
+        instrument=InstrumentInfo(adapter="simulator",
+                                  instrument_id="sim-v1"),
+        status=RunStatus.completed,
+        measurements=[Measurement(
+            sample_id="C1", assay_type="binding", value=18.0, unit="ic50_um",
+            derived_metrics={"ic50_ci_low": 10.0, "ic50_ci_high": 25.0})])
+    h = tracker.verdict(h, result)
+    assert h.status == "inconclusive"        # CI straddles 20 -> abstention
+    assert h.observed_ci == (10.0, 25.0)     # was silently dropped, pre-fix
+    rec = [r for r in store.branch_records(h.branch_id)
+           if r.event_type.value == "hypothesis_inconclusive"]
+    assert len(rec) == 1
+    assert rec[0].decision["observed_ci"] == [10.0, 25.0]
+    assert rec[0].decision["direction"] == "min"
+    assert seen == ["inconclusive"]          # flywheel learned from verdict()

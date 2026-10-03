@@ -60,7 +60,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     branch = cfg.get("branch", "run-1")
     envelope = Envelope(experiment_branch_id=branch)
     safety = SafetyEngine()  # operator rules may be extended via cfg["safety"]
-    gateway = LabGateway(lab, safety, store, actor)
+    from bionexus.governance import execution_governance
+    # same physics as a campaign: halt + authorization matrix bind here too
+    gateway = LabGateway(lab, safety, store, actor,
+                         governance=execution_governance())
 
     tcfg = cfg.get("tournament", {})
     tournament = HypothesisTournament(
@@ -126,16 +129,27 @@ def cmd_prove(args: argparse.Namespace) -> int:
     if not records:
         print(f"no records for branch '{args.branch}' in {args.db}")
         return 1
+    # hashes are RECOMPUTED from every payload, not copied from the chain
+    problems = store.verify_chain(args.branch)
+    bad = {p["record_id"]: p for p in problems}
     prev_ok = True
     prev_hash = None
     for r in records:
-        ok = r.prev_record_hash == prev_hash
+        ok = (r.prev_record_hash == prev_hash) and r.record_id not in bad
         prev_ok &= ok
         prev_hash = r.record_hash
         print(f"{r.envelope.created_at:>14.0f}  {r.event_type.value:<18} "
               f"hash={r.record_hash[:12]}… prev={'genesis' if not r.prev_record_hash else r.prev_record_hash[:12] + '…'} "
               f"[{'ok' if ok else 'BROKEN'}]")
-    print(f"chain intact: {prev_ok} ({len(records)} records)")
+    for p in problems:
+        print(f"TAMPERED {p['record_id']} ({p['event']}): {p['problem']}"
+              + (f" — {p['detail']}" if p.get("detail") else ""))
+    print(f"chain intact: {prev_ok and not problems} "
+          f"({len(records)} records, hashes recomputed from payload)")
+    if not prev_ok or problems:
+        print("  note: a consistent rewrite of payload+column+links is only "
+              "caught by an EXTERNAL anchor — run `bn anchor --verify`")
+        return 1
     if args.html:
         from bionexus.report import write_report
 
@@ -373,7 +387,12 @@ def cmd_anchor(args: argparse.Namespace) -> int:
         print(f"current root: {res['current_root'][:16]}…  "
               f"anchored: {(res['anchored_root'] or '—')[:16]}…  "
               f"records: {res['records']}  -> {'MATCH' if ok else 'MISMATCH'}")
-        return 0 if ok else 1
+        if res.get("content_tampered"):
+            print("  ⚠ CONTENT TAMPERED: stored hashes do not match what the "
+                  "payloads actually contain")
+            for p in (res.get("problems") or [])[:5]:
+                print(f"     {p['record_id']} [{p['branch']}]: {p['problem']}")
+        return 0 if ok and not res.get("content_tampered") else 1
     entry = make_anchor(args.db, publish_cmd=args.publish_cmd)
     print(f"anchored {entry['records']} records -> root "
           f"{entry['merkle_root'][:16]}…")
@@ -436,7 +455,8 @@ def cmd_reproduce(args: argparse.Namespace) -> int:
     print(f"{icon} {status}", end="")
     if status in ("match", "differs"):
         print(f" — {res['matched']}/{res['recorded_verdicts']} verdicts "
-              f"reproduced identically")
+              f"identical on the REPLAYED execution path")
+        print(f"   {res.get('note', '')}")
         for d in res["diffs"]:
             print(f"   Δ {d['candidate']}: recorded={d['recorded']} "
                   f"replayed={d['replayed']}")

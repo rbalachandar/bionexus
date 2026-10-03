@@ -94,7 +94,10 @@ class McpSession:
         self.actor = system_actor("mcp")
         self.registry = Registry()
         self.registry.register_model(OpenAICompatProvider(), default=True)
-        self.gateway = LabGateway(SimulatorLab(seed=42), SafetyEngine(), self.store, self.actor)
+        from bionexus.governance import execution_governance
+        self.gateway = LabGateway(SimulatorLab(seed=42), SafetyEngine(),
+                                  self.store, self.actor,
+                                  governance=execution_governance())
         self.tracker = HypothesisTracker(self.store, self.actor)
         self._hypotheses = self.tracker
 

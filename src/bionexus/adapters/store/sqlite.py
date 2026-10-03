@@ -25,6 +25,17 @@ class SqliteProvenanceStore:
                 payload TEXT NOT NULL
             )"""
         )
+        # append-only is enforced by the DATABASE, not by convention:
+        # UPDATE/DELETE abort at the engine level, so even a bug (or an
+        # adb shell session) cannot rewrite history without an error
+        self._conn.executescript("""
+            CREATE TRIGGER IF NOT EXISTS provenance_no_update
+            BEFORE UPDATE ON provenance
+            BEGIN SELECT RAISE(ABORT, 'provenance is append-only'); END;
+            CREATE TRIGGER IF NOT EXISTS provenance_no_delete
+            BEFORE DELETE ON provenance
+            BEGIN SELECT RAISE(ABORT, 'provenance is append-only'); END;
+        """)
         self._conn.commit()
 
     def append(self, record: ProvenanceRecord) -> ProvenanceRecord:
@@ -75,6 +86,55 @@ class SqliteProvenanceStore:
             (branch_id,),
         ).fetchall()
         return [ProvenanceRecord.model_validate_json(r[0]) for r in rows]
+
+    def verify_chain(self, branch_id: str | None = None) -> list[dict]:
+        """RECOMPUTE every record hash from its stored payload and re-link
+        the chain. A hash proves nothing unless someone checks it — this is
+        that someone, on the read path.
+
+        Returns [] when the chain is sound; otherwise one entry per bad
+        record: {record_id, branch, event, problem}, problem being
+          'payload-tampered'   content no longer hashes to its stored hash
+          'column-tampered'    the hash COLUMN diverges from the payload
+          'prev-mismatch'      the prev link does not point at the record
+                               before it in this branch
+        What this CANNOT catch, stated honestly: a rewrite that updates
+        payload, column and links all consistently — that is the job of
+        `bn anchor` (an external Merkle root you published elsewhere)."""
+        sql = ("SELECT record_id, branch_id, record_hash, payload "
+               "FROM provenance")
+        args: tuple = ()
+        if branch_id is not None:
+            sql += " WHERE branch_id=?"
+            args = (branch_id,)
+        rows = self._conn.execute(
+            sql + " ORDER BY branch_id, created_at, rowid", args).fetchall()
+        problems: list[dict] = []
+        last_by_branch: dict[str, str | None] = {}
+        for rid, br, col_hash, payload in rows:
+            rec = ProvenanceRecord.model_validate_json(payload)
+            entry = {"record_id": rid, "branch": br,
+                     "event": rec.event_type.value}
+            recomputed = self._hash(rec)
+            if recomputed != rec.record_hash:
+                problems.append({**entry, "problem": "payload-tampered",
+                                 "detail": "content does not hash to the "
+                                           "record's own hash"})
+                stored = rec.record_hash
+            elif col_hash != rec.record_hash:
+                problems.append({**entry, "problem": "column-tampered",
+                                 "detail": "hash column diverges from the "
+                                           "payload's hash"})
+                stored = rec.record_hash
+            else:
+                stored = col_hash
+            expected = last_by_branch.get(br)
+            if (rec.prev_record_hash or None) != expected:
+                problems.append({**entry, "problem": "prev-mismatch",
+                                 "detail": "prev link does not match the "
+                                           "preceding record"})
+            last_by_branch[br] = stored
+        return problems
 
     @staticmethod
     def _hash(record: ProvenanceRecord) -> str:

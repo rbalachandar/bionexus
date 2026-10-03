@@ -116,7 +116,7 @@ class AutoAnalysisAgent:
     def handle(self, event: LabEvent) -> dict[str, Any] | None:
         if event.kind != "plate_ready" or event.path is None:
             return None
-        from bionexus.labread import read_plate
+        from bionexus.labread import QC_ZPRIME_FLOOR, read_plate, replicate_ci
 
         try:
             if self.adaptive:
@@ -153,7 +153,7 @@ class AutoAnalysisAgent:
             return {"error": str(exc)[:200], "file": event.path.name,
                     "failure_mode": verdict}
         self.notify(f"analyzed: {len(result.analysis['compounds'])} compound(s), "
-                    f"Z'={result.z_prime}")
+                    f"Z'~{result.z_prime} (heuristic)")
 
         # auto-update hypotheses whose candidate appears in this plate
         verdicts = []
@@ -189,17 +189,27 @@ class AutoAnalysisAgent:
                                 isinstance(val, (int, float)):
                             cand_vals.append((conc, val))
                     if cand_vals:
-                        prop_value = max(cand_vals)[1]
+                        # replicate-mean at the top dose + well-level
+                        # bootstrap CI: property metrics get the SAME
+                        # abstention machinery as IC50 fits
+                        top_conc = max(c for c, _ in cand_vals)
+                        top_vals = [v for c, v in cand_vals if c == top_conc]
+                        prop_value = sum(top_vals) / len(top_vals)
+                        prop_ci = replicate_ci(top_vals)
                     elif any_val is not None:
                         prop_value = any_val
+                        prop_ci = None
+                    else:
+                        prop_value = None
+                        prop_ci = None
                 if prop_value is not None and hyp.status in (
                         "proposed", "designed", "tested"):
                     hyp.observed_value = prop_value
-                    hyp.observed_ci = None
+                    hyp.observed_ci = prop_ci
                     hyp.evidence_run_id = event.path.stem
-                    hyp.qc_passed = (result.z_prime or 0) >= 0.5
+                    hyp.qc_passed = (result.z_prime or 0) >= QC_ZPRIME_FLOOR
                     if crit:
-                        hyp.status = crit.classify(prop_value, None)
+                        hyp.status = crit.classify(prop_value, prop_ci)
                     if hasattr(self.tracker, "record_outcome"):
                         from bionexus.derivation import build
                         inst, ver = self._instrument()
@@ -207,9 +217,17 @@ class AutoAnalysisAgent:
                             "derivation": build(
                                 instrument=inst, version=ver,
                                 quantity=crit.metric,
-                                counts={"wells": len(result.records)},
+                                counts={"wells": len(result.records),
+                                        "replicates_at_gate_dose":
+                                            len(top_vals) if cand_vals else 1},
                                 metric=crit.metric,
-                                method="property readout at highest dose",
+                                method="property readout: replicate mean "
+                                       "at top dose" if prop_ci else
+                                       "property readout at highest dose "
+                                       "(single reading — no variance "
+                                       "estimate)",
+                                ci="replicate bootstrap 95%" if prop_ci
+                                   else None,
                                 criteria_metric=crit.metric,
                                 criteria_direction=crit.direction,
                                 criteria_threshold=crit.threshold),
@@ -232,10 +250,18 @@ class AutoAnalysisAgent:
                     hyp.observed_value = match["ic50_um"]
                     hyp.observed_ci = match.get("ic50_ci")
                     hyp.evidence_run_id = event.path.stem  # run ↔ verdict link
-                    hyp.qc_passed = (result.z_prime or 0) >= 0.5
+                    hyp.qc_passed = (result.z_prime or 0) >= QC_ZPRIME_FLOOR
                     if hyp.criteria:
-                        hyp.status = hyp.criteria.classify(
-                            match["ic50_um"], match.get("ic50_ci"))
+                        if not match.get("ic50_ci"):
+                            # NO-USABLE-CI RULE: a fit whose residual bootstrap
+                            # collapsed (hill-no-ci) or that leans on a
+                            # 2-point interpolation carries unknown
+                            # uncertainty — exactly when a binary call is
+                            # least defensible. Abstain, don't guess.
+                            hyp.status = "inconclusive"
+                        else:
+                            hyp.status = hyp.criteria.classify(
+                                match["ic50_um"], match["ic50_ci"])
                     if hasattr(self.tracker, "record_outcome"):
                         from bionexus.derivation import build
                         inst, ver = self._instrument()
@@ -306,8 +332,21 @@ class AutoAnalysisAgent:
         interval decide the verdict (CI-aware, same gate as fixed runs)."""
         from bionexus.adaptive import DoseDesigner
         from bionexus.labread import read_plate
+        from bionexus.physfail import classify as _fm
 
         result = read_plate(event.path, max_response=self.max_response)
+        # physical-failure check before ANY posterior update (P1-6):
+        # a saturated dark well must not contaminate the belief state
+        vals = [r["value"] for r in result.records
+                if isinstance(r.get("value"), (int, float))]
+        phys = _fm(vals) if vals else _fm([], error="no readings")
+        if phys["kind"] == "physical":
+            self.notify(f"⚠ physical failure mode on adaptive well "
+                        f"{event.path.name}: {phys['evidence']} — "
+                        f"{phys['action']}; well discarded, posterior "
+                        f"unchanged")
+            self._record_failure_mode(event, phys)
+            return None
         obs = {}
         for r in result.records:
             if not r.get("control") and r.get("conc_um") is not None:
@@ -400,154 +439,231 @@ class AutoAnalysisAgent:
         return run_id
 
     def _handle_confirmation(self, event, conf: dict) -> dict[str, Any]:
-        """Orthogonal confirmation means AGREEMENT between methods, not just a
-        second curve: |primary/secondary| within 3x -> confirmed; otherwise
-        refuted; bad QC -> inconclusive. Provenance carries the comparison."""
-        from bionexus.labread import read_plate
+        """Orthogonal confirmation means AGREEMENT between methods, not just
+        a second curve: overlapping 95% intervals (fallback: within 3x when
+        a CI is missing) -> the preliminary call is re-tested against the
+        pre-registered gate on the SECOND read. Bad QC or a PHYSICAL plate
+        failure yields inconclusive — and every confirmation outcome,
+        including the property-metric ones, is provenance-recorded with the
+        comparison and the rule used."""
+        from bionexus.labread import QC_ZPRIME_FLOOR, read_plate, replicate_ci
+        from bionexus.physfail import classify as _fm
+
         cand, primary = conf["candidate"], conf["primary_ic50"]
-        result = read_plate(event.path, max_response=self.max_response)
-        hyp_tmp0 = next((h for h in (self.tracker.hypotheses.values()
-                                     if self.tracker else [])
-                         if h.candidate == cand), None)
-        crit0 = hyp_tmp0.criteria if hyp_tmp0 else None
-        if crit0 is not None and crit0.metric not in ("ic50_um", "value"):
-            # property metric: the confirmation readout is the recorded
-            # value at the highest dose of the orthogonal run, compared
-            # like-for-like; the gate decides, not a ratio
-            vals = []
-            for m in result.records:
-                d_ = m if isinstance(m, dict) else m.model_dump()
-                if d_.get("sample") == cand and not d_.get("control"):
-                    vals.append(d_.get("value"))
-            secondary = max((v for v in vals
-                             if isinstance(v, (int, float))), default=None)
-            secondary_ci = None
-            primary_ci = None
-            ratio = 1.0 if secondary is not None else None
-            agreed = ratio is not None
-            qc_ok = (result.z_prime or 0) >= 0.5
-            hyp_tmp = hyp_tmp0
-            pri_status = hyp_tmp.status if hyp_tmp else "tested"
-            cls = (crit0.classify(secondary, None)
-                   if secondary is not None else "inconclusive")
-            if not qc_ok or secondary is None:
-                status = "inconclusive"
-            elif pri_status in ("validated", "confirmed"):
-                status = "confirmed" if cls == "validated" else "refuted"
-            else:
-                status = "refuted" if cls == "invalidated" else "confirmed"
-            unit = next((d_.get("unit", "") for d_ in
-                         (m if isinstance(m, dict) else m.model_dump()
-                          for m in result.records)
-                         if d_.get("sample") == cand), "")
-            self.notify(f"orthogonal confirmation for {cand}: "
-                        f"{crit0.metric} {secondary} {unit} vs threshold "
-                        f"{crit0.threshold} -> {status.upper()}")
-            if self.tracker:
-                for hyp in self.tracker.hypotheses.values():
-                    if hyp.candidate == cand:
-                        hyp.observed_value = secondary
-                        hyp.evidence_run_id = event.path.stem
-                        hyp.qc_passed = qc_ok
-                        hyp.status = status
-                        hyp.observed_ci = None
-                return {"candidate": cand, "status": status}
-        match = result.analysis["compounds"].get(cand) or {}
-        secondary = match.get("ic50_um")
-        secondary_ci = match.get("ic50_ci")
         primary_ci = conf.get("primary_ci")
-        qc_ok = (result.z_prime or 0) >= 0.5
-        ratio = (max(primary, secondary) / min(primary, secondary)
-                 if primary and secondary else None)
-        if primary_ci and secondary_ci:
-            # interval overlap is a stronger agreement test than a point
-            # ratio: two methods whose CIs overlap cannot distinguish each other
-            agreed = min(primary_ci[1], secondary_ci[1]) >= max(
-                primary_ci[0], secondary_ci[0])
+        result = read_plate(event.path, max_response=self.max_response)
+        recs = [m if isinstance(m, dict) else m.model_dump()
+                for m in result.records]
+        hyp = next((h for h in (self.tracker.hypotheses.values()
+                                if self.tracker else [])
+                    if h.candidate == cand), None)
+        crit = hyp.criteria if hyp else None
+        property_metric = bool(crit
+                               and crit.metric not in ("ic50_um", "value"))
+
+        # a physically failed plate confirms nothing (P1-6): flag for the
+        # operator, record the failure mode, abstain — never retry blindly
+        vals = [r.get("value") for r in recs
+                if isinstance(r.get("value"), (int, float))]
+        phys = _fm(vals) if vals else _fm([], error="no readings")
+        if phys["kind"] == "physical":
+            self.notify(f"\u26a0 physical failure mode on confirmation plate "
+                        f"{event.path.name}: {phys['evidence']} — "
+                        f"{phys['action']}; no confirmation verdict")
+            self._record_failure_mode(event, phys)
+            return self._finish_confirmation(
+                event, conf, hyp, secondary=None, secondary_ci=None,
+                ratio=None, agreed=False, rule="physical-failure",
+                qc_ok=False, force_status="inconclusive", result=result)
+
+        qc_ok = (result.z_prime or 0) >= QC_ZPRIME_FLOOR
+        if property_metric:
+            # property metrics are confirmed as they are judged: the
+            # SECOND method's readout at the top dose, with its own
+            # replicate CI, is decided against the SAME pre-registered
+            # gate. No fake 1.0 ratio; agreement = same gate decision
+            # (computed in _finish_confirmation via classify)
+            pairs = [(r.get("conc_um"), r.get("value")) for r in recs
+                     if r.get("sample") == cand and not r.get("control")
+                     and isinstance(r.get("conc_um"), (int, float))
+                     and isinstance(r.get("value"), (int, float))]
+            if pairs:
+                top = max(c for c, _ in pairs)
+                top_vals = [v for c, v in pairs if c == top]
+                secondary = sum(top_vals) / len(top_vals)
+                secondary_ci = replicate_ci(top_vals)
+            else:
+                singles = [r.get("value") for r in recs
+                           if r.get("sample") == cand
+                           and not r.get("control")
+                           and isinstance(r.get("value"), (int, float))]
+                secondary = sum(singles) / len(singles) if singles else None
+                secondary_ci = None
+            ratio = None
+            agreed = None            # gate-direction agreement decided below
+            rule = "gate-direction"
         else:
-            agreed = ratio is not None and ratio <= 3.0
-        hyp_tmp = next((h for h in (self.tracker.hypotheses.values()
-                                    if self.tracker else [])
-                        if h.candidate == cand), None)
-        pri_status = hyp_tmp.status if hyp_tmp else "tested"
-        if not qc_ok or ratio is None:
+            match = result.analysis["compounds"].get(cand) or {}
+            secondary = match.get("ic50_um")
+            secondary_ci = match.get("ic50_ci")
+            ratio = (max(primary, secondary) / min(primary, secondary)
+                     if primary and secondary else None)
+            if primary_ci and secondary_ci:
+                # interval overlap is a stronger agreement test than a
+                # point ratio: two methods whose CIs overlap cannot
+                # distinguish each other
+                agreed = min(primary_ci[1], secondary_ci[1]) >= max(
+                    primary_ci[0], secondary_ci[0])
+                rule = "ci-overlap"
+            else:
+                agreed = ratio is not None and ratio <= 3.0
+                rule = "3x-ratio"
+        return self._finish_confirmation(
+            event, conf, hyp, secondary, secondary_ci, ratio, agreed,
+            rule, qc_ok, result=result)
+
+    def _finish_confirmation(self, event, conf: dict, hyp, secondary,
+                             secondary_ci, ratio, agreed, rule: str,
+                             qc_ok: bool, force_status: str | None = None,
+                             result=None) -> dict[str, Any]:
+        """One status machine + one provenance tail for ALL confirmation
+        shapes (IC50-fit, property readout, physical failure). Nothing
+        that decides a hypothesis leaves without a record."""
+        cand = conf["candidate"]
+        primary = conf["primary_ic50"]
+        primary_ci = conf.get("primary_ci")
+        crit = hyp.criteria if hyp else None
+        pri_status = hyp.status if hyp else "tested"
+        property_metric = bool(crit
+                               and crit.metric not in ("ic50_um", "value"))
+        status = force_status
+        if status is None and (not qc_ok or secondary is None):
             status = "inconclusive"
-        elif not agreed:
+        elif status is None and property_metric:
+            # agreement for a property metric = the second method makes the
+            # SAME gate decision as the first (direction-aware). A flipped
+            # decision is a disagreement, even though both are decisive.
+            cls = crit.classify(secondary, secondary_ci)
+            pri_hit = pri_status in ("validated", "confirmed")
+            if cls == "inconclusive":
+                agreed, status = False, "inconclusive"
+            elif pri_hit:
+                agreed = cls == "validated"
+                status = "confirmed" if agreed else "refuted"
+            else:
+                agreed = cls == "invalidated"
+                status = "refuted" if agreed else "confirmed"
+        elif status is None and agreed is False:
             # methods disagree: a claimed HIT that doesn't reproduce is
             # refuted; a claimed NON-HIT that disagrees is simply unclear
             status = "refuted" if pri_status in ("validated", "confirmed") \
                 else "inconclusive"
-        else:
+        elif status is None:
             # agreement VERIFIES the preliminary verdict's direction —
             # confirmed only for hits, refuted for non-hits, and borderline
             # CIs stay inconclusive no matter how well the methods agree
-            cls = (hyp_tmp.criteria.classify(secondary, secondary_ci)
-                   if (hyp_tmp and hyp_tmp.criteria and secondary is not None)
-                   else "inconclusive")
-            pri_cls = (hyp_tmp.criteria.classify(primary, primary_ci)
-                       if (hyp_tmp and hyp_tmp.criteria) else cls)
+            cls = (crit.classify(secondary, secondary_ci)
+                   if (crit and secondary is not None) else "inconclusive")
+            pri_cls = (crit.classify(primary, primary_ci) if crit
+                       else cls)
             if cls == "inconclusive" or pri_cls == "inconclusive":
                 status = "inconclusive"
                 self.notify(f"gate honesty: {cand} methods agree but a "
                             f"borderline CI straddles threshold "
-                            f"{hyp_tmp.criteria.threshold if hyp_tmp and hyp_tmp.criteria else '?'} "
+                            f"{crit.threshold if crit else '?'} "
                             f"-> inconclusive")
             elif pri_status in ("validated", "confirmed"):
                 status = "confirmed" if cls == "validated" else "refuted"
             else:
                 status = "refuted" if cls == "invalidated" else "confirmed"
-        self.notify(f"orthogonal confirmation for {cand}: primary {primary:.2f} vs "
-                    f"secondary {secondary:.2f} µM (ratio {ratio:.1f}x) -> {status.upper()}"
-                    if ratio else f"orthogonal confirmation for {cand}: no usable "
-                    f"secondary fit -> {status.upper()}")
+
+        if property_metric:
+            unit = next((r.get("unit", "") for r in
+                         (m if isinstance(m, dict) else m.model_dump()
+                          for m in result.records)
+                         if r.get("sample") == cand), "") if result else ""
+            self.notify(f"orthogonal confirmation for {cand}: "
+                        f"{crit.metric if crit else '?'} {secondary} {unit} "
+                        f"vs threshold {crit.threshold if crit else '?'} "
+                        f"-> {status.upper()}")
+        elif ratio:
+            self.notify(f"orthogonal confirmation for {cand}: primary "
+                        f"{primary:.2f} vs secondary {secondary:.2f} \u00b5M "
+                        f"(ratio {ratio:.1f}x, rule {rule}) -> "
+                        f"{status.upper()}")
+        else:
+            self.notify(f"orthogonal confirmation for {cand}: no usable "
+                        f"secondary fit -> {status.upper()}")
+
         if self.tracker:
-            for hyp in self.tracker.hypotheses.values():
-                if hyp.candidate == cand:
-                    hyp.observed_value = secondary or primary
-                    hyp.evidence_run_id = event.path.stem
-                    hyp.qc_passed = qc_ok
-                    hyp.status = status
-                    hyp.observed_ci = secondary_ci
-                    if hasattr(self.tracker, "record_outcome"):
-                        from bionexus.derivation import build
-                        inst, ver = self._instrument()
-                        _der = build(
-                            instrument=inst, version=ver,
-                            quantity=getattr(result, "response_unit", None),
-                            counts={"wells": len(result.records)},
-                            metric=hyp_tmp.criteria.metric if hyp_tmp and hyp_tmp.criteria else None,
-                            method="orthogonal re-measurement + fit",
-                            ci="residual bootstrap 95%" if secondary_ci else None,
-                            criteria_metric=hyp_tmp.criteria.metric
-                            if hyp_tmp and hyp_tmp.criteria else None,
-                            criteria_direction=hyp_tmp.criteria.direction
-                            if hyp_tmp and hyp_tmp.criteria else None,
-                            criteria_threshold=hyp_tmp.criteria.threshold
-                            if hyp_tmp and hyp_tmp.criteria else None)
-                        self.tracker.record_outcome(hyp, extra={
-                            "derivation": _der,
-                            "confirmation": {
-                                "run_id": event.path.stem,
-                                "primary_ic50": primary,
-                                "primary_ci": list(primary_ci) if primary_ci else None,
-                                "secondary_ic50": secondary,
-                                "secondary_ci": list(secondary_ci) if secondary_ci else None,
-                                "ratio": round(ratio, 2) if ratio else None,
-                                "agreed": agreed,
-                                "rule": ("ci-overlap" if (primary_ci and secondary_ci)
-                                         else "3x-ratio")}})
+            for h in self.tracker.hypotheses.values():
+                if h.candidate != cand:
+                    continue
+                if secondary is not None:
+                    h.observed_value = secondary
+                    h.observed_ci = secondary_ci
+                elif not property_metric:
+                    h.observed_value = primary
+                    h.observed_ci = primary_ci
+                # a failed property confirmation keeps the primary's own
+                # property readout — the ic50 fit on a property plate is
+                # meaningless and must not overwrite evidence
+                h.evidence_run_id = event.path.stem
+                h.qc_passed = qc_ok
+                h.status = status
+                if not hasattr(self.tracker, "record_outcome"):
                     break
+                from bionexus.derivation import build
+                inst, ver = self._instrument()
+                _der = build(
+                    instrument=inst, version=ver,
+                    quantity=(getattr(result, "response_unit", None)
+                              if result is not None else None),
+                    counts={"wells": len(result.records) if result else 0},
+                    metric=crit.metric if crit else None,
+                    method=("property orthogonal re-measurement"
+                            if property_metric else
+                            "orthogonal re-measurement + fit"),
+                    ci=("residual bootstrap 95%" if (rule == "ci-overlap")
+                        else "replicate bootstrap 95%"
+                        if (property_metric and secondary_ci) else None),
+                    criteria_metric=crit.metric if crit else None,
+                    criteria_direction=crit.direction if crit else None,
+                    criteria_threshold=crit.threshold if crit else None)
+                self.tracker.record_outcome(h, extra={
+                    "derivation": _der,
+                    "confirmation": {
+                        "run_id": event.path.stem,
+                        "primary_ic50": primary,
+                        "primary_ci": list(primary_ci) if primary_ci else None,
+                        "secondary_ic50": secondary,
+                        "secondary_ci": (list(secondary_ci)
+                                         if secondary_ci else None),
+                        "ratio": round(ratio, 2) if ratio else None,
+                        "agreed": bool(agreed) if agreed is not None
+                        else status == "confirmed",
+                        "rule": rule}})
+                break
         return {"confirmation": status, "candidate": cand,
                 "primary": primary, "secondary": secondary, "ratio": ratio}
 
     def _submit_confirmation(self, candidate: str, ic50: float) -> str | None:
-        """Close the loop: design + safety-submit the orthogonal confirmation."""
+        """Close the loop: design + safety-submit the orthogonal confirmation.
+
+        Orthogonal means a DIFFERENT method: the confirmation assay is
+        chosen from the hypothesis's own assay type — an enzymatic primary
+        is confirmed by binding, not by repeating enzymatic (P1-1)."""
         from bionexus.core.contracts import (
             Envelope, ProtocolOp, ProtocolStep, ProtocolSubmission,
             ReagentSpec, SampleKind, SampleSpec,
         )
 
-        assay = self.ORTHOGONAL_ASSAY.get("binding", "enzymatic")
+        hyp = next((h for h in (self.tracker.hypotheses.values()
+                                if self.tracker else [])
+                    if h.candidate == candidate), None)
+        primary_assay = (hyp.assay_type if hyp else "") or "binding"
+        assay = (self.ORTHOGONAL_ASSAY.get(primary_assay)
+                 or ("binding" if primary_assay != "binding" else "enzymatic"))
         protocol = ProtocolSubmission(
             envelope=Envelope(experiment_branch_id=self.branch_id),
             title=f"auto-confirmation-{candidate}",

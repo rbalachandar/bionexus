@@ -157,10 +157,21 @@ class RDKitDescPolicy:
 
 def spearman(pred: list[float], true: list[float]) -> float:
     def rank(v):
-        order = sorted(range(len(v)), key=lambda i: v[i])
+        # AVERAGE ranks over tie blocks: resolving ties by input order
+        # smuggles an arbitrary ordering into rho (and tightens bootstrap
+        # CIs falsely for coarse/integer predictions)
+        order = sorted(range(len(v)), key=lambda i: (v[i], i))
         r = [0.0] * len(v)
-        for rank_pos, i in enumerate(order):
-            r[i] = rank_pos
+        i = 0
+        while i < len(order):
+            j = i
+            while (j + 1 < len(order)
+                   and v[order[j + 1]] == v[order[i]]):
+                j += 1
+            avg = (i + j) / 2.0
+            for k in range(i, j + 1):
+                r[order[k]] = avg
+            i = j + 1
         return r
     n = len(pred)
     rp, rt = rank(pred), rank(true)
@@ -197,18 +208,26 @@ def roc_auc(scores: list[float], labels: list[float]) -> float:
     return (rsum - n1 * (n1 + 1) / 2) / (n1 * (n - n1))
 
 
-def scaffold(smiles: str) -> str:
-    """Bemis-Murcko scaffold (requires rdkit); falls back to the SMILES itself."""
-    try:
-        from rdkit import Chem
-        from rdkit.Chem.Scaffolds import MurckoScaffold
+SCAFFOLD_BACKEND = "rdkit"
+try:  # probe once: a silent fallback would change what 'scaffold split' MEANS
+    import rdkit  # noqa: F401
+except ImportError:
+    SCAFFOLD_BACKEND = "none"
 
+
+def scaffold(smiles: str) -> str:
+    """Bemis-Murcko scaffold (requires rdkit). WITHOUT rdkit the SMILES
+    itself is returned — grouping then controls EXACT duplicates only,
+    not scaffold neighbors. run_benchmark stamps that into the results
+    so a leakage claim is never made on the wrong grouping."""
+    if SCAFFOLD_BACKEND == "rdkit":
+        from rdkit.Chem.Scaffolds import MurckoScaffold
+        from rdkit import Chem
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             return smiles
         return MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=False)
-    except ImportError:
-        return smiles
+    return smiles
 
 
 def scaffold_split(data: list[tuple[str, float]], train_frac: float = 0.8, seed: int = 0):
@@ -240,6 +259,11 @@ def run_benchmark(dataset: Any, policies: list[Policy], train_frac: float = 0.8,
         "dataset": getattr(dataset, "name", "unknown"),
         "task": dataset.task if hasattr(dataset, "task") else "regression",
         "split": split, "seeds": list(seeds),
+        "split_note": ("scaffold grouping needs rdkit: exact-duplicate "
+                       "grouping only — scaffold-neighbour leakage NOT "
+                       "controlled"
+                       if split == "scaffold" and SCAFFOLD_BACKEND != "rdkit"
+                       else None),
         "n_train": int(len(data) * train_frac), "n_test": len(data) - int(len(data) * train_frac),
         "timestamp": time.time(),
         "policies": {},

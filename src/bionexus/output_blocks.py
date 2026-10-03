@@ -83,7 +83,7 @@ def _is_dose_response(f: Path, ctx: dict) -> bool:
 
 
 def _render_dose_response(f: Path, ctx: dict) -> str:
-    from bionexus.labread import read_plate
+    from bionexus.labread import QC_ZPRIME_FLOOR, read_plate
     from bionexus.plots import dose_response_svg
     result = read_plate(str(f))
     cand = ctx.get("candidate") or ""
@@ -102,8 +102,9 @@ def _render_dose_response(f: Path, ctx: dict) -> str:
              + (f" (95% CI {ci[0]:.2f}–{ci[1]:.2f})" if ci else ""))
             if ic50 else "fit failed"]
     if result.z_prime is not None:
-        bits.append(f"Z&#8242; = {result.z_prime:.3f} "
-                    f"({'accept' if result.z_prime >= 0.5 else 'marginal'})")
+        bits.append(f"Z&#8242;~ {result.z_prime:.3f} (control-spread "
+                    f"heuristic; "
+                    f"{'accept' if result.z_prime >= QC_ZPRIME_FLOOR else 'marginal'})")
     bits.append(f"{len(result.records)} wells")
     rows_txt = "".join(f"<span class='pt'>{c:g} µM: {v:.1f} RFU</span>"
                        for c, v in pts)

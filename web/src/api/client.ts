@@ -10,7 +10,7 @@ export interface ProgramLink {
   runs?: number
   rounds_done?: number
   rounds_planned?: number | null
-  verdicts?: { confirmed: number; refuted: number; inconclusive: number }
+  verdicts?: { confirmed: number; preliminary?: number; refuted: number; inconclusive: number }
   candidates?: string[]
 }
 
@@ -75,7 +75,7 @@ export interface Workspace {
   trees: ProblemTreeOut[]
   groups: Record<'autonomous' | 'guided', { eid: string; question: string; status: string
     runs?: number; rounds_done?: number; rounds_planned?: number | null
-    verdicts?: { confirmed: number; refuted: number; inconclusive: number }
+    verdicts?: { confirmed: number; preliminary?: number; refuted: number; inconclusive: number }
     candidates?: string[] }[]>
   archived: { eid: string; question: string }[]
 }

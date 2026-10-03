@@ -27,23 +27,26 @@ export function leafLabel(question: string | null,
 /** Row tooltip: what this experiment actually did — not the objective
  * the card above it already shows. */
 export function leafTitle(l: { eid: string; question: string | null;
-  runs?: number; verdicts?: { confirmed: number; refuted: number;
-  inconclusive: number }; candidates?: string[] }) {
+  runs?: number; verdicts?: { confirmed: number; preliminary?: number;
+  refuted: number; inconclusive: number }; candidates?: string[] }) {
   const bits: string[] = []
   if (l.candidates?.length) bits.push(`tested: ${l.candidates.join(', ')}`)
   if (l.runs) bits.push(`${l.runs} runs`)
   const v = l.verdicts
-  if (v && (v.confirmed || v.refuted || v.inconclusive))
-    bits.push(`✓${v.confirmed} ✗${v.refuted} ∅${v.inconclusive}`)
+  if (v && (v.confirmed || v.preliminary || v.refuted || v.inconclusive))
+    bits.push(`✓${v.confirmed}${v.preliminary ? ` ⏳${v.preliminary}` : ''}` +
+      ` ✗${v.refuted} ∅${v.inconclusive}`)
   bits.push(l.eid)
   return bits.join(' · ')
 }
 
 export function VerdictTally({ v }: {
-  v?: { confirmed: number; refuted: number; inconclusive: number }
+  v?: { confirmed: number; preliminary?: number; refuted: number;
+    inconclusive: number }
 }) {
   if (!v) return null
   const parts = [[v.confirmed, VERDICT_GLYPH.confirmed, 'var(--ok)'],
+    [v.preliminary ?? 0, VERDICT_GLYPH.preliminary, 'var(--warn)'],
     [v.refuted, VERDICT_GLYPH.refuted, 'var(--bad)'],
     [v.inconclusive, VERDICT_GLYPH.inconclusive, 'var(--warn)']] as const
   const shown = parts.filter(([n]) => n > 0)

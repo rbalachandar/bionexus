@@ -119,27 +119,40 @@ def build_diary_html(records: list[Any], branch: str) -> str:
                 instrument=info.get("instrument")))
         elif ev == "lab_run" and d.get("run_id"):
             labrun_info[d["run_id"]] = d
-        elif ev in ("hypothesis_validated", "hypothesis_invalidated"):
-            counts[ev.split("_")[1]] += 1
+        elif (ev in ("hypothesis_validated", "hypothesis_invalidated",
+                     "hypothesis_inconclusive")
+              or (ev == "hypothesis_tested" and d.get("verdict"))):
+            # every verdict — including refuted confirmations and honest
+            # abstentions — renders here; nothing decides in silence
+            _v = str(d.get("verdict") or ev.split("_")[1])
+            _bucket = {"validated": "validated", "confirmed": "validated",
+                       "invalidated": "invalidated", "refuted": "invalidated",
+                       "inconclusive": "inconclusive"}.get(_v)
+            if _bucket:
+                counts[_bucket] += 1
             lane = _lane(art_id, hid_to_cand.get(art_id, cand or "?"), art.get("statement", ""))
             bits = [f"observed {d.get('observed', '—')} µM",
                     f"threshold {d.get('threshold', '—')}"]
             if d.get("observed_ci"):
                 lo, hi = d["observed_ci"]
                 bits.append(f"95% CI {lo}–{hi}")
-            if d.get("verdict") == "inconclusive":
+            if _v == "inconclusive":
                 bits.append("CI straddles threshold — honest abstention")
             if d.get("evidence_run_id"):
                 bits.append(f"evidence run `{d['evidence_run_id']}`")
-            head = ("HYPOTHESIS CONFIRMED (ORTHOGONAL)"
-                    if d.get("verdict") == "confirmed"
-                    else ev.replace("hypothesis_", "HYPOTHESIS ").upper())
-            if d.get("verdict") == "confirmed":
-                bits.append("agreed within 3x of primary")
+            _conf = d.get("confirmation") or {}
+            head = {"confirmed": "HYPOTHESIS CONFIRMED (ORTHOGONAL)",
+                    "refuted": "HYPOTHESIS REFUTED (ORTHOGONAL)",
+                    "inconclusive": "HYPOTHESIS INCONCLUSIVE",
+                    "validated": "HYPOTHESIS VALIDATED",
+                    "invalidated": "HYPOTHESIS INVALIDATED"}.get(
+                        _v, ev.replace("hypothesis_", "HYPOTHESIS ").upper())
+            if _conf:
+                bits.append(f"agreement rule: {_conf.get('rule', '—')}")
             lane["entries"].append(_entry(
                 head,
                 lane.get("statement") or d.get("metric", ""),
-                " · ".join(bits), cls=ev.split("_")[1]))
+                " · ".join(bits), cls=_bucket or "tested"))
         elif ev == "gate_decision":
             counts["gates"] += 1
             approved = d.get("approved", d.get("pass", d.get("match")))
@@ -158,10 +171,12 @@ def build_diary_html(records: list[Any], branch: str) -> str:
         for e in lane["entries"]:
             if "CONFIRMED" in e:
                 status = "✅ confirmed"
-            elif "VALIDATED" in e:
-                status = "✅ validated (preliminary)"
-            elif "INVALIDATED" in e:
+            elif "REFUTED" in e or "INVALIDATED" in e:
                 status = "❌ refuted"
+            elif "INCONCLUSIVE" in e:
+                status = "∅ inconclusive"
+            elif "VALIDATED" in e:
+                status = "✅ validated (unconfirmed)"
         head = (f"<div class='lane-head'><b>{_html.escape(cand)}</b>"
                 f"<span class='mono'>{_html.escape(status)}</span></div>")
         return ("<div class='lane'>" + head + "".join(lane["entries"]) + "</div>")

@@ -264,8 +264,19 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             threshold=float(_con.limit))
         if _crit.metric not in ("ic50_um", "value") and lab is not None \
                 and hasattr(lab, "set_property_gate"):
-            lab.set_property_gate(_crit.metric, _crit.direction,
-                                  _crit.threshold)
+            # the lab switches to dose-independent property readout ONLY
+            # when the campaign really measures properties. A constraint
+            # NAMED "potency" over dose-response assays is still an IC50
+            # campaign — the per-round criteria below override it to
+            # ic50_um; forcing property mode here would export flat
+            # plates that Hill-fits then decode as fake nano-molar hits
+            # (Oct-2026 review: eval drift caught exactly this)
+            from bionexus.adapters.lab.simulator import DOSE_RESPONSE_ASSAYS
+            _dose_campaign = any((h.assay_type or "binding")
+                                 in DOSE_RESPONSE_ASSAYS for h in portfolio)
+            if not _dose_campaign:
+                lab.set_property_gate(_crit.metric, _crit.direction,
+                                      _crit.threshold)
 
     # announce the branch for live streaming: the API watcher maps the
     # campaign id to this problem branch the moment it exists, so the

@@ -49,6 +49,7 @@ def reproduce(branch: str, db_path: str = "bionexus.db",
                     "citation_status": d.get("citation_status", "unverified"),
                 }
         elif et in ("hypothesis_validated", "hypothesis_invalidated",
+                    "hypothesis_inconclusive",
                     "hypothesis_tested"):
             art = (r.artifact.metadata if r.artifact else {}) or {}
             cand = art.get("candidate")
@@ -93,7 +94,10 @@ def reproduce(branch: str, db_path: str = "bionexus.db",
                                      ["0.5uM", "2uM", "10uM", "40uM"])),
         dose_design=env.get("dose_design", "fixed"),
         poll_secs=0.05)
-    lab = lab_cls(seed=env.get("lab_seed", 7))
+    _seed = env.get("lab_seed")
+    if _seed is None:
+        _seed = 7                       # pre-seed-capture branches default
+    lab = lab_cls(seed=_seed)
     report = run_campaign(cfg, lab, SqliteProvenanceStore())
 
     diffs, matches = [], 0
@@ -112,8 +116,11 @@ def reproduce(branch: str, db_path: str = "bionexus.db",
         "branch": branch, "recorded_verdicts": n, "matched": matches,
         "diffs": diffs,
         "environment": env,
-        "note": ("simulated replay: identical seeds & structures; "
-                 "generation model "
-                 f"{env.get('model') or 'n/a'} is NOT re-invoked — the "
-                 "hypothesis set is replayed exactly as recorded"),
+        "model_pinned": False,
+        "note": ("simulated replay: identical lab seeds & structures; "
+                 "the generation model "
+                 f"{env.get('model') or 'n/a'} is NOT re-invoked — "
+                 "hypotheses are replayed exactly as recorded. "
+                 "Reproduced: the EXECUTION path, not the model's "
+                 "creative step."),
     }

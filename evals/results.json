@@ -52,7 +52,7 @@
      "E-12"
     ]
    },
-   "duration_s": 6.4
+   "duration_s": 6.5
   },
   "notes": "1.0 confident-correct \u00b7 0.5 honest abstain \u00b7 0 wrong"
  },
@@ -63,7 +63,7 @@
   "metrics": {
    "straddling_ci": 2,
    "violations": 0,
-   "duration_s": 10.1
+   "duration_s": 10.2
   },
   "notes": "bar at E-03's true IC50 (10.75 uM); 2 borderline CIs, 0 overconfident verdicts"
  },
@@ -77,6 +77,36 @@
    "duration_s": 6.4
   },
   "notes": "no confirmations at all -> 0 (mechanism unused)"
+ },
+ {
+  "task": "method-recall",
+  "score": 0.95,
+  "passed": true,
+  "metrics": {
+   "actives_in_pool": 12,
+   "recalled": [
+    "M-01",
+    "M-03",
+    "M-06",
+    "M-08",
+    "M-09",
+    "M-10",
+    "M-12",
+    "M-13",
+    "M-14",
+    "M-15",
+    "M-20",
+    "M-24"
+   ],
+   "recall": 1.0,
+   "correct": 10,
+   "wrong": 0,
+   "abstained": 2,
+   "tested_total": 16,
+   "pool": 24,
+   "duration_s": 17.0
+  },
+  "notes": "recall 1.00 of 12 true actives (0 confident miss(es), 2 abstained)"
  },
  {
   "task": "falsifiability-tiebreak",
@@ -110,7 +140,7 @@
    "mean_err_adaptive_3well": 0.024,
    "mean_err_fixed_4well": 0.09,
    "ci_coverage": "15/16",
-   "duration_s": 2.5
+   "duration_s": 2.6
   },
   "notes": "3 wells beat 4: err 0.024 vs 0.090; CI coverage 15/16 (nominal 15.2)"
  },
@@ -159,7 +189,7 @@
      "confirmed"
     ]
    },
-   "duration_s": 9.4
+   "duration_s": 9.6
   },
   "notes": "unstable verdicts flag borderline evidence \u2014 reported, not hidden"
  },
@@ -172,8 +202,8 @@
    "runs": 0,
    "budget": 20,
    "rollup_recorded": true,
-   "root": "failed",
-   "duration_s": 6.7
+   "root": "partial",
+   "duration_s": 6.8
   },
   "notes": "over-eager decomposition capped; leaves could not overspend the tree"
  },

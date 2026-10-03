@@ -7,6 +7,7 @@ auditable end to end.
 """
 from __future__ import annotations
 
+import hashlib
 import uuid
 from typing import Any, Callable
 
@@ -288,7 +289,9 @@ class HypothesisTracker:
         parent claim itself is provenance-recorded."""
         all_variants: list[Hypothesis] = []
         for fam in families:
-            fid = fam.get("family") or f"fam-{abs(hash(fam['parent_statement'])) % 10**8}"
+            fid = fam.get("family") or (
+                "fam-" + hashlib.sha1(
+                    fam["parent_statement"].encode()).hexdigest()[:8])
             self.store.append(self._record(
                 Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
                 EventType.hypothesis_proposed, None,
@@ -391,7 +394,9 @@ class HypothesisTracker:
         if design is None:
             design = ExperimentDesign(assay_type=assay_type)
         h = Hypothesis(
-            hypothesis_id=f"hyp-{abs(hash((statement, candidate, round_no))) % 10**8}",
+            hypothesis_id="hyp-" + hashlib.sha1(
+                f"{statement}\x00{candidate}\x00{round_no}".encode()
+            ).hexdigest()[:8],
             branch_id=env.experiment_branch_id,
             statement=statement,
             rationale=rationale,
@@ -493,6 +498,7 @@ class HypothesisTracker:
                 high = m.derived_metrics.get("ic50_ci_high")
                 if low is not None and high is not None:
                     ci = (low, high)
+        h.observed_ci = ci
         if not qc_ok:
             h.status = "inconclusive"
         elif value is None:
@@ -502,6 +508,7 @@ class HypothesisTracker:
         event = {
             "validated": EventType.hypothesis_validated,
             "invalidated": EventType.hypothesis_invalidated,
+            "inconclusive": EventType.hypothesis_inconclusive,
         }.get(h.status, EventType.hypothesis_tested)
         env = Envelope(experiment_branch_id=h.branch_id)
         from bionexus.derivation import build
@@ -510,7 +517,9 @@ class HypothesisTracker:
         inst = getattr(result, "instrument", None)
         self.store.append(self._record(env, event, h, decision={
             "metric": criteria.metric, "threshold": criteria.threshold,
-            "observed": value, "qc_passed": qc_ok,
+            "direction": criteria.direction,
+            "observed": value, "observed_ci": list(ci) if ci else None,
+            "qc_passed": qc_ok,
             "evidence_run_id": result.run_id,
             "verdict": h.status,
             "derivation": build(
@@ -527,6 +536,11 @@ class HypothesisTracker:
                 criteria_direction=criteria.direction,
                 criteria_threshold=criteria.threshold),
         }))
+        if self.on_verdict is not None:
+            try:
+                self.on_verdict(h)
+            except Exception:
+                pass                       # the flywheel must never break a run
         return h
 
     def _artifact(self, h: Hypothesis) -> Artifact:
@@ -545,12 +559,18 @@ class HypothesisTracker:
     def record_outcome(self, h: Hypothesis, extra: dict | None = None) -> Hypothesis:
         """Provenance-record a verdict already determined on `h` (e.g. by the
         auto-analysis agent fitting a device export). Same event shape as
-        `verdict()` — observed, threshold, qc, evidence run — so the pipeline
-        view and diary see agent-side and lab-side verdicts identically."""
+        `verdict()` — observed, CI, threshold, qc, evidence run — so the pipeline
+        view and diary see agent-side and lab-side verdicts identically.
+        Event type follows the VERDICT, never the workflow: a confirmation that
+        refutes lands as hypothesis_invalidated, an abstention as
+        hypothesis_inconclusive. Nothing that decides is ever recorded as a
+        bare 'tested' — readers trust the payload, and so should the chain."""
         event = {
             "validated": EventType.hypothesis_validated,
             "confirmed": EventType.hypothesis_validated,
             "invalidated": EventType.hypothesis_invalidated,
+            "refuted": EventType.hypothesis_invalidated,
+            "inconclusive": EventType.hypothesis_inconclusive,
         }.get(h.status, EventType.hypothesis_tested)
         env = Envelope(experiment_branch_id=h.branch_id)
         decision = {

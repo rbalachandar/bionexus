@@ -36,6 +36,17 @@ SOPS_FILE = Path(".data/sops.json")
 AUTHZ_ENV = "BIONEXUS_AUTHZ"
 
 
+def execution_governance() -> dict:
+    """The governance bundle every gateway needs: kill switch +
+    authorization matrix, constructed from current defaults/env config.
+
+    Governance is not optional at ANY surface: an agent that reaches the
+    gateway via MCP or the CLI is subject to the same physics as a
+    campaign. Any LabGateway built outside `run_campaign` SHOULD pass
+    `governance=execution_governance()`."""
+    return {"matrix": AuthorizationMatrix(), "halt": HaltSwitch()}
+
+
 # ------------------------------------------------------------ halt switch
 
 class HaltSwitch:

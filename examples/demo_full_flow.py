@@ -63,7 +63,9 @@ def main() -> None:
 
     lab = SimulatorLab(seed=42)
     safety = SafetyEngine(rules=[MaxBslRule(2), MaxStepsRule(50)])
-    gateway = LabGateway(lab, safety, store, actor)
+    from bionexus.governance import execution_governance
+    gateway = LabGateway(lab, safety, store, actor,
+                         governance=execution_governance())
 
     tracker = HypothesisTracker(store, actor)
     envelope = Envelope(experiment_branch_id="full-flow")

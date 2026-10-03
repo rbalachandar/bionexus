@@ -95,6 +95,7 @@ def verdict_records(recs) -> dict[str, dict]:
     for r in recs:
         if r.event_type.value in ("hypothesis_validated",
                                   "hypothesis_invalidated",
+                                  "hypothesis_inconclusive",
                                   "hypothesis_tested"):
             cand = (r.artifact.metadata if r.artifact else {}).get("candidate")
             d = r.decision or {}

@@ -26,6 +26,25 @@ from bionexus.adapters.lab.simulator import parse_concentration_um
 
 WELL_RE = re.compile(r"^([A-P])(\d{1,2})$", re.IGNORECASE)
 
+# QC acceptance floor for the plate-level z'-style heuristic below. Named in
+# ONE place because it gates verdicts everywhere (watch, autoloop).
+QC_ZPRIME_FLOOR = 0.5
+
+
+def replicate_ci(values: list[float | None], seed: int = 7,
+                 n_boot: int = 200) -> tuple[float, float] | None:
+    """Bootstrap CI (95%) of the MEAN over replicate well readings at one
+    dose. This is how a property metric (potency_pct, tensile MPa, t_half)
+    gets an interval: well-level variance, same abstention rule as the
+    Hill IC50. Returns None below 3 usable wells — a single reading has
+    no measurable spread, and inventing one is not honesty."""
+    vals = [v for v in values if isinstance(v, (int, float))]
+    if len(vals) < 3:
+        return None
+    from bionexus.benchmark import bootstrap_ci
+    lo, hi = bootstrap_ci([float(v) for v in vals], n_boot=n_boot, seed=seed)
+    return (lo, hi)
+
 SYNONYMS: dict[str, list[str]] = {
     "well": ["well", "position", "pos", "site", "well_id", "wellid"],
     "sample": ["sample", "sample_id", "sampleid", "compound", "compound_id",
@@ -285,7 +304,10 @@ def fit_ic50_ci(points: list[tuple[float, float]], max_response: float = 100.0,
             "ci_high": round(10 ** q(0.975), 3), "method": "hill-bootstrap"}
 
 
-def z_factor(values: list[float]) -> float:
+def std_dev(values: list[float]) -> float:
+    """Sample standard deviation (n-1 denominator). NOT a Z'-factor —
+    the old name invited that mistake; the plate QC heuristic lives in
+    analyze_records and is labeled there."""
     import math
 
     if len(values) < 2:
@@ -347,6 +369,10 @@ def analyze_records(records: list[dict[str, Any]],
             "flagged_single_dose": not pts,
         }
     return {"z_prime": (round(zp, 3) if zp == zp else None),
+            "z_prime_note": (
+                "approximation: control spread vs global dynamic range with "
+                "a constant positive-control term (real Z' needs a positive "
+                "control class); QC heuristic, gated at QC_ZPRIME_FLOOR"),
             "controls_detected": len(ctrl_wells),
             "compounds": compounds}
 
@@ -421,7 +447,7 @@ class PlateResult:
     def __str__(self) -> str:
         head = (f"plate: {self.source} [{self.format}] | "
                 f"wells: {len(self.records)} | controls: {self.analysis['controls_detected']} | "
-                f"Z': {self.z_prime}")
+                f"Z'~ {self.z_prime} (control-spread heuristic)")
         return head + "\n" + self.table()
 
 
@@ -443,8 +469,10 @@ def read_plate(path: str | Path, max_response: float | None = None) -> PlateResu
                           "conc_um": None, "artifact": ""}
                  for p in sorted(path.parent.glob("*.npy"))}
         analysis = analyze_plate(plate)
-        records = [{"well": w, "sample": v["sample_id"], "conc_um": v["conc_um"],
-                    "value": v["image"].mean(), "control": is_control(v["sample_id"])}
+        records = [{"well": w, "sample": sanitize_label(v["sample_id"]),
+                    "conc_um": v["conc_um"],
+                    "value": v["image"].mean(),
+                    "control": is_control(v["sample_id"])}
                    for w, v in plate.items()]
         return PlateResult(path, "npy", records, analysis)
     elif fmt == "xlsx":

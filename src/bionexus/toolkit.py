@@ -104,13 +104,16 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "name": "record_verdict",
         "description": "Record a validated/invalidated/inconclusive verdict for "
-                       "a hypothesis based on evidence.",
+                       "a hypothesis based on evidence. The event type follows "
+                       "the verdict, and an inconclusive verdict is recorded "
+                       "as such — never silently as an invalidation.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "candidate": {"type": "string"},
                 "verdict": {"type": "string",
-                            "enum": ["validated", "invalidated", "inconclusive"]},
+                            "enum": ["validated", "confirmed", "invalidated",
+                                     "refuted", "inconclusive"]},
                 "evidence": {"type": "string"},
             },
             "required": ["candidate", "verdict", "evidence"],
@@ -246,13 +249,22 @@ class AgentToolkit:
 
     def _tool_verdict(self, candidate: str, verdict: str, evidence: str) -> dict:
         from bionexus.core.contracts import EventType
+        event = {
+            "validated": EventType.hypothesis_validated,
+            "confirmed": EventType.hypothesis_validated,
+            "invalidated": EventType.hypothesis_invalidated,
+            "refuted": EventType.hypothesis_invalidated,
+            "inconclusive": EventType.hypothesis_inconclusive,
+        }.get(verdict, EventType.hypothesis_tested)
         self.store.append(record_for(
             Envelope(experiment_branch_id=self.branch),
-            EventType.hypothesis_validated if verdict == "validated"
-            else EventType.hypothesis_invalidated,
+            event,
             self.actor,
             decision={"candidate": candidate, "verdict": verdict,
-                      "evidence": evidence[:500]}))
+                      "evidence": evidence[:500],
+                      "declared_by": "agent (free-text evidence; not a "
+                                     "tool-verified fit)"},
+        ))
         return {"recorded": True, "candidate": candidate, "verdict": verdict}
 
     def _tool_tpp(self, phase: str = "hit") -> dict:

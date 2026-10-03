@@ -52,7 +52,8 @@ def install_skills(skills: list[str], dest: str | Path,
             shutil.copytree(src, target)
             installed.append(target)
         return installed
-    tmp = dest / f".clone-{abs(hash(repo)) % 10**8}"
+    import hashlib
+    tmp = dest / f".clone-{hashlib.sha1(repo.encode()).hexdigest()[:8]}"
     try:
         subprocess.run(
             ["git", "clone", "--depth", "1", "--branch", ref, "--",

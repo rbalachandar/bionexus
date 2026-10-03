@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 
 /** One visual language for verdicts, shared by workspace rows and the
- * experiment page: ✓ confirmed · ✗ refuted · ∅ abstained. */
+ * experiment page: ✓ confirmed · ⏳ validated (awaiting orthogonal
+ * confirmation) · ✗ refuted · ∅ abstained. */
 export const VERDICT_GLYPH: Record<string, string> = {
-  confirmed: '✓', validated: '✓',
+  confirmed: '✓', validated: '⏳', preliminary: '⏳',
   refuted: '✗', invalidated: '✗', refused: '✗', failed: '✗',
   inconclusive: '∅',
 }

@@ -14,12 +14,17 @@ def _tree(leaf_statuses: list[str], metric: str = "ic50") -> dict:
                       "status": st, "metric": None, "direction": None,
                       "gate": None})
         rollup[lid] = st
-    # root: achieved iff all achieved; failed if any failed; else partial
+    # root: achieved iff all achieved; failed if any failed; abstention
+    # with nothing earned is inconclusive — never a false refutation
     vals = set(leaf_statuses)
     if vals == {"achieved"}:
         rollup["root"] = "achieved"
     elif "failed" in vals:
         rollup["root"] = "failed" if "achieved" not in vals else "partial"
+    elif "partial" in vals:
+        rollup["root"] = "partial"
+    elif "inconclusive" in vals:
+        rollup["root"] = "partial" if "achieved" in vals else "inconclusive"
     else:
         rollup["root"] = "partial"
     return {"root_id": "root", "objective": "obj", "nodes": nodes,
@@ -120,3 +125,16 @@ def test_policy_active_and_escalated():
     p2 = {"verdict": program_verdict([t2]), "links": [], "trees": [t2]}
     pol = program_policy(p2, {})
     assert pol["status"] == "escalated" and "supported" in pol["reason"]
+
+
+def test_all_abstain_is_inconclusive_not_refuted():
+    """THE inversion: a program whose decisive leaves all abstained must
+    never print 'Objective refuted' — borderline evidence is unresolved."""
+    v = program_verdict([_tree(["inconclusive", "inconclusive"])])
+    assert v["status"] == "inconclusive"
+    assert "abstained" in v["reason"]
+
+
+def test_achieved_plus_abstention_is_partial():
+    v = program_verdict([_tree(["achieved", "inconclusive"])])
+    assert v["status"] == "partial"

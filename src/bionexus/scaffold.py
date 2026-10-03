@@ -86,7 +86,10 @@ def make_protocol():
 
 def test_adapter_contract():
     store = SqliteProvenanceStore()
-    gateway = LabGateway({class_name}(), SafetyEngine(), store, system_actor())
+    from bionexus.governance import execution_governance
+    gateway = LabGateway({class_name}(), SafetyEngine(), store,
+                         system_actor(),
+                         governance=execution_governance())
     run_id, rejection = gateway.submit(make_protocol())
     assert rejection is None and run_id
     assert gateway.lab.get_status(run_id) == "done"

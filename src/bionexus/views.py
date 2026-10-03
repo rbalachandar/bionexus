@@ -115,6 +115,7 @@ def dmta_counts(recs) -> dict:
                     and d.get("column") != "autonomous":
                 c["refused"] += 1
         elif et in ("hypothesis_validated", "hypothesis_invalidated",
+                    "hypothesis_inconclusive",
                     "hypothesis_tested") and d.get("verdict"):
             hid = d.get("hypothesis_id") \
                 or (r.artifact.artifact_id if r.artifact else None)
@@ -135,22 +136,26 @@ def dmta_counts(recs) -> dict:
 
 def verdict_tally(recs) -> dict[str, int]:
     """Final verdicts — one per hypothesis (latest wins) — bucketed for
-    the workspace chips: confirmed (validated counts as confirmed),
-    refuted (invalidated/failed count as refuted), inconclusive."""
-    t = {"confirmed": 0, "refuted": 0, "inconclusive": 0}
+    the workspace chips. CONFIRMED means orthogonal agreement was recorded;
+    a preliminary `validated` is NOT confirmed — it counts as preliminary.
+    refuted = invalidated/refuted; inconclusive = abstention."""
+    t = {"confirmed": 0, "preliminary": 0, "refuted": 0, "inconclusive": 0}
     final: dict[str, str] = {}
     for r in recs:
         d = r.decision or {}
         if r.event_type.value in ("hypothesis_validated",
                                   "hypothesis_invalidated",
+                                  "hypothesis_inconclusive",
                                   "hypothesis_tested") and d.get("verdict"):
             hid = d.get("hypothesis_id") \
                 or (r.artifact.artifact_id if r.artifact else None)
             if hid:
                 final[hid] = str(d.get("verdict"))
     for v in final.values():
-        if v in ("validated", "confirmed"):
+        if v == "confirmed":
             t["confirmed"] += 1
+        elif v == "validated":
+            t["preliminary"] += 1
         elif v in ("refuted", "invalidated", "failed"):
             t["refuted"] += 1
         else:
@@ -273,16 +278,16 @@ def wizard_db_path() -> Path:
 
 
 # ---------------------------------------------------- hypothesis pipeline
-def _verdict_rank(v) -> int:
-    """Terminal verdicts outrank preliminary ones."""
-    v = str(v or "").lower()
-    return {"confirmed": 3, "refuted": 3, "invalidated": 3,
-            "validated": 2, "inconclusive": 1}.get(v, 0)
+_VERDICT_EVENTS = ("hypothesis_validated", "hypothesis_invalidated",
+                   "hypothesis_inconclusive")
 
 
 def pipeline_data(recs) -> dict:
     """The computation behind the Hypothesis Pipeline: maps of
     proposed/filtered/tested/refused hypotheses plus run attribution.
+    Verdicts are payload-driven and RECENCY-WINS: the last verdict-bearing
+    record for a hypothesis is its state — a confirmation that refutes (or
+    abstains) supersedes the preliminary call it reviewed, on every surface.
     Port of the bookkeeping half of webview._pipeline_body."""
     proposed: dict[str, dict] = {}
     filtered: dict[str, dict] = {}
@@ -293,7 +298,9 @@ def pipeline_data(recs) -> dict:
     gov_events: list[tuple] = []
     run_ts: dict[str, float] = {}
     run_instr: dict[str, str] = {}
+    seq = 0
     for r in recs:
+        seq += 1
         d = r.decision or {}
         et = r.event_type.value
         art_id = r.artifact.artifact_id if r.artifact else None
@@ -328,48 +335,54 @@ def pipeline_data(recs) -> dict:
             hid = d.get("hypothesis_id") or art_id
             if d.get("run_id"):
                 run_map.setdefault(hid, []).append(d["run_id"])
-            # verdict-bearing reads (confirmation analyses) carry no
-            # hypothesis_id: identity lives in the artifact metadata
+            # legacy verdict-bearing 'tested' records (pre-2026-10 event
+            # map): still verdicts, still recency-wins
             if d.get("verdict"):
                 cand = (d.get("candidate") or art_meta.get("candidate")
                         or "")
                 key = hid or cand
                 if key:
-                    tested.setdefault(key, {
+                    tested[key] = {
                         "verdict": d["verdict"],
                         "candidate": cand,
                         "observed": d.get("observed"),
                         "ci": d.get("observed_ci"),
                         "derivation": d.get("derivation"),
+                        "seq": seq,
                         "evidence": d.get("evidence_run_id")
-                        or d.get("run_id")})
-        elif et in ("hypothesis_validated", "hypothesis_invalidated"):
+                        or d.get("run_id")}
+        elif et in _VERDICT_EVENTS:
             hid = d.get("hypothesis_id") or d.get("id") or art_id
             cand = (d.get("candidate") or art_meta.get("candidate")
                     or "")
             if hid:
+                prev = tested.get(hid) or {}
                 tested[hid] = {"verdict": d.get("verdict", et),
                                "candidate": cand,
                                "observed": d.get("observed")
                                or d.get("ic50_um"),
                                "ci": d.get("observed_ci"),
                                "derivation": d.get("derivation"),
+                               "seq": seq,
                                "evidence": d.get("evidence_run_id")}
         elif et == "stage_transition" \
                 and str(d.get("stage", "")).startswith("round-") \
                 and d.get("verdicts"):
             # round-complete markers carry the AUTHORITATIVE per-candidate
-            # verdict (confirmation records may lack any hypothesis_id /
-            # candidate linkage)
+            # verdict AS OF THE ROUND END — recency-wins, so a later round
+            # (or the same round's final state) replaces an earlier marker;
+            # a confirmation landing after the marker is a LATER record and
+            # wins on its own key
             for cand, v in (d.get("verdicts") or {}).items():
                 key = f"cand::{cand}"
-                cur = tested.get(key)
-                if not cur or _verdict_rank(v) >= _verdict_rank(
-                        cur.get("verdict")):
-                    tested[key] = {"verdict": str(v),
-                                   "candidate": str(cand),
-                                   "observed": None, "ci": None,
-                                   "derivation": None, "evidence": None}
+                cur = tested.get(key) or {}
+                tested[key] = {"verdict": str(v),
+                               "candidate": str(cand),
+                               "observed": cur.get("observed"),
+                               "ci": cur.get("ci"),
+                               "derivation": cur.get("derivation"),
+                               "seq": seq,
+                               "evidence": cur.get("evidence")}
         elif et == "gate_decision":
             if d.get("kind") in ("safety_refusal", "operator_declined",
                                  "advisory_escalation"):
@@ -414,8 +427,7 @@ def pipeline_cards(recs) -> list[dict]:
         if not _c:
             continue
         _cur = tested_by_cand.get(_c)
-        if not _cur or _verdict_rank(_v.get("verdict")) >= _verdict_rank(
-                _cur.get("verdict")):
+        if not _cur or _v.get("seq", 0) >= _cur.get("seq", 0):
             tested_by_cand[_c] = _v
     from bionexus.derivation import criteria_label, metric_label
     cards = []
@@ -432,10 +444,10 @@ def pipeline_cards(recs) -> list[dict]:
                       "", stmt) or head   # statement was the label itself
         verd = tested.get(hid) or {}
         verd_c = tested_by_cand.get(str(cand), {})
-        # a candidate-keyed terminal verdict (orthogonal confirmation /
-        # round roll-up) outranks an earlier preliminary hid-keyed one
-        if _verdict_rank(verd_c.get("verdict")) > _verdict_rank(
-                verd.get("verdict")):
+        # whichever record is MORE RECENT wins on status — the candidate-
+        # keyed round roll-up may postdate the hid-keyed readout, and vice
+        # versa (a confirmation record is hid-keyed and terminal)
+        if verd_c.get("verdict") and verd_c.get("seq", 0) >= verd.get("seq", 0):
             # terminal candidate verdict wins on STATUS; keep the
             # preliminary readout's observed/CI when the terminal record
             # carries none (round roll-ups don't repeat the number)
@@ -953,10 +965,12 @@ def program_verdict(trees: list) -> dict:
         parents = {n["parent"] for n in t["nodes"] if n["parent"]}
         leaves = [n for n in t["nodes"] if n["id"] not in parents]
         leaves_n += len(leaves)
-        resolved += sum(1 for l in leaves if l["status"])
+        resolved += sum(1 for l in leaves
+                        if l["status"] in ("achieved", "partial", "failed",
+                                           "inconclusive"))
         rs = t["rollup"].get(t["root_id"], "")
-        order = {"achieved": 0, "partial": 1, "failed": 2}
-        if order.get(rs, 1) > order.get(root_status, 1):
+        order = {"achieved": 0, "inconclusive": 1, "partial": 2, "failed": 3}
+        if order.get(rs, 2) > order.get(root_status, 2):
             root_status = rs
         # gate check: a leaf measuring the tree-root metric
         root_metric = next((n.get("metric") for n in t["nodes"]
@@ -981,6 +995,11 @@ def program_verdict(trees: list) -> dict:
         status, reason = "refuted", \
             "the decisive sub-problems failed — the objective as posed " \
             "does not hold on current evidence"
+    elif root_status == "inconclusive":
+        status, reason = "inconclusive", \
+            "the decisive sub-problems abstained — borderline evidence " \
+            "neither supports nor refutes the objective; higher-power " \
+            "experiments are needed, not a verdict"
     else:
         status, reason = "partial", \
             f"{resolved} of {leaves_n} sub-problem campaigns resolved, " \
@@ -1092,7 +1111,8 @@ def workspace(wizard_store,
         if eid in stats_cache:
             return stats_cache[eid]
         out = {"runs": 0, "rounds_done": 0, "rounds_planned": None,
-               "verdicts": {"confirmed": 0, "refuted": 0, "inconclusive": 0},
+               "verdicts": {"confirmed": 0, "preliminary": 0,
+                            "refuted": 0, "inconclusive": 0},
                "candidates": [], "branch": None}
         try:
             spec = wizard_store.get_campaign_spec(eid)

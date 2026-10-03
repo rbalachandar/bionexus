@@ -41,7 +41,7 @@ class ProblemNode(BaseModel):
     priority: float = 1.0              # budget weight among siblings
     required: bool = True
     rationale: str = ""
-    status: str = "open"               # open|achieved|partial|failed
+    status: str = "open"               # open|achieved|partial|failed|inconclusive
     verdicts: dict[str, str] = Field(default_factory=dict)
 
     def branch(self, root_id: str) -> str:
@@ -152,17 +152,29 @@ class ProblemTree(BaseModel):
     # ------------------------------------------------------------ roll-up
 
     def set_leaf_status(self, leaf_id: str, statuses: dict[str, str]) -> None:
+        """Leaf statuses: achieved | partial | failed | inconclusive.
+        ABSTENTION IS NOT FAILURE: a leaf whose candidates all abstained
+        (borderline CIs) is inconclusive — evidence that neither supports
+        nor refutes — never a false 'failed' that rolls up as refutation."""
         node = self.nodes[leaf_id]
         node.verdicts = dict(statuses)
         vals = set(statuses.values())
+        hit = vals & {"validated", "confirmed"}
+        miss = vals & {"invalidated", "refuted"}
         if not vals:
-            node.status = "failed"
-        elif vals <= {"validated", "confirmed"}:
+            node.status = "inconclusive"
+        elif hit and hit <= {"confirmed"} and not miss:
             node.status = "achieved"
-        elif vals & {"confirmed", "validated"}:
+        elif hit and not miss:
+            # hits exist but some are preliminary (validated, unconfirmed)
+            node.status = "achieved" if vals <= {"validated", "confirmed"} \
+                else "partial"
+        elif hit:
             node.status = "partial"
-        else:
+        elif miss:
             node.status = "failed"
+        else:
+            node.status = "inconclusive"
 
     def rollup(self) -> dict[str, str]:
         """Bottom-up: a node is achieved iff all required children are."""
@@ -181,6 +193,14 @@ class ProblemTree(BaseModel):
             elif any(s == "failed" for s in req):
                 n.status = "partial" if any(
                     s == "achieved" for s in req) else "failed"
+            elif any(s == "partial" for s in req):
+                n.status = "partial"
+            elif any(s == "inconclusive" for s in req):
+                # nothing failed: abstaining evidence is undecided, not
+                # refutation — but a mix of achieved + abstained is
+                # (partially) earned
+                n.status = "partial" if any(
+                    s == "achieved" for s in req) else "inconclusive"
             else:
                 n.status = "partial"
             out[nid] = n.status
@@ -202,7 +222,8 @@ class ProblemTree(BaseModel):
                 op = "≤" if n.direction == "min" else "≥"
                 gtxt = f" [{n.metric} {op} {n.gate:g}]"
             mark = {"open": "○", "achieved": "✅", "partial": "◐",
-                    "failed": "❌", "in lab": "🔬"}.get(n.status, "○")
+                    "failed": "❌", "inconclusive": "∅",
+                    "in lab": "🔬"}.get(n.status, "○")
             budget = f" · {alloc} runs" if alloc is not None else ""
             lines.append("  " * indent + f"{mark} {n.objective[:60]}{gtxt}"
                          + (f" (p={n.priority:g}){budget}"))

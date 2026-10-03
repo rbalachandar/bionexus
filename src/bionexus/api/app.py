@@ -182,8 +182,8 @@ def _brief_evidence_hash(prog: dict) -> str:
             continue  # tree roots are containers
         v = l.get("verdicts") or {}
         parts.append(f"link:{l.get('eid')}:{l.get('runs', 0)}:"
-                     f"{v.get('confirmed', 0)}:{v.get('refuted', 0)}:"
-                     f"{v.get('inconclusive', 0)}")
+                     f"{v.get('confirmed', 0)}:{v.get('preliminary', 0)}:"
+                     f"{v.get('refuted', 0)}:{v.get('inconclusive', 0)}")
     taste = prog.get("taste")
     if taste:
         parts.append(f"taste:{taste.get('n')}:{taste.get('accepted')}")
@@ -287,7 +287,8 @@ def _parse_actions(text: str) -> tuple[str, list[dict], str | None]:
         c = re.sub(r"^(?:[-*\u2022]\s*)?", "", c.strip()).strip(" ;:")
         if len(c) > 40:
             actions.append({"objective": c[:280],
-                            "tree": "[composite]" in c.lower()})
+                            "tree": "[composite]" in c.lower(),
+                            "parsed_from": "prose (no NEXT footer)"})
     return text.strip(), actions[:3], None
 
 
@@ -307,19 +308,32 @@ def _parse_action_line(line: str) -> dict | None:
 
 
 def _generate_and_store_brief(prog: dict) -> str:
+    """Draft the model program brief and AUDIT it like every other LLM
+    actor here: model id + prompt hash travel with the result, so
+    'which model said this about which evidence' is answerable from the
+    program record (the deterministic verdict remains the source of
+    truth; the brief only organizes it)."""
+    import hashlib
     from bionexus.adapters.models.anthropic_provider import AnthropicProvider
     from bionexus.core.contracts import Envelope, ToolInvocation
+    prompt = _brief_prompt(prog)
     inv = ToolInvocation(envelope=Envelope(experiment_branch_id="plan"),
                          tool="c.fm.generate_molecules")
-    text = AnthropicProvider().generate(
-        inv, _brief_prompt(prog)).output["text"].strip()
+    prov = AnthropicProvider()
+    text = prov.generate(inv, prompt).output["text"].strip()
     prose, actions, conclusion = _parse_actions(text)
     slug = prog["slug"]
     ws = get_ws()
     doc = ws.get_program(slug) or {}
+    model = (getattr(prov, "name", None) or "?") + "/" + (
+        getattr(prov, "model_version", None)
+        or getattr(prov, "model", None) or "?")
     doc["brief"] = {"text": prose, "actions": actions,
                     "conclusion": conclusion,
                     "hash": _brief_evidence_hash(prog),
+                    "model": model,
+                    "prompt_sha256": hashlib.sha256(
+                        prompt.encode()).hexdigest()[:16],
                     "cycle": ((doc.get("brief") or {}).get("cycle") or 0) + 1,
                     "at": __import__("time").time()}
     ws.upsert_program(slug, prog["name"], doc)
@@ -352,7 +366,10 @@ def launch_next_action(slug: str, idx: int, tree: bool = False) -> dict:
         "direction": doc.get("direction", "min"),
         "gate_value": doc.get("gate_value", 1.0),
         "k": doc.get("k", 2), "rounds": doc.get("rounds", 2),
-        "autonomy": doc.get("autonomy", "act"),
+        # a model-drafted objective does NOT inherit self-confirmation by
+        # default: autonomous "act" requires the program to state it
+        "autonomy": (doc.get("action_autonomy")
+                     or doc.get("autonomy") or "gate"),
         "modality": doc.get("modality") or "",
         "candidates": ""}
     # per-action [composite] tag decides; ?tree=true forces either way
@@ -391,8 +408,21 @@ def _ensure_brief(prog: dict) -> None:
     def _run():
         try:
             _generate_and_store_brief(prog)
-        except Exception:
-            pass  # no model key / provider down — stays uncached
+        except Exception as exc:
+            # Honest backoff: remember the failure against THIS evidence
+            # hash (no retry storm on every page open); a redraft button
+            # (force=True) overrides the cache and tries again.
+            try:
+                doc = ws.get_program(slug) or {}
+                doc["brief"] = {
+                    "text": "", "actions": [], "conclusion": None,
+                    "error": f"provider unavailable: {str(exc)[:160]}",
+                    "hash": _brief_evidence_hash(prog),
+                    "cycle": ((doc.get("brief") or {}).get("cycle") or 0),
+                    "at": __import__("time").time()}
+                ws.upsert_program(slug, prog["name"], doc)
+            except Exception:
+                pass
         finally:
             _brief_inflight.discard(slug)
 

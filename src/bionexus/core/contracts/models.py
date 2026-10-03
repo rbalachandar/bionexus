@@ -350,6 +350,7 @@ class EventType(str, Enum):
     hypothesis_tested = "hypothesis_tested"
     hypothesis_validated = "hypothesis_validated"
     hypothesis_invalidated = "hypothesis_invalidated"
+    hypothesis_inconclusive = "hypothesis_inconclusive"
     synthesis_complete = "synthesis_complete"
     sandbox_fork = "sandbox_fork"
     sandbox_snapshot = "sandbox_snapshot"

@@ -76,7 +76,8 @@ def test_run_tree_respects_budget(tmp_path):
         runs += sum(1 for r in store.branch_records(leaf.branch(t.root.id))
                     if r.event_type.value == "lab_run")
     assert runs <= t.run_budget
-    assert t.rollup()[t.root.id] in ("achieved", "partial", "failed")
+    assert t.rollup()[t.root.id] in (
+        "achieved", "partial", "failed", "inconclusive")
     assert any((r.decision or {}).get("kind") == "tree-rollup"
                for r in store.branch_records(f"problem/{t.root.id}"))
 
@@ -307,3 +308,24 @@ def test_recursive_decompose_multilevel():
                                                 "child C"}
     # leaves are the grandchildren — campaigns run at the finest level
     assert {leaf.id for leaf in tree.leaves()} == {g.id for g in grandkids}
+
+
+def test_abstention_is_not_failure():
+    """A leaf whose candidates all abstained is inconclusive — it neither
+    achieves nor refutes; an empty leaf (nothing tested) likewise."""
+    t = _tree(run_budget=6)
+    a = t.add(t.root.id, objective="potency")
+    b = t.add(t.root.id, objective="safety")
+    t.set_leaf_status(a.id, {"C-1": "inconclusive", "C-2": "inconclusive"})
+    t.set_leaf_status(b.id, {})
+    assert t.nodes[a.id].status == "inconclusive"
+    assert t.nodes[b.id].status == "inconclusive"
+    assert t.rollup()[t.root.id] == "inconclusive"
+    # one honest refutation among abstentions -> failed (a miss IS evidence)
+    t.set_leaf_status(a.id, {"C-1": "inconclusive", "C-2": "refuted"})
+    assert t.nodes[a.id].status == "failed"
+    assert t.rollup()[t.root.id] == "failed"
+    # preliminary hit alone still achieves the leaf (single-method, pending
+    # confirmation — the chip, not the tree, carries that nuance)
+    t.set_leaf_status(a.id, {"C-1": "validated"})
+    assert t.nodes[a.id].status == "achieved"
