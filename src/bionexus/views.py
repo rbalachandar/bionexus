@@ -1182,7 +1182,11 @@ def workspace(wizard_store,
             "mode": doc.get("mode", "autonomous"),
             "links": atts,
             "tally": tally,
-            "taste": taste})
+            "taste": taste,
+            # program doc snapshot — used later for brief/policy; carrying
+            # it on the view dict prevents stale-doc leakage across the
+            # loop iterations (the brief shown on the wrong program)
+            "_doc": doc})
 
     # trees not linked to any program render at top level
     linked_roots = {r for roots in prog_roots.values() for r in roots}
@@ -1204,8 +1208,9 @@ def workspace(wizard_store,
                       or t.get("linked_program") == p["slug"]]
         p["tree"] = p["trees"][0] if p["trees"] else None
         p["verdict"] = program_verdict(p["trees"])
-        p["policy"] = program_policy(p, doc)
-        br = doc.get("brief")
+        pdoc = p.pop("_doc", {})
+        p["policy"] = program_policy(p, pdoc)
+        br = pdoc.get("brief")
         if br and br.get("launched"):
             # live status for each launched next-action campaign
             br = {**br, "launched_status": {
