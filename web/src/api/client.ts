@@ -14,6 +14,14 @@ export interface ProgramLink {
   candidates?: string[]
 }
 
+export interface ProgramVerdict {
+  status: 'supported' | 'partial' | 'refuted' | 'inconclusive' | 'no-tree'
+  reason: string
+  leaves: number
+  resolved: number
+  gate?: { status: string; leaf: string; metric: string } | null
+}
+
 export interface ProgramOut {
   slug: string
   pid?: string
@@ -25,6 +33,7 @@ export interface ProgramOut {
   links: ProgramLink[]
   tally: Record<string, number>
   taste?: TasteReport
+  verdict?: ProgramVerdict
   tree?: ProblemTreeOut
   trees?: ProblemTreeOut[]
 }
@@ -126,9 +135,20 @@ async function get<T>(path: string): Promise<T> {
   return r.json()
 }
 
+async function post<T>(path: string): Promise<T> {
+  const r = await fetch(path, { method: 'POST' })
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({}))
+    throw new Error(body.detail || `${path}: ${r.status}`)
+  }
+  return r.json()
+}
+
 export const api = {
   workspace: () => get<Workspace>('/api/programs'),
   program: (slug: string) => get<ProgramOut>(`/api/programs/${slug}`),
+  brief: (slug: string) =>
+    post<{ narrative: string }>(`/api/programs/${slug}/brief`),
   taste: () => get<TasteReport>('/api/taste'),
   experiment: (eid: string) => get<ExperimentDetail>(`/api/experiments/${eid}`),
   trace: (eid: string) =>

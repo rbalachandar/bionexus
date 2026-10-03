@@ -157,6 +157,61 @@ def program_detail(slug: str) -> dict:
     return prog
 
 
+@app.post("/api/programs/{slug}/brief")
+def program_brief(slug: str) -> dict:
+    """Model-drafted learning brief for a program: what we learned,
+    what blocks the objective, recommended next move. Clearly labeled
+    model-drafted; the deterministic verdict stays the source of truth."""
+    ws = get_ws()
+    ws_view = views.workspace(ws)
+    prog = next((p for p in ws_view["programs"] if p["slug"] == slug), None)
+    if prog is None:
+        raise HTTPException(404, f"program {slug} not found")
+    v = prog.get("verdict") or {}
+    if not prog.get("trees"):
+        raise HTTPException(409, "program has no problem tree to brief on")
+    lines = [f"Program: {prog['name']} (id {prog.get('pid', slug)})",
+             f"Objective: {prog.get('objective') or prog['gate_summary']}",
+             f"Deterministic verdict: {v.get('status')} — {v.get('reason')}"]
+    gate = v.get("gate")
+    if gate:
+        lines.append(f"Gate ({gate.get('metric')}): {gate.get('status')} "
+                     f"— leaf: {gate.get('leaf')}")
+    for t in prog["trees"]:
+        lines.append(f"Problem tree: {t['objective']}")
+        parents = {n["parent"] for n in t["nodes"] if n["parent"]}
+        for n in t["nodes"]:
+            if n["id"] in parents:
+                continue
+            st = t["rollup"].get(n["id"], "?")
+            ls = (t.get("leaf_stats") or {}).get(n["id"]) or {}
+            lines.append(
+                f"- [{st}] {n['objective']}"
+                f" (tested={ls.get('hyp', 0)}, ok={ls.get('ok', 0)},"
+                f" runs={ls.get('runs', 0)})")
+    taste = prog.get("taste")
+    if taste and taste.get("n"):
+        lines.append(f"Decision profile: {taste.get('n')} decisions, "
+                     f"{taste.get('accepted')} accepted "
+                     f"({taste.get('overall_rate', 0):.0%} overall rate)")
+    prompt = (
+        "You are writing a short learning brief for a drug-discovery "
+        "program lead. Use ONLY the evidence below — do not invent "
+        "results. Three short sections, plain text, no markdown "
+        "headers beyond 'Learned:', 'Blocks:', 'Next:'. Be honest "
+        "about inconclusive evidence.\n\n" + "\n".join(lines))
+    try:
+        from bionexus.adapters.models.anthropic_provider import \
+            AnthropicProvider
+        from bionexus.core.contracts import Envelope, ToolInvocation
+        inv = ToolInvocation(envelope=Envelope(experiment_branch_id="plan"),
+                             tool="c.fm.generate_molecules")
+        text = AnthropicProvider().generate(inv, prompt).output["text"]
+    except Exception as exc:  # no key / provider down
+        raise HTTPException(503, f"model unavailable: {exc}")
+    return {"narrative": text.strip()}
+
+
 class ProgramIn(BaseModel):
     program: str
     objective: str = ""

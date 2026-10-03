@@ -142,6 +142,11 @@ function ProgramCard({ p, onDelete, deleting }: {
         {running > 0 && <Badge status="running">{running} running</Badge>}
         {p.taste && p.taste.n > 0 && <span className="chip meta">
           profile · {p.taste.n} decisions</span>}
+        {p.verdict && (p.verdict.status === 'supported' ||
+          p.verdict.status === 'refuted') && (
+          <Badge status={p.verdict.status === 'supported'
+            ? 'completed' : 'failed'}>{p.verdict.status}</Badge>
+        )}
         <ChevronRight size={13} color="var(--muted)" style={{ marginLeft: 'auto' }} />
       </div>
     </div>

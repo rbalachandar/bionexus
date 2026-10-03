@@ -1,10 +1,79 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Plus, Target, Trash2 } from 'lucide-react'
-import { api } from '../api/client'
+import { CheckCircle2, FlaskConical, Plus, Sparkles, Target, Trash2,
+  XCircle } from 'lucide-react'
+import { api, type ProgramVerdict } from '../api/client'
 import { LeafRow, ProgramTreeFull, TasteLines } from '../components/program'
 import { EmptyState, Section, Skeleton } from '../components/ui'
+
+const VERDICT_STYLE: Record<string, { icon: typeof CheckCircle2
+  color: string; label: string }> = {
+  supported: { icon: CheckCircle2, color: 'var(--ok, #2e7d32)',
+    label: 'Objective supported' },
+  partial: { icon: FlaskConical, color: '#b58a00',
+    label: 'Partially supported' },
+  refuted: { icon: XCircle, color: 'var(--bad, #c62828)',
+    label: 'Objective refuted' },
+  inconclusive: { icon: FlaskConical, color: 'var(--muted)',
+    label: 'Inconclusive' },
+  'no-tree': { icon: FlaskConical, color: 'var(--muted)',
+    label: 'No problem tree' },
+}
+
+function ProgramVerdictBanner({ v, slug }: { v: ProgramVerdict
+  slug: string }) {
+  const qc = useQueryClient()
+  const [brief, setBrief] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const st = VERDICT_STYLE[v.status] ?? VERDICT_STYLE.inconclusive
+  const Icon = st.icon
+  const draftBrief = async () => {
+    setLoading(true)
+    setErr(null)
+    try {
+      setBrief((await api.brief(slug)).narrative)
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 10,
+      padding: '10px 12px', display: 'grid', gap: 6, marginTop: 8,
+      maxWidth: 760, background: 'color-mix(in srgb, var(--panel, #fff)'
+      + ' 60%, transparent)' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <Icon size={15} color={st.color} style={{ flex: 'none' }} />
+        <strong style={{ fontSize: 13, color: st.color }}>{st.label}</strong>
+        {v.leaves > 0 && <span className="muted mono" style={{ fontSize: 11 }}>
+          {v.resolved}/{v.leaves} sub-problems resolved</span>}
+        {v.gate && <span className="chip meta" title={v.gate.leaf}>
+          gate {v.gate.metric}: {v.gate.status}</span>}
+        <span style={{ flex: 1 }} />
+        <button style={{ fontSize: 11, padding: '2px 8px',
+          display: 'inline-flex', gap: 4, alignItems: 'center' }}
+          title="model-drafted from the leaf evidence; the deterministic verdict above stays the source of truth"
+          disabled={loading}
+          onClick={draftBrief}>
+          <Sparkles size={11} />
+          {loading ? 'drafting…' : 'learning brief'}
+        </button>
+      </div>
+      <span className="muted" style={{ fontSize: 12 }}>{v.reason}</span>
+      {err && <span style={{ fontSize: 12, color: 'var(--bad, #c62828)' }}>
+        {err}</span>}
+      {brief && <div style={{ fontSize: 12, whiteSpace: 'pre-wrap',
+        borderTop: '1px solid var(--border)', paddingTop: 6 }}>
+        {brief}
+        <div className="muted mono" style={{ fontSize: 10, marginTop: 4 }}>
+          model-drafted — verify against the recorded evidence</div>
+      </div>}
+    </div>
+  )
+}
 
 function ProgramPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -54,6 +123,8 @@ function ProgramPage() {
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4,
             maxWidth: 760 }}>{p.objective ?? p.gate_summary}</div>
+          {p.verdict && <ProgramVerdictBanner v={p.verdict}
+            slug={p.slug} />}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap',
             alignItems: 'center', marginTop: 8 }}>
             {p.modality && <span className="chip meta">{p.modality}</span>}

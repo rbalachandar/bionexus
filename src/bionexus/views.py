@@ -935,6 +935,62 @@ def experiment_detail(eid: str, wizard_store,
     }
 
 
+def program_verdict(trees: list) -> dict:
+    """Consolidated outcome for a program objective, rolled up
+    deterministically from its problem tree(s). Honest about
+    uncertainty: unresolved leaves downgrade the claim, and the gate is
+    only called 'met' when a leaf actually measured the gate metric."""
+    if not trees:
+        return {"status": "no-tree",
+                "reason": "no problem tree — launch with decompose on, "
+                          "or link a campaign",
+                "leaves": 0, "resolved": 0, "gate": None}
+    leaves_n = 0
+    resolved = 0
+    root_status = "achieved"
+    gates: list[dict] = []
+    for t in trees:
+        parents = {n["parent"] for n in t["nodes"] if n["parent"]}
+        leaves = [n for n in t["nodes"] if n["id"] not in parents]
+        leaves_n += len(leaves)
+        resolved += sum(1 for l in leaves if l["status"])
+        rs = t["rollup"].get(t["root_id"], "")
+        order = {"achieved": 0, "partial": 1, "failed": 2}
+        if order.get(rs, 1) > order.get(root_status, 1):
+            root_status = rs
+        # gate check: a leaf measuring the tree-root metric
+        root_metric = next((n.get("metric") for n in t["nodes"]
+                            if n["id"] == t["root_id"]), None)
+        if root_metric:
+            gleaf = next((l for l in leaves if l.get("metric") == root_metric),
+                         None)
+            if gleaf:
+                gmap = {"achieved": "met", "partial": "near",
+                        "failed": "missed"}
+                gates.append({"status": gmap.get(gleaf["status"],
+                                                 "unexercised"),
+                              "leaf": gleaf["objective"],
+                              "metric": root_metric})
+    if resolved == 0:
+        status, reason = "inconclusive", \
+            "no sub-problem campaigns have resolved yet"
+    elif root_status == "achieved" and resolved == leaves_n:
+        status, reason = "supported", \
+            f"all {leaves_n} sub-problem campaigns resolved positive"
+    elif root_status == "failed":
+        status, reason = "refuted", \
+            "the decisive sub-problems failed — the objective as posed " \
+            "does not hold on current evidence"
+    else:
+        status, reason = "partial", \
+            f"{resolved} of {leaves_n} sub-problem campaigns resolved, " \
+            "with mixed or pending evidence"
+    if 0 < resolved < leaves_n:
+        reason += f" — {leaves_n - resolved} unresolved"
+    return {"status": status, "reason": reason, "leaves": leaves_n,
+            "resolved": resolved, "gate": gates[0] if gates else None}
+
+
 def workspace(wizard_store,
               provenance_db: str | Path | None = None,
               include_archived: bool = False) -> dict:
@@ -1113,6 +1169,7 @@ def workspace(wizard_store,
                       if t["root_id"] in roots
                       or t.get("linked_program") == p["slug"]]
         p["tree"] = p["trees"][0] if p["trees"] else None
+        p["verdict"] = program_verdict(p["trees"])
 
     standalone = [e for e in live
                   if (e["payload"].get("agent") or {}).get("problem_id")
