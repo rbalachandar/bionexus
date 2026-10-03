@@ -240,12 +240,17 @@ def _brief_prompt(prog: dict) -> str:
         "remaining gaps are assay-level, not decision-relevant).\n"
         "2. A final line 'NEXT:' followed by up to 3 lines, one per "
         "launchable campaign, each formatted exactly: '- <specific, "
-        "self-contained objective for a single "
-        "experiment>'. NEXT: is mandatory.\n\n" + "\n".join(lines))
+        "self-contained objective for a single experiment> [single]' "
+        "or '- <objective> [composite]' — tag [single] when one "
+        "decisive experiment answers it, [composite] when it hides "
+        "sub-questions and needs decomposition into a problem tree. "
+        "NEXT: is mandatory.\n\n" + "\n".join(lines))
 
 
-def _parse_actions(text: str) -> tuple[str, list[str], str | None]:
-    """Split the model draft into (prose, next actions, conclusion)."""
+def _parse_actions(text: str) -> tuple[str, list[dict], str | None]:
+    """Split the model draft into (prose, next actions, conclusion).
+    Each action: {"objective": str, "tree": bool} — tree=True for
+    [composite]-tagged actions that need decomposition."""
     import re
     cm = None
     for cm in re.finditer(r"^CONCLUSION:?\s*(.*)$", text, re.M | re.I):
@@ -265,16 +270,9 @@ def _parse_actions(text: str) -> tuple[str, list[str], str | None]:
         pass
     if m is not None:
         prose = text[:m.start()].strip()
-        actions = []
-        for line in text[m.end():].splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            action = re.sub(r"^(?:[-*\u2022]\s*)?(?:\d+[.)]\s*)?", "",
-                            line).strip()
-            if len(action) > 15:
-                actions.append(action[:300])
-        return prose, actions[:3], None
+        actions = [_parse_action_line(l)
+                   for l in text[m.end():].splitlines()]
+        return prose, [a for a in actions if a][:3], None
     # fallback: no NEXT footer — lift actions out of the 'Next:' prose
     # section (split on enumeration markers / sentence boundaries)
     sec = None
@@ -288,8 +286,24 @@ def _parse_actions(text: str) -> tuple[str, list[str], str | None]:
     for c in chunks:
         c = re.sub(r"^(?:[-*\u2022]\s*)?", "", c.strip()).strip(" ;:")
         if len(c) > 40:
-            actions.append(c[:300])
+            actions.append({"objective": c[:280],
+                            "tree": "[composite]" in c.lower()})
     return text.strip(), actions[:3], None
+
+
+def _parse_action_line(line: str) -> dict | None:
+    """'- <objective> [single]' / '... [composite]' -> action dict."""
+    import re
+    line = line.strip()
+    if not line:
+        return None
+    tree = bool(re.search(r"\[composite\]", line, re.I))
+    action = re.sub(r"^(?:[-*\u2022]\s*)?(?:\d+[.)]\s*)?", "", line)
+    action = re.sub(r"\s*\[(single|composite)\]\s*", " ", action,
+                    flags=re.I).strip()
+    if len(action) < 15:
+        return None
+    return {"objective": action[:300], "tree": tree}
 
 
 def _generate_and_store_brief(prog: dict) -> str:
@@ -327,9 +341,12 @@ def launch_next_action(slug: str, idx: int, tree: bool = False) -> dict:
     actions = ((prog.get("brief") or {}).get("actions")) or []
     if not 0 <= idx < len(actions):
         raise HTTPException(404, f"action {idx} not found")
+    action = actions[idx]
+    objective = (action.get("objective") if isinstance(action, dict)
+                 else action)
     doc = ws.get_program(slug) or {}
     action_doc = {
-        "objective": actions[idx],
+        "objective": objective,
         "metric": doc.get("metric") or "potency",
         "unit": doc.get("unit") or "",
         "direction": doc.get("direction", "min"),
@@ -338,16 +355,18 @@ def launch_next_action(slug: str, idx: int, tree: bool = False) -> dict:
         "autonomy": doc.get("autonomy", "act"),
         "modality": doc.get("modality") or "",
         "candidates": ""}
-    if tree:
+    # per-action [composite] tag decides; ?tree=true forces either way
+    tagged = action.get("tree", False) if isinstance(action, dict) else False
+    if tree or tagged:
         action_doc["decompose"] = True
     try:
         eid = spawn_campaign(action_doc, prog["name"])
     except LaunchError as exc:
         raise HTTPException(503, str(exc))
-    if not eid:
-        raise HTTPException(500, "campaign did not start")
+    # decomposed launches return None: the plan subprocess announces
+    # its own leaf eids — that is success, not failure
     launched = doc.get("brief", {}).setdefault("launched", {})
-    launched[str(idx)] = eid
+    launched[str(idx)] = eid or "tree"
     ws.upsert_program(slug, prog["name"], doc)
     return {"eid": eid, "objective": action_doc["objective"]}
 

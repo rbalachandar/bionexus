@@ -21,10 +21,12 @@ const VERDICT_STYLE: Record<string, { icon: typeof CheckCircle2
     label: 'No problem tree' },
 }
 
-function BriefAction({ slug, idx, action, launched, status, qc }: {
+function BriefAction({ slug, idx, action, tree, launched, status,
+  qc }: {
   slug: string
   idx: number
   action: string
+  tree?: boolean
   launched?: string
   status?: string
   qc: ReturnType<typeof useQueryClient>
@@ -50,30 +52,29 @@ function BriefAction({ slug, idx, action, launched, status, qc }: {
         {idx + 1}.
       </span>
       <span style={{ fontSize: 12, flex: 1 }}>{action}</span>
-      {launched
-        ? <a href={`/experiments/${launched}`}
-            title="view the launched campaign"
-            style={{ flex: 'none', fontSize: 11, textDecoration: 'none',
-              display: 'inline-flex', gap: 4, alignItems: 'center' }}>
-            {status === 'completed'
-              ? <Badge status="completed">done ✓</Badge>
-              : status === 'failed'
-                ? <Badge status="failed">failed</Badge>
-                : <Badge status="running">running</Badge>}
-            <span className="muted">view →</span>
-          </a>
-        : <span style={{ display: 'inline-flex', gap: 4, flex: 'none' }}>
-            <button style={{ fontSize: 11, padding: '2px 8px' }}
-              disabled={busy} onClick={() => run(false)}
-              title="starts this as a single decisive campaign (agent hypotheses), linked to the program">
-              {busy ? '…' : 'launch'}
-            </button>
-            <button style={{ fontSize: 11, padding: '2px 8px' }}
-              disabled={busy} onClick={() => run(true)}
-              title="decompose this action into its own problem tree (for refinement-type actions)">
-              as tree
-            </button>
-          </span>}
+      {launched === 'tree'
+        ? <a href="/" className="muted" style={{ flex: 'none',
+            fontSize: 11 }}>launched as tree · workspace →</a>
+        : launched
+          ? <a href={`/experiments/${launched}`}
+              title="view the launched campaign"
+              style={{ flex: 'none', fontSize: 11, textDecoration: 'none',
+                display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+              {status === 'completed'
+                ? <Badge status="completed">done ✓</Badge>
+                : status === 'failed'
+                  ? <Badge status="failed">failed</Badge>
+                  : <Badge status="running">running</Badge>}
+              <span className="muted">view →</span>
+            </a>
+          : <button style={{ fontSize: 11, padding: '2px 8px' }}
+              disabled={busy}
+              onClick={() => run(!!tree)}
+              title={tree
+                ? "composite action — decomposes into its own problem tree"
+                : "single decisive campaign (agent hypotheses), linked to the program"}>
+              {busy ? '…' : tree ? 'launch tree' : 'launch'}
+            </button>}
       {err && <span style={{ fontSize: 11, color: 'var(--bad, #c62828)' }}>
         {err}</span>}
     </div>
@@ -146,7 +147,9 @@ function ProgramVerdictBanner({ v, p }: { v: ProgramVerdict
               to this program:
             </span>
             {p.brief!.actions!.map((a, i) => (
-              <BriefAction key={i} slug={p.slug} idx={i} action={a}
+              <BriefAction key={i} slug={p.slug} idx={i}
+                action={typeof a === 'string' ? a : a.objective}
+                tree={typeof a === 'object' && a.tree}
                 launched={p.brief?.launched?.[String(i)]}
                 status={p.brief?.launched_status?.[String(i)]} qc={qc} />
             ))}

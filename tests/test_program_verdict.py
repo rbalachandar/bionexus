@@ -81,8 +81,10 @@ def test_parse_actions():
     assert prose.startswith("Learned:")
     assert concl is None
     assert actions == [
-        "Diagnose the potency discrepancy with an orthogonal assay",
-        "Run a hERG counter-screen on the lead chemotype"]
+        {"objective": "Diagnose the potency discrepancy with an "
+                      "orthogonal assay", "tree": False},
+        {"objective": "Run a hERG counter-screen on the lead chemotype",
+         "tree": False}]
     # no NEXT block -> everything stays prose
     p2, a2, c2 = _parse_actions("Learned: x\nNext: y")
     assert a2 == [] and p2.endswith("y") and c2 is None

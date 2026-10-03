@@ -38,7 +38,8 @@ export interface ProgramOut {
     runs: number; cycles: number; limits: { max_runs: number;
     max_cycles: number } }
   brief?: { text: string; at: number; hash: string;
-    actions?: string[]; conclusion?: string | null;
+    actions?: (string | { objective: string; tree: boolean })[];
+    conclusion?: string | null;
     launched?: Record<string, string>;
     launched_status?: Record<string, string> }
   tree?: ProblemTreeOut
