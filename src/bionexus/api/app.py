@@ -154,29 +154,44 @@ def program_detail(slug: str) -> dict:
     prog = next((p for p in ws_view["programs"] if p["slug"] == slug), None)
     if prog is None:
         raise HTTPException(404, f"program {slug} not found")
+    _ensure_brief(prog)   # background: (re)draft when evidence changed
     return prog
 
 
-@app.post("/api/programs/{slug}/brief")
-def program_brief(slug: str) -> dict:
-    """Model-drafted learning brief for a program: what we learned,
-    what blocks the objective, recommended next move. Clearly labeled
-    model-drafted; the deterministic verdict stays the source of truth."""
-    ws = get_ws()
-    ws_view = views.workspace(ws)
-    prog = next((p for p in ws_view["programs"] if p["slug"] == slug), None)
-    if prog is None:
-        raise HTTPException(404, f"program {slug} not found")
+_brief_inflight: set[str] = set()
+
+
+def _brief_evidence_hash(prog: dict) -> str:
+    """Stable digest of the evidence a brief was drafted from — a new
+    leaf verdict, run, or taste decision invalidates the cached brief."""
+    import hashlib
     v = prog.get("verdict") or {}
-    if not prog.get("trees"):
-        raise HTTPException(409, "program has no problem tree to brief on")
-    lines = [f"Program: {prog['name']} (id {prog.get('pid', slug)})",
+    parts = [prog["slug"], str(v.get("status")),
+             f"{v.get('resolved')}/{v.get('leaves')}"]
+    g = v.get("gate")
+    if g:
+        parts.append(f"gate:{g.get('status')}")
+    for t in prog.get("trees") or []:
+        for nid, ls in (t.get("leaf_stats") or {}).items():
+            parts.append(f"{nid}:{ls.get('hyp', 0)}:{ls.get('ok', 0)}:"
+                         f"{ls.get('runs', 0)}")
+    taste = prog.get("taste")
+    if taste:
+        parts.append(f"taste:{taste.get('n')}:{taste.get('accepted')}")
+    return hashlib.sha1("|".join(parts).encode()).hexdigest()[:12]
+
+
+def _brief_prompt(prog: dict) -> str:
+    v = prog.get("verdict") or {}
+    lines = [f"Program: {prog['name']} (id {prog.get('pid')})",
              f"Objective: {prog.get('objective') or prog['gate_summary']}",
              f"Deterministic verdict: {v.get('status')} — {v.get('reason')}"]
     gate = v.get("gate")
     if gate:
         lines.append(f"Gate ({gate.get('metric')}): {gate.get('status')} "
                      f"— leaf: {gate.get('leaf')}")
+    lines.append("Already explored in the program's iteration loops "
+                 "(do NOT recommend these again in Next):")
     for t in prog["trees"]:
         lines.append(f"Problem tree: {t['objective']}")
         parents = {n["parent"] for n in t["nodes"] if n["parent"]}
@@ -191,25 +206,77 @@ def program_brief(slug: str) -> dict:
                 f" runs={ls.get('runs', 0)})")
     taste = prog.get("taste")
     if taste and taste.get("n"):
-        lines.append(f"Decision profile: {taste.get('n')} decisions, "
+        lines.append(f"Decision profile (selection taste learned across "
+                     f"the loop): {taste.get('n')} decisions, "
                      f"{taste.get('accepted')} accepted "
-                     f"({taste.get('overall_rate', 0):.0%} overall rate)")
-    prompt = (
+                     f"({taste.get('overall_rate', 0):.0%} overall rate); "
+                     "Next must build on this taste, not repeat it")
+    return (
         "You are writing a short learning brief for a drug-discovery "
-        "program lead. Use ONLY the evidence below — do not invent "
-        "results. Three short sections, plain text, no markdown "
-        "headers beyond 'Learned:', 'Blocks:', 'Next:'. Be honest "
-        "about inconclusive evidence.\n\n" + "\n".join(lines))
+        "program lead after several autonomous iteration loops. Use ONLY "
+        "the evidence below — do not invent results. Three short "
+        "sections, plain text, no markdown headers beyond 'Learned:', "
+        "'Blocks:', 'Next:'. Be honest about inconclusive evidence. "
+        "Next must contain ONLY genuinely new actions not already "
+        "covered by the explored work above.\n\n" + "\n".join(lines))
+
+
+def _generate_and_store_brief(prog: dict) -> str:
+    from bionexus.adapters.models.anthropic_provider import AnthropicProvider
+    from bionexus.core.contracts import Envelope, ToolInvocation
+    inv = ToolInvocation(envelope=Envelope(experiment_branch_id="plan"),
+                         tool="c.fm.generate_molecules")
+    text = AnthropicProvider().generate(
+        inv, _brief_prompt(prog)).output["text"].strip()
+    slug = prog["slug"]
+    ws = get_ws()
+    doc = ws.get_program(slug) or {}
+    doc["brief"] = {"text": text, "hash": _brief_evidence_hash(prog),
+                    "at": __import__("time").time()}
+    ws.upsert_program(slug, prog["name"], doc)
+    publish_workspace("program_updated", {"slug": slug})
+    return text
+
+
+def _ensure_brief(prog: dict) -> None:
+    """Fire-and-forget: (re)draft the program brief in the background
+    whenever the evidence changed. Cached text keeps serving reads."""
+    slug = prog["slug"]
+    if slug in _brief_inflight or not prog.get("trees"):
+        return
+    ws = get_ws()
+    cached = (ws.get_program(slug) or {}).get("brief") or {}
+    if cached.get("hash") == _brief_evidence_hash(prog):
+        return
+    _brief_inflight.add(slug)
+
+    def _run():
+        try:
+            _generate_and_store_brief(prog)
+        except Exception:
+            pass  # no model key / provider down — stays uncached
+        finally:
+            _brief_inflight.discard(slug)
+
+    import threading
+    threading.Thread(target=_run, daemon=True,
+                     name=f"brief-{slug}").start()
+
+
+@app.post("/api/programs/{slug}/brief")
+def program_brief(slug: str, force: bool = True) -> dict:
+    """Redraft the program learning brief now (default: force)."""
+    ws = get_ws()
+    ws_view = views.workspace(ws)
+    prog = next((p for p in ws_view["programs"] if p["slug"] == slug), None)
+    if prog is None:
+        raise HTTPException(404, f"program {slug} not found")
+    if not prog.get("trees"):
+        raise HTTPException(409, "program has no problem tree to brief on")
     try:
-        from bionexus.adapters.models.anthropic_provider import \
-            AnthropicProvider
-        from bionexus.core.contracts import Envelope, ToolInvocation
-        inv = ToolInvocation(envelope=Envelope(experiment_branch_id="plan"),
-                             tool="c.fm.generate_molecules")
-        text = AnthropicProvider().generate(inv, prompt).output["text"]
+        return {"narrative": _generate_and_store_brief(prog)}
     except Exception as exc:  # no key / provider down
         raise HTTPException(503, f"model unavailable: {exc}")
-    return {"narrative": text.strip()}
 
 
 class ProgramIn(BaseModel):

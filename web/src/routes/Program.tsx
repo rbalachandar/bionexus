@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { CheckCircle2, FlaskConical, Plus, Sparkles, Target, Trash2,
   XCircle } from 'lucide-react'
-import { api, type ProgramVerdict } from '../api/client'
+import { api, type ProgramOut, type ProgramVerdict } from '../api/client'
 import { LeafRow, ProgramTreeFull, TasteLines } from '../components/program'
 import { EmptyState, Section, Skeleton } from '../components/ui'
 
@@ -21,19 +21,20 @@ const VERDICT_STYLE: Record<string, { icon: typeof CheckCircle2
     label: 'No problem tree' },
 }
 
-function ProgramVerdictBanner({ v, slug }: { v: ProgramVerdict
-  slug: string }) {
+function ProgramVerdictBanner({ v, p }: { v: ProgramVerdict
+  p: ProgramOut }) {
   const qc = useQueryClient()
-  const [brief, setBrief] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const st = VERDICT_STYLE[v.status] ?? VERDICT_STYLE.inconclusive
   const Icon = st.icon
-  const draftBrief = async () => {
+  const brief = p.brief?.text
+  const redraft = async () => {
     setLoading(true)
     setErr(null)
     try {
-      setBrief((await api.brief(slug)).narrative)
+      await api.brief(p.slug)
+      await qc.invalidateQueries({ queryKey: ['program', p.slug] })
     } catch (e) {
       setErr((e as Error).message)
     } finally {
@@ -57,20 +58,27 @@ function ProgramVerdictBanner({ v, slug }: { v: ProgramVerdict
           display: 'inline-flex', gap: 4, alignItems: 'center' }}
           title="model-drafted from the leaf evidence; the deterministic verdict above stays the source of truth"
           disabled={loading}
-          onClick={draftBrief}>
+          onClick={redraft}>
           <Sparkles size={11} />
-          {loading ? 'drafting…' : 'learning brief'}
+          {loading ? 'drafting…' : 'redraft'}
         </button>
       </div>
       <span className="muted" style={{ fontSize: 12 }}>{v.reason}</span>
       {err && <span style={{ fontSize: 12, color: 'var(--bad, #c62828)' }}>
         {err}</span>}
-      {brief && <div style={{ fontSize: 12, whiteSpace: 'pre-wrap',
+      {brief ? <div style={{ fontSize: 12, whiteSpace: 'pre-wrap',
         borderTop: '1px solid var(--border)', paddingTop: 6 }}>
         {brief}
         <div className="muted mono" style={{ fontSize: 10, marginTop: 4 }}>
-          model-drafted — verify against the recorded evidence</div>
-      </div>}
+          model-drafted{p.brief?.at
+            ? ` · ${new Date(p.brief.at * 1000).toLocaleString()}`
+            : ''} — verify against the recorded evidence</div>
+      </div>
+      : !loading && v.leaves > 0 && (
+        <span className="muted mono" style={{ fontSize: 11 }}>
+          drafting learning brief…
+        </span>
+      )}
     </div>
   )
 }
@@ -123,8 +131,7 @@ function ProgramPage() {
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4,
             maxWidth: 760 }}>{p.objective ?? p.gate_summary}</div>
-          {p.verdict && <ProgramVerdictBanner v={p.verdict}
-            slug={p.slug} />}
+          {p.verdict && <ProgramVerdictBanner v={p.verdict} p={p} />}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap',
             alignItems: 'center', marginTop: 8 }}>
             {p.modality && <span className="chip meta">{p.modality}</span>}

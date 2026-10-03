@@ -34,6 +34,7 @@ export interface ProgramOut {
   tally: Record<string, number>
   taste?: TasteReport
   verdict?: ProgramVerdict
+  brief?: { text: string; hash: string; at: number }
   tree?: ProblemTreeOut
   trees?: ProblemTreeOut[]
 }

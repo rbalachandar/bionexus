@@ -1170,6 +1170,7 @@ def workspace(wizard_store,
                       or t.get("linked_program") == p["slug"]]
         p["tree"] = p["trees"][0] if p["trees"] else None
         p["verdict"] = program_verdict(p["trees"])
+        p["brief"] = doc.get("brief")
 
     standalone = [e for e in live
                   if (e["payload"].get("agent") or {}).get("problem_id")
