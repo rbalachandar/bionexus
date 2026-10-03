@@ -996,7 +996,7 @@ def program_policy(p: dict, doc: dict) -> dict:
     actions -> evidence -> brief). The orchestrator pauses — escalates
     to a human — when the objective is decided, the gate is called, or
     the evidence/cycle budget is spent. Manual redraft overrides."""
-    pol = {**{"max_runs": 60, "max_cycles": 5},
+    pol = {**{"max_runs": 200, "max_cycles": 5},
            **(doc.get("policy") or {})}
     v = p.get("verdict") or {}
     runs = sum((l or {}).get("runs", 0) for l in p.get("links", [])
