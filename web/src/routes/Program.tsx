@@ -138,10 +138,23 @@ function ProgramVerdictBanner({ v, p }: { v: ProgramVerdict
           </div>
         )}
       </div>
-      : !loading && v.leaves > 0 && (
+      : !loading && v.leaves > 0 && p.policy?.status !== 'escalated' && (
         <span className="muted mono" style={{ fontSize: 11 }}>
           drafting learning brief…
         </span>
+      )}
+      {p.policy?.status === 'escalated' && (
+        <div style={{ fontSize: 12, borderTop: '1px solid var(--border)',
+          paddingTop: 6, display: 'flex', gap: 6, alignItems: 'center',
+          flexWrap: 'wrap' }}>
+          <strong style={{ color: '#b58a00' }}>Loop paused</strong>
+          <span className="muted">{p.policy.reason} — human decision
+            required. Redraft to override.</span>
+          <span className="muted mono" style={{ fontSize: 10 }}>
+            {p.policy.runs} runs · {p.policy.cycles}/
+            {p.policy.limits.max_cycles} cycles
+          </span>
+        </div>
       )}
     </div>
   )

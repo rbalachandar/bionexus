@@ -282,6 +282,7 @@ def _generate_and_store_brief(prog: dict) -> str:
     doc = ws.get_program(slug) or {}
     doc["brief"] = {"text": prose, "actions": actions,
                     "hash": _brief_evidence_hash(prog),
+                    "cycle": ((doc.get("brief") or {}).get("cycle") or 0) + 1,
                     "at": __import__("time").time()}
     ws.upsert_program(slug, prog["name"], doc)
     publish_workspace("program_updated", {"slug": slug})
@@ -329,6 +330,11 @@ def _ensure_brief(prog: dict) -> None:
     whenever the evidence changed. Cached text keeps serving reads."""
     slug = prog["slug"]
     if slug in _brief_inflight or not prog.get("trees"):
+        return
+    # termination policy: an escalated program pauses the autonomous
+    # loop — no new briefs until a human redrafts (override) or the
+    # policy is relaxed
+    if (prog.get("policy") or {}).get("status") == "escalated":
         return
     ws = get_ws()
     cached = (ws.get_program(slug) or {}).get("brief") or {}

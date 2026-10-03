@@ -85,3 +85,30 @@ def test_parse_actions():
     # no NEXT block -> everything stays prose
     p2, a2 = _parse_actions("Learned: x\nNext: y")
     assert a2 == [] and p2.endswith("y")
+
+
+def test_policy_active_and_escalated():
+    from bionexus.views import program_policy
+    t = _tree(["achieved", ""])
+    p = {"verdict": program_verdict([t]),
+         "links": [{"eid": "e1", "runs": 3, "verdicts": {"confirmed": 1}},
+                   {"eid": "root", "campaign_root": "x", "runs": 99}],
+         "trees": [{**t, "leaf_stats": {}}]}
+    doc = {}
+    pol = program_policy(p, doc)
+    assert pol["status"] == "active"
+    assert pol["runs"] == 3  # tree-root container runs don't count
+
+    # evidence budget
+    pol = program_policy(p, {"policy": {"max_runs": 2}})
+    assert pol["status"] == "escalated" and "budget" in pol["reason"]
+
+    # cycle budget
+    pol = program_policy(p, {"brief": {"cycle": 5}})
+    assert pol["status"] == "escalated" and "cycle" in pol["reason"]
+
+    # decisive objective
+    t2 = _tree(["achieved", "achieved"])
+    p2 = {"verdict": program_verdict([t2]), "links": [], "trees": [t2]}
+    pol = program_policy(p2, {})
+    assert pol["status"] == "escalated" and "supported" in pol["reason"]

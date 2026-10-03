@@ -991,6 +991,37 @@ def program_verdict(trees: list) -> dict:
             "resolved": resolved, "gate": gates[0] if gates else None}
 
 
+def program_policy(p: dict, doc: dict) -> dict:
+    """Termination policy for the program's autonomous loop (brief ->
+    actions -> evidence -> brief). The orchestrator pauses — escalates
+    to a human — when the objective is decided, the gate is called, or
+    the evidence/cycle budget is spent. Manual redraft overrides."""
+    pol = {**{"max_runs": 60, "max_cycles": 5},
+           **(doc.get("policy") or {})}
+    v = p.get("verdict") or {}
+    runs = sum((l or {}).get("runs", 0) for l in p.get("links", [])
+               if not l.get("campaign_root"))
+    for t in p.get("trees") or []:
+        runs += sum(ls.get("runs", 0)
+                    for ls in (t.get("leaf_stats") or {}).values())
+    cycles = ((doc.get("brief") or {}).get("cycle")) or 0
+    reasons = []
+    if v.get("status") in ("supported", "refuted"):
+        reasons.append(f"objective {v['status']} — decided, not pending")
+    g = v.get("gate")
+    if g and g.get("status") in ("met", "missed"):
+        reasons.append(f"gate {g.get('metric')} {g.get('status')}")
+    if runs >= pol["max_runs"]:
+        reasons.append(f"evidence budget reached "
+                       f"({runs} / {pol['max_runs']} runs)")
+    if cycles >= pol["max_cycles"]:
+        reasons.append(f"loop cycle budget reached "
+                       f"({cycles} / {pol['max_cycles']})")
+    return {"status": "escalated" if reasons else "active",
+            "reason": "; ".join(reasons),
+            "runs": runs, "cycles": cycles, "limits": pol}
+
+
 def workspace(wizard_store,
               provenance_db: str | Path | None = None,
               include_archived: bool = False) -> dict:
@@ -1170,6 +1201,7 @@ def workspace(wizard_store,
                       or t.get("linked_program") == p["slug"]]
         p["tree"] = p["trees"][0] if p["trees"] else None
         p["verdict"] = program_verdict(p["trees"])
+        p["policy"] = program_policy(p, doc)
         br = doc.get("brief")
         if br and br.get("launched"):
             # live status for each launched next-action campaign

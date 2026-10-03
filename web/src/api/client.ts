@@ -34,6 +34,9 @@ export interface ProgramOut {
   tally: Record<string, number>
   taste?: TasteReport
   verdict?: ProgramVerdict
+  policy?: { status: 'active' | 'escalated'; reason: string;
+    runs: number; cycles: number; limits: { max_runs: number;
+    max_cycles: number } }
   brief?: { text: string; at: number; hash: string;
     actions?: string[]; launched?: Record<string, string>;
     launched_status?: Record<string, string> }
