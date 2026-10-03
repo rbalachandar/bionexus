@@ -73,18 +73,24 @@ def test_gate_unexercised_when_no_leaf_measures_it():
 
 def test_parse_actions():
     from bionexus.api.app import _parse_actions
-    prose, actions = _parse_actions(
+    prose, actions, concl = _parse_actions(
         "Learned: x\nBlocks: y\nNext: try z\nNEXT:\n"
         "- Diagnose the potency discrepancy with an orthogonal assay\n"
         "1. Run a hERG counter-screen on the lead chemotype\n"
         "- too short\n")
     assert prose.startswith("Learned:")
+    assert concl is None
     assert actions == [
         "Diagnose the potency discrepancy with an orthogonal assay",
         "Run a hERG counter-screen on the lead chemotype"]
     # no NEXT block -> everything stays prose
-    p2, a2 = _parse_actions("Learned: x\nNext: y")
-    assert a2 == [] and p2.endswith("y")
+    p2, a2, c2 = _parse_actions("Learned: x\nNext: y")
+    assert a2 == [] and p2.endswith("y") and c2 is None
+    # CONCLUSION wins over actions and ends the loop
+    p3, a3, c3 = _parse_actions(
+        "Learned: x\nNEXT:\n- more work\nCONCLUSION: "
+        "objective met within assay limits")
+    assert a3 == [] and c3.startswith("objective met") and p3 == "Learned: x"
 
 
 def test_policy_active_and_escalated():

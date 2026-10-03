@@ -38,7 +38,8 @@ export interface ProgramOut {
     runs: number; cycles: number; limits: { max_runs: number;
     max_cycles: number } }
   brief?: { text: string; at: number; hash: string;
-    actions?: string[]; launched?: Record<string, string>;
+    actions?: string[]; conclusion?: string | null;
+    launched?: Record<string, string>;
     launched_status?: Record<string, string> }
   tree?: ProblemTreeOut
   trees?: ProblemTreeOut[]
@@ -155,9 +156,9 @@ export const api = {
   program: (slug: string) => get<ProgramOut>(`/api/programs/${slug}`),
   brief: (slug: string) =>
     post<{ narrative: string }>(`/api/programs/${slug}/brief`),
-  launchAction: (slug: string, idx: number) =>
+  launchAction: (slug: string, idx: number, tree = false) =>
     post<{ eid: string; objective: string }>(
-      `/api/programs/${slug}/actions/${idx}`),
+      `/api/programs/${slug}/actions/${idx}${tree ? '?tree=true' : ''}`),
   taste: () => get<TasteReport>('/api/taste'),
   experiment: (eid: string) => get<ExperimentDetail>(`/api/experiments/${eid}`),
   trace: (eid: string) =>

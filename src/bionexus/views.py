@@ -1006,6 +1006,9 @@ def program_policy(p: dict, doc: dict) -> dict:
                     for ls in (t.get("leaf_stats") or {}).values())
     cycles = ((doc.get("brief") or {}).get("cycle")) or 0
     reasons = []
+    if (doc.get("brief") or {}).get("conclusion"):
+        reasons.append("brief issued a conclusion — human sign-off "
+                       "required")
     if v.get("status") in ("supported", "refuted"):
         reasons.append(f"objective {v['status']} — decided, not pending")
     g = v.get("gate")

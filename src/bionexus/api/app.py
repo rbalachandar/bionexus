@@ -225,18 +225,41 @@ def _brief_prompt(prog: dict) -> str:
         "program lead after several autonomous iteration loops. Use ONLY "
         "the evidence below — do not invent results. Three short "
         "sections, plain text, no markdown headers beyond 'Learned:', "
-        "'Blocks:', 'Next:'. Be honest about inconclusive evidence. "
-        "Next must contain ONLY genuinely new actions not already "
-        "covered by the explored work above. You MUST finish with a "
-        "separate final line reading exactly 'NEXT:' followed by up to "
-        "3 lines, one per launchable campaign, each formatted exactly: "
-        "'- <specific, self-contained objective for a single "
+        "'Blocks:', 'Next:'. Be honest about inconclusive evidence.\n"
+        "The program must CONVERGE, not drill: next actions must be "
+        "decisive, single-variable experiments that can RESOLVE an "
+        "unresolved sub-problem or the stated discrepancy — never "
+        "another broad exploration round, and never a refinement of "
+        "work that already succeeded. Weigh whether the evidence "
+        "already answers the objective.\n"
+        "End with EXACTLY ONE of:\n"
+        "1. A final line 'CONCLUSION:' followed by 1-2 sentences "
+        "stating the program's answer to the objective (used when the "
+        "evidence, despite mixed leaves, already supports a defensible "
+        "call — favor this over proposing yet more work when the "
+        "remaining gaps are assay-level, not decision-relevant).\n"
+        "2. A final line 'NEXT:' followed by up to 3 lines, one per "
+        "launchable campaign, each formatted exactly: '- <specific, "
+        "self-contained objective for a single "
         "experiment>'. NEXT: is mandatory.\n\n" + "\n".join(lines))
 
 
-def _parse_actions(text: str) -> tuple[str, list[str]]:
-    """Split the model draft into prose + structured next actions."""
+def _parse_actions(text: str) -> tuple[str, list[str], str | None]:
+    """Split the model draft into (prose, next actions, conclusion)."""
     import re
+    cm = None
+    for cm in re.finditer(r"^CONCLUSION:?\s*(.*)$", text, re.M | re.I):
+        pass
+    if cm is not None:
+        conclusion = cm.group(1).strip()
+        if not conclusion:
+            after = text[cm.end():].strip()
+            conclusion = after.splitlines()[0] if after else ""
+        prose = text[:cm.start()].rstrip()
+        nx = prose.rfind("NEXT:")
+        if nx != -1:
+            prose = prose[:nx].rstrip()
+        return prose, [], conclusion[:500] or None
     m = None
     for m in re.finditer(r"^NEXT:?\s*$", text, re.M):
         pass
@@ -251,14 +274,14 @@ def _parse_actions(text: str) -> tuple[str, list[str]]:
                             line).strip()
             if len(action) > 15:
                 actions.append(action[:300])
-        return prose, actions[:3]
+        return prose, actions[:3], None
     # fallback: no NEXT footer — lift actions out of the 'Next:' prose
     # section (split on enumeration markers / sentence boundaries)
     sec = None
     for sec in re.finditer(r"^Next:\s*(.*)$", text, re.M | re.I):
         pass
     if sec is None:
-        return text.strip(), []
+        return text.strip(), [], None
     body = sec.group(1) + "\n" + text[sec.end():]
     chunks = re.split(r"\(\d+\)|\.\s+|\n", body)
     actions = []
@@ -266,7 +289,7 @@ def _parse_actions(text: str) -> tuple[str, list[str]]:
         c = re.sub(r"^(?:[-*\u2022]\s*)?", "", c.strip()).strip(" ;:")
         if len(c) > 40:
             actions.append(c[:300])
-    return text.strip(), actions[:3]
+    return text.strip(), actions[:3], None
 
 
 def _generate_and_store_brief(prog: dict) -> str:
@@ -276,11 +299,12 @@ def _generate_and_store_brief(prog: dict) -> str:
                          tool="c.fm.generate_molecules")
     text = AnthropicProvider().generate(
         inv, _brief_prompt(prog)).output["text"].strip()
-    prose, actions = _parse_actions(text)
+    prose, actions, conclusion = _parse_actions(text)
     slug = prog["slug"]
     ws = get_ws()
     doc = ws.get_program(slug) or {}
     doc["brief"] = {"text": prose, "actions": actions,
+                    "conclusion": conclusion,
                     "hash": _brief_evidence_hash(prog),
                     "cycle": ((doc.get("brief") or {}).get("cycle") or 0) + 1,
                     "at": __import__("time").time()}
@@ -290,9 +314,10 @@ def _generate_and_store_brief(prog: dict) -> str:
 
 
 @app.post("/api/programs/{slug}/actions/{idx}")
-def launch_next_action(slug: str, idx: int) -> dict:
-    """Launch one of the brief's next-actions as a single campaign
-    (agent hypotheses), linked to the program like any leaf."""
+def launch_next_action(slug: str, idx: int, tree: bool = False) -> dict:
+    """Launch one of the brief's next-actions, linked to the program
+    like any leaf. tree=True decomposes the action into its own
+    problem tree (for refinement-type actions); flat otherwise."""
     from bionexus.api.launch import LaunchError, spawn_campaign
     ws = get_ws()
     prog = next((p for p in views.workspace(ws)["programs"]
@@ -313,6 +338,8 @@ def launch_next_action(slug: str, idx: int) -> dict:
         "autonomy": doc.get("autonomy", "act"),
         "modality": doc.get("modality") or "",
         "candidates": ""}
+    if tree:
+        action_doc["decompose"] = True
     try:
         eid = spawn_campaign(action_doc, prog["name"])
     except LaunchError as exc:

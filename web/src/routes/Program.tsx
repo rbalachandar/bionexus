@@ -31,11 +31,11 @@ function BriefAction({ slug, idx, action, launched, status, qc }: {
 }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const run = async () => {
+  const run = async (tree: boolean) => {
     setBusy(true)
     setErr(null)
     try {
-      await api.launchAction(slug, idx)
+      await api.launchAction(slug, idx, tree)
       await qc.invalidateQueries({ queryKey: ['program', slug] })
       await qc.invalidateQueries({ queryKey: ['workspace'] })
     } catch (e) {
@@ -62,10 +62,18 @@ function BriefAction({ slug, idx, action, launched, status, qc }: {
                 : <Badge status="running">running</Badge>}
             <span className="muted">view →</span>
           </a>
-        : <button style={{ fontSize: 11, padding: '2px 8px', flex: 'none' }}
-            disabled={busy} onClick={run} title="starts this as a single campaign (agent hypotheses), linked to the program">
-            {busy ? 'launching…' : 'launch'}
-          </button>}
+        : <span style={{ display: 'inline-flex', gap: 4, flex: 'none' }}>
+            <button style={{ fontSize: 11, padding: '2px 8px' }}
+              disabled={busy} onClick={() => run(false)}
+              title="starts this as a single decisive campaign (agent hypotheses), linked to the program">
+              {busy ? '…' : 'launch'}
+            </button>
+            <button style={{ fontSize: 11, padding: '2px 8px' }}
+              disabled={busy} onClick={() => run(true)}
+              title="decompose this action into its own problem tree (for refinement-type actions)">
+              as tree
+            </button>
+          </span>}
       {err && <span style={{ fontSize: 11, color: 'var(--bad, #c62828)' }}>
         {err}</span>}
     </div>
@@ -124,7 +132,14 @@ function ProgramVerdictBanner({ v, p }: { v: ProgramVerdict
           model-drafted{p.brief?.at
             ? ` · ${new Date(p.brief.at * 1000).toLocaleString()}`
             : ''} — verify against the recorded evidence</div>
-        {(p.brief?.actions?.length ?? 0) > 0 && (
+        {p.brief?.conclusion && (
+          <div style={{ marginTop: 8, border: '1px solid #b58a00',
+            borderRadius: 8, padding: '8px 10px', fontSize: 12 }}>
+            <strong style={{ color: '#b58a00' }}>Conclusion </strong>
+            {p.brief.conclusion}
+          </div>
+        )}
+        {!p.brief?.conclusion && (p.brief?.actions?.length ?? 0) > 0 && (
           <div style={{ display: 'grid', gap: 4, marginTop: 8 }}>
             <span className="muted" style={{ fontSize: 11 }}>
               launchable next actions — each starts one campaign linked
