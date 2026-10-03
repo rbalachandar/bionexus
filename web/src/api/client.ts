@@ -35,7 +35,8 @@ export interface ProgramOut {
   taste?: TasteReport
   verdict?: ProgramVerdict
   brief?: { text: string; at: number; hash: string;
-    actions?: string[]; launched?: Record<string, string> }
+    actions?: string[]; launched?: Record<string, string>;
+    launched_status?: Record<string, string> }
   tree?: ProblemTreeOut
   trees?: ProblemTreeOut[]
 }

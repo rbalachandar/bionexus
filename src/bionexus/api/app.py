@@ -175,6 +175,15 @@ def _brief_evidence_hash(prog: dict) -> str:
         for nid, ls in (t.get("leaf_stats") or {}).items():
             parts.append(f"{nid}:{ls.get('hyp', 0)}:{ls.get('ok', 0)}:"
                          f"{ls.get('runs', 0)}")
+    # non-tree campaigns count too — completing a launched next-action
+    # changes this and triggers an auto-redraft on the next page open
+    for l in prog.get("links") or []:
+        if l.get("campaign_root"):
+            continue  # tree roots are containers
+        v = l.get("verdicts") or {}
+        parts.append(f"link:{l.get('eid')}:{l.get('runs', 0)}:"
+                     f"{v.get('confirmed', 0)}:{v.get('refuted', 0)}:"
+                     f"{v.get('inconclusive', 0)}")
     taste = prog.get("taste")
     if taste:
         parts.append(f"taste:{taste.get('n')}:{taste.get('accepted')}")

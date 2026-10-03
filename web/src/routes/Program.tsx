@@ -5,7 +5,7 @@ import { CheckCircle2, FlaskConical, Plus, Sparkles, Target, Trash2,
   XCircle } from 'lucide-react'
 import { api, type ProgramOut, type ProgramVerdict } from '../api/client'
 import { LeafRow, ProgramTreeFull, TasteLines } from '../components/program'
-import { EmptyState, Section, Skeleton } from '../components/ui'
+import { Badge, EmptyState, Section, Skeleton } from '../components/ui'
 
 const VERDICT_STYLE: Record<string, { icon: typeof CheckCircle2
   color: string; label: string }> = {
@@ -21,11 +21,12 @@ const VERDICT_STYLE: Record<string, { icon: typeof CheckCircle2
     label: 'No problem tree' },
 }
 
-function BriefAction({ slug, idx, action, launched, qc }: {
+function BriefAction({ slug, idx, action, launched, status, qc }: {
   slug: string
   idx: number
   action: string
   launched?: string
+  status?: string
   qc: ReturnType<typeof useQueryClient>
 }) {
   const [busy, setBusy] = useState(false)
@@ -50,9 +51,16 @@ function BriefAction({ slug, idx, action, launched, qc }: {
       </span>
       <span style={{ fontSize: 12, flex: 1 }}>{action}</span>
       {launched
-        ? <a href={`/experiments/${launched}`} className="chip meta"
-            style={{ flex: 'none', textDecoration: 'none' }}>
-            launched · view →
+        ? <a href={`/experiments/${launched}`}
+            title="view the launched campaign"
+            style={{ flex: 'none', fontSize: 11, textDecoration: 'none',
+              display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+            {status === 'completed'
+              ? <Badge status="completed">done ✓</Badge>
+              : status === 'failed'
+                ? <Badge status="failed">failed</Badge>
+                : <Badge status="running">running</Badge>}
+            <span className="muted">view →</span>
           </a>
         : <button style={{ fontSize: 11, padding: '2px 8px', flex: 'none' }}
             disabled={busy} onClick={run} title="starts this as a single campaign (agent hypotheses), linked to the program">
@@ -124,7 +132,8 @@ function ProgramVerdictBanner({ v, p }: { v: ProgramVerdict
             </span>
             {p.brief!.actions!.map((a, i) => (
               <BriefAction key={i} slug={p.slug} idx={i} action={a}
-                launched={p.brief?.launched?.[String(i)]} qc={qc} />
+                launched={p.brief?.launched?.[String(i)]}
+                status={p.brief?.launched_status?.[String(i)]} qc={qc} />
             ))}
           </div>
         )}

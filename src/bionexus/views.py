@@ -1170,7 +1170,14 @@ def workspace(wizard_store,
                       or t.get("linked_program") == p["slug"]]
         p["tree"] = p["trees"][0] if p["trees"] else None
         p["verdict"] = program_verdict(p["trees"])
-        p["brief"] = doc.get("brief")
+        br = doc.get("brief")
+        if br and br.get("launched"):
+            # live status for each launched next-action campaign
+            br = {**br, "launched_status": {
+                i: (row_status(rows_by_eid[e]) if e in rows_by_eid
+                    else "running")
+                for i, e in br["launched"].items()}}
+        p["brief"] = br
 
     standalone = [e for e in live
                   if (e["payload"].get("agent") or {}).get("problem_id")
