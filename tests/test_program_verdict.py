@@ -69,3 +69,19 @@ def test_gate_met_and_missed():
 def test_gate_unexercised_when_no_leaf_measures_it():
     v = program_verdict([_tree(["achieved"])])
     assert v["gate"] is None
+
+
+def test_parse_actions():
+    from bionexus.api.app import _parse_actions
+    prose, actions = _parse_actions(
+        "Learned: x\nBlocks: y\nNext: try z\nNEXT:\n"
+        "- Diagnose the potency discrepancy with an orthogonal assay\n"
+        "1. Run a hERG counter-screen on the lead chemotype\n"
+        "- too short\n")
+    assert prose.startswith("Learned:")
+    assert actions == [
+        "Diagnose the potency discrepancy with an orthogonal assay",
+        "Run a hERG counter-screen on the lead chemotype"]
+    # no NEXT block -> everything stays prose
+    p2, a2 = _parse_actions("Learned: x\nNext: y")
+    assert a2 == [] and p2.endswith("y")

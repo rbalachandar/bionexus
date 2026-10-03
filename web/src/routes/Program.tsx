@@ -21,6 +21,49 @@ const VERDICT_STYLE: Record<string, { icon: typeof CheckCircle2
     label: 'No problem tree' },
 }
 
+function BriefAction({ slug, idx, action, launched, qc }: {
+  slug: string
+  idx: number
+  action: string
+  launched?: string
+  qc: ReturnType<typeof useQueryClient>
+}) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const run = async () => {
+    setBusy(true)
+    setErr(null)
+    try {
+      await api.launchAction(slug, idx)
+      await qc.invalidateQueries({ queryKey: ['program', slug] })
+      await qc.invalidateQueries({ queryKey: ['workspace'] })
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+      <span className="muted mono" style={{ fontSize: 11, marginTop: 2 }}>
+        {idx + 1}.
+      </span>
+      <span style={{ fontSize: 12, flex: 1 }}>{action}</span>
+      {launched
+        ? <a href={`/experiments/${launched}`} className="chip meta"
+            style={{ flex: 'none', textDecoration: 'none' }}>
+            launched · view →
+          </a>
+        : <button style={{ fontSize: 11, padding: '2px 8px', flex: 'none' }}
+            disabled={busy} onClick={run} title="starts this as a single campaign (agent hypotheses), linked to the program">
+            {busy ? 'launching…' : 'launch'}
+          </button>}
+      {err && <span style={{ fontSize: 11, color: 'var(--bad, #c62828)' }}>
+        {err}</span>}
+    </div>
+  )
+}
+
 function ProgramVerdictBanner({ v, p }: { v: ProgramVerdict
   p: ProgramOut }) {
   const qc = useQueryClient()
@@ -73,6 +116,18 @@ function ProgramVerdictBanner({ v, p }: { v: ProgramVerdict
           model-drafted{p.brief?.at
             ? ` · ${new Date(p.brief.at * 1000).toLocaleString()}`
             : ''} — verify against the recorded evidence</div>
+        {(p.brief?.actions?.length ?? 0) > 0 && (
+          <div style={{ display: 'grid', gap: 4, marginTop: 8 }}>
+            <span className="muted" style={{ fontSize: 11 }}>
+              launchable next actions — each starts one campaign linked
+              to this program:
+            </span>
+            {p.brief!.actions!.map((a, i) => (
+              <BriefAction key={i} slug={p.slug} idx={i} action={a}
+                launched={p.brief?.launched?.[String(i)]} qc={qc} />
+            ))}
+          </div>
+        )}
       </div>
       : !loading && v.leaves > 0 && (
         <span className="muted mono" style={{ fontSize: 11 }}>

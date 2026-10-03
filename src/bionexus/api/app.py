@@ -218,7 +218,46 @@ def _brief_prompt(prog: dict) -> str:
         "sections, plain text, no markdown headers beyond 'Learned:', "
         "'Blocks:', 'Next:'. Be honest about inconclusive evidence. "
         "Next must contain ONLY genuinely new actions not already "
-        "covered by the explored work above.\n\n" + "\n".join(lines))
+        "covered by the explored work above. You MUST finish with a "
+        "separate final line reading exactly 'NEXT:' followed by up to "
+        "3 lines, one per launchable campaign, each formatted exactly: "
+        "'- <specific, self-contained objective for a single "
+        "experiment>'. NEXT: is mandatory.\n\n" + "\n".join(lines))
+
+
+def _parse_actions(text: str) -> tuple[str, list[str]]:
+    """Split the model draft into prose + structured next actions."""
+    import re
+    m = None
+    for m in re.finditer(r"^NEXT:?\s*$", text, re.M):
+        pass
+    if m is not None:
+        prose = text[:m.start()].strip()
+        actions = []
+        for line in text[m.end():].splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            action = re.sub(r"^(?:[-*\u2022]\s*)?(?:\d+[.)]\s*)?", "",
+                            line).strip()
+            if len(action) > 15:
+                actions.append(action[:300])
+        return prose, actions[:3]
+    # fallback: no NEXT footer — lift actions out of the 'Next:' prose
+    # section (split on enumeration markers / sentence boundaries)
+    sec = None
+    for sec in re.finditer(r"^Next:\s*(.*)$", text, re.M | re.I):
+        pass
+    if sec is None:
+        return text.strip(), []
+    body = sec.group(1) + "\n" + text[sec.end():]
+    chunks = re.split(r"\(\d+\)|\.\s+|\n", body)
+    actions = []
+    for c in chunks:
+        c = re.sub(r"^(?:[-*\u2022]\s*)?", "", c.strip()).strip(" ;:")
+        if len(c) > 40:
+            actions.append(c[:300])
+    return text.strip(), actions[:3]
 
 
 def _generate_and_store_brief(prog: dict) -> str:
@@ -228,14 +267,52 @@ def _generate_and_store_brief(prog: dict) -> str:
                          tool="c.fm.generate_molecules")
     text = AnthropicProvider().generate(
         inv, _brief_prompt(prog)).output["text"].strip()
+    prose, actions = _parse_actions(text)
     slug = prog["slug"]
     ws = get_ws()
     doc = ws.get_program(slug) or {}
-    doc["brief"] = {"text": text, "hash": _brief_evidence_hash(prog),
+    doc["brief"] = {"text": prose, "actions": actions,
+                    "hash": _brief_evidence_hash(prog),
                     "at": __import__("time").time()}
     ws.upsert_program(slug, prog["name"], doc)
     publish_workspace("program_updated", {"slug": slug})
-    return text
+    return prose
+
+
+@app.post("/api/programs/{slug}/actions/{idx}")
+def launch_next_action(slug: str, idx: int) -> dict:
+    """Launch one of the brief's next-actions as a single campaign
+    (agent hypotheses), linked to the program like any leaf."""
+    from bionexus.api.launch import LaunchError, spawn_campaign
+    ws = get_ws()
+    prog = next((p for p in views.workspace(ws)["programs"]
+                 if p["slug"] == slug), None)
+    if prog is None:
+        raise HTTPException(404, f"program {slug} not found")
+    actions = ((prog.get("brief") or {}).get("actions")) or []
+    if not 0 <= idx < len(actions):
+        raise HTTPException(404, f"action {idx} not found")
+    doc = ws.get_program(slug) or {}
+    action_doc = {
+        "objective": actions[idx],
+        "metric": doc.get("metric") or "potency",
+        "unit": doc.get("unit") or "",
+        "direction": doc.get("direction", "min"),
+        "gate_value": doc.get("gate_value", 1.0),
+        "k": doc.get("k", 2), "rounds": doc.get("rounds", 2),
+        "autonomy": doc.get("autonomy", "act"),
+        "modality": doc.get("modality") or "",
+        "candidates": ""}
+    try:
+        eid = spawn_campaign(action_doc, prog["name"])
+    except LaunchError as exc:
+        raise HTTPException(503, str(exc))
+    if not eid:
+        raise HTTPException(500, "campaign did not start")
+    launched = doc.get("brief", {}).setdefault("launched", {})
+    launched[str(idx)] = eid
+    ws.upsert_program(slug, prog["name"], doc)
+    return {"eid": eid, "objective": action_doc["objective"]}
 
 
 def _ensure_brief(prog: dict) -> None:
