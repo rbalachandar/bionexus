@@ -87,12 +87,38 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   abstentions. Evals unaffected (0.979 pass bar intact). README states the
   WT-potency-only limitation honestly (osimertinib's real win was T790M
   selectivity — invisible here, and said so).
-- [ ] **Real plate, real dirt, one instrument**: ingestion hardening against
+- [x] **Real plate, real dirt, one instrument**: ingestion hardening against
   an actual plate-reader export (vendor xlsx with merged cells, unit drift,
   missing rows) — %INHIBITION normalization vs controls (currently raw-RFU
   Hill only), declared plate-layout effects (edge/column) as QC metadata,
   batch/date as a first-class covariate in verdict provenance.
-  [ ] Real Z′: require BOTH control classes in a protocol before printing
+  SHIPPED (Oct 2026) on FOUR REAL instrument exports, committed unmodified
+  in `tests/data/instruments/` (attribution+licenses in its README): Tecan
+  i-control infinite-200Pro CSV *and* XLSX (kinetic OD600+Lum,
+  120 cycles; the real export has no merged cells — merged-cell xlsx remains
+  untested against a real example), BioTek KC1 flat CSV (Synergy HTX 384, 4 channel-passes,
+  Windows-1252 `°` bytes), Gen5 tab text (Synergy 2, `?????` missing tokens,
+  mixed delimiters), and a real multi-section plate map (conc/sample/protein
+  layers). New `labread` format `kinetic` (time-rows × well-columns, cycle
+  reduction last/first/mean, per-channel — never pooled); dialect+encoding
+  CHOSEN by median width (a comma-in-label `tht:440/30,485/20` no longer
+  shreds tab files into confetti); instrument identity metadata (device,
+  serial, firmware, date) extracted for provenance — operator/usernames
+  deliberately NOT. `read_plate(layout=…)` joins well→(sample, conc) so bare
+  grids get dose-response fits; `normalize='pct_inhibition'` rescales vs the
+  plate's OWN blank+full-inhibition classes and REFUSES without them; real
+  Z′ computed only when both control classes exist (≥2 each) — otherwise
+  the heuristic stays labeled `Z'~` (both control classes + refusal + labels
+  tested). Batch/date+time stamped on every record and in `to_csv` columns;
+  edge/column layout QC declared per channel (never gates, never corrects).
+  CLI: `bn read --layout --cycles --normalize`. Bugs caught on the way: a
+  shadowed `is_control` and `parse_concentration_um('')` defaulting blanks
+  to 10 µM. 15 tests in `tests/test_vendor_ingest.py`, 248 green.
+  REMAINING (deferred): batch/date into the SQLITE verdict-provenance schema
+  (it is in the records now, not yet in chain payloads), unit drift beyond
+  declared response_unit, a second instrument FAMILY (plate reader done;
+  qPCR / cytometer not).
+  [x] Real Z′: require BOTH control classes in a protocol before printing
   Z′; keep the heuristic labeled `Z'~` when only negatives exist.
 - [ ] **Makeability is the gate, not a wizard note** (upgrades Trust-T1c):
   synthesis/Make as the blocking, honest step of DMTA — a synthesis

@@ -210,7 +210,9 @@ def cmd_read(args: argparse.Namespace) -> int:
 
     from bionexus.labread import read_plate
 
-    result = read_plate(args.path, max_response=args.max_response)
+    result = read_plate(args.path, max_response=args.max_response,
+                        layout=args.layout, cycles=args.cycles,
+                        normalize=args.normalize)
     print(result)
     if args.csv:
         print(f"csv: {result.to_csv(args.csv)}")
@@ -700,6 +702,14 @@ def main(argv: list[str] | None = None) -> int:
     read.add_argument("path")
     read.add_argument("--max-response", type=float, default=None,
                       help="known maximal assay response (enables IC50 vs fixed max)")
+    read.add_argument("--layout", default=None,
+                      help="plate-layout CSV (well -> sample/conc) to join onto "
+                           "grid/kinetic exports that carry no compound identity")
+    read.add_argument("--cycles", default="last", choices=["last", "first", "mean"],
+                      help="kinetic reduction per well (default: last = endpoint)")
+    read.add_argument("--normalize", default=None, choices=["pct_inhibition"],
+                      help="rescale non-control wells to %% inhibition against the "
+                           "plate's own blank + full-inhibition controls")
     read.add_argument("--html", default=None, help="write an HTML summary")
     read.add_argument("--csv", default=None, help="export standardized records to CSV")
     read.set_defaults(func=cmd_read)
