@@ -112,6 +112,66 @@ function PipelineCards({ cards }: {
  * filter-eliminated hypotheses merged by candidate, statement snippet
  * joined with the filter's reason and score. Replaces the three
  * overlapping blocks (proposed / not selected / eliminated). */
+/** S-T1 chemotype/SAR series view: verdict rollups per family/chemotype
+ * and a matched-pair table whose calls carry CIs — an abstained call is
+ * shown, never smoothed into a direction. */
+function SeriesPanel({ series }:
+  { series: NonNullable<ExperimentDetail['series']> }) {
+  if (!series.length) return null
+  const callColor: Record<string, string> = {
+    gain: 'var(--ok)', retained: 'var(--muted)', loss: 'var(--bad)',
+    abstained: 'var(--warn)',
+  }
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div className="mono" style={{ fontSize: 11, color: 'var(--muted)',
+        marginBottom: 6 }}>
+        SERIES VIEW · grouping: {series[0]?.backend ?? 'exact-id'}
+      </div>
+      {series.map((s) => (
+        <div key={`${s.kind}-${s.key}`}
+          style={{ border: '1px solid var(--border)', borderRadius: 8,
+            padding: '8px 10px', marginBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap',
+            alignItems: 'baseline' }}>
+            <b style={{ fontSize: 12 }}>{s.kind === 'family' ? s.key
+              : s.key.slice(0, 44)}</b>
+            <span className="muted mono" style={{ fontSize: 11 }}>
+              {s.kind} · {s.label}
+            </span>
+          </div>
+          {s.matched_pairs.length > 0 && (
+            <table style={{ fontSize: 11, marginTop: 6, width: '100%' }}>
+              <thead>
+                <tr className="muted" style={{ textAlign: 'left' }}>
+                  <th>congener pair</th><th>Δlog10 IC50 [95% CI]</th>
+                  <th>fold</th><th>call</th>
+                </tr>
+              </thead>
+              <tbody>
+                {s.matched_pairs.map((p) => (
+                  <tr key={`${p.a}-${p.b}`}>
+                    <td className="mono">{p.a} ↔ {p.b}</td>
+                    <td className="mono">{p.delta_log10}
+                      {p.ci95 ? ` [${p.ci95[0]}, ${p.ci95[1]}]`
+                        : ' (point-only — no CIs on record)'}
+                    </td>
+                    <td className="mono">{p.fold_a_over_b}×</td>
+                    <td className="mono"
+                      style={{ color: callColor[p.call] ?? 'inherit' }}>
+                      {p.call}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function NotTested({ cards, eliminated }: {
   cards: PipelineCard[]
   eliminated: NonNullable<ExperimentDetail['eliminated']>
@@ -577,6 +637,7 @@ export default function Experiment() {
         <PipelineCards cards={d.cards} />
 
         <NotTested cards={d.cards} eliminated={d.eliminated ?? []} />
+        <SeriesPanel series={d.series ?? []} />
       </Section>
 
       {record.data && (

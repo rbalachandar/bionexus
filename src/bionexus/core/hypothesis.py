@@ -260,6 +260,13 @@ class HypothesisTracker:
                 round_no=0,
                 criteria=spec.get("criteria"),
                 design=spec.get("design"),
+                # structure keys must ride IN the recorded decision — the
+                # chain is hash-immutable, patching h.metadata afterwards
+                # would leave the provenance record chemotype-blind
+                **({"smiles": spec["smiles"]} if spec.get("smiles") else {}),
+                **({"family": spec["family"]} if spec.get("family") else {}),
+                **{k: v for k, v in (spec.get("metadata") or {}).items()
+                   if k not in ("smiles", "family")},
             )
             h.problem_id = problem.problem_id
             h.portfolio_rank = i
@@ -428,6 +435,13 @@ class HypothesisTracker:
                                                  "citation": citation,
                                                  "citation_status":
                                                      citation_status,
+                                                 "smiles":
+                                                     (h.metadata or {}).get(
+                                                         "smiles", ""),
+                                                 "family":
+                                                     h.family or
+                                                     (h.metadata or {}).get(
+                                                         "family", ""),
                                                  "citation_detail":
                                                      citation_detail,
                                                  "predicted_observables":

@@ -163,6 +163,14 @@ def verdict_tally(recs) -> dict[str, int]:
     return t
 
 
+def series_view(recs) -> list[dict[str, Any]]:
+    """S-T1 chemotype/SAR series rollup for the workbench: per-series
+    verdict counts + matched-pair SAR table. Grouping backend
+    (Murcko/family/exact-id) stamps itself — see bionexus.series."""
+    from bionexus.series import series_summary
+    return series_summary(recs)
+
+
 def round_markers(recs) -> list[tuple[int, list[str]]]:
     """[(round_no, [candidates])] sorted by round, from round_start
     markers."""
@@ -925,6 +933,7 @@ def experiment_detail(eid: str, wizard_store,
                   "log_path": ag.get("log")},
         "branch": branch,
         "record_count": len(recs),
+        "series": series_view(recs),
         "program": program,
         "spec": {"objective": (spec or {}).get("objective"),
                  "program_slug": (spec or {}).get("program_slug"),
@@ -1144,6 +1153,7 @@ def workspace(wizard_store,
                                 and (r.decision or {}).get("run_id")),
                     "rounds_done": len(round_markers(recs)),
                     "verdicts": verdict_tally(recs),
+                    "series": series_view(recs),
                     "candidates": cands,
                     "branch": pid,
                 }

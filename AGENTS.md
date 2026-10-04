@@ -16,7 +16,7 @@ with a FastAPI + React workbench as the scientist surface.
 
 ## Commands
 ```sh
-.venv/bin/python -m pytest -q          # all tests (256 green as of this writing)
+.venv/bin/python -m pytest -q          # all tests (261 green as of this writing)
 make test                              # same suite via the Makefile
 make api                               # backend + built SPA on :8000
 make api-dev                           # backend only, auto-reload

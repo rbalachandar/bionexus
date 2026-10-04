@@ -185,6 +185,32 @@ def build_diary_html(records: list[Any], branch: str) -> str:
     if lanes:
         body += "<h2 class='lane-title'>Hypothesis flows</h2>" + "".join(
             _lane_html(c, l) for c, l in lanes.items())
+    from bionexus.series import series_summary
+    multi = [s for s in series_summary(records)
+             if s["kind"] != "ungrouped" and s["n_members"] > 1]
+    if multi:
+        body += "<h2 class='lane-title'>Series view</h2>"
+        for s in multi:
+            rows = "".join(
+                f"<div class='pt'>{_html.escape(str(m['candidate']))}: "
+                f"{_html.escape(str(m['verdict']))}"
+                + (f" IC50 {m['observed']} uM"
+                   if isinstance(m.get('observed'), (int, float)) else "")
+                + "</div>" for m in s["members"][:8])
+            pairs = "; ".join(
+                f"{p['a']} vs {p['b']}: {p['call']} ({p['fold_a_over_b']}x)"
+                for p in s["matched_pairs"][:6])
+            body += (
+                "<div class='lane'><div class='lane-head'><b>"
+                f"{_html.escape(str(s['key'])[:40])}</b>"
+                f"<span class='mono'>{_html.escape(str(s['kind']))}</span>"
+                "</div>"
+                f"<p class='sub'>{_html.escape(s['label'])} · grouping: "
+                f"{_html.escape(s['backend'])}</p>"
+                f"<div class='pts'>{rows}</div>"
+                + (f"<p class='sub'>matched pairs — ΔIC50 with CI: "
+                   f"{_html.escape(pairs)}</p>" if pairs else "")
+                + "</div>")
     if not body:
         body = "<p class='sub'>no narrative events recorded yet</p>"
 

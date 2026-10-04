@@ -156,7 +156,7 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   gate currently speaks through the campaign and the agent tool.
 
 ### S-T1 — Think in series, not singletons
-- [ ] **Chemotype / SAR view** (highest-utility missing surface): group
+- [x] **Chemotype / SAR view** (highest-utility missing surface): group
   proposed → tested → judged by Murcko scaffold/chemotype
   (`benchmark.scaffold`/`scaffold_split` already exist — no new math needed);
   per-series verdict rollup (this series: 2 confirmed, 1 refuted, 3 abstained)
@@ -164,6 +164,33 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   CIs) in the workbench + diary. Med-chem reasoning is series reasoning;
   the per-compound hypothesis stays the epistemic atom, the series is the
   view scientists read.
+  SHIPPED (Oct 2026): `src/bionexus/series.py` — generic mechanism,
+  specific keys, self-stampings. Grouping priority: `family` hook
+  (modality-agnostic — biologics group by construct family) → Bemis-Murcko
+  scaffold over SMILES when the rdkit backend is live → exact-id singletons;
+  every series carries its `backend` stamp, so "same chemotype" is never
+  claimed on exact-duplicate grouping (P3 convention kept). Rollups use the
+  workspace verdict vocabulary — confirmed / preliminary / refuted /
+  abstained **and proposed-untested** (Make-refused candidates stay VISIBLE
+  in their series, they don't vanish from the SAR picture). Matched pairs:
+  Δlog10-IC50 with CIs propagated from each member's fitted CI
+  (independent-normal on the log scale); calls are `gain / retained / loss`
+  against the 3.2× retention band, and a CI straddling the boundary
+  **abstains** — the same small-n physics as every verdict here. No CIs on
+  record? the pair renders "point-only — no CIs on record", disclosed,
+  never silently confident. Surfaces: `views.workspace` link stats +
+  `views.experiment_detail` now carry `series`; the SPA Experiment page
+  renders a SeriesPanel (grouping chip, rollup label, pair table under the
+  same ok/warn/bad color grammar as verdicts); the diary gained a "Series
+  view" section between hypothesis flows and stats. Chain fix found on the
+  way: `propose_portfolio` attached SMILES to the in-memory hypothesis
+  AFTER the hash-immutable `hypothesis_proposed` record was written — the
+  provenance was chemotype-blind; structure keys now ride IN the recorded
+  decision (autoloop Make gate + series grouping both read the chain).
+  6 tests in `tests/test_series_view.py` (grouping/stamp, family override,
+  all four pair calls incl. boundary abstention, proposed visibility,
+  campaign-chain e2e incl. diary HTML); suite 261 green, SPA tsc+vite
+  clean, evals unchanged 0.979.
 - [ ] **Series-level hypothesis kind**: claim over a chemotype ("ring-B
   para-substitution retains potency ≤ X fold loss") whose verdict is derived
   from its members' CI-aware verdicts — extends `propose_families` +

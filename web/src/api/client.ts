@@ -115,6 +115,14 @@ export interface ExperimentDetail {
   agent: { autonomy: string; problem_id: string | null; log_path: string | null }
   branch: string | null
   record_count: number
+  series?: {
+    key: string; kind: string; backend: string; n_members: number
+    n_tested?: number; rollup: Record<string, number>; label: string
+    members: { candidate: string; verdict: string | null; observed: number | null }[]
+    matched_pairs: { a: string; b: string; ic50_a: number; ic50_b: number;
+      delta_log10: number; ci95: [number, number] | null;
+      fold_a_over_b: number; call: string; cited_cis: boolean }[]
+  }[]
   program: { slug: string; name: string; gate: { metric: string; direction: string; value: number; unit: string; symbol: string }; modality: string | null; mode: string } | null
   spec: { objective: string; k: number; rounds: number; autonomy: string; hypothesis_source: string; n_candidates: number; modality: string | null; constraints: { name: string; description: string }[] } | null
   objective: string
