@@ -16,7 +16,7 @@ with a FastAPI + React workbench as the scientist surface.
 
 ## Commands
 ```sh
-.venv/bin/python -m pytest -q          # all tests (274 green as of this writing)
+.venv/bin/python -m pytest -q          # all tests (279 green as of this writing)
 make test                              # same suite via the Makefile
 make api                               # backend + built SPA on :8000
 make api-dev                           # backend only, auto-reload
@@ -28,8 +28,10 @@ python -m bionexus.cli auto --template dose-response-screen \
 ```
 
 ## Layout (hot files)
-- `src/bionexus/api/app.py` — FastAPI routes · `web/src/` — React SPA routes
-  (Workspace / Program / Experiment / Wizard) · `src/bionexus/views.py` —
+- `src/bionexus/api/app.py` — FastAPI routes (incl. `GET /api/evals` — the
+  leaderboard read-model the workbench leads with) · `web/src/` — React SPA
+  routes (Workspace / Program / Experiment / Wizard / **Evals**) ·
+  `src/bionexus/views.py` —
   the read-model the API serves (pipeline cards, verdict tally, rollups)
 - `src/bionexus/core/hypothesis.py` — Hypothesis lifecycle + **verdict logic**
 - `src/bionexus/watch.py` — auto-analysis agent (+ orthogonal confirmation

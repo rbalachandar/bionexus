@@ -228,3 +228,88 @@ def run_model_task(dataset: str, min_spearman: float = 0.3) -> TaskResult:
                        "floor_random": round(floor, 4)},
                       f"{best_name} {metric}={best:.3f} (floor "
                       f"{floor:.3f}, bar {min_spearman})")
+
+
+def _evals_dir() -> Path:
+    """Locate the committed eval artifacts (evals/results.json,
+    leaderboard.md). An explicit BIONEXUS_EVALS_DIR is HONORED EVEN IF
+    EMPTY (so callers/tests can pin the read-model to a directory);
+    otherwise best-effort: CWD, then repo root derived from this package
+    (src/bionexus/evals/harness.py -> parents[3] == repo root)."""
+    import os
+    env = os.environ.get("BIONEXUS_EVALS_DIR")
+    if env:
+        return Path(env)
+    cand = [Path("evals")]
+    try:
+        cand.append(Path(__file__).resolve().parents[3] / "evals")
+    except IndexError:
+        pass
+    for c in cand:
+        if (c / "results.json").exists() or (c / "leaderboard.md").exists():
+            return c
+    return cand[0]
+
+
+def leaderboard_payload() -> dict[str, Any]:
+    """Workbench-ready read-model of the LAST eval run (the committed
+    artifacts), NOT a live re-run — `bn eval` writes these; this reads
+    them. Degrades gracefully to available=False when the artifacts are
+    absent so /api/evals never 500s on a fresh checkout.
+
+    The honesty framing lives here on purpose: a task that scores BELOW
+    1.0 while still passing is the harness refusing to overcredit —
+    'honest_abstain' tasks are surfaced separately from a clean sweep."""
+    d = _evals_dir()
+    res_p, md_p = d / "results.json", d / "leaderboard.md"
+    if not res_p.exists():
+        return {"available": False,
+                "reason": "no eval artifacts yet — run `bn eval`",
+                "tasks": [], "mean": None, "all_pass": None,
+                "pass_bar": PASS_THRESHOLD}
+    try:
+        raw = json.loads(res_p.read_text())
+    except (json.JSONDecodeError, OSError) as exc:
+        return {"available": False, "reason": f"unreadable results.json: {exc}",
+                "tasks": [], "mean": None, "all_pass": None,
+                "pass_bar": PASS_THRESHOLD}
+
+    suite_map: dict[str, str] = {}
+    try:
+        from bionexus.evals import tasks as _tasks  # registers suite
+        suite_map = {t.task_id: t.suite for t in TASKS}
+    except Exception:
+        pass
+
+    tasks = []
+    for r in raw:
+        skipped = str(r.get("notes", "")).startswith("SKIPPED")
+        score = float(r.get("score", 0.0))
+        tasks.append({
+            "task": r.get("task", "?"),
+            "suite": suite_map.get(r.get("task", ""), "epistemics"),
+            "score": round(score, 3),
+            "passed": bool(r.get("passed")) and not skipped,
+            "skipped": skipped,
+            "honest_deduction": (not skipped and score < 1.0
+                                 and bool(r.get("passed"))),
+            "notes": r.get("notes", ""),
+            "duration_s": (r.get("metrics") or {}).get("duration_s"),
+        })
+    scored = [t for t in tasks if not t["skipped"]]
+    mean = (round(sum(t["score"] for t in scored) / len(scored), 3)
+            if scored else None)
+    all_pass = bool(scored) and all(t["passed"] for t in scored)
+    run_line = ""
+    if md_p.exists():
+        for line in md_p.read_text().splitlines():
+            if line.startswith("Run "):
+                run_line = line
+                break
+    return {"available": True, "run_line": run_line, "mean": mean,
+            "all_pass": all_pass, "pass_bar": PASS_THRESHOLD,
+            "n_tasks": len(tasks),
+            "honest_deductions": [t["task"] for t in tasks
+                                  if t["honest_deduction"]],
+            "failing": [t["task"] for t in scored if not t["passed"]],
+            "tasks": tasks}

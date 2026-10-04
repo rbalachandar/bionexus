@@ -10,6 +10,7 @@ import ProgramForm from './routes/ProgramForm'
 import Wizard from './routes/Wizard'
 import Approvals, { HaltBanner } from './routes/Approvals'
 import Experiment from './routes/Experiment'
+import Evals from './routes/Evals'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -57,6 +58,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         </Link>
         <nav style={{ display: 'flex', gap: 4 }}>
           {navLink('/', 'Workspace')}
+          {navLink('/evals', 'Evals')}
         </nav>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7,
           marginLeft: 'auto', fontSize: 10, fontWeight: 600,
@@ -98,6 +100,7 @@ export default function App() {
             <Route path="/programs/:slug" element={<Program />} />
             <Route path="/wizard" element={<Wizard />} />
             <Route path="/approvals" element={<Approvals />} />
+            <Route path="/evals" element={<Evals />} />
             <Route path="/experiments/:eid" element={<Experiment />} />
           </Routes>
         </Shell>

@@ -75,6 +75,16 @@ def health() -> dict:
             "provenance_db": Path("bionexus.db").exists()}
 
 
+@app.get("/api/evals")
+def evals() -> dict:
+    """The product pitch: the last `bn eval` leaderboard, with the honest
+    sub-1.0 deductions surfaced (the harness refusing to overcredit its own
+    agent). Read-model of the committed artifacts — not a live re-run."""
+    from bionexus.evals.harness import leaderboard_payload
+
+    return leaderboard_payload()
+
+
 @app.get("/api/system/modalities")
 def modalities() -> dict:
     from bionexus.modality import PACKS

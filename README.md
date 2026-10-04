@@ -7,6 +7,24 @@
 [![Python](https://img.shields.io/pypi/pyversions/bionexuslab)](https://pypi.org/project/bionexuslab/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
+> ### Agentic science that can be graded.
+>
+> Before the agent story, the scoreboard. `bn eval` runs real campaigns
+> against seeded ground truth — offline, deterministic, in CI — and the
+> harness **punishes our own overclaims**:
+>
+> ```
+> epistemics — mean 0.979 · 12/12 tasks pass
+>   hit-recovery   0.917   honest abstains credited 0.5, not 1.0
+>   adaptive-dose  0.875   3 wells beat 4 — a genuine negative result
+>   verdict-honesty 1.000  must abstain where the CI straddles the gate
+> ```
+>
+> Those sub-1.0 scores are the point: the system is graded **down** for
+> the confidence it refused to claim. No competitor ships a harness that
+> does that. Full run: [`evals/leaderboard.md`](evals/leaderboard.md) ·
+> live in the workbench at **Evals**.
+
 BioNexus is an open-source framework in which AI agents run the scientific
 method end to end: given a research problem and its constraints, agents propose
 a portfolio of hypotheses, select the ones worth testing, design experiments,
@@ -35,6 +53,7 @@ BioNexus is built on three principles:
   that the record has not been edited.
 
 **Contents:** [Installation](#installation) · [CLI](#cli) ·
+[Evals](#how-do-you-know-it-works--the-eval-suite) ·
 [Case studies](#bionexus-case-studies-on-published-papers) ·
 [Using BioNexus](#using-bionexus) · [The virtual lab](#the-virtual-lab) ·
 [Five core interfaces](#five-core-interfaces) · [Agent Skills and MCP](#agent-skills-and-mcp) ·
@@ -57,7 +76,15 @@ Every capability is a `bn` command; the same functionality is available as a
 Python API (see [Using BioNexus](#using-bionexus)).
 
 ```sh
+bn demo                                # first run: watch it ABSTAIN on a borderline
+                                       # CI and REFUTE its own fake hit (real
+                                       # machinery, simulated numbers)
 bn read results.csv --csv out.csv      # auto-analyze an instrument export
+bn read plate.csv --layout map.csv \
+        --normalize pct_inhibition     # join a plate map; %INH vs the plate's
+                                       # own blank + full-inhibition controls
+bn ingest legacy-eln.csv               # institutional memory: pre-BioNexus kills
+                                       # enter ALREADY RULED OUT + family priors
 bn connect scan <share>                # detect instruments writing into a folder
 bn watch <outbox>                      # agent notices device outputs as they land
 bn templates                           # campaign presets — no JSON needed
@@ -117,6 +144,12 @@ The suite has already earned its keep: it caught an observed-max fit bias,
 per-run ground-truth instability, confirmation labels that overrode the
 gate, and non-hermetic tests. `evals/leaderboard.md` is regenerated on
 every run; the CI job fails if any score drops below the pass bar.
+
+The leaderboard **is** the pitch, so it leads the README and the
+workbench: `GET /api/evals` serves a read-model that flags every passing
+task scoring below 1.0 as an `honest_deduction` (the abstentions we are
+graded down for, not smoothed over), and the **Evals** tab renders it —
+the failing/near-failing tasks up top, before any agent narrative.
 
 ### What keeps it trustworthy
 

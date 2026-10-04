@@ -274,11 +274,28 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   Numbers labeled simulated; the discipline is production.
   3 tests (`tests/test_demo_moment.py`: moments + determinism + CLI
   exit), suite 274 green, evals unchanged 0.979, SPA build clean.
-- [ ] **Evals are the product pitch**: README + workbench lead with the
+- [x] **Evals are the product pitch**: README + workbench lead with the
   leaderboard and the FAILING-task honesty (verdict-honesty,
   confirmation-coverage, the adaptive-dose negative result) BEFORE any
   agent narrative. "Agentic science that can be graded" is the differentiator;
   no competitor ships a harness that punishes its own overclaims.
+  SHIPPED (Oct 2026): README now OPENS with the scoreboard (blockquote
+  lead before the agent-narrative paragraph: mean 0.979 · 12/12 pass,
+  hit-recovery 0.917 "honest abstains credited 0.5, not 1.0", adaptive-dose
+  0.875 "a genuine negative result", verdict-honesty 1.000 "must abstain
+  where the CI straddles") + the line the harness punishes OUR overclaims;
+  Contents + CLI list updated (bn demo / ingest / read --layout).
+  Workbench: `GET /api/evals` read-model (`evals.harness.
+  leaderboard_payload` — reads the committed artifacts, NOT a live re-run;
+  BIONEXUS_EVALS_DIR honored even when empty) flags every passing-but-
+  sub-1.0 task as `honest_deduction`, lists `failing` explicitly, degrades
+  to `available: False` on missing/corrupt artifacts (never 500s); new
+  **Evals** tab (`web/src/routes/Evals.tsx`: mean card, honesty callout
+  ABOVE the table, score bars where honest deductions render warn-colored
+  "honest ↓", notes column verbatim). Graceful-degrade + corrupt-json +
+  failing-run + endpoint tests (5, `tests/test_evals_api.py`); the honesty
+  framing is asserted, not cosmetic: hit-recovery MUST be <1.0 AND passed
+  AND flagged. Suite 279 green; evals 0.979; SPA build clean.
 - [ ] **One lab pilot**: find the dry/hybrid scientist niche (small group
   running its own plates, living in spreadsheets) — install on their data,
   weekly eval report on their campaigns, their feedback reorders this list.
