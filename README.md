@@ -118,16 +118,20 @@ bn sop approve <sop-id> --by "lab lead"  # sign-off turns a procedure into stand
 
 The strongest test of the flow: hold out an entire published paper — values
 excluded from training and hidden from the agent — and ask the system to
-reproduce it.
+reproduce it. And then the harder, forward-looking version: run the real
+gated DMTA loop over a published data world with the field's actual futures
+removed, and score every claim against measurements it could not have known.
 
-| Study | Paper | Result |
+| Study | Paper / corpus | Result |
 |---|---|---|
 | [Case study 01](case-studies/01-egfr-blind-reproduction/) | Gazit et al., *J. Med. Chem.* 1989 — the original tyrphostins paper | Q1 hypothesis identified, **qualified**: a probe confirmed the model has prior exposure to this literature (recognition, not derivation). Q2 ranking vs published IC50s passed. |
 | [Case study 02](case-studies/02-az3246-hpk1/) | AZ3246 HPK1 inhibitor, *J. Med. Chem.* 2025 — post-training-cutoff | **Contamination-free** (self-report + never-published-variant probes). Agent derived the pyrazine-carboxamide hypothesis from structures alone; its blinded ranking (ρ = +0.42) outperformed a Random Forest trained on other HPK1 measurements (ρ = +0.08). *Figures predate a training-pool pagination fix; re-run on frozen fixtures is queued in the roadmap.* |
 | [Case study 03](case-studies/03-multi-paper/) | Multi-paper blind validation on recent ChEMBL studies | **Blind chemotype identification on 4/4 papers** (cores match the actual chemistry); contamination clean by self-report on 4/4, and the never-published-variant probe independently flagged **1 leakage-suspect** case the self-report missed. Flow integrity + budgets verified; scaffold leakage ~absent; no enrichment claim survives CIs + BH at n=31–67 — all reported as such |
+| [Case study 04](case-studies/04-prospective-hit2lead/) | Prospective hit-to-lead on real published data — EGFR, 26,322 ChEMBL measurement rows, the seven successor drugs (gefitinib→osimertinib) blinded | No simulator carried the load: gated `act` campaigns ran on ReplayLab against published truths. **5 hit claims — all true actives; 6 kills — all correct; 2 explicit left-censor abstentions on the two sub-350pM compounds** (the most potent molecules were the two we refused to number); reviewer clean; 209 hash-chained records. The blinded surrogate independently ranked Michael-acceptor chemistry #1–6, and the safety gate made testing it cost a declared covalent mechanism — the full refuse→redesign→gate→confirm loop on real data. Running real data also caught four product bugs, each fixed with a regression test. |
 
-Case study 02's clean design trades the realism of case study 01 for freedom
-from memorization; both READMEs document their limitations explicitly.
+Each case-study README documents its own limitations explicitly (e.g. CS04's
+potency-only view misses osimertinib's real T790M-selectivity win — and says
+so).
 
 ## How do you know it works? — the eval suite
 
