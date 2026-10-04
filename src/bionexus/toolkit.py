@@ -51,8 +51,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     },
     {
         "name": "check_synthesis",
-        "description": "Check synthesis feasibility for a SMILES string. "
-                       "Returns feasibility, estimated steps, and complexity score.",
+        "description": "Makeability gate for a SMILES string: can we make "
+                       "this, how many routes, lead-time (days) and cost "
+                       "(USD)? Modeled from named-reaction rules; numbers "
+                       "are simulated and stamped. Blocks campaigns at Make.",
         "input_schema": {
             "type": "object",
             "properties": {"smiles": {"type": "string"}},
@@ -170,8 +172,9 @@ class AgentToolkit:
     @property
     def retro(self):
         if self._retro is None:
-            from bionexus.adapters.retrosynthesis import SimulatedRetrosynthesis
-            self._retro = SimulatedRetrosynthesis()
+            from bionexus.adapters.retrosynthesis import \
+                get_retrosynthesis_adapter
+            self._retro = get_retrosynthesis_adapter("rule-based")
         return self._retro
 
     def executors(self) -> dict[str, Callable]:
@@ -204,7 +207,17 @@ class AgentToolkit:
         return self.admet.predict(smiles).summary()
 
     def _tool_synthesis(self, smiles: str) -> dict:
-        return self.retro.plan(smiles).summary()
+        plans = self.retro.plan_routes(smiles)
+        viable = [p for p in plans if p.feasible]
+        best = max(plans, key=lambda p: (p.feasible, p.yield_pct))
+        return {"smiles": smiles, "makeable": bool(viable),
+                "num_routes": len(plans), "viable_routes": len(viable),
+                "best_route": best.summary(),
+                "routes": [p.summary() for p in plans],
+                "answer": (f"{'can make' if viable else 'CANNOT MAKE at acceptable yield/lead-time'}"
+                           f" via {len(viable)}/{len(plans)} modeled route(s): "
+                           f"{best.lead_time_days} d, ~${best.cost_usd:.0f}"),
+                "data_origin": best.data_origin}
 
     def _tool_hypothesis(self, statement: str, candidate: str,
                          assay_type: str, predicted: str) -> dict:

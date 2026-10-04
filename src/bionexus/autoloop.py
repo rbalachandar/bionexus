@@ -83,6 +83,8 @@ class CampaignConfig:
     inbox: str | Path = ".data/inbox"
     flywheel: Any = None                # shared Flywheel (default: local db)
     synthesis_retries: int = 1      # extra Make attempts on a refused
+    synthesis_backend: str = "rule-based"  # named-reaction route gate:
+    #   "rule-based" | "simulated" (planning only) | "none" (skip Make gate)
                                     # batch (process re-optimization);
                                     # each attempt is provenance-recorded
     autonomy: Autonomy = "gate"
@@ -412,18 +414,50 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                 assay_type=str(coerce_assay_type(h.assay_type).value), concentrations=list(cfg.concentrations),
                 replicates=3, controls=["negative"],
                 protocol_id=protocol.protocol_id)
-            # Make: synthesize & purify before Test — a failed batch
-            # never reaches the lab (deterministic per candidate)
+            # Make: plan routes, then synthesize & purify before Test — a
+            # compound with NO viable route never burns a batch, and a failed
+            # batch never reaches the lab (deterministic per candidate)
             synth = synth_cache.get(h.candidate)
             if synth is None:
                 from bionexus.adapters.lab.synthesis import \
                     VirtualSynthesizer
                 vs = VirtualSynthesizer()
+                best_route = None
+                smi = (h.metadata or {}).get("smiles")
+                mod = str((h.metadata or {}).get("modality", "")).lower()
+                if (smi and mod not in ("biologic", "cell therapy", "mrna")
+                        and cfg.synthesis_backend != "none"):
+                    from bionexus.adapters.retrosynthesis import \
+                        get_retrosynthesis_adapter
+                    plans = get_retrosynthesis_adapter(
+                        cfg.synthesis_backend).plan_routes(smi)
+                    viable = [p for p in plans if p.feasible]
+                    if not viable:
+                        say(f"{h.candidate}: NO VIABLE SYNTHESIS ROUTE — "
+                            f"blocked at Make (never reaches Test)")
+                        store.append(record_for(
+                            protocol.envelope, EventType.gate_decision,
+                            system_actor("synthesis"),
+                            decision={
+                                "kind": "no_viable_route",
+                                "candidate": h.candidate,
+                                "reason": "rule-corpus retrosynthesis found "
+                                          "no route meeting the yield/"
+                                          "lead-time floors",
+                                "routes_planned": len(plans),
+                                "best_modeled_yield_pct": max(
+                                    (p.yield_pct for p in plans), default=None),
+                                "smiles": smi,
+                                "data_origin": plans[0].data_origin,
+                                "samples": [h.candidate]}))
+                        continue
+                    best_route = max(viable,
+                                     key=lambda p: p.yield_pct).summary()
                 for att in range(1 + max(0, cfg.synthesis_retries)):
                     synth = vs.synthesize(
-                        h.candidate, (h.metadata or {}).get("smiles"),
-                        modality=(h.metadata or {}).get("modality", ""),
-                        attempt=att + 1)
+                        h.candidate, smi,
+                        modality=mod,
+                        attempt=att + 1, route=best_route)
                     store.append(record_for(
                         protocol.envelope, EventType.synthesis_complete,
                         system_actor("synthesis"),
@@ -435,7 +469,14 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                                   "purity": synth["purity"],
                                   "ok": synth["ok"],
                                   "lot": synth["lot"],
-                                  "attempt": att + 1}))
+                                  "attempt": att + 1,
+                                  **({"route": synth["route"],
+                                      "route_lead_time_days":
+                                          synth["route_lead_time_days"],
+                                      "route_cost_usd":
+                                          synth["route_cost_usd"],
+                                      "data_origin": synth["data_origin"]}
+                                     if "route" in synth else {})}))
                     say(f"{synth.get('action', 'synthesized')} "
                         f"{h.candidate}: lot {synth['lot']} "
                         f"yield {synth['yield_pct']}% purity "

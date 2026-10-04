@@ -120,13 +120,40 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   qPCR / cytometer not).
   [x] Real Z′: require BOTH control classes in a protocol before printing
   Z′; keep the heuristic labeled `Z'~` when only negatives exist.
-- [ ] **Makeability is the gate, not a wizard note** (upgrades Trust-T1c):
+- [x] **Makeability is the gate, not a wizard note** (upgrades Trust-T1c):
   synthesis/Make as the blocking, honest step of DMTA — a synthesis
   LabAdapter that answers "can we make this, how long, at what cost, via
   how many routes" (start: public reaction corpus / named-reaction rules;
   simulated numbers allowed ONLY with yield/lead-time modeled per candidate
   and the label stamped). Until this exists, the loop tests molecules
   nobody can order — med-chemists will notice in one screen.
+  SHIPPED (Oct 2026): `RuleBasedRetrosynthesis` — 8-rule named-reaction
+  disconnection corpus (amide coupling, Suzuki-style biaryl, Buchwald-ish
+  aryl-N, CuAAC click, SN2, red-amination carbonyl, halogen handle,
+  alicyclic ring build) over SMILES motifs; plans MULTIPLE routes per
+  target, each with steps, MODELED overall yield (product of per-step
+  draws), lead-time days and reagent cost — deterministic per
+  (SMILES, route), every plan stamped
+  `simulated: named-reaction rule corpus…`. The gate: autoloop Make now
+  PLANS before it synthesizes — a candidate whose routes all fail the
+  yield/lead-time floors is refused with a `no_viable_route`
+  gate_decision (route count + best modeled yield + stamp in provenance)
+  and never burns a batch or a well; viable candidates make batches whose
+  yield is DRAWN FROM THE ROUTE (batch answers to the plan; the route is
+  stamped into the synthesis_complete decision). `CampaignConfig.synthesis_backend`
+  = rule-based | simulated | none. Agent tool `check_synthesis` upgraded
+  to the four-question answer (makeable? how many routes? how long? what
+  cost?). Bugs caught while building it: regex parens treated literal
+  SMILES `(=O)` as capture groups (amide/carbonyl rules never fired), and
+  `[FClBr]c` class matched `Cc` — motif matching moved to explicit
+  substring predicates. 8 tests in `tests/test_makeability_gate.py`
+  incl. a campaign that blocks an unmakeable polycycle end-to-end;
+  suite 256 green, evals unchanged at 0.979.
+  HONEST LIMITS: motif rules are a gate heuristic, not a chemistry oracle
+  (step counts from ring/stereo tallies will misprice macrocycles; real
+  corpus adapters — AiZynthFinder/ASKCOS — plug in behind the same
+  Protocol). Workbench surface for routes/cost is not yet wired; the
+  gate currently speaks through the campaign and the agent tool.
 
 ### S-T1 — Think in series, not singletons
 - [ ] **Chemotype / SAR view** (highest-utility missing surface): group

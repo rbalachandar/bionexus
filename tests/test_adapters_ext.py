@@ -1446,9 +1446,11 @@ def test_agent_toolkit_tool_execution(tmp_path):
     # ADMET
     r = executors["predict_admet"](smiles="CCO")
     assert r["mw_da"] is not None
-    # synthesis
+    # synthesis — makeability gate: routes, lead-time, cost, all stamped
     r = executors["check_synthesis"](smiles="CCO")
-    assert r["feasible"] is not None
+    assert r["makeable"] in (True, False)
+    assert r["best_route"]["lead_time_days"] > 0
+    assert "simulated" in r["data_origin"]
     # hypothesis
     r = executors["propose_hypothesis"](
         statement="CCO binds", candidate="CCO",
