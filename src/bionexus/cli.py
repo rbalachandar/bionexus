@@ -224,6 +224,35 @@ def cmd_read(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ingest(args: argparse.Namespace) -> int:
+    from bionexus.flywheel import Flywheel
+    from bionexus.ingest import ingest_eln
+
+    fw = Flywheel(args.flywheel_db)
+    store = None
+    if not args.no_chain:
+        from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+        store = SqliteProvenanceStore(args.db)
+    rep = ingest_eln(args.path, flywheel=fw, store=store,
+                     problem_id=args.problem_id, dry_run=args.dry_run)
+    print(f"ingest: {rep['rows']} rows read · {rep['ingested']} outcomes "
+          f"imported · {len(rep['skipped'])} note(s)/skip(s) · "
+          f"sha256 {rep['sha256'][:12]}")
+    if rep["checksum_match"] is False:
+        print("  !! EDITED AFTER EXPORT — .sha256 seal mismatch; values "
+              "imported UNSEALED, verify against the ELN system of record")
+    elif rep["checksum_match"] is True:
+        print("  seal verified (.sha256 sidecar matches the CSV)")
+    for sk in rep["skipped"]:
+        print(f"  row {sk['row']}: {sk['reason']}")
+    if rep["provenance_written"]:
+        print(f"  provenance: {rep['provenance_written']} records on branch "
+              f"external/{args.path.split('/')[-1].removesuffix('.csv')}")
+    if args.dry_run:
+        print("  (dry-run: nothing written)")
+    return 0
+
+
 def cmd_watch(args: argparse.Namespace) -> int:
     from bionexus.watch import watch
 
@@ -687,6 +716,19 @@ def main(argv: list[str] | None = None) -> int:
                        help="also write a self-contained HTML report")
     prove.add_argument("--eln", help="export branch as ELN CSV (+ .json sidecar)")
     prove.set_defaults(func=cmd_prove)
+
+    ing = sub.add_parser("ingest",
+                         help="import institutional memory: an ELN CSV "
+                              "(inverse of prove --eln) into the flywheel "
+                              "and provenance chain")
+    ing.add_argument("path")
+    ing.add_argument("--problem-id", default=None)
+    ing.add_argument("--db", default="bionexus.db", help="provenance store")
+    ing.add_argument("--flywheel-db", default=".data/flywheel.db")
+    ing.add_argument("--no-chain", action="store_true",
+                     help="feed only the flywheel, write no provenance")
+    ing.add_argument("--dry-run", action="store_true")
+    ing.set_defaults(func=cmd_ingest)
 
     mcp = sub.add_parser("mcp", help="serve BioNexus tools over MCP (stdio)")
     mcp.set_defaults(func=cmd_mcp)

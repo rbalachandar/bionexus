@@ -221,9 +221,30 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   suite 265 green, evals unchanged 0.979, SPA tsc+vite clean.
   LIMIT: derived ≠ direct — the claim verdict is labeled series-derived
   everywhere; a series claim never appears as a directly-tested compound.
-- [ ] **Flywheel faces institutional memory**: import prior internal
+- [x] **Flywheel faces institutional memory**: import prior internal
   outcomes (ELN CSV via `bn prove`'s inverse — an ingest command) so
   "ALREADY RULED OUT" includes what the lab learned before BioNexus existed.
+  SHIPPED (Oct 2026): `bionexus/ingest.py` + `bn ingest FILE` — the exact
+  inverse of `bn prove --eln`: reads the export format itself OR a simple
+  lab table (alias map: compound→candidate, outcome/result/status→verdict,
+  ic50→observed_uM, …), normalizes lab vocabularies (hit→validated,
+  abandoned/rejected→invalidated, abstained→inconclusive), and feeds (1)
+  the flywheel — imported kills surface in ALREADY RULED OUT for agent
+  prompts and drag family priors honestly; evidence_run is stamped
+  `eln:<file>:<sha8>` so history never masquerades as a live run — and
+  (2) the provenance chain under `external/<file>`: one batch record +
+  one gate_decision per outcome, carrying source file, full sha256, and
+  the ORIGINAL record hash when present, all `imported: true`-flagged.
+  Seals: `export_eln` writes a `.sha256` sidecar; ingest VERIFIES it and a
+  tampered CSV is LOUDLY flagged ("edited after export — imported
+  UNSEALED") while still importing (scientists decide, we don't hide).
+  Nothing silently dropped: every skipped row reports its reason;
+  structural rows are skipped without noise. `--dry-run`, `--no-chain`,
+  `--problem-id` knobs. Exporter bug fixed on the way: ELN `family`
+  column missed `decision.family` (verdict rows export family now).
+  6 tests in `tests/test_ingest_memory.py` incl. full prove→ingest
+  roundtrip with family-prior drag + chain verify; 271 green,
+  evals unchanged 0.979.
 
 ### S-T2 — Adoption mechanics (the payoff must be felt in 10 minutes)
 - [ ] **Onboarding that engineers the moment**: first-run guided campaign

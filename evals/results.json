@@ -52,7 +52,7 @@
      "E-12"
     ]
    },
-   "duration_s": 6.5
+   "duration_s": 6.6
   },
   "notes": "1.0 confident-correct \u00b7 0.5 honest abstain \u00b7 0 wrong"
  },
@@ -140,7 +140,7 @@
    "mean_err_adaptive_3well": 0.024,
    "mean_err_fixed_4well": 0.09,
    "ci_coverage": "15/16",
-   "duration_s": 2.5
+   "duration_s": 2.6
   },
   "notes": "3 wells beat 4: err 0.024 vs 0.090; CI coverage 15/16 (nominal 15.2)"
  },

@@ -45,7 +45,8 @@ def branch_to_rows(records: list) -> list[dict]:
             "artifact_id": art.artifact_id if art else "",
             "statement": d.get("statement") or meta.get("statement", ""),
             "candidate": meta.get("candidate") or d.get("candidate", ""),
-            "family": meta.get("family") or d.get("family_id", ""),
+            "family": meta.get("family") or d.get("family_id")
+            or d.get("family", ""),
             "verdict": d.get("verdict", ""),
             "observed_uM": d.get("observed", ""),
             "ci95_low_uM": ci[0] if ci else "",
