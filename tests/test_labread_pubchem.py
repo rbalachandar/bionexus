@@ -6,6 +6,8 @@ answer-key columns.
 """
 from pathlib import Path
 
+import pytest
+
 from bionexus.labread import detect_format, read_plate
 
 # Two compounds x 4 doses, built column-exact: identity block (6 cols) then
@@ -122,9 +124,16 @@ def test_regime_gate_refuses_self_normalized(tmp_path):
     assert res.regime["frame"] == "self-normalized"
     assert res.regime["validated"] is False
     assert res.analysis["regime_refusal"] is True
-    assert res.analysis["compounds"] == {}          # NO assertions issued
+    assert res.analysis["compounds"] == {}          # NO absolute claims
+    assert res.analysis["shape_only"], "shape admits present"
+    assert all(v["class"] in ("flat", "noisy", "falling",
+                              "rise-complete", "rise-partial-low",
+                              "rise-partial-high", "insufficient")
+               for v in res.analysis["shape_only"].values())
+    assert all("midpoint_uM" in v for v in
+               res.analysis["shape_only"].values())
     assert len(res.records) == 10                    # records stay faithful
-    assert "NOT VALIDATED" in str(res)
+    assert "SHAPE-ONLY" in str(res)
     bypass = read_plate(f, max_response=100.0, assert_regimes=False)
     assert bypass.analysis["compounds"], "research mode fits"
     assert "regime_refusal" not in bypass.analysis
@@ -138,3 +147,42 @@ def test_regime_gate_passes_validated_external(tmp_path):
     assert res.regime["validated"] is True
     assert "CS05" in res.regime["validation_source"]
     assert res.analysis["compounds"], "validated regime keeps asserting"
+
+
+# ------------------------------------------------------------ shape QC
+from bionexus.labread import classify_curve  # noqa: E402
+
+
+def _sig(x0=1.0, h=2.5, base=0.0, top=100.0):
+    cs = [0.001, 0.01, 0.1, 0.3, 1, 3, 10, 30]
+    return [(c, base + (top - base) / (1 + (x0 / c) ** h)) for c in cs]
+
+
+def test_classify_curve_classes():
+    assert classify_curve(_sig())["class"] == "rise-complete"
+    assert classify_curve(_sig())["midpoint_uM"] == pytest.approx(1.0, rel=0.3)
+    assert classify_curve(_sig(base=60, top=75))["class"] == "flat"
+    noisy = [(c, 50 + (-1) ** i * 25) for i, c in enumerate(
+        [0.01, 0.1, 1, 10, 100, 1000])]
+    assert classify_curve(noisy)["class"] == "noisy"
+    falling = [(c, 100 - v) for c, v in _sig()]
+    assert classify_curve(falling)["class"] == "falling"
+    # every dose past midpoint of span -> potent below the measured window
+    partial_low = [(c, v) for c, v in _sig(x0=0.001)][:8]
+    assert classify_curve(partial_low)["class"].startswith("rise")
+    assert classify_curve([(1, 1), (10, 40)])["class"] == "insufficient"
+
+
+def test_shape_claims_survive_renormalization_bridge():
+    """Ladder 1 of cross-regime trust: an affine renormalization (what the
+    self-normalized frame IS, relative to an external one — new = a*old+b,
+    a>0) must NOT change shape class or ordering of within-curve midpoints.
+    Absolute numbers may shift; claims are only admitted where the class
+    says the frame supports them."""
+    strong = _sig(x0=0.3)
+    weak = _sig(x0=10.0)
+    for a, b in ((1.0, 0.0), (0.6, 20.0), (3.0, -10.0), (0.4, 60.0)):
+        s = classify_curve([(c, a * v + b) for c, v in strong])
+        w = classify_curve([(c, a * v + b) for c, v in weak])
+        assert s["class"] == w["class"] == "rise-complete", (a, b, s, w)
+        assert s["midpoint_uM"] < w["midpoint_uM"]

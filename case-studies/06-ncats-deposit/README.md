@@ -92,11 +92,30 @@ its own tests — not more threshold tuning against this deposit.
 (`bn fixtures verify`), protocol pre-registered, crosstab published as
 the finding.
 
-**Encoded since (Oct 2026):** `bionexus.labread` now fingerprints the
-normalization frame of every deposited percent table and REFUSES
-dose-response assertions on frames not externally validated —
-self-normalized qHTS deposits (this study's dialect) are refused by
-default with the regime named in the output; `assert_regimes=False` is a
-declared research bypass (this study's own `run.py` uses it, as the
-published negative result predates the gate). The next unshipped piece is
-curve-CLASS shape QC for re-admitting such tables honestly.
+**Encoded since (Oct 2026):** `bionexus.labread` fingerprints the
+normalization frame of every deposited percent table. External-reference
+(validated here, CS05) keeps full IC50 verdicts; self-normalized deposits
+run under a **SHAPE-ONLY regime** — `classify_curve()` (qHTS-lite:
+rise-complete / rise-partial / flat / noisy / falling, with the within-
+curve 50%-of-span midpoint) is affine-invariant, so it is exactly what a
+frame without an external reference may honestly claim. Absolute IC50s
+stay refused (`regime_refusal`), and shape admits must never merge with
+validated verdicts. `assert_regimes=False` remains this study's declared
+research bypass.
+
+Re-admission concordance (measured once on the frozen deposit, classes
+registered beforehand — not tuned):
+
+| NCATS call | rise-complete | rise-partial | flat | noisy | falling |
+|---|---|---|---|---|---|
+| Active (541) | 505 | 22 | 0 | 14 | 0 |
+| Inactive (997) | 114 | 37 | 522 | 204 | 120 |
+| Inconclusive (889) | 606 | 100 | 9 | 172 | 2 |
+
+**97.4% of their actives carry a concentration-dependent shape by our
+blind taxonomy**, and their Inconclusive class is mostly *real risers whose
+evidence falls short* — precisely what shape-only admission expresses
+(responder-like, not verdict). Residual over-call: ~151 of their Inactives
+(fake rises from fluorescence drift steep enough to pass trend>=0.4)
+define this regime's honest ceiling until well-level replicate QC is
+added.

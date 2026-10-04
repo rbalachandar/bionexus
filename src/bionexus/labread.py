@@ -646,6 +646,85 @@ def _pubchem_frame(records: list[dict[str, Any]]) -> str:
     return "external-reference"
 
 
+def _spearman(xs: list[float], ys: list[float]) -> float:
+    n = len(xs)
+    if n < 3:
+        return float("nan")
+
+    def rank(x):
+        order = sorted(range(n), key=lambda i: x[i])
+        r = [0.0] * n
+        i = 0
+        while i < n:
+            j = i
+            while j + 1 < n and x[order[j + 1]] == x[order[i]]:
+                j += 1
+            avg = (i + j) / 2 + 1
+            for k in range(i, j + 1):
+                r[order[k]] = avg
+            i = j + 1
+        return r
+
+    rx, ry = rank(xs), rank(ys)
+    mx, my = sum(rx) / n, sum(ry) / n
+    num = sum((a - mx) * (b - my) for a, b in zip(rx, ry))
+    dx = sum((a - mx) ** 2 for a in rx) ** 0.5
+    dy = sum((b - my) ** 2 for b in ry) ** 0.5
+    return num / (dx * dy) if dx and dy else 0.0
+
+
+def classify_curve(pts: list[tuple[float, float]]) -> dict[str, Any]:
+    """qHTS-lite SHAPE taxonomy (registered, blind; a documented
+    simplification of the class taxonomies NCATS/Incyte screening floors
+    use — monotonic sigmoids vs flat vs noisy vs falling).
+
+    WHY shape, not numbers, in self-normalized frames: those tables had
+    their plate references divided out before deposition, so the 50%-of-
+    what line is undefined — but affine re-normalization preserves
+    monotonicity, span structure, and WITHIN-CURVE midpoints. So the only
+    honest claims available there are relative: is there a
+    concentration-dependent rise (RISE-*), is the 50%-of-span crossing
+    inside the window (a midpoint AC50-estimate in µM), or is this a
+    flatline artifact / falling curve our physics rejects? These
+    claims CANNOT become IC50s — that would smuggle a frame back in.
+    """
+    pts = sorted(pts)
+    vals = [v for _, v in pts]
+    if len(pts) < 4:
+        return {"class": "insufficient", "trend": None, "span": None,
+                "midpoint_uM": None}
+    lo, hi = min(vals), max(vals)
+    span = hi - lo
+    trend = _spearman([c for c, _ in pts], vals)
+    out: dict[str, Any] = {"class": "", "trend": round(trend, 2),
+                           "span": round(span, 1), "midpoint_uM": None}
+    if span < 25:
+        out["class"] = "flat"          # no response (or floor-pinned artifact)
+        return out
+    if trend <= -0.4:
+        out["class"] = "falling"       # opposite of inhibition physics
+        return out
+    if trend < 0.4:
+        out["class"] = "noisy"         # not concentration dependent
+        return out
+    mid = lo + 0.5 * span
+    n_below = sum(1 for v in vals if v < mid)
+    n_above = len(vals) - n_below
+    if n_below >= 2 and n_above >= 2:
+        for (c0, v0), (c1, v1) in zip(pts, pts[1:]):
+            if v0 < mid <= v1 and v1 > v0:
+                out["midpoint_uM"] = round(
+                    c0 + (c1 - c0) * (mid - v0) / (v1 - v0), 5)
+                break
+        out["class"] = "rise-complete"  # full S inside the window
+    elif min(vals) >= mid:
+        out["class"] = "rise-partial-low"  # every dose past mid: potent
+                                           # below the measured window
+    else:
+        out["class"] = "rise-partial-high"  # hasn't reached mid by top dose
+    return out
+
+
 # --------------------------------------------------------------- analysis
 
 def _hill_sse(log_ic50: float, pts: list[tuple[float, float]],
@@ -1056,11 +1135,16 @@ class PlateResult:
             edge = ""
         batch = f" | batch: {self.batch}" if self.batch else ""
         if self.regime:
-            ident += (" | regime: pubchem/{} — validated ({})".format(
-                self.regime["frame"],
-                "CS05") if self.regime.get("validated") else
-                " | regime: pubchem/{} — NOT VALIDATED, verdicts refused "
-                "(CS06)".format(self.regime["frame"]))
+            if self.regime.get("validated"):
+                ident += " | regime: pubchem/{} — validated (CS05)".format(
+                    self.regime["frame"])
+            elif self.regime.get("mode") == "shape-only":
+                ident += (" | regime: pubchem/{} — SHAPE-ONLY admits "
+                          "(no IC50 claims; CS06)".format(
+                              self.regime["frame"]))
+            else:
+                ident += (" | regime: pubchem/{} — NOT VALIDATED, verdicts "
+                          "refused (CS06)".format(self.regime["frame"]))
         head = (f"plate: {self.source} [{self.format}] | "
                 f"wells: {len(self.records)} | controls: {self.analysis['controls_detected']} | "
                 f"{zlabel}{ident}{batch}{edge}")
@@ -1193,12 +1277,32 @@ def read_plate(path: str | Path, max_response: float | None = None,
     analysis = analyze_records([] if refuse else records, max_response)
     if refuse:
         analysis["regime_refusal"] = True
-        regime["note"] = (
-            "REGIME NOT VALIDATED — no dose-response assertions issued on this "
-            "normalization frame (CS06: fixed-reference crossing rules do not "
-            "port to self-normalized qHTS deposits). Records remain faithfully "
-            "standardized; research mode (assert_regimes=False) is for "
-            "declared reproduction studies, never campaign verdicts.")
+        if regime["frame"] == "self-normalized":
+            # SHAPE-ONLY ADMISSION (CS06 re-admission ladder): absolute
+            # IC50 semantics need an external reference this frame does
+            # not have; shape classes are invariant under affine
+            # renormalization, so they are the ONLY claims made here.
+            bys: dict[str, list[tuple[float, float]]] = {}
+            for r in records:
+                bys.setdefault(r["sample"], []).append((r["conc_um"],
+                                                        r["value"]))
+            analysis["shape_only"] = {s: classify_curve(p)
+                                      for s, p in bys.items()}
+            regime["mode"] = "shape-only"
+            regime["note"] = (
+                "REGIME SHAPE-ONLY — absolute IC50/verdict claims are "
+                "refused on self-normalized deposits (no external "
+                "reference); concentration-dependence SHAPE classes "
+                "(rise-complete/partial/flat/noisy/falling) with "
+                "within-curve midpoints are admitted and labeled. "
+                "Never merge shape admits with validated IC50 verdicts.")
+        else:  # unknown frame: no claim at all survives
+            regime["note"] = (
+                "REGIME NOT VALIDATED — no dose-response assertions issued "
+                "on this normalization frame (CS06: fixed-reference "
+                "crossing rules do not port to unvalidated deposits). "
+                "Research mode (assert_regimes=False) is for declared "
+                "reproduction studies, never campaign verdicts.")
 
     analysis_out = analysis
     return PlateResult(path, fmt, records, analysis_out,

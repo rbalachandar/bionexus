@@ -104,7 +104,7 @@
    "abstained": 2,
    "tested_total": 16,
    "pool": 24,
-   "duration_s": 17.0
+   "duration_s": 16.9
   },
   "notes": "recall 1.00 of 12 true actives (0 confident miss(es), 2 abstained)"
  },
@@ -140,7 +140,7 @@
    "mean_err_adaptive_3well": 0.024,
    "mean_err_fixed_4well": 0.09,
    "ci_coverage": "15/16",
-   "duration_s": 2.6
+   "duration_s": 2.5
   },
   "notes": "3 wells beat 4: err 0.024 vs 0.090; CI coverage 15/16 (nominal 15.2)"
  },

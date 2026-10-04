@@ -344,8 +344,16 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   externally-validated frames (CS05), and REFUSES the surface by regime
   name otherwise — CS06's failure encoded as a trust boundary; declared
   research bypass (assert_regimes=False) keeps the study running; engine
-  tests in tests/test_labread_pubchem.py. REMAINING: curve-class shape QC
-  to re-admit self-normalized dialects honestly.
+  tests in tests/test_labread_pubchem.py. Curve-class SHAPE QC now
+  SHIPPED too (qHTS-lite classify_curve: rise-complete/partial/flat/
+  noisy/falling + within-span midpoint, affine-invariant by construction
+  with a bridge test): self-normalized deposits run SHAPE-ONLY (responder
+  admits, IC50s still refused; never merged with validated verdicts).
+  One-shot concordance on the frozen NCATS deposit (classes registered
+  first, not tuned): 97.4% of their actives classify RISE-*; their
+  Inconclusive is mostly real-risers-short-on-evidence; residual over-call
+  ~151/997 (fluorescence drift mimicking a rise) bounds this regime until
+  well-level replicate QC exists. 287 green, evals 0.979.
 
 Explicitly DEPRIORITIZED (until S-T0 lands): new simulator features, more
 modality packs, AssayLoop policy wiring, story-surface polish. The system is
