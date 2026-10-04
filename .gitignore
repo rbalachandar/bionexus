@@ -11,3 +11,5 @@ case-studies/**/.cache/
 .venv/
 case-studies/**/results.json
 case-studies/**/flow_results.json
+case-studies/**/.inbox-*/
+case-studies/*/study.db

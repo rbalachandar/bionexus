@@ -348,6 +348,7 @@ def analyze_records(records: list[dict[str, Any]],
         spread = abs(sum(all_vals) / len(all_vals) - sum(ctrl_vals) / len(ctrl_vals))
         zp = max(-1.0, min(1.0, 1 - 3 * (_std(ctrl_vals) + 1.0) / (spread + sigma_all)))
 
+    GRID_FLOOR_UM = 10 ** -3    # mirrors _hill_fit_ic50's lower grid bound
     compounds: dict[str, Any] = {}
     for sample, vals in by_sample.items():
         if is_control(sample):
@@ -358,6 +359,13 @@ def analyze_records(records: list[dict[str, Any]],
         ci = fit_ic50_ci(pts, max_response) if len(pts) >= 3 else None
         if ci:
             ic50 = ci["ic50"]
+        # LEFT-censoring: saturated plateau, transition below the measurable
+        # window (estimate or CI floor pinned at the grid edge / rounded to
+        # 0.0). A number at the floor is a range statement, not an IC50.
+        left_censored = bool(ic50 is not None and pts) and (
+            ic50 <= GRID_FLOOR_UM * 1.05
+            or bool(ci and ci.get("ci_low") is not None
+                    and ci["ci_low"] <= GRID_FLOOR_UM * 1.05))
         compounds[sample] = {
             "ic50_um": ic50,
             "ic50_ci": (ci["ci_low"], ci["ci_high"]) if ci and ci.get("ci_low")
@@ -365,6 +373,7 @@ def analyze_records(records: list[dict[str, Any]],
             "fit_method": (ci or {}).get("method", "linear-interp"),
             "n_points": len(pts) or len(vals),
             "right_censored": pts and ic50 is None,
+            "left_censored": left_censored,
             "fit_quality": "known-max" if max_response else ("observed-max" if pts else "n/a"),
             "flagged_single_dose": not pts,
         }
@@ -407,10 +416,12 @@ class PlateResult:
                     " pass a concentration-mapped long-format export for IC50 fits)")
         lines = [f"{'compound':<14} {'IC50 (uM)':>10} {'points':>7}  note"]
         for sample, r in compounds.items():
-            ic50 = f"{r['ic50_um']:.2f}" if r["ic50_um"] is not None else (
-                "> range" if r["right_censored"] else "-")
+            ic50 = (f"{r['ic50_um']:.2f}" if r["ic50_um"] is not None else
+                    ("> range" if r["right_censored"] else "<=0.001"))
             note = ("single-dose" if r["flagged_single_dose"] else
-                    "right-censored" if r["right_censored"] else r["fit_quality"])
+                    "right-censored" if r["right_censored"] else
+                    "left-censored (below measurable window)"
+                    if r["left_censored"] else r["fit_quality"])
             lines.append(f"{sample:<14} {ic50:>10} {r['n_points']:>7}  {note}")
         return "\n".join(lines)
 

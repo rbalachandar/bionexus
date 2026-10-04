@@ -36,15 +36,23 @@ class VirtualSynthesizer:
                "mRNA": "transcribed and encapsulated"}
 
     def synthesize(self, candidate: str, smiles: str | None = None,
-                   modality: str = "") -> dict:
+                   modality: str = "", attempt: int = 1) -> dict:
+        """attempt > 1 is a REAL re-synthesis: process re-optimization on a
+        different route run (its own lot seed), recorded separately. One
+        refused batch never silently dooms a candidate that a second
+        process run could deliver — and each attempt is provenance."""
         seed = hashlib.sha256(
-            f"{candidate}|{smiles or ''}".encode()).hexdigest()
+            f"{candidate}|{smiles or ''}|a{attempt}".encode()).hexdigest()
         rng = random.Random(seed)
         if smiles:
             # designed molecules carry real synthetic risk: ~30% of
-            # structures fail purity or yield (deterministic per structure)
+            # structures fail purity or yield (deterministic per structure).
+            # Distribution calibrated to that stated claim: an earlier
+            # uniform purity U[60,99.5] against a 85 gate failed ~2/3 of
+            # batches — a Make stub should not dominate a real-data study
+            # (CS04 caught the intent/behavior mismatch).
             yield_pct = round(5 + rng.random() * 90, 1)
-            purity = round(60 + rng.random() * 39.5, 1)
+            purity = round(78 + rng.random() * 21.5, 1)
         else:
             # virtual candidates without structures are the lab's
             # abstraction — always synthesizable at high quality
@@ -52,7 +60,8 @@ class VirtualSynthesizer:
             purity = round(90 + rng.random() * 9.5, 1)
         ok = purity >= self.min_purity and yield_pct >= self.min_yield
         lot = "lot-" + seed[:8]
-        return {"candidate": candidate, "smiles": smiles or "",
+        return {"attempt": attempt,
+                "candidate": candidate, "smiles": smiles or "",
                 "modality": modality,
                 "action": self.ACTIONS.get(modality.lower().strip(),
                                            "produced"),

@@ -1,0 +1,80 @@
+{
+ "protocol": "prospective-hit2lead",
+ "target": {
+  "name": "EGFR (human, wild-type)",
+  "chembl_target_id": "CHEMBL203",
+  "assay_filter": "binding activities (assay_type=B), standard values converted to pIC50",
+  "source": "ChEMBL web services, fetched 2026-10-04"
+ },
+ "gate": {
+  "metric": "ic50_um",
+  "direction": "min",
+  "threshold": 1.0,
+  "truth_active_rule": "median published pIC50 >= 6.0 (IC50 <= 1 uM, HTS hit bar)"
+ },
+ "blinding": "All compounds below are REMOVED from everything the loop can see: candidate library, surrogate training pool, replay-lab truth. Their published measurements exist in the frozen corpus (proving the removal worked) and are used only in the reveal/scoring step.",
+ "drugs": [
+  {
+   "name": "gefitinib",
+   "chembl_id": "CHEMBL939",
+   "year_approved": 2003,
+   "generation": "1st",
+   "mechanism_class": "reversible 4-anilinoquinazoline",
+   "canonical_smiles": "COc1cc2ncnc(Nc3ccc(F)c(Cl)c3)c2cc1OCCCN1CCOCC1"
+  },
+  {
+   "name": "erlotinib",
+   "chembl_id": "CHEMBL553",
+   "year_approved": 2004,
+   "generation": "1st",
+   "mechanism_class": "reversible 4-anilinoquinazoline (3-ethynylaniline)",
+   "canonical_smiles": "C#Cc1cccc(Nc2ncnc3cc(OCCOC)c(OCCOC)cc23)c1"
+  },
+  {
+   "name": "lapatinib",
+   "chembl_id": "CHEMBL554",
+   "year_approved": 2006,
+   "generation": "dual EGFR/HER2",
+   "mechanism_class": "reversible 4-anilinoquinoline-3-carbonitrile",
+   "canonical_smiles": "CS(=O)(=O)CCNCc1ccc(-c2ccc3ncnc(Nc4ccc(OCc5cccc(F)c5)c(Cl)c4)c3c2)o1"
+  },
+  {
+   "name": "afatinib",
+   "chembl_id": "CHEMBL1173655",
+   "year_approved": 2013,
+   "generation": "2nd",
+   "mechanism_class": "irreversible covalent (acrylamide / Michael acceptor)",
+   "canonical_smiles": "CN(C)C/C=C/C(=O)Nc1cc2c(Nc3ccc(F)c(Cl)c3)ncnc2cc1O[C@H]1CCOC1"
+  },
+  {
+   "name": "dacomitinib",
+   "chembl_id": "CHEMBL2105719",
+   "year_approved": 2018,
+   "generation": "2nd",
+   "mechanism_class": "irreversible covalent (acrylamide / Michael acceptor)",
+   "canonical_smiles": "COc1cc2ncnc(Nc3ccc(F)c(Cl)c3)c2cc1NC(=O)/C=C/CN1CCCCC1"
+  },
+  {
+   "name": "neratinib",
+   "chembl_id": "CHEMBL180022",
+   "year_approved": 2017,
+   "generation": "2nd",
+   "mechanism_class": "irreversible covalent (acrylamide / Michael acceptor)",
+   "canonical_smiles": "CCOc1cc2ncc(C#N)c(Nc3ccc(OCc4ccccn4)c(Cl)c3)c2cc1NC(=O)/C=C/CN(C)C"
+  },
+  {
+   "name": "osimertinib",
+   "chembl_id": "CHEMBL3353410",
+   "year_approved": 2015,
+   "generation": "3rd",
+   "mechanism_class": "irreversible covalent, mutant-selective (T790M; acrylamide)",
+   "canonical_smiles": "C=CC(=O)Nc1cc(Nc2nccc(-c3cn(C)c4ccccc34)n2)c(OC)cc1N(C)CCN(C)C"
+  }
+ ],
+ "honest_limits": [
+  "The corpus is wild-type EGFR potency. The clinical futures of lapatinib (HER2) and osimertinib (T790M selectivity) turn on selectivity axes this target slice cannot see; a WT-potency-only prospective test can only judge the potency claim, and says so.",
+  "ReplayLab plates synthesize the curve SHAPE (Hill response) around the published median IC50; the IC50 is the real measured quantity, the wells are replay with a declared seeded noise model.",
+  "Multi-assay medians mix assay formats (biochemical vs cell); medians are used as truth precisely because single-assay values are format-bound \u2014 the spread is reported per compound.",
+  "ChEMBL documents are not blinded by DATE here: the loop may know the whole published literature around every chemotype EXCEPT the seven held-out molecules themselves. This tests structure-level blinding, not time travel."
+ ]
+}

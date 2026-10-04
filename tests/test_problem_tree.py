@@ -114,18 +114,31 @@ def test_subtree_leaves_nesting():
 
 
 def test_synthesis_deterministic_and_gated():
-    """Make is first-class: same structure -> same batch; failed batches
-    are deterministic and gateable."""
+    """Make is first-class: same (structure, attempt) -> same batch;
+    failures are deterministic per attempt, and a refused batch can be
+    RE-SYNTHESIZED (process re-optimization) — while every attempt stays
+    its own provenance-logged lot."""
     from bionexus.adapters.lab.synthesis import VirtualSynthesizer
     s = VirtualSynthesizer()
     a = s.synthesize("X-1", "c1ccccc1")
     b = s.synthesize("X-1", "c1ccccc1")
-    assert a == b and a["ok"] is True            # clean structures pass
+    assert a == b                                # deterministic per attempt
     fails = [i for i in range(50)
              if not s.synthesize(f"F-{i}", "CC(=O)Oc1ccccc1C")["ok"]]
-    assert 0 < len(fails) < 50                   # real, but not universal
-    again = s.synthesize(f"F-{fails[0]}", "CC(=O)Oc1ccccc1C")
-    assert again["ok"] is False                  # failures are deterministic
+    assert 0 < len(fails) < 50                   # real risk, not universal
+    # intent calibration: roughly 30% of designed structures fail the
+    # first attempt (was ~66-77% before the distribution fix)
+    assert 5 <= len(fails) <= 22
+    f0 = f"F-{fails[0]}"
+    again = s.synthesize(f0, "CC(=O)Oc1ccccc1C")
+    assert again["ok"] is False                  # attempt 1 fails identically
+    second = s.synthesize(f0, "CC(=O)Oc1ccccc1C", attempt=2)
+    assert second["lot"] != again["lot"]         # a re-run is a NEW lot
+    recovered = sum(1 for i in fails
+                    if s.synthesize(f"F-{i}", "CC(=O)Oc1ccccc1C",
+                                    attempt=2)["ok"])
+    assert recovered > 0                         # retries deliver batches
+    assert recovered < len(fails)                # some routes stay dead
 
 
 def test_k_schedule_per_round():

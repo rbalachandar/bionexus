@@ -245,7 +245,48 @@ class AutoAnalysisAgent:
                                 f"{crit.metric} {prop_value} {unit} vs "
                                 f"threshold {crit.threshold}")
                     continue
-                if match and hyp.status in ("proposed", "designed", "tested") and match["ic50_um"]:
+                if (match and hyp.status in ("proposed", "designed", "tested")
+                        and (not match["ic50_um"]
+                             or match.get("right_censored")
+                             or match.get("left_censored"))):
+                    # CENSORED = unmeasurable on this ladder: transition above
+                    # the top (weaker than measurable) or a saturated plateau
+                    # at the fit-grid floor (stronger than measurable). The
+                    # fit refuses a number — honest — but a hypothesis left
+                    # silently 'tested' is an implicit claim. ABSTAIN
+                    # explicitly, with the censoring recorded as the reason.
+                    hyp.observed_value = None
+                    hyp.observed_ci = None
+                    hyp.evidence_run_id = event.path.stem
+                    hyp.qc_passed = (result.z_prime or 0) >= QC_ZPRIME_FLOOR
+                    hyp.status = "inconclusive"
+                    _why = ("left-censored at the fit-grid floor: true IC50 "
+                            "is below the measurable window (range "
+                            "statement, not an IC50)"
+                            if match.get("left_censored")
+                            else "right-censored: no measurable transition "
+                                 "below the top dose (weaker than this "
+                                 "ladder resolves)")
+                    if hasattr(self.tracker, "record_outcome"):
+                        from bionexus.derivation import build
+                        inst, ver = self._instrument()
+                        self.tracker.record_outcome(hyp, extra={
+                            "derivation": build(
+                                instrument=inst, version=ver,
+                                quantity=getattr(result, "response_unit", None),
+                                counts={"wells": len(result.records)},
+                                metric=hyp.criteria.metric if hyp.criteria else None,
+                                method=_why,
+                                ci=None,
+                                criteria_metric=hyp.criteria.metric if hyp.criteria else None,
+                                criteria_direction=hyp.criteria.direction if hyp.criteria else None,
+                                criteria_threshold=hyp.criteria.threshold if hyp.criteria else None)})
+                    verdicts.append((hyp.hypothesis_id, hyp.candidate,
+                                     hyp.status, None))
+                    self.notify(f"hypothesis {hyp.hypothesis_id} "
+                                f"({hyp.candidate}): INCONCLUSIVE — {_why}; "
+                                f"no claim either way")
+                elif match and hyp.status in ("proposed", "designed", "tested") and match["ic50_um"]:
                     # attach evidence directly (measurement already fitted)
                     hyp.observed_value = match["ic50_um"]
                     hyp.observed_ci = match.get("ic50_ci")

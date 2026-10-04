@@ -21,16 +21,21 @@ def fetch_target_activities(target_chembl_id: str = "CHEMBL203",
                             cache_dir: str | Path = ".data",
                             max_records: int = 20000) -> Path:
     """Download published binding activities (pChEMBL >= 5 preferred) for a
-    target; cache as CSV. Returns the cache path."""
+    target; cache as CSV. Returns the cache path.
+
+    Pagination follows ChEMBL's raw `page_meta.next` URL and rows are
+    deduplicated by activity_chembl_id — re-slicing the cursor string
+    silently repeated the first page and duplicated training rows
+    (the CS02/03 pagination bug, fixed at the source)."""
     cache = Path(cache_dir) / f"chembl_{target_chembl_id}.csv"
     if cache.exists():
         return cache
     cache.parent.mkdir(parents=True, exist_ok=True)
     rows: list[dict[str, str]] = []
-    cursor = ""
-    while len(rows) < max_records:
-        url = (f"{BASE}?target_chembl_id={target_chembl_id}"
-               f"&assay_type=B&limit=1000" + (f"&cursor={cursor}" if cursor else ""))
+    seen: set[str] = set()
+    url: str | None = (f"{BASE}?target_chembl_id={target_chembl_id}"
+                       "&assay_type=B&limit=1000")
+    while url and len(rows) < max_records:
         req = urllib.request.Request(url, headers={"Accept": "application/json"})
         with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
             data = json_loads(resp.read())
@@ -54,12 +59,21 @@ def fetch_target_activities(target_chembl_id: str = "CHEMBL203",
                 continue
             if math.isnan(pic50):
                 continue
+            # dedup by CONTENT — repeated pages replay identical rows
+            # (activity_chembl_id is null in list responses; and identical
+            # compound/assay/value IS the same measurement)
+            key = f"{smiles}|{pic50:.3f}|{a.get('assay_chembl_id', '')}"
+            if key in seen:
+                continue
+            seen.add(key)
             rows.append({"smiles": smiles, "pic50": f"{pic50:.3f}",
                          "assay": a.get("assay_chembl_id", "")})
-        meta = data.get("page_meta", {})
-        cursor = meta.get("next", "") and meta["next"].split("cursor=")[-1]
-        if not cursor or not activities:
-            break
+        # follow the RAW next URL — do not re-derive the cursor
+        url = data.get("page_meta", {}).get("next")
+        if url and url.startswith("/"):
+            url = "https://www.ebi.ac.uk" + url   # host-relative next links
+        if not activities:
+            url = None
     with cache.open("w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["smiles", "pic50", "assay"])
         w.writeheader()

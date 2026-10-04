@@ -82,6 +82,9 @@ class CampaignConfig:
                                         # picks the batch, gates still decide
     inbox: str | Path = ".data/inbox"
     flywheel: Any = None                # shared Flywheel (default: local db)
+    synthesis_retries: int = 1      # extra Make attempts on a refused
+                                    # batch (process re-optimization);
+                                    # each attempt is provenance-recorded
     autonomy: Autonomy = "gate"
     poll_secs: float = 0.5
     actor_name: str = "campaign"
@@ -415,24 +418,32 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             if synth is None:
                 from bionexus.adapters.lab.synthesis import \
                     VirtualSynthesizer
-                synth = VirtualSynthesizer().synthesize(
-                    h.candidate, (h.metadata or {}).get("smiles"),
-                    modality=(h.metadata or {}).get("modality", ""))
+                vs = VirtualSynthesizer()
+                for att in range(1 + max(0, cfg.synthesis_retries)):
+                    synth = vs.synthesize(
+                        h.candidate, (h.metadata or {}).get("smiles"),
+                        modality=(h.metadata or {}).get("modality", ""),
+                        attempt=att + 1)
+                    store.append(record_for(
+                        protocol.envelope, EventType.synthesis_complete,
+                        system_actor("synthesis"),
+                        artifact=Artifact(artifact_id=f"syn-{synth['lot']}",
+                                          kind=ArtifactKind.other, uri="",
+                                          metadata=dict(synth)),
+                        decision={"candidate": h.candidate,
+                                  "yield_pct": synth["yield_pct"],
+                                  "purity": synth["purity"],
+                                  "ok": synth["ok"],
+                                  "lot": synth["lot"],
+                                  "attempt": att + 1}))
+                    say(f"{synth.get('action', 'synthesized')} "
+                        f"{h.candidate}: lot {synth['lot']} "
+                        f"yield {synth['yield_pct']}% purity "
+                        f"{synth['purity']}%"
+                        + (f" (attempt {att + 1})" if att else ""))
+                    if synth["ok"]:
+                        break
                 synth_cache[h.candidate] = synth
-                store.append(record_for(
-                    protocol.envelope, EventType.synthesis_complete,
-                    system_actor("synthesis"),
-                    artifact=Artifact(artifact_id=f"syn-{synth['lot']}",
-                                      kind=ArtifactKind.other, uri="",
-                                      metadata=dict(synth)),
-                    decision={"candidate": h.candidate,
-                              "yield_pct": synth["yield_pct"],
-                              "purity": synth["purity"], "ok": synth["ok"],
-                              "lot": synth["lot"]}))
-                say(f"{synth.get('action', 'synthesized')} "
-                    f"{h.candidate}: lot {synth['lot']} "
-                    f"yield {synth['yield_pct']}% purity "
-                    f"{synth['purity']}%")
             if not synth["ok"]:
                 say(f"batch for {h.candidate} refused into Test: "
                     f"{synth['note']}")

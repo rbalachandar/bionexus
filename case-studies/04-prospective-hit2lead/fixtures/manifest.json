@@ -1,0 +1,17 @@
+{
+ "frozen_at": "2026-10-04T13:47:42",
+ "entries": [
+  {
+   "path": "chembl_CHEMBL203.csv",
+   "sha256": "f029e0b2b0a38010ae963fd5264ca8c996c02e32ae6ded408afabf9aec41e1b2",
+   "bytes": 2152563,
+   "target": "case-studies/04-prospective-hit2lead/.cache/chembl_CHEMBL203.csv"
+  },
+  {
+   "path": "heldout.json",
+   "sha256": "6976044e124d7bce7eb6fb7b91bba87f90f381f41095be234d5a9ded2e7473fb",
+   "bytes": 3539,
+   "target": "case-studies/04-prospective-hit2lead/heldout.json"
+  }
+ ]
+}

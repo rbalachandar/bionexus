@@ -80,9 +80,12 @@ def review_campaign(recs) -> dict:
 
         # 1. label vs observation vs gate — direction-aware: min-metrics
         # (ic50) want observed below the gate; max-metrics (tensile
-        # strength, t_half, yield) want it above. Inconclusive is exempt.
-        worse_than_gate = (observed > gate if direction == "min"
-                           else observed < gate)
+        # strength, t_half, yield) want it above. Inconclusive is exempt,
+        # and an abstention may carry NO observation (censored plates):
+        # compute the comparison only when a number exists.
+        worse_than_gate = (observed is not None and gate is not None
+                           and (observed > gate if direction == "min"
+                                else observed < gate))
         if verdict in ("validated", "confirmed") and observed is not None \
                 and gate is not None and worse_than_gate:
             if not (ci and ci[0] <= gate <= ci[1]):
