@@ -52,7 +52,7 @@
      "E-12"
     ]
    },
-   "duration_s": 6.6
+   "duration_s": 6.5
   },
   "notes": "1.0 confident-correct \u00b7 0.5 honest abstain \u00b7 0 wrong"
  },
@@ -74,7 +74,7 @@
   "metrics": {
    "confirmed": 1,
    "with_agreement": 1,
-   "duration_s": 6.5
+   "duration_s": 6.4
   },
   "notes": "no confirmations at all -> 0 (mechanism unused)"
  },
@@ -189,7 +189,7 @@
      "confirmed"
     ]
    },
-   "duration_s": 9.6
+   "duration_s": 9.5
   },
   "notes": "unstable verdicts flag borderline evidence \u2014 reported, not hidden"
  },
@@ -203,7 +203,7 @@
    "budget": 20,
    "rollup_recorded": true,
    "root": "partial",
-   "duration_s": 6.8
+   "duration_s": 6.7
   },
   "notes": "over-eager decomposition capped; leaves could not overspend the tree"
  },

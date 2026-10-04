@@ -27,7 +27,7 @@ export function Skeleton({ w = '100%', h = 14, style }: {
 
 /** Empty state: icon + copy + optional action. */
 export function EmptyState({ icon, title, hint, action }: {
-  icon?: ReactNode; title: string; hint?: string; action?: ReactNode
+  icon?: ReactNode; title: string; hint?: ReactNode; action?: ReactNode
 }) {
   return (
     <div className="card" style={{

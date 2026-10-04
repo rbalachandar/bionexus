@@ -247,13 +247,33 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   evals unchanged 0.979.
 
 ### S-T2 — Adoption mechanics (the payoff must be felt in 10 minutes)
-- [ ] **Onboarding that engineers the moment**: first-run guided campaign
+- [x] **Onboarding that engineers the moment**: first-run guided campaign
   with a seeded borderline compound where the UI visibly abstains ("CI
   straddles the gate — we do not claim this") and a fake hit the
   orthogonal confirmation REFUTES. Scientists adopt process discipline at
   the speed they feel it save them; the pre-registration fields
   (mechanism/refutation/citation) are a compliance tax until that moment
   lands. Ship as the default `bn demo` / new-workbench first screen.
+  SHIPPED (Oct 2026): `bionexus/demo.py` + **`bn demo`** — a curated
+  scripted campaign (simulator seed 19, gate 10 uM, found by a
+  reproducible search of the seeded worlds) run ENTIRELY through
+  production machinery (HypothesisTracker → lab → AutoAnalysisAgent
+  orthogonal confirmation → CI-aware verdicts → hash-chain), engineered
+  to land the moment every run:
+  **BORDER** measures 7.27 uM with CI 6.72–11.38 straddling the gate —
+  the system ABSTAINS, and abstains AGAIN when the orthogonal method
+  agrees on the number but not the decision;
+  **FALSER** preliminary 4.89 [4.77–6.21] — the kind of number that gets
+  a slide — orthogonal read 7.46 [7.27–8.98], no CI overlap (rule
+  recorded), preliminary call REFUTED on the record;
+  **WINNER** confirmed on agreement. Narration prints first, the chain
+  lands in `.data/demo.db` (verify_chain OK, 29 records), `--html`
+  renders the full diary, exit code asserts the moments landed.
+  Workbench first screen now LEADS with `bn demo` (30 s) then
+  `bn read your-plate.csv` on the real vendor exports shipped in S-T0.2.
+  Numbers labeled simulated; the discipline is production.
+  3 tests (`tests/test_demo_moment.py`: moments + determinism + CLI
+  exit), suite 274 green, evals unchanged 0.979, SPA build clean.
 - [ ] **Evals are the product pitch**: README + workbench lead with the
   leaderboard and the FAILING-task honesty (verdict-honesty,
   confirmation-coverage, the adaptive-dose negative result) BEFORE any

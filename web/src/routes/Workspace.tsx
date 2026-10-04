@@ -286,7 +286,14 @@ export default function Workspace({ initialForm = false }: {
         <EmptyState
           icon={<Target size={28} />}
           title="No programs yet"
-          hint="Define a program — objective, gate, modality — then launch an autonomous campaign or the guided wizard."
+          hint={<>First run: in a terminal, <code className="mono">bn demo</code>
+            {' '}— 30 seconds that show the system ABSTAINING on a borderline
+            CI and REFUTING its own fake hit (simulated numbers, the real
+            verdict machinery). Then bring your own data:
+            {' '}<code className="mono">bn read your-plate.csv</code>
+            {' '}works on actual Tecan/BioTek exports. Or define a program
+            below — objective, gate, modality — and launch an autonomous
+            campaign or the guided wizard.</>}
           action={
             <button className="primary" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}
               onClick={() => setShowForm(true)}>

@@ -224,6 +224,33 @@ def cmd_read(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_demo(args: argparse.Namespace) -> int:
+    import json as _json
+
+    from bionexus.demo import EXPECTED, run_demo
+
+    print("BioNexus demo — a scripted campaign on the REAL machinery. "
+          "All numbers SIMULATED; the discipline is production.")
+    rep = run_demo(db_path=args.db, html_path=args.html, echo=not args.quiet)
+    print()
+    for line in rep["narration"]:
+        print("  * " + line)
+    ok = rep["verdicts"] == EXPECTED
+    print(f"\nverdicts: {rep['verdicts']} "
+          f"({'the two moments landed' if ok else 'UNEXPECTED — demo drift?'})")
+    print(f"provenance: {rep['records']} hash-chained records on "
+          f"'{rep['branch']}' in {rep['db']} · chain verified: "
+          f"{'OK' if rep['chain_ok'] else 'PROBLEMS'}")
+    if args.html:
+        print(f"diary: {args.html}")
+    print("next: bn read <your-plate.csv> — the same verdict machinery runs "
+          "on YOUR data (try tests/data/instruments/ exports)")
+    if args.json:
+        print(_json.dumps({k: v for k, v in rep.items() if k != "lines"},
+                          indent=1, default=str))
+    return 0 if ok and rep["chain_ok"] else 1
+
+
 def cmd_ingest(args: argparse.Namespace) -> int:
     from bionexus.flywheel import Flywheel
     from bionexus.ingest import ingest_eln
@@ -716,6 +743,20 @@ def main(argv: list[str] | None = None) -> int:
                        help="also write a self-contained HTML report")
     prove.add_argument("--eln", help="export branch as ELN CSV (+ .json sidecar)")
     prove.set_defaults(func=cmd_prove)
+
+    demo = sub.add_parser("demo",
+                          help="guided first run: watch the system ABSTAIN on "
+                               "a borderline result and REFUTE its own fake "
+                               "hit (simulated numbers, real machinery)")
+    demo.add_argument("--db", default=None,
+                      help="where to write the demo chain (default "
+                           ".data/demo.db, overwritten)")
+    demo.add_argument("--html", default=None,
+                      help="also render the campaign diary as HTML")
+    demo.add_argument("--quiet", action="store_true",
+                      help="suppress the live campaign log")
+    demo.add_argument("--json", action="store_true")
+    demo.set_defaults(func=cmd_demo)
 
     ing = sub.add_parser("ingest",
                          help="import institutional memory: an ELN CSV "
