@@ -325,6 +325,19 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   conflict rule on the way). 2 hermetic parser tests; 281 suite green,
   evals unchanged. The human half (named user, workflow friction) remains
   open by definition.
+  CS06 EXTENSION (same month): a MODERN deposit — NCATS ALDH3A1 qHTS
+  (AID 2061307, deposited 2025-09-13, 2,427 reassay curves) — scored as a
+  NEGATIVE RESULT and published as one: fixed-reference crossing+CI rules
+  do NOT port to internally self-normalized qHTS percent tables (ρ=0.107;
+  216 of their Inactives pass as ours; their AI's curve-CLASS taxonomy is
+  the discriminator our thresholds can't be). The pilot found exactly the
+  friction it exists to find: three deposition dialects now characterized
+  (external-reference %inhibition + meta-row doses [Jacobs];
+  self-normalized %Activity + header-embedded doses + autofluorescence
+  modes [NCATS]), two engine bugs caught by real data (scale inversion,
+  degenerate flat-line fit at known-max), polarity-refusal + range-claim
+  disciplines registered BEFORE seeing the crosstab. Engine follow-up
+  (own ticket): normalization-frame detection + curve-class shape QC.
 
 Explicitly DEPRIORITIZED (until S-T0 lands): new simulator features, more
 modality packs, AssayLoop policy wiring, story-surface polish. The system is

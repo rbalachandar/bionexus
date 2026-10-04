@@ -1,0 +1,24 @@
+{
+ "study": "CS06 - NCATS deposit pilot (proxy lab, post-cutoff)",
+ "deposition": {
+  "aid": 2061307,
+  "title": "qHTS for Inhibitors of the Aldehyde Dehydrogenase Family (ALDH1A2, ALDH1A3, ALDH2, ALDH3A1) \u2014 ALDH3A1 reassay 'aldh3a1-f'",
+  "source": "NCATS (primary depositor; qHTS AI analysis)",
+  "deposit_date": "2025-09-13",
+  "url": "https://pubchem.ncbi.nlm.nih.gov/bioassay/2061307",
+  "n_compounds": 2427,
+  "deposited_calls": {
+   "Active": 541,
+   "Inactive": 997,
+   "Inconclusive": 889
+  }
+ },
+ "claim_under_test": "NCATS' own ACTIVE/INACTIVE/INCONCLUSIVE calls from 16-point resorufin qHTS curves \u2014 no paper needed: the depositor's judgment IS the external claim",
+ "registered_gate_uM": 1.0,
+ "note_scale": "PERCENT-ACTIVITY columns (decreasing for inhibitors; can go NEGATIVE past full inhibition) \u2014 labread flips to ascending effect scale and DISCLOSES the flip; CS05 dialect (meta-row doses, %inhibition) unaffected (regression-checked bit-identical)",
+ "files": {
+  "aid_2061307.csv": {
+   "sha256": "e26d1eb52eb911a3f04de45a3abca535052bd0d8179c502f1f39e50cdea915f3"
+  }
+ }
+}

@@ -54,3 +54,48 @@ def test_pubchem_fit_recovers_the_strong_compound(tmp_path):
     # censoring) or one far above the tested range — never an "Active"
     c2 = comp["SID1002"]["ic50_um"]
     assert c2 is None or c2 > 100.0
+
+
+# ---------------------------------------------------------------- dialect B
+# NCATS qHTS style (AID 2061307, 2025): doses EMBEDDED in header names,
+# percent-ACTIVITY scale (decreasing for inhibitors, negative past full
+# kill), sparse reassay curves, no usable RESULT_ATTR_CONC meta rows.
+NC = (
+    "PUBCHEM_RESULT_TAG,PUBCHEM_SID,PUBCHEM_CID,PUBCHEM_EXT_DATASOURCE_SMILES,"
+    "PUBCHEM_ACTIVITY_OUTCOME,Fit_LogAC50,"
+    "Activity at 0.001 uM,Activity at 0.01 uM,Activity at 1 uM,"
+    "Activity at 10 uM,Activity at 100 uM\n"
+    "3,3001,60001,CCOc1ccccc1,Active,-7.0,101,99,60,-58,-210\n"
+    "4,3002,60002,CCN,Inactive,,100,,104,98,101\n"
+)
+
+
+def test_pubchem_dialect_b_embedded_doses_and_activity_flip(tmp_path):
+    f = tmp_path / "ncats.csv"
+    f.write_text(NC)
+    assert detect_format(f) == "pubchem"
+    res = read_plate(f, max_response=100.0)
+    u = res.response_unit
+    assert "flipped" in u  # disclosure: activity columns inverted to effect
+    by = {}
+    for r in res.records:
+        by.setdefault(r["sample"], {})[r["conc_um"]] = r["inhibition_pct"]
+    # 101% activity at 0.001 uM -> -1% inhibition; -58% activity -> 158% inh
+    assert by["SID3001"][0.001] == -1.0
+    assert by["SID3001"][10.0] == 158.0
+    assert 0.01 not in by["SID3002"]       # sparse: empty well stays absent
+    comp = res.analysis["compounds"]
+    assert comp["SID3001"]["ic50_um"] is not None
+    c2 = comp["SID3002"]["ic50_um"]
+    assert c2 is None or c2 > 100.0
+
+
+def test_pubchem_refuses_anonymous_percent_columns(tmp_path):
+    # no meta conc row, no dose-named headers: parser must refuse, NOT guess
+    rows = ["PUBCHEM_RESULT_TAG,PUBCHEM_SID,PUBCHEM_CID,"
+            "PUBCHEM_EXT_DATASOURCE_SMILES,RESULT_5,RESULT_6",
+            "1,1,1,CCO,10,20,40"]
+    f = tmp_path / "anon.csv"
+    f.write_text("\n".join(rows) + "\n")
+    res = read_plate(f, max_response=100.0)
+    assert res.records == []

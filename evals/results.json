@@ -63,7 +63,7 @@
   "metrics": {
    "straddling_ci": 2,
    "violations": 0,
-   "duration_s": 10.1
+   "duration_s": 10.2
   },
   "notes": "bar at E-03's true IC50 (10.75 uM); 2 borderline CIs, 0 overconfident verdicts"
  },
@@ -189,7 +189,7 @@
      "confirmed"
     ]
    },
-   "duration_s": 9.4
+   "duration_s": 9.5
   },
   "notes": "unstable verdicts flag borderline evidence \u2014 reported, not hidden"
  },
@@ -203,7 +203,7 @@
    "budget": 20,
    "rollup_recorded": true,
    "root": "partial",
-   "duration_s": 6.7
+   "duration_s": 6.8
   },
   "notes": "over-eager decomposition capped; leaves could not overspend the tree"
  },

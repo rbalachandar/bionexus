@@ -472,20 +472,43 @@ def bind_layout(records: list[dict[str, Any]], layout: str | Path) -> int:
     return bound
 
 
+_DOSE_NAME = re.compile(r"at\s+([0-9][0-9.eE+-]*)\s*(nM|uM|\u00b5M)", re.IGNORECASE)
+_ASCENDING = ("inhibit",)
+_DESCENDING = ("activity", "response", "control", "% ctrl")
+
+
+def _scale_of(name: str) -> str:
+    low = name.lower()
+    if any(k in low for k in _ASCENDING):
+        return "inhibition"      # rises with dose: our native effect scale
+    if any(k in low for k in _DESCENDING):
+        return "activity"        # falls with dose: flip to 100 - x
+    return "unknown"
+
+
 def _parse_pubchem(rows: list[list[str]],
                    unit_out: dict | None = None) -> list[dict[str, Any]]:
     """Parse a PubChem deposited assay table (the submitter's own upload,
     REST-exported) into standardized records — STRUCTURALLY BLIND: only
-    identity columns (SID/CID/SMILES) and the raw PERCENT value columns
-    are read; PUBCHEM_ACTIVITY_OUTCOME and the submitter's IC50/Hill
+    identity columns (SID/CID/SMILES) and the raw percentage value columns
+    are read; PUBCHEM_ACTIVITY_OUTCOME and the submitter's IC50/Hill/Fit
     columns are never touched here. Scoring against those answer-key
     columns must happen downstream, explicitly.
 
-    The dose ladder lives in the `RESULT_ATTR_CONC_*` meta rows (the REST
-    header names only some columns — real deposition dirt); values are the
-    submitter's %inhibition, which IS this library's ascending effect
-    scale (the Hill model expects response rising with dose toward
-    max_response — no inversion).
+    Two deposition dialects (both real, both seen in the wild):
+      A. Jacobs/MLPCN style — dose ladder in `RESULT_ATTR_CONC_*` meta
+         rows; the REST header may truncate the value-column NAMES, so
+         the meta row is the truth (unit suffix in the tag: MICROMOL or
+         NANOMOLAR).
+      B. NCATS qHTS style — doses embedded in header names
+         ('Activity at 0.233 uM'), no usable meta rows, and on a
+         PERCENT-**ACTIVITY** scale (decreasing for inhibitors, often
+         negative past full inhibition) — detected by the column name and
+         flipped onto the ascending effect scale, with the flip DISCLOSED
+         in unit_out['scale'].
+    Scale polarity by name: 'Inhibit*' -> as-is; 'Activity/Response/
+    Control*' -> 100 - x. Unknown-polarity columns are refused (no silent
+    inversion — a mis-signed curve is worse than none).
     """
     header = [c.strip() for c in rows[0]]
 
@@ -507,21 +530,53 @@ def _parse_pubchem(rows: list[list[str]],
                 conc_row = r            # micromolar preferred if mixed
         elif tag == "RESULT_UNIT" and unit_row is None:
             unit_row = r
-    if conc_row is None or smi_i < 0:
+    pcols: list[tuple[int, float, str]] = []      # (col, uM, scale-name)
+    if conc_row is not None and any(_is_number(c) for c in conc_row[1:]):
+        nano = "NANO" in conc_row[0].upper()
+        for j, c in enumerate(conc_row):
+            if j == 0 or not c.strip() or not _is_number(c):
+                continue
+            if (unit_row is not None and j < len(unit_row)
+                    and unit_row[j].strip().upper().startswith("PERCENT")):
+                pcols.append((j, float(c) / 1000.0 if nano else float(c),
+                              _scale_of(header[j] if j < len(header) else "")))
+    else:  # dialect B: doses in the header names themselves
+        for j, name in enumerate(header):
+            m = _DOSE_NAME.search(name)
+            if m:
+                um = float(m.group(1))
+                if m.group(2).lower() == "nm":
+                    um /= 1000.0
+                pcols.append((j, um, _scale_of(name)))
+    if not pcols or smi_i < 0:
         return []
-    pcols: list[tuple[int, float]] = []
-    for j, c in enumerate(conc_row):
-        if j == 0 or not c.strip() or not _is_number(c):
-            continue
-        is_percent = (unit_row is not None and j < len(unit_row)
-                      and unit_row[j].strip().upper().startswith("PERCENT"))
-        if is_percent:
-            um = float(c)
-            if tag_row_unit(conc_row[0]) == "nano":
-                um /= 1000.0
-            pcols.append((j, um))
+    # dialect A's REST header truncation leaves SOME value columns unnamed
+    # (scale unknown from the name). They belong to the same measured family
+    # as the named ones — inherit a single consistent named scale; refuse if
+    # the named columns themselves disagree or none are nameable.
+    named = {s for _, _, s in pcols if s != "unknown"}
+    if len(named) > 1:
+        if unit_out is not None:
+            unit_out["refused"] = ("mixed scale polarity in one deposition: "
+                                   + ", ".join(sorted(named)))
+        return []
+    if len(named) == 1:
+        inherit = named.pop()
+        pcols = [(j, c, inherit if s == "unknown" else s)
+                 for j, c, s in pcols]
+    unknown = {s for _, _, s in pcols if s == "unknown"}
+    if unknown:  # wholly anonymous percent columns: no safe polarity
+        if unit_out is not None:
+            unit_out["refused"] = ("value columns without recognizable "
+                                   "scale polarity: " + ", ".join(sorted(unknown)))
+        return []
+    scales = sorted({s for _, _, s in pcols})
     if unit_out is not None:
-        unit_out["unit"] = "% inhibition (ascending effect scale)"
+        flipped = [s for s in scales if s == "activity"]
+        unit_out["unit"] = ("% inhibition (ascending effect scale"
+                           + ("; activity columns flipped: 100 - x)"
+                              if flipped else ")"))
+        unit_out["scale"] = "+".join(scales)
         unit_out["n_doses"] = len(pcols)
     records: list[dict[str, Any]] = []
     for r in rows:
@@ -531,13 +586,14 @@ def _parse_pubchem(rows: list[list[str]],
         cid = r[cid_i].strip() if 0 <= cid_i < len(r) else ""
         smi = r[smi_i].strip() if smi_i < len(r) else ""
         name = f"SID{sid}" if sid else (f"CID{cid}" if cid else smi[:16])
-        for j, um in pcols:
+        for j, um, scale in pcols:
             if j >= len(r) or not _is_number(r[j]):
-                continue
-            inh = float(r[j])
+                continue          # sparse curves: unfilled wells stay absent
+            raw = float(r[j])
+            inh = 100.0 - raw if scale == "activity" else raw
             records.append({"well": "", "sample": name, "conc_um": um,
                             "value": round(inh, 3), "control": False,
-                            "inhibition_pct": inh, "smiles": smi,
+                            "inhibition_pct": round(inh, 3), "smiles": smi,
                             "cid": cid})
     return records
 

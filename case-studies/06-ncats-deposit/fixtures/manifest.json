@@ -1,0 +1,11 @@
+{
+ "frozen_at": "2026-10-04T20:52:31",
+ "entries": [
+  {
+   "path": "aid_2061307.csv",
+   "sha256": "e26d1eb52eb911a3f04de45a3abca535052bd0d8179c502f1f39e50cdea915f3",
+   "bytes": 1035672,
+   "target": ".data/cs06_raw/aid_2061307.csv"
+  }
+ ]
+}
