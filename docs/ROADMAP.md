@@ -338,6 +338,14 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   degenerate flat-line fit at known-max), polarity-refusal + range-claim
   disciplines registered BEFORE seeing the crosstab. Engine follow-up
   (own ticket): normalization-frame detection + curve-class shape QC.
+  UPDATE (Oct 2026): frame detection + REGIME GATE now SHIPPED —
+  read_plate fingerprints deposited percent tables (low-dose baseline
+  structure: external-reference vs self-normalized floor), asserts only in
+  externally-validated frames (CS05), and REFUSES the surface by regime
+  name otherwise — CS06's failure encoded as a trust boundary; declared
+  research bypass (assert_regimes=False) keeps the study running; engine
+  tests in tests/test_labread_pubchem.py. REMAINING: curve-class shape QC
+  to re-admit self-normalized dialects honestly.
 
 Explicitly DEPRIORITIZED (until S-T0 lands): new simulator features, more
 modality packs, AssayLoop policy wiring, story-surface polish. The system is

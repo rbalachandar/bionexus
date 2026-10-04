@@ -99,3 +99,42 @@ def test_pubchem_refuses_anonymous_percent_columns(tmp_path):
     f.write_text("\n".join(rows) + "\n")
     res = read_plate(f, max_response=100.0)
     assert res.records == []
+
+
+# ------------------------------------------------------------- regime gate
+# CS06 lesson encoded: deposited percent tables are fingerprinted for their
+# normalization frame; only externally-validated frames may assert verdicts.
+
+NC_INT = (
+    "PUBCHEM_RESULT_TAG,PUBCHEM_SID,PUBCHEM_CID,PUBCHEM_EXT_DATASOURCE_SMILES,"
+    "PUBCHEM_ACTIVITY_OUTCOME,Fit_LogAC50,"
+    "Activity at 0.001 uM,Activity at 0.01 uM,Activity at 1 uM,"
+    "Activity at 10 uM,Activity at 100 uM\n"
+    "1,101,1,CCO,Active,,2,1.5,0.4,-0.6,-1.2\n"
+    "2,102,2,CCN,Active,,1,0,-1,2,0.5\n"
+)
+
+
+def test_regime_gate_refuses_self_normalized(tmp_path):
+    f = tmp_path / "internal.csv"
+    f.write_text(NC_INT)
+    res = read_plate(f, max_response=100.0)
+    assert res.regime["frame"] == "self-normalized"
+    assert res.regime["validated"] is False
+    assert res.analysis["regime_refusal"] is True
+    assert res.analysis["compounds"] == {}          # NO assertions issued
+    assert len(res.records) == 10                    # records stay faithful
+    assert "NOT VALIDATED" in str(res)
+    bypass = read_plate(f, max_response=100.0, assert_regimes=False)
+    assert bypass.analysis["compounds"], "research mode fits"
+    assert "regime_refusal" not in bypass.analysis
+
+
+def test_regime_gate_passes_validated_external(tmp_path):
+    f = tmp_path / "external.csv"
+    f.write_text(MINI)
+    res = read_plate(f, max_response=100.0)
+    assert res.regime["frame"] == "external-reference"
+    assert res.regime["validated"] is True
+    assert "CS05" in res.regime["validation_source"]
+    assert res.analysis["compounds"], "validated regime keeps asserting"

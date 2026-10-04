@@ -17,6 +17,12 @@ Supported today:
   dose-response fits: read_plate(path, layout=...)
 - instrument identity metadata (reader, device, firmware, date) extracted
   from the preamble for honest provenance: PlateResult.instrument
+- native PubChem deposited tables (two dialects: meta-row dose ladders and
+  header-embedded doses; %inhibition or %Activity polarity, flips
+  disclosed) — with a REGIME GATE: the normalization frame is fingerprinted
+  and only externally-validated frames assert verdicts (CS05 validated
+  external-reference; self-normalized qHTS tables refuse the surface, per
+  CS06's published negative result). Records always stay standardized.
 - BioNexus imaging evidence (.npy well images via the imaging lab)
 - Excel (.xlsx) via the optional openpyxl extra
 
@@ -602,6 +608,44 @@ def tag_row_unit(tag: str) -> str:
     return "nano" if "NANO" in tag.upper() else "micro"
 
 
+def _pubchem_frame(records: list[dict[str, Any]]) -> str:
+    """Fingerprint the normalization frame of a deposited percent table.
+
+    External-reference deposits (Jacobs/MLPCN style; validated by CS05
+    against the lab's own calls) start most compounds at the ZERO end of
+    the effect scale: the lowest measured dose of each curve reads ~0%
+    inhibition (compound present, enzyme still running).
+    Internally self-normalized deposits (NCATS qHTS style; CS06 showed a
+    fixed 50%-crossing rule CANNOT port to them) start at the collapsed
+    assay floor — most curves' lowest dose already sits at/above full
+    effect because the plate's own DMSO/bottom references were divided
+    out before deposition.
+
+    Heuristic (documented, deliberately blunt): median lowest-dose
+    response > 55 — or > 50% of compounds flat-saturated (range < 25 with
+    min > 75) — is a self-normalized fingerprint. This is a refusal
+    trigger, not a claim: 'unknown' behaves like self-normalized.
+    """
+    by: dict[str, list[tuple[float, float]]] = {}
+    for r in records:
+        by.setdefault(r["sample"], []).append((r["conc_um"], r["value"]))
+    firsts, flat = [], 0
+    for pts in by.values():
+        pts = sorted(pts)
+        if len(pts) >= 3:
+            firsts.append(pts[0][1])
+            vals = [v for _, v in pts]
+            if min(vals) > 75 and max(vals) - min(vals) < 25:
+                flat += 1
+    if not firsts:
+        return "unknown"
+    firsts.sort()
+    med = firsts[len(firsts) // 2]
+    if med > 55 or flat / len(firsts) > 0.5:
+        return "self-normalized"
+    return "external-reference"
+
+
 # --------------------------------------------------------------- analysis
 
 def _hill_sse(log_ic50: float, pts: list[tuple[float, float]],
@@ -918,7 +962,7 @@ class PlateResult:
     def __init__(self, path: Path, fmt: str, records: list[dict], analysis: dict,
                  response_unit: str | None = None, instrument: dict | None = None,
                  channels: list[str] | None = None, reads: int | None = None,
-                 batch: str = ""):
+                 batch: str = "", regime: dict | None = None):
         self.source = str(path)
         self.format = fmt
         self.records = records
@@ -927,6 +971,7 @@ class PlateResult:
         self.channels = channels or []
         self.reads = reads
         self.batch = batch
+        self.regime = regime
         self.response_unit = response_unit or {
             "npy": "mean pixel intensity", "grid": "well value",
             "xlsx-grid": "well value"}.get(fmt, "instrument response")
@@ -1010,6 +1055,12 @@ class PlateResult:
         else:
             edge = ""
         batch = f" | batch: {self.batch}" if self.batch else ""
+        if self.regime:
+            ident += (" | regime: pubchem/{} — validated ({})".format(
+                self.regime["frame"],
+                "CS05") if self.regime.get("validated") else
+                " | regime: pubchem/{} — NOT VALIDATED, verdicts refused "
+                "(CS06)".format(self.regime["frame"]))
         head = (f"plate: {self.source} [{self.format}] | "
                 f"wells: {len(self.records)} | controls: {self.analysis['controls_detected']} | "
                 f"{zlabel}{ident}{batch}{edge}")
@@ -1019,7 +1070,8 @@ class PlateResult:
 def read_plate(path: str | Path, max_response: float | None = None,
                layout: str | Path | None = None,
                cycles: str = "last",
-               normalize: str | None = None) -> PlateResult:
+               normalize: str | None = None,
+               assert_regimes: bool = True) -> PlateResult:
     """Auto-detect, parse, fit and QC an instrument/lab result file.
 
     layout: optional well->(sample, conc_um) plate-layout file to join onto
@@ -1027,6 +1079,14 @@ def read_plate(path: str | Path, max_response: float | None = None,
     become possible). cycles: kinetic reduction per well — 'last' (endpoint),
     'first', or 'mean'. normalize='pct_inhibition': rescale non-control
     values against the plate's own blank + full-inhibition controls.
+
+    Regime gate (CS06's lesson): deposited percent tables are fingerprinted
+    for their normalization frame; only frames validated by an external
+    reproduction (pubchem/external-reference — CS05, 98.9% agreement,
+    zero false actives) get dose-response assertions. Self-normalized
+    qHTS deposits REFUSE the surface — no fabricated verdicts, and the
+    refusal names its regime. assert_regimes=False is a RESEARCH bypass
+    (used by the CS06 negative-result study); never for campaign verdicts.
     """
     path = Path(path)
     if not path.exists():
@@ -1034,6 +1094,7 @@ def read_plate(path: str | Path, max_response: float | None = None,
     fmt = detect_format(path)
     _unit: dict = {}
     instrument: dict = {}
+    regime: dict | None = None
     if fmt == "long":
         rows = _rows_from_csv(path)
         records = _parse_long(rows, _unit)
@@ -1049,8 +1110,18 @@ def read_plate(path: str | Path, max_response: float | None = None,
     elif fmt == "pubchem":
         rows = _rows_from_csv(path)
         records = _parse_pubchem(rows, _unit)   # blind by construction
+        frame = _pubchem_frame(records) if records else "unknown"
         instrument = {"deposition": "PubChem submitter table",
                       "n_doses": _unit.get("n_doses")}
+        regime = {"dialect": "pubchem", "frame": frame,
+                  "validated": frame == "external-reference",
+                  "validation_source": ("CS05 (case-studies/05-paper-pilot): "
+                                        "98.9% decisive agreement, "
+                                        "0 false actives"
+                                        if frame == "external-reference"
+                                        else "CS06 (case-studies/06-ncats-"
+                                             "deposit): FAILED reproduction "
+                                             "(rho=0.107)")}
     elif fmt == "npy":
         from bionexus.adapters.lab.imaging import analyze_plate, ImagingPlateReader
         dev = ImagingPlateReader(seed=0)
@@ -1118,7 +1189,19 @@ def read_plate(path: str | Path, max_response: float | None = None,
         if batch:
             r.setdefault("batch", batch)  # batch/date: first-class covariate
 
-    analysis = analyze_records(records, max_response)
-    return PlateResult(path, fmt, records, analysis,
+    refuse = regime is not None and not regime["validated"] and assert_regimes
+    analysis = analyze_records([] if refuse else records, max_response)
+    if refuse:
+        analysis["regime_refusal"] = True
+        regime["note"] = (
+            "REGIME NOT VALIDATED — no dose-response assertions issued on this "
+            "normalization frame (CS06: fixed-reference crossing rules do not "
+            "port to self-normalized qHTS deposits). Records remain faithfully "
+            "standardized; research mode (assert_regimes=False) is for "
+            "declared reproduction studies, never campaign verdicts.")
+
+    analysis_out = analysis
+    return PlateResult(path, fmt, records, analysis_out,
                        response_unit=_unit.get("unit"), instrument=instrument,
-                       channels=channels, reads=_unit.get("reads"), batch=batch)
+                       channels=channels, reads=_unit.get("reads"), batch=batch,
+                       regime=regime)

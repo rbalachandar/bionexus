@@ -178,6 +178,7 @@ the failing/near-failing tasks up top, before any agent narrative.
 | Anchoring | Merkle root over the whole store; publish it anywhere you don't control for external tamper-evidence |
 | Evidence is the data | the Evidence section re-renders each branch's **recorded plate files** — the same curves and fits the verdicts were read from; a missing file renders as an honest gap, never a stock figure |
 | Retirement, not deletion | archived experiments leave the working set but their hash-chained records stay intact and auditable — consistent with the append-only provenance store |
+| Regime-gated assertion | deposited percent tables are fingerprinted for their normalization frame; dose-response verdicts are issued ONLY in frames validated by an external reproduction (CS05), and self-normalized qHTS dialects refuse the surface by name (CS06's negative result, encoded as a trust boundary — trust is a declared envelope, not a hope) |
 
 ## Using BioNexus
 

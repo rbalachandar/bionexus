@@ -91,3 +91,12 @@ its own tests — not more threshold tuning against this deposit.
 **Concluded — negative result, fully reported.** Fixtures checksum-frozen
 (`bn fixtures verify`), protocol pre-registered, crosstab published as
 the finding.
+
+**Encoded since (Oct 2026):** `bionexus.labread` now fingerprints the
+normalization frame of every deposited percent table and REFUSES
+dose-response assertions on frames not externally validated —
+self-normalized qHTS deposits (this study's dialect) are refused by
+default with the regime named in the output; `assert_regimes=False` is a
+declared research bypass (this study's own `run.py` uses it, as the
+published negative result predates the gate). The next unshipped piece is
+curve-CLASS shape QC for re-admitting such tables honestly.

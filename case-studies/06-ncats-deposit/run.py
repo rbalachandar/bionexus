@@ -78,7 +78,10 @@ def spearman(a: list[float], b: list[float]):
 def main() -> int:
     live = materialize()
     from bionexus.labread import read_plate
-    res = read_plate(live, max_response=100.0)
+    # RESEARCH MODE: CS06 is the declared reproduction study whose failure
+    # the regime gate now encodes; bypassing the gate here is the documented
+    # purpose of assert_regimes=False, never for campaign verdicts.
+    res = read_plate(live, max_response=100.0, assert_regimes=False)
     assert "flipped" in res.response_unit, "expected activity-scale disclosure"
 
     from bionexus.core.hypothesis import SuccessCriteria
