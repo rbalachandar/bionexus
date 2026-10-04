@@ -1,0 +1,17 @@
+{
+ "frozen_at": "2026-10-04T20:09:41",
+ "entries": [
+  {
+   "path": "aid_1879.csv",
+   "sha256": "3e9036abee2c7d6e259e5fb67dfeab9ee8fdc84b23ac67d9081d350ac087f655",
+   "bytes": 39913,
+   "target": ".data/cs05_raw/aid_1879.csv"
+  },
+  {
+   "path": "aid_1890.csv",
+   "sha256": "0d8fedd209d94f9bf02572e242fb4f713eb7f638bf2591a8cb786c40d6d4d399",
+   "bytes": 22744,
+   "target": ".data/cs05_raw/aid_1890.csv"
+  }
+ ]
+}

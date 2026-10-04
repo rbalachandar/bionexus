@@ -1,0 +1,27 @@
+{
+ "study": "CS05 - paper pilot (proxy lab)",
+ "fetched_utc": "2026-10-04T18:08:56Z",
+ "paper": {
+  "pmid": "23231439",
+  "pmcid": "PMC3569073",
+  "journal": "J. Med. Chem. 56(2):691-701 (2013)",
+  "title": "A high-throughput screen of the NIH molecular libraries sample collection and subsequent optimization of a lead dipeptide-like series of severe acute respiratory syndrome coronavirus 3CL protease inhibitors (-> probe compound ML188)",
+  "deposited_cascade": {
+   "primary_AID_1706": "290,893 tested (opt-in fetch)",
+   "secondary_AID_1879": "380 tested, 136 Active",
+   "confirmatory_doseresponse_AID_1890": "101 tested, 44 Active, 57 Inactive"
+  },
+  "published_claim_to_reproduce": "44 dose-response actives (paper: IC50 < 10 uM); cascade 290,893 -> 405 -> 136 -> 44"
+ },
+ "source": "https://pubchem.ncbi.nlm.nih.gov (REST export of submitter data tables; raw uploads as deposited)",
+ "files": {
+  "aid_1879.csv": {
+   "sha256": "3e9036abee2c7d6e259e5fb67dfeab9ee8fdc84b23ac67d9081d350ac087f655",
+   "bytes": 39913
+  },
+  "aid_1890.csv": {
+   "sha256": "0d8fedd209d94f9bf02572e242fb4f713eb7f638bf2591a8cb786c40d6d4d399",
+   "bytes": 22744
+  }
+ }
+}
