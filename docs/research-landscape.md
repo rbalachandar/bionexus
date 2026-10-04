@@ -1,7 +1,7 @@
 # Research Landscape — Agentic Drug Discovery (2024–2026)
 
 Conceptual review of published systems from companies working in this space, and how
-our architecture compares. Last reviewed: 2026-08.
+our architecture compares. Last reviewed: 2026-10.
 
 ## Landscape summary
 
@@ -18,6 +18,7 @@ our architecture compares. Last reviewed: 2026-08.
 | **OpenAI + Retro GPT-4b micro** (Dec 2024) | Fine-tuned GPT-4 variant for protein design | Retro wet lab | Designs beating human-made Yamanaka-factor variants >50× in some assays |
 | **Chai Discovery** | chai-1/chai-2 structure + antibody design FMs; CAD-suite, not agentic | Partner validation | Novartis, Pfizer, Lilly deals |
 | **OpenAI Rosalind Workbench** (Aug 2026) | GPT-Rosalind (dedicated life-sciences model) + Workbench: in-chat molecular/structure viewers, sequence alignment, plan-first NGS Analysis Workbench; Explore vs. gated Research modes; built into ChatGPT and Codex | Wet-lab *assistance* and tool orchestration; no owned lab fleet | Enterprise-first (verified orgs); "every scientist to be their own research team" |
+| **Google DDE — Drug Design Engine** (open plan, Oct 2026; ⚠ distinct from Isomorphic's same-named platform) | Packaged scion-based agent templates: Science Program Lead + Research Operations Controller + ~12 lean specialist roles; 4 invariant pre-clinical stages × modality tables; 5 artifact layers; skills = judgment, `dde` CLI = computation | **None** — artifacts/compute only; wet lab lives outside the system | None yet — it is a normative plan doc, not a graded system |
 | **The Virtual Biotech** (2026) | Multi-agent org chart: virtual CSO + chief-of-staff + four scientist divisions (Target ID/Prioritization, Target Safety, Modality Selection, Clinical Officers) + scientific reviewer; 100+ domain MCP servers over biomedical DBs (78k targets, 14.5M PPIs, Tahoe-100M perturbation, FAERS, ClinicalTrials.gov) | **None** — analysis/evidence only; no wet lab, no physical loop | Evidence-based target/modality assessments; organizational auditability ("each agent audited by the corresponding human expert") |
 
 ## Rosalind: what it changes, and where BioNexus stands
@@ -171,3 +172,66 @@ candidates inside a BioNexus campaign; their loop ends at metrics, ours
 continues to the lab and the record. We adopted their metric vocabulary
 (adjusted nAUC, fraction-of-hits, shortfall, %essential) into the
 `hit-recovery` eval task.
+
+## Google DDE (Cloud LifeSciences, Oct 2026): convergence as validation
+
+`GoogleCloudPlatform/LifeSciences/applications/drug-design-engine` — a
+55 KB normative plan for an agentic pre-clinical R&D system (templates +
+skills + a `dde` CLI on the scion orchestrator). It is a plan, not a
+graded system, and it names **Isomorphic's** flagship as its own name —
+but it is the strongest third-party convergence on our thesis we have
+seen, so it goes in full.
+
+**Where DDE independently reinvents BioNexus principles:**
+- **Anti-fabrication as structure, not exhortation** (their §2.5): "a
+  model asked for a pocket volume with no pocket-detection tool will
+  produce a plausible one" — mitigation: every claimed capability maps to
+  a real tool; "tools fail loudly and never synthesize"; every output is
+  a durable checksummed artifact a claim must cite. That is our
+  evidence-bound verdicts, input trust boundary, and regime gate in
+  prose.
+- **Computed vs judged artifact split** (their Layers 0/1): review is
+  *mechanical* — re-run `analyze`, diff, then ask whether the prose is
+  supported. That is our reviewer holding the analysis honest + chain
+  recompute-on-read.
+- **Thresholds outside model reach** (`.dde/thresholds.yaml`,
+  "computation in tools, judgment in skills, a threshold belongs in
+  configuration") — our pre-registered `SuccessCriteria` + safety floor
+  the agent cannot clear, with one difference: config files mutate
+  silently; ours are registered in the hash chain *before* the run.
+- **Ephemeral specialists with immutable work-order context slices** —
+  our retrieval traces (prompt hash + injected negatives per generation).
+- **Batch-over-event reasoning for pattern recognition** + interrupt on
+  safety alerts — our S-T1 series views / diary cohorts + gate alerts,
+  landed a month ago.
+- Independent scientific reviewer, stage-gate decision questions,
+  modality-invariant loop — our tracker/watch split, program gates,
+  modality packs.
+
+**Where they are not, and we should say so precisely:**
+1. **No lab.** DDE's boundary is documents and compute; no instrument
+   ingestion, no adapters, no robot path. We read real Tecan/BioTek/Gen5
+   dirt, gate synthesis routes, and run replayable lab abstractions.
+2. **Honesty without math.** DDE's safeguards are procedural (layering,
+   review, contracts). There is no uncertainty physics in the plan: no
+   CIs on estimates, no abstain-when-straddling rule, no bootstrap, no
+   graded eval of overclaiming, no regime-invariance argument (our
+   affine-invariant shape admits / CS06-style refusals have no DDE
+   analogue). "Caveats & Confidence" is a *reporting section*, not a
+   verdict veto.
+3. **Nothing is scored.** No leaderboard, no reproduction studies, no
+   published failures. Our differentiator is precisely that our
+   honesty-claims are graded (0.979 eval mean; CS05 98.9%/0-FP; CS06
+   published negative).
+4. Cloud/Gemini-shaped (scion, Vertex tooling); ours is provider-agnostic
+   and hermetic-offline by CI.
+
+**Position taken:** DDE validates the category at platform scale and
+maps the *program* surface (genetics→IND dossier) far wider than our
+DMTA loop — useful reading for where investors will push us. It does not
+touch the ground our moat is on: quantified, graded, lab-connected
+epistemics. No design changes folded back (the convergent parts were
+already shipped); the sharpened pitch line is borrowed, though: *"tools
+fail loudly and never synthesize"* — now echoed in the README trust row.
+
+Sources: plan https://github.com/GoogleCloudPlatform/LifeSciences/blob/main/applications/drug-design-engine/docs/dde-plan.md (plus orchestration/skills/tool guidance siblings in that docs/).
