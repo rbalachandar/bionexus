@@ -47,17 +47,27 @@ All fixed 2026-10-04 (159 tests green; eval suite 0.939 FAIL → 0.979 PASS):
   Hill-fitted as fake ~0.1 µM hits — two FALSE CONFIRMEDs at HEAD. The
   gate now binds only when no selected assay is dose-response; verdicts
   on the eval campaign match seeded truth again.
-- [ ] P2 leftovers: real Z' needs positive-control classes declared in
-  protocols (the heuristic is now labeled `Z'~` honestly); toolkit
-  `record_verdict` should REQUIRE a run-linked evidence record (warns
-  only today); sop_id title-prefix granularity launders one SOP across
-  all `test-*` protocols; budget treats store errors as 0 runs (uncapped);
-  gateway.submit monkeypatch in run_campaign; adaptive posterior assumes
-  homoscedastic σ vs the sim's 5%-of-signal noise; web funnel mixes runs
-  and hypotheses units; Wizard.tsx hides the ic50_ci it receives;
-  QUICKSTART cites a nonexistent `[ui]` extra; AGENTS.md/UX.md still name
-  story.py/webview.py; DOI verification is PubMed-only (a real
-   non-MEDLINE DOI would be stamped "invalid" — needs Crossref fallback).
+- [x] P2 leftovers, split and re-audited (Oct 2026):
+  [x] **Real Z′ needs positive-control classes declared in protocols** —
+  CLOSED by S-T0.2: `control_class()` pos/neg separation, Zhang Z′ only
+  when BOTH classes have >=2 wells (`z_prime_kind`), heuristic stays
+  labeled `Z'~` and refusal-tested (tests/test_vendor_ingest.py).
+  [x] QUICKSTART cited a nonexistent `[ui]` extra — removed (Oct 2026).
+  [x] AGENTS.md/UX.md named retired Streamlit modules — UX.md header
+  corrected; AGENTS.md already clean.
+  Still open (each its own bug-size job):
+  [ ] toolkit `record_verdict` should REQUIRE a run-linked evidence
+  record (warns only today)
+  [ ] sop_id title-prefix granularity launders one SOP across all
+  `test-*` protocols
+  [ ] budget treats store errors as 0 runs (uncapped)
+  [ ] gateway.submit monkeypatch in run_campaign
+  [ ] adaptive posterior assumes homoscedastic σ vs the sim's
+  5%-of-signal noise
+  [ ] web funnel mixes runs and hypotheses units
+  [ ] Wizard.tsx hides the ic50_ci it receives
+  [ ] DOI verification is PubMed-only (a real non-MEDLINE DOI would be
+  stamped "invalid" — needs Crossref fallback)
 
 ## Scientist Utility — Oct 2026 (post-review strategy)
 The verdict layer finally tells the truth (P0 above); the epistemic engine is

@@ -160,6 +160,9 @@ the failing/near-failing tasks up top, before any agent narrative.
 | Physical-fault honesty | saturated plates, dark reads, negative values, and device errors are classified as **physical** failures before the retry reflex — flagged for operator inspection, never re-queried blindly and never turned into verdicts |
 | DURC screening | campaigns naming select agents / regulated toxins are refused before any work, and the refusal is recorded |
 | Citation enforcement | PMIDs/DOIs resolved against PubMed; a fabricated reference scores below silence; offline checks never falsely accuse |
+| Makeability is a gate | before Make burns a batch, a named-reaction rule corpus plans routes (how many, how long, at what cost, modeled yield); a compound whose routes all fail the yield/lead-time floors is refused with a `no_viable_route` provenance record — batch numbers are drawn from the chosen route and every plan is stamped simulated |
+| Series discipline | proposed→tested→judged grouped by family or Murcko chemotype (grouping backend stamped, never overclaimed); matched-pair SAR deltas carry propagated CIs and ABSTAIN when straddling the retention band; a series claim's verdict is derived only from its members and can never aggregate its way to false confidence |
+| Institutional memory | `bn ingest` folds pre-BioNexus ELN outcomes into ALREADY RULED OUT and family priors — stamped `imported`, sha256-sealed against the export sidecar; an edited-after-export CSV imports loudly unsealed, never silently |
 | `bn reproduce` | the execution environment (lab, version, seed, concentrations) is in the provenance root — replay a branch, diff verdicts |
 | Fault tolerance | junk/adversarial instrument files degrade to honest "unreadable, no verdicts changed" — never crashes, never false confidence |
 | Input trust boundary | instrument labels are sanitized data; injection-shaped sample names provably cannot reach the gate as instructions |
@@ -183,17 +186,36 @@ analysis tool — and hand stages of the loop to an agent as trust grows.
 
 ### As a daily analysis tool — reading lab instrument exports
 
-Point `bn read` at a plate-reader export (CSV/TSV/XLSX, any column order, any
-vendor header block). Format detection, control-well discovery, dose–response
-IC50 fits, and Z'-factor QC are all automatic:
+Point `bn read` at a plate-reader export. Long CSV/TSV/XLSX (any column
+order, any vendor header block), plate grids, **real kinetic tables**
+(Tecan i-control, BioTek KC1/Gen5: time-rows × well-columns,
+Windows-1252 bytes and `?????` missing tokens tolerated, multi-channel
+kept separate), and `.npy` images — all auto-detected. IC50 fits carry
+CIs, Z′ is real only when the plate has both control classes (otherwise
+labeled `Z'~` honestly), and reader/device/serial/date are scraped into
+the result for provenance. Format detection, control discovery, and QC
+are automatic:
 
 ```sh
 bn read synergy_export.csv
-# plate: synergy_export.csv [long] | wells: 10 | controls: 2 | Z': 0.956
+# plate: synergy_export.csv [long] | wells: 10 | controls: 2 | Z'~ 0.956 (control-spread heuristic)
 # compound        IC50 (uM)  points  note
 # C-101                8.94       4  observed-max
 # C-102                9.17       4  observed-max
+
+bn read tecan_ON1.csv --layout plate_layout_96.csv --normalize pct_inhibition
+# plate: tecan_ON1.csv [kinetic] | wells: 192 | ... | reader: infinite 200Pro
+# (1409002252) | batch: 14.10.2016 · 14:11:38 | edge-effect -0.0 (OD600:600)
 ```
+
+A bare grid carries no compound identity — `--layout` joins a plate map
+(well → sample/concentration, multi-layer conc/sample/reagent maps
+supported) so even vendor-dumb exports get dose–response fits;
+`--normalize pct_inhibition` rescales against the plate's OWN blank +
+full-inhibition controls and REFUSES when those classes are missing.
+The repo ships four genuine vendor exports under
+`tests/data/instruments/` (attributed, MIT) so you can try it on real
+dirt before your own.
 
 ```python
 from bionexus.labread import read_plate
@@ -328,7 +350,13 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
   the raw trace log. Experiments are archived (retired from the working
   set, provenance intact), never silently deleted, and every experiment
   page is deep-linkable: `/experiment?exp=<id>`. Wizard experiments are
-  provenance-chained too — `bn prove wizard/<id>`.
+  provenance-chained too — `bn prove wizard/<id>`. Experiment pages also
+  carry the **Series view** (proposed→tested→judged grouped by family or
+  chemotype, per-series rollups, and a matched-pair SAR table whose calls
+  carry CIs — straddling intervals abstain, and derived series claims show
+  their status chip); the **Evals** tab renders the live leaderboard with
+  its honest sub-1.0 deductions up top — "it can be graded" leads the
+  product, inside and out.
 - **`bn serve`** — a headless alternative cockpit (stdlib HTTP, no
   dependencies) for approval queues and diaries on machines without a
   browser; useful for remote/headless boxes.

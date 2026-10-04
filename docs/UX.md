@@ -1,7 +1,9 @@
 # BioNexus Workbench — UX Flow & Story
 
-Design authority for the workbench UI (now the React app in `web/`; the original Streamlit rules in `Overview.py`/`webview.py` remain the
-`story.py`, `narrative.py`). Visual tokens live in `docs/BRAND.md`; this
+Design authority for the workbench UI — today the React app in `web/` (the
+Streamlit-era modules `Overview.py`/`story.py`/`webview.py`/`narrative.py`
+were retired; the React routes are the living surface). Visual tokens live
+in `docs/BRAND.md`; this
 document defines the flows, voices, and vocabulary that sit above them.
 Rule: this document is written before pixels change, and the workbench is
 reviewed against it.
