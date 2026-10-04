@@ -605,6 +605,35 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             say(f"llm reviewer ({llm_review['model']}): no advisory "
                 "flags")
 
+    # S-T1.2: series-level claims derive their verdicts from members'
+    # CI-aware verdicts — never tested directly, abstention dominates,
+    # and resolutions feed the flywheel's family prior.
+    from bionexus.series import resolve_series_claims
+    branch = f"problem/{problem.problem_id}"
+    _claim_ev = {"confirmed": EventType.hypothesis_validated,
+                 "refuted": EventType.hypothesis_invalidated,
+                 "inconclusive": EventType.hypothesis_inconclusive}
+    for c in resolve_series_claims(store.branch_records(branch)):
+        if c["status"] == "open":
+            say(f"series claim {c['family_id']}: open — {c['reason']}")
+            continue
+        store.append(record_for(
+            Envelope(experiment_branch_id=branch), _claim_ev[c["status"]],
+            actor,
+            decision={"hypothesis_id": c["family_id"],
+                      "family_id": c["family_id"],
+                      "verdict": c["status"],
+                      "claim_kind": "series-derived", "derived": True,
+                      "family_kind": c["kind"],
+                      "retain_fold": c["retain_fold"],
+                      "parent_statement": c["parent_statement"],
+                      "reason": c["reason"],
+                      "derived_from": [list(x) for x in c["derived_from"]]}))
+        flywheel.submit(f"series:{c['family_id']}", c["family_id"],
+                        "series-claim", c["status"])
+        say(f"series claim {c['family_id']}: {c['status'].upper()} — "
+            f"{c['reason']}")
+
     say(f"CAMPAIGN COMPLETE {problem.problem_id}: "
         + (", ".join(f"{c}={s}" for c, s in verdicts.items()) or "nothing tested"))
     return CampaignReport(problem_id=problem.problem_id,

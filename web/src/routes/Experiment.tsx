@@ -139,6 +139,14 @@ function SeriesPanel({ series }:
             <span className="muted mono" style={{ fontSize: 11 }}>
               {s.kind} · {s.label}
             </span>
+            {s.claim_status && (
+              <span className="mono" title={s.claim_reason ?? undefined}
+                style={{ fontSize: 11, color: s.claim_status === 'confirmed'
+                  ? 'var(--ok)' : s.claim_status === 'refuted'
+                    ? 'var(--bad)' : 'var(--warn)' }}>
+                claim: {s.claim_status} (derived from members)
+              </span>
+            )}
           </div>
           {s.matched_pairs.length > 0 && (
             <table style={{ fontSize: 11, marginTop: 6, width: '100%' }}>

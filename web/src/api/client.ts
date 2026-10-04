@@ -122,6 +122,7 @@ export interface ExperimentDetail {
     matched_pairs: { a: string; b: string; ic50_a: number; ic50_b: number;
       delta_log10: number; ci95: [number, number] | null;
       fold_a_over_b: number; call: string; cited_cis: boolean }[]
+    claim_status?: string | null; claim_reason?: string | null
   }[]
   program: { slug: string; name: string; gate: { metric: string; direction: string; value: number; unit: string; symbol: string }; modality: string | null; mode: string } | null
   spec: { objective: string; k: number; rounds: number; autonomy: string; hypothesis_source: string; n_candidates: number; modality: string | null; constraints: { name: string; description: string }[] } | null

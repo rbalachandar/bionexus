@@ -191,11 +191,36 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   all four pair calls incl. boundary abstention, proposed visibility,
   campaign-chain e2e incl. diary HTML); suite 261 green, SPA tsc+vite
   clean, evals unchanged 0.979.
-- [ ] **Series-level hypothesis kind**: claim over a chemotype ("ring-B
+- [x] **Series-level hypothesis kind**: claim over a chemotype ("ring-B
   para-substitution retains potency ≤ X fold loss") whose verdict is derived
   from its members' CI-aware verdicts — extends `propose_families` +
   flywheel family priors; the rollup must abstain when members do
   (no aggregation-to-false-confidence; reuse tree-rollup vocabulary).
+  SHIPPED (Oct 2026): `series.resolve_series_claims(recs)` — family claims
+  (kind="series", per-claim `retain_fold` recorded on the family marker)
+  derive their status ONLY from the chain: retention is judged on matched
+  congener pairs, and the derivation cannot manufacture confidence —
+  a straddling CI ⇒ inconclusive, a point-only pair beyond band ⇒
+  inconclusive (no loss call without uncertainty), refutation requires a
+  pair CI fully beyond the band, confirmation requires ≥2 measured
+  congeners and ALL pairs retained with CIs on record. Members unresolved ⇒
+  `open`/`inconclusive`, never `refuted`-from-absence (tree-rollup
+  vocabulary: achieved≡confirmed, downgrade≡inconclusive). Mechanistic
+  families roll up member verdicts with the same abstention dominance.
+  Autoloop now resolves claims at campaign end: derived verdicts are
+  written as `series-derived` hypothesis events (recency-wins on reread;
+  the claim's own verdict record is EXCLUDED from membership — tested) and
+  fed to `flywheel.submit`, so a family that fails as a series drags its
+  portfolio prior like a failing member did. `propose_families` variants
+  now record `family` + `smiles` IN their decisions (hash-immutable-chain
+  fix from S-T1.1 extended to the family path). Workbench: family series
+  rows carry `claim_status`/`claim_reason`; the SPA SeriesPanel shows the
+  derived-claim chip with the reason as tooltip.
+  4 tests (lifecycle open→confirmed→refuted→abstain, self-inflation gate,
+  mechanistic dominance rules, summary attach) in `tests/test_series_view.py`;
+  suite 265 green, evals unchanged 0.979, SPA tsc+vite clean.
+  LIMIT: derived ≠ direct — the claim verdict is labeled series-derived
+  everywhere; a series claim never appears as a directly-tested compound.
 - [ ] **Flywheel faces institutional memory**: import prior internal
   outcomes (ELN CSV via `bn prove`'s inverse — an ingest command) so
   "ALREADY RULED OUT" includes what the lab learned before BioNexus existed.

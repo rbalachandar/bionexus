@@ -306,6 +306,7 @@ class HypothesisTracker:
                     "family_id": fid,
                     "parent_statement": fam["parent_statement"],
                     "kind": fam.get("kind", "mechanistic"),
+                    "retain_fold": fam.get("retain_fold", 3.2),
                     "rationale": fam.get("rationale", ""),
                     "n_variants": len(fam.get("variants", [])),
                 }))
@@ -328,10 +329,16 @@ class HypothesisTracker:
                     citation=spec.get("citation", ""),
                     citation_status=spec.get("citation_status", "unverified"),
                     citation_detail=spec.get("citation_detail", ""),
-                    round_no=0,
-                    criteria=spec.get("criteria"),
-                    design=spec.get("design"),
-                )
+                round_no=0,
+                criteria=spec.get("criteria"),
+                design=spec.get("design"),
+                # family tag + structure key ride IN the recorded decision:
+                # series claims derive their verdicts FROM the chain
+                family=fid,
+                **({"smiles": spec["smiles"]} if spec.get("smiles") else {}),
+                **{k: v for k, v in (spec.get("metadata") or {}).items()
+                   if k not in ("smiles", "family")},
+            )
                 h.problem_id = problem.problem_id
                 h.family = fid
                 self.hypotheses[h.hypothesis_id] = h
