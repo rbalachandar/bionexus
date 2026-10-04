@@ -311,12 +311,20 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   weekly eval report on their campaigns, their feedback reorders this list.
   A named real user with a named real problem beats any feature here.
   INTERIM (Oct 2026): no lab access exists for this project, so the pilot
-  runs as a PROXY first — `case-studies/05-paper-pilot`: a published MLPCN
+  runs as a PROXY — `case-studies/05-paper-pilot`: a published MLPCN
   screening cascade (Jacobs 2013, SARS-CoV 3CLpro → ML188) reproduced from
   the lab's own raw deposited tables (PubChem AID 1890/1879, frozen +
-  checksummed), blind re-fit vs the submitters' ACTIVE key. Data+protocol
-  shipped; ingestion-of-PubChem-schema + scoring engine next. The human
-  half (named user, workflow friction) remains open by definition.
+  checksummed), blind re-fit vs the submitters' ACTIVE key. RESULT: 98.9%
+  agreement on decisive verdicts, ZERO false actives (32TP/54TN/0FP/1FN),
+  14 honest abstentions where our bootstrap CIs straddle the paper's own
+  10 µM gate, 5 real cross-plate inconsistencies found in the paper's own
+  cascade, one disagreement disclosed curve-and-all. Engine: labread now
+  parses PubChem deposited tables natively (format `pubchem`, structurally
+  blind; dose ladder trusted from RESULT_ATTR_CONC_* meta rows — the REST
+  header truncates it; caught + fixed a value-scale inversion and a naive
+  conflict rule on the way). 2 hermetic parser tests; 281 suite green,
+  evals unchanged. The human half (named user, workflow friction) remains
+  open by definition.
 
 Explicitly DEPRIORITIZED (until S-T0 lands): new simulator features, more
 modality packs, AssayLoop policy wiring, story-surface polish. The system is

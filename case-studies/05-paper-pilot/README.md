@@ -80,16 +80,70 @@ applied to a wet-lab cascade.
 
 - The deposited "Active/Inactive" is itself an expert call, not ground
   truth — our score is *agreement with the lab*, not with nature.
-- Single-replicate CRCs mean our CIs come from residual bootstrap, not
-  well-to-well variance (stated per T0 conventions).
-- The nM dose ladder caps at ~736 nM, so a compound active at 10 µM by the
-  paper's criterion can be *undetectable* at their top dose — a real
-  range-censoring case our verdict must refuse to number.
+- Single-replicate curves (30 read = 10 doses × 3 technical) mean our CIs
+  come from residual bootstrap, not independent-well variance (stated per
+  the repo's small-n conventions).
+- The dose ladder runs 0.003 → 59.6 µM across ten points. An early draft of
+  this README misread it as capped at 736 nM — because **the REST export
+  header names only the first six dose columns** (the real ladder lives in
+  the `RESULT_ATTR_CONC_MICROMOL` meta row). The parser reads the meta row;
+  the header is not trusted. This is exactly the deposition dirt CS05
+  exists to test.
+- Compounds that never cross 50% inside the window are a *range* statement
+  (no active fit below ~300 µM / never reached), never a hard "IC50 = X".
 - We do not have the primary's 290k wells in-repo (opt-in fetch).
+
+## Results (run 2026-10-04)
+
+Engine: `bionexus.labread` now parses PubChem deposited tables natively
+(format `pubchem`, structurally blind — see `tests/test_labread_pubchem.py`
+for the contract), and `run.py` scores the locked verdicts against the
+answer key (`results.json`).
+
+| | deposited (their call) Active | deposited Inactive |
+|---|---|---|
+| **ours Active** | 32 (TP) | **0 (FP)** |
+| **ours Inactive** | 1 (FN) | 54 (TN) |
+| **ours Abstain** | 11 | 3 |
+
+- **Agreement on decisive verdicts: 98.9% (86/87). Zero false actives** —
+  we never claimed a compound active that the lab called inactive.
+- **Abstain rate 13.9%** — and almost all abstentions sit exactly where
+  honesty demands: the lab's own IC50s for them run 4.6–9.9 µM, i.e. their
+  *point estimates* clear the 10 µM gate by a hair, while our bootstrap CIs
+  straddle it (e.g. 9.7 [9.5–10.5] µM). A single-replicate ladder cannot
+  separate "potent enough" from "borderline" there; the paper drew a hard
+  line and got a number; we drew the line and refused the number. That is
+  the honest answer to "same or better": the same decisive chemistry, and
+  14 claims we will not counterfeit.
+- **The one disagreement is disclosed in full**: SID17412961 (CID 5734490) —
+  their IC50 8.94 µM (Active); our fit 11.69 µM with CI [10.24–16.04],
+  entirely *above* the gate → Inactive. Curve-level max inhibition 73%, so
+  it is a shallow partial: a judgment call, precisely the profile our CI
+  rule exists to expose rather than hide. We do not get to keep the paper's
+  number — we keep the argument.
+- **Cross-plate audit of their own cascade**: 5 compounds whose secondary
+  single-point %inhibition at 6 µM deviates >25 points from what their own
+  deposited dose-response curve predicts (Hill-1 at 6 µM) — reported, not
+  adjudicated; plate-to-plate variance is real, and the direction splits
+  both ways (their earlier weak ones, their later strong ones). An
+  originally naively-flagged set of 23 "conflicts" was mostly consistent
+  once we predicted from their curve instead of demanding >50% at 6 µM —
+  a scoring-logic bug our audit caught, and fixed the same day.
+- **Series view**: confirmed actives spread across small chemotypes (top:
+  3× thienyl-pyrazoline, 3× quinolone-carboxamide, 2× cyclopropyl-amide
+  pyridyl series, 2× coumarin carbonate), consistent with the paper's story
+  of diverse initial hits consolidated into one dipeptide-like series
+  (tert-butyl-phenyl amides) during optimization — 2 of our confirmed
+  actives carry the tert-butyl handle of the ML188 lineage.
+
+**Reproducible**: `.venv/bin/python case-studies/05-paper-pilot/run.py`
+(fixtures verified by checksum first; any drift aborts). Engine tests:
+`tests/test_labread_pubchem.py`.
 
 ## Status
 
-**WIP** — data frozen & checksummed (2026-10-04); the reproduction engine
-(PubChem-format ingestion + blind refit + scoring) lands in the next
-installments. Results will be written to `results.json` and summarized here
-with the same "what the study found in our own machinery" honesty as CS04.
+**Reproduced** — protocol + frozen data + blind engine + scoring shipped;
+`results.json` carries every per-compound verdict with its CI, every
+disagreement, and the cross-plate audit. The human half of the pilot (a
+named scientist feeling the workflow) remains open by honest definition.

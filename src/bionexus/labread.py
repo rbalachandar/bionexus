@@ -134,6 +134,8 @@ def detect_format(path: Path) -> str:
     rows = _rows_from_csv(path)
     if not rows:
         return "unknown"
+    if rows and rows[0] and rows[0][0].strip() == "PUBCHEM_RESULT_TAG":
+        return "pubchem"
     best = 0
     for row in rows[:20]:
         if any(WELL_RE.match(c) for c in row):
@@ -468,6 +470,80 @@ def bind_layout(records: list[dict[str, Any]], layout: str | Path) -> int:
     for r in records:
         r["control"] = is_control(str(r["sample"]))
     return bound
+
+
+def _parse_pubchem(rows: list[list[str]],
+                   unit_out: dict | None = None) -> list[dict[str, Any]]:
+    """Parse a PubChem deposited assay table (the submitter's own upload,
+    REST-exported) into standardized records — STRUCTURALLY BLIND: only
+    identity columns (SID/CID/SMILES) and the raw PERCENT value columns
+    are read; PUBCHEM_ACTIVITY_OUTCOME and the submitter's IC50/Hill
+    columns are never touched here. Scoring against those answer-key
+    columns must happen downstream, explicitly.
+
+    The dose ladder lives in the `RESULT_ATTR_CONC_*` meta rows (the REST
+    header names only some columns — real deposition dirt); values are the
+    submitter's %inhibition, which IS this library's ascending effect
+    scale (the Hill model expects response rising with dose toward
+    max_response — no inversion).
+    """
+    header = [c.strip() for c in rows[0]]
+
+    def col(*names: str) -> int:
+        for n in names:
+            if n in header:
+                return header.index(n)
+        return -1
+
+    sid_i, cid_i, smi_i = col("PUBCHEM_SID"), col("PUBCHEM_CID"), \
+        col("PUBCHEM_EXT_DATASOURCE_SMILES", "PUBCHEM_EXT_DATASOURCE_STRUCTures")
+    conc_row = unit_row = None
+    for r in rows:
+        if not r:
+            continue
+        tag = r[0].strip()
+        if tag.startswith("RESULT_ATTR_CONC"):
+            if conc_row is None or tag.endswith("MICROMOL"):
+                conc_row = r            # micromolar preferred if mixed
+        elif tag == "RESULT_UNIT" and unit_row is None:
+            unit_row = r
+    if conc_row is None or smi_i < 0:
+        return []
+    pcols: list[tuple[int, float]] = []
+    for j, c in enumerate(conc_row):
+        if j == 0 or not c.strip() or not _is_number(c):
+            continue
+        is_percent = (unit_row is not None and j < len(unit_row)
+                      and unit_row[j].strip().upper().startswith("PERCENT"))
+        if is_percent:
+            um = float(c)
+            if tag_row_unit(conc_row[0]) == "nano":
+                um /= 1000.0
+            pcols.append((j, um))
+    if unit_out is not None:
+        unit_out["unit"] = "% inhibition (ascending effect scale)"
+        unit_out["n_doses"] = len(pcols)
+    records: list[dict[str, Any]] = []
+    for r in rows:
+        if not r or not r[0].strip().isdigit():
+            continue
+        sid = r[sid_i].strip() if 0 <= sid_i < len(r) else ""
+        cid = r[cid_i].strip() if 0 <= cid_i < len(r) else ""
+        smi = r[smi_i].strip() if smi_i < len(r) else ""
+        name = f"SID{sid}" if sid else (f"CID{cid}" if cid else smi[:16])
+        for j, um in pcols:
+            if j >= len(r) or not _is_number(r[j]):
+                continue
+            inh = float(r[j])
+            records.append({"well": "", "sample": name, "conc_um": um,
+                            "value": round(inh, 3), "control": False,
+                            "inhibition_pct": inh, "smiles": smi,
+                            "cid": cid})
+    return records
+
+
+def tag_row_unit(tag: str) -> str:
+    return "nano" if "NANO" in tag.upper() else "micro"
 
 
 # --------------------------------------------------------------- analysis
@@ -914,6 +990,11 @@ def read_plate(path: str | Path, max_response: float | None = None,
         rows = _rows_from_csv(path)
         records = _parse_kinetic(rows, _unit, cycles=cycles)
         instrument = extract_instrument_meta(rows)
+    elif fmt == "pubchem":
+        rows = _rows_from_csv(path)
+        records = _parse_pubchem(rows, _unit)   # blind by construction
+        instrument = {"deposition": "PubChem submitter table",
+                      "n_doses": _unit.get("n_doses")}
     elif fmt == "npy":
         from bionexus.adapters.lab.imaging import analyze_plate, ImagingPlateReader
         dev = ImagingPlateReader(seed=0)
