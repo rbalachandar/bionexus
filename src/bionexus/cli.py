@@ -251,6 +251,77 @@ def cmd_demo(args: argparse.Namespace) -> int:
     return 0 if ok and rep["chain_ok"] else 1
 
 
+def cmd_why(args: argparse.Namespace) -> int:
+    """Attribution panel: fit a policy on a labeled CSV (smiles,value cols),
+    then per prediction: top driving n-grams / importance-weighted bits,
+    the stated caveats, and the applicability-domain stamp."""
+    import csv as _csv
+    import json as _json
+    from pathlib import Path as _P
+
+    from bionexus import interpret
+
+    rows = list(_csv.DictReader(_P(args.data).open(newline="",
+                                                   encoding="utf-8-sig")))
+    if not rows:
+        print("empty training csv", file=sys.stderr)
+        return 2
+    lower = {c.lower().strip(): c for c in rows[0] if c}
+    sc = next((lower[k] for k in ("smiles", "cml", "structure") if k in lower),
+              None)
+    vc = next((lower[k] for k in ("value", "y", "label", "activity",
+                                  "pchembl", "ic50_um") if k in lower), None)
+    if not sc or not vc:
+        print(f"need smiles+value columns, have: {sorted(lower)}",
+              file=sys.stderr)
+        return 2
+    data = []
+    for r in rows:
+        try:
+            data.append((r[sc], float(r[vc])))
+        except (TypeError, ValueError, KeyError):
+            continue
+    if args.policy == "char-ridge":
+        from bionexus.benchmark import CharRidgePolicy
+        pol = CharRidgePolicy()
+    else:
+        from bionexus.adapters.models.sklearn_policy import \
+            MorganFingerprintRF
+        pol = MorganFingerprintRF(seed=0)
+    pol.fit(data)
+    out = []
+    for smi in args.smiles:
+        exp = interpret.explain_prediction(pol, smi)
+        try:
+            exp["ad"] = pol.ad.check(smi)
+        except AttributeError:
+            pass
+        out.append(exp)
+        if args.json:
+            continue
+        print(f"\n{smi}")
+        print(f"  {exp['policy']}: prediction={exp.get('prediction')} "
+              f"[{exp['method']}]")
+        ad = exp.get("ad")
+        if ad:
+            print("  applicability domain: " + (
+                f"in-domain (nn Tanimoto {ad['nn_tanimoto']})"
+                if not ad["extrapolation"] else
+                f"EXTRAPOLATION (nn {ad['nn_tanimoto']} < {ad['ad_floor']}, "
+                f"{ad['ad_basis']} basis) — claim-grade use vetoed"))
+        for key, sign in (("top_positive", "+"), ("top_negative", "−")):
+            for g, w in exp.get(key, []):
+                print(f"    {sign} {g}: {w:+.3f}")
+        for b, w in exp.get("top_bits", []):
+            print(f"    · bit {b}: importance {w:.4f} "
+                  f"(active={exp.get('n_active_bits')} bits)")
+        if exp.get("caveat"):
+            print(f"  caveat: {exp['caveat']}")
+    if args.json:
+        print(_json.dumps(out, indent=1))
+    return 0
+
+
 def cmd_ingest(args: argparse.Namespace) -> int:
     from bionexus.flywheel import Flywheel
     from bionexus.ingest import ingest_eln
@@ -757,6 +828,16 @@ def main(argv: list[str] | None = None) -> int:
                       help="suppress the live campaign log")
     demo.add_argument("--json", action="store_true")
     demo.set_defaults(func=cmd_demo)
+
+    why = sub.add_parser(
+        "why", help="attribution panel: per-prediction drivers (n-grams / "
+                    "importance-weighted bits) with caveats + applicability "
+                    "domain, from a labeled CSV")
+    why.add_argument("policy", choices=["char-ridge", "morgan-rf"])
+    why.add_argument("data", help="training CSV with smiles + value columns")
+    why.add_argument("smiles", nargs="+")
+    why.add_argument("--json", action="store_true")
+    why.set_defaults(func=cmd_why)
 
     ing = sub.add_parser("ingest",
                          help="import institutional memory: an ELN CSV "

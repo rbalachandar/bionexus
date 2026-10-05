@@ -370,6 +370,7 @@ def pipeline_data(recs) -> dict:
                                "observed": d.get("observed")
                                or d.get("ic50_um"),
                                "ci": d.get("observed_ci"),
+                               "proxy_evidence": d.get("evidence"),
                                "extrapolation":
                                    bool(d.get("extrapolation")),
                                "derivation": d.get("derivation"),
@@ -469,7 +470,11 @@ def pipeline_cards(recs) -> list[dict]:
                     "evidence": verd_c.get("evidence")
                     or verd.get("evidence"),
                     "derivation": verd_c.get("derivation")
-                    or verd.get("derivation")}
+                    or verd.get("derivation"),
+                    "proxy_evidence": verd_c.get("proxy_evidence")
+                    or verd.get("proxy_evidence"),
+                    "extrapolation": verd_c.get("extrapolation")
+                    or verd.get("extrapolation")}
         v = (verd.get("verdict") or "").lower()
         ci = verd.get("ci")
         ci_txt = (f" (95% CI {ci[0]}–{ci[1]})" if ci else "")
@@ -520,6 +525,16 @@ def pipeline_cards(recs) -> list[dict]:
             state = "proposed"
             stage = "proposed"
         crit = hp.get("criteria") or {}
+        gate_lbl = (criteria_label(crit.get("metric"), crit.get("direction"),
+                                   crit["threshold"])
+                    if crit.get("threshold") is not None else None)
+        _evd = (verd or {}).get("proxy_evidence")
+        if gate_lbl and isinstance(_evd, dict) and _evd.get("resolved"):
+            _n = _evd["rungs"]
+            gate_lbl += (f" · {_n} proxy rung{'s' if _n != 1 else ''} "
+                         "from clinical")
+        elif gate_lbl and isinstance(_evd, dict) and not _evd.get("resolved"):
+            gate_lbl += " · ⚠ proxy chain unresolved"
         cards.append({
             "key": hid,
             "candidate": cand,
@@ -531,10 +546,8 @@ def pipeline_cards(recs) -> list[dict]:
             "citation_status": hp.get("citation_status"),
             "citation_detail": hp.get("citation_detail"),
             "refutation_condition": hp.get("refutation_condition"),
-            "gate_label": criteria_label(crit.get("metric"),
-                                         crit.get("direction"),
-                                         crit["threshold"])
-            if crit.get("threshold") is not None else None,
+            "gate_label": gate_lbl,
+            "evidence": _evd,
             "threshold": crit.get("threshold"),
             "verdict": {"status": v or None,
                         "observed": observed,
@@ -1022,8 +1035,15 @@ def program_verdict(trees: list) -> dict:
             "with mixed or pending evidence"
     if 0 < resolved < leaves_n:
         reason += f" — {leaves_n - resolved} unresolved"
+    root_metric = next((n.get("metric") for t in trees for n in t["nodes"]
+                        if n["id"] == t["root_id"] and n.get("metric")), None)
+    evidence_distance = None
+    if root_metric:
+        from bionexus.proxy import evidence_line
+        evidence_distance = evidence_line(root_metric)
     return {"status": status, "reason": reason, "leaves": leaves_n,
-            "resolved": resolved, "gate": gates[0] if gates else None}
+            "resolved": resolved, "gate": gates[0] if gates else None,
+            "evidence_distance": evidence_distance}
 
 
 def program_policy(p: dict, doc: dict) -> dict:

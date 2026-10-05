@@ -766,8 +766,16 @@ modality-selection output IS a BioNexus program definition. Adopted:
     after the deterministic gate, flags intent-declared electrophiles,
     escalates stacked alerts to human review, records advisory gate_decisions;
     LLM pass behind BIONEXUS_ADVISORY_LLM=1; can never clear a refusal
-- [ ] Attribution panel per prediction: Morgan-RF → top contributing fingerprint
-  features; CharRidge → top n-grams; rendered beside verdicts ("why").
+- [ ] Attribution panel per prediction — SPLIT (Oct 2026):
+  - [x] **`bn why <policy> <train.csv> <smiles…>`**: per-prediction panel —
+    CharRidge exact n-gram contributions, Morgan-RF importance-weighted
+    bits, each with its STATED caveat (hashed-slot collisions / folded-bit
+    back-mapping), applicability-domain verdict inline (claim-grade use
+    vetoed on extrapolation), --json machine mode; plus `predict_admet`
+    tool output now carries `why` (triggered rules). 3 CLI/tool tests
+  - [ ] rendered beside verdicts on the card — needs `predicted_by`
+    provenance on proposals first (which model produced predicted_value);
+    the pass-through plumbing (proxy_evidence pattern) is ready
 - [x] Retrieval traces in provenance: hypothesis_generation records now carry
   prompt_sha256, model name, skill-guidance size, flywheel negatives
   injected (as candidate list), and candidate count — "what shaped this
@@ -798,9 +806,18 @@ Goodhart, and spurious XAI against our evals/TPP/problem-trees/attribution.
   13 tasks, mean 0.980. Model-side twin of the CS06 regime gate: data
   frames and model domains answered the same way — claim inside what's
   validated, refuse outside, and SAY which happened.
-- [ ] **`proxy_of` on SuccessCriteria/TPP criteria**: explicit proxy ladder
+- [x] **`proxy_of` on SuccessCriteria/TPP criteria**: explicit proxy ladder
   (ic50_um → target_engagement → cellular_efficacy → clinical); verdict and
-  tree roll-up print evidence distance from the clinical question
+  tree roll-up print evidence distance from the clinical question.
+  SHIPPED (Oct 2026): `bionexus/proxy.py` — default ladder to
+  `clinical_efficacy`, `proxy_of` override on SuccessCriteria (first rung
+  only), unresolved chains reported as unresolved (never 0). Every verdict
+  record carries an `evidence` payload {rungs, chain, resolved}; the
+  program roll-up prints the distance line ("4 rungs from clinical
+  (ic50_um→target_engagement→…→clinical_efficacy)"); pipeline card gate
+  labels gain "· N proxy rungs from clinical" (key `proxy_evidence` in the
+  tested map — `evidence` stays the run-id name). 6 ladder/card/rollup
+  tests in tests/test_proxy_attribution.py
 - [ ] **Decision-utility eval**: fixed-budget, cost-aware expected value for
   selection; NNPV-style metric for deselection; label every eval task with
   its Box-2 decision context (selection|deselection|quantification)

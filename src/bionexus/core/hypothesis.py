@@ -39,6 +39,17 @@ class SuccessCriteria(BaseModel):
     threshold: float                     # success boundary on the metric
     min_replicates: int = 1              # minimum evidence required to conclude
     inconclusive_if_qc_failed: bool = True  # bad QC -> inconclusive, not invalidated
+    proxy_of: str | None = None          # the claim this metric proxies (Goodhart
+                                         # guard); empty follows the default ladder
+
+    def evidence(self) -> dict:
+        """Proxy-chain distance from this metric to the clinical claim."""
+        from bionexus.proxy import distance
+        return distance(self.metric, self.proxy_of)
+
+    def evidence_line(self) -> str:
+        from bionexus.proxy import evidence_line
+        return evidence_line(self.metric, self.proxy_of)
 
     def met(self, value: float) -> bool:
         return value <= self.threshold if self.direction == "min" else value >= self.threshold
@@ -553,6 +564,7 @@ class HypothesisTracker:
             "qc_passed": qc_ok,
             "evidence_run_id": result.run_id,
             "verdict": h.status,
+            "evidence": criteria.evidence(),
             "derivation": build(
                 instrument=(inst.adapter if inst else None),
                 version=(getattr(inst, "instrument_id", None)

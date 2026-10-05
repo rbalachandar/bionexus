@@ -105,6 +105,7 @@ bn mcp                                 # MCP server: drive BioNexus from Claude/
 bn new-adapter lab my_robot            # scaffold a tested LabAdapter
 bn skills list                         # discovered Agent Skills (theirs and ours)
 bn eval --all                          # the measurable claim: scored task suite + leaderboard
+bn why char-ridge train.csv CCCCCO       # attribution panel: per-prediction drivers + caveats + applicability domain
 bn eval --suite epistemics,models      # run tiers separately
 bn anchor --verify                     # Merkle root: prove the whole store's state
 bn fixtures verify <study-dir>         # byte-reproducible case-study data

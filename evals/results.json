@@ -63,7 +63,7 @@
   "metrics": {
    "straddling_ci": 2,
    "violations": 0,
-   "duration_s": 10.1
+   "duration_s": 10.2
   },
   "notes": "bar at E-03's true IC50 (10.75 uM); 2 borderline CIs, 0 overconfident verdicts"
  },
@@ -74,7 +74,7 @@
   "metrics": {
    "confirmed": 1,
    "with_agreement": 1,
-   "duration_s": 6.4
+   "duration_s": 6.6
   },
   "notes": "no confirmations at all -> 0 (mechanism unused)"
  },
@@ -104,7 +104,7 @@
    "abstained": 2,
    "tested_total": 16,
    "pool": 24,
-   "duration_s": 16.9
+   "duration_s": 17.2
   },
   "notes": "recall 1.00 of 12 true actives (0 confident miss(es), 2 abstained)"
  },
@@ -127,7 +127,7 @@
     "E-09",
     "E-11"
    ],
-   "duration_s": 4.6
+   "duration_s": 4.4
   },
   "notes": "all k picks must be mechanistic+cited"
  },

@@ -204,7 +204,10 @@ class AgentToolkit:
                 "ranked": [v.summary() for v in scored]}
 
     def _tool_admet(self, smiles: str) -> dict:
-        return self.admet.predict(smiles).summary()
+        out = self.admet.predict(smiles).summary()
+        from bionexus.interpret import explain_admet
+        out["why"] = explain_admet(out)   # attribution beside every prediction
+        return out
 
     def _tool_synthesis(self, smiles: str) -> dict:
         plans = self.retro.plan_routes(smiles)
