@@ -257,7 +257,7 @@ def _a_triage():
                       + ("submission-stage refusal (ordering debt, see "
                          "ROADMAP)" if wasted_lots else
                          "submission-stage refusal — ordering debt FIXED "
-                         "and graded to zero, kept as a regression slot))
+                         "and graded to zero, kept as a regression slot)"))
 
 
 @register("agent-workflow-repro", "same campaign, two runs: verdict maps and "
