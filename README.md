@@ -148,6 +148,7 @@ scored tasks against seeded ground truth — deterministic, offline, in CI:
 | **epistemics** | does it reason like a scientist? | hit-recovery vs truth · verdict-honesty (must abstain where the CI straddles) · confirmation-coverage · falsifiability-tiebreak · adaptive-dose-design · flywheel-memory |
 | **models** | how good are its baselines? | policy ladder on MoleculeNet (Lipophilicity, ESOL, HIV) plus TDC ADMET Group (Caco2, HIA, BBB) on canonical scaffold folds — frozen in-repo, no network; vs the random floor. Fold-relative sanity (small held-out folds swing AUC; these are not leaderboard claims), scaffold-split throughout |
 | **reproductions** | can it redo published discoveries? | the blind paper studies (opt-in; frozen data fixtures) |
+| **agent** *(opt-in)* | does the full loop triage correctly end to end? | DDB-shaped workflows with ONE verifiable answer — exact refusal map (safety + makeability gates), zero refused-compounds-tested, zero wrong-confirms vs seeded truth, and byte-exact reruns — all graded deterministically, no LLM judge (`bn eval --suite agent`) |
 
 The suite has already earned its keep: it caught an observed-max fit bias,
 per-run ground-truth instability, confirmation labels that overrode the

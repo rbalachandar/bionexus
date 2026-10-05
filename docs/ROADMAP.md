@@ -844,11 +844,24 @@ Goodhart, and spurious XAI against our evals/TPP/problem-trees/attribution.
   only — small folds swing AUC, stated). deepchem S3 rejected as a source
   (per-object ACLs: Caco2/Tox21 403 today while our 3 files serve — do not
   depend on it).
-- [ ] **Agent-tier eval, DDB-shaped**: 2–3 end-to-end verifiable workflows
-  (multi-hop ChEMBL/PDB query → filter → compute → single answer) run by
-  the real hypothesis agent through the toolkit, DETERMINISTIC grading
-  (no LLM judge). Grounded in Scale DrugDiscoveryBench findings — planning
-  is the frontier gap; our problem trees should show it measurably.
+- [x] **Agent-tier eval, DDB-shaped** (Oct 2026): suite `agent`, 2 tasks,
+  mean 1.000 via `bn eval --suite agent`:
+  - agent-constrained-triage: gated campaign end-to-end (propose→Make→
+    submit→assay→verdict) with ONE verifiable answer — exact refusal map
+    {undeclared-chloroacetamide: safety_refusal, no-route polycycle:
+    no_viable_route} — plus zero refused-compounds-tested, zero
+    wrong-confirms vs seeded truth, chain verify. Deterministic grader,
+    no LLM judge (DDB shape adopted, its judge caveats declined).
+  - agent-workflow-repro: same campaign twice → verdict maps + seeded
+    synthesis lot ids byte-identical (DDB's reproducibility caveat run
+    in reverse: ours must be exact).
+  FIRST FINDING OF THE AGENT TIER (already visible in the task notes):
+  1 lot was burned before the submission-stage safety refusal — the
+  toxicophore screen sits at submit, but Make synthesizes first.
+  - [ ] **Gate ordering debt**: pre-screen declared structures for
+    toxicophores BEFORE Make spends a batch (screen samples at Make
+    entry, keep the submit-stage rule as the backstop; refusal
+    semantics unchanged, waste eliminated).
 - [ ] Polaris certified datasets via their client (auth-gated downloads
   don't fit the offline suite; revisit as a fixtures-materialization job).
 - [x] eval --task no longer clobbers committed leaderboard artifacts

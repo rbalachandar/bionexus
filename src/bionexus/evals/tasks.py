@@ -161,6 +161,124 @@ def _m_bbb():
     return run_split_pinned_task("bbb_martins", min_score=0.65)
 
 
+# ------------------------------------------------------- agent tier (DDB-shaped)
+# Scale DrugDiscoveryBench demonstrated: frontier agents fail early-discovery
+# WORKFLOWS mostly on planning/constraint-dropping, graded by LLM judge. We
+# borrow the shape (multi-step workflow -> one verifiable answer), refuse the
+# grader (deterministic only). Suite "agent": opt-in via --suite agent.
+
+_AGENT_TRIAGE_HYP = [
+    ("D-TOX", "CCOc1ccc(NC(=O)CCl)cc1"),      # undeclared chloroacetamide
+    ("D-UNMAKE", "[C@H]1([C@H]2[C@@H]1[C@@H]3[C@H]2[C@@H]4[C@@H]3[C@@H](C4)O)"
+                  "Cc5ccccc5"),                 # rule-corpus: no viable route
+    ("REG-1", "Cc1ccc(NC(=O)c2ccc(O)cc2)cc1"),
+    ("REG-2", "COc1ccc(NC(=O)c2ccccc2F)cc1"),
+    ("REG-3", "Cc1cccc(NC(=O)c2ccc(F)cc2)c1"),
+]
+# the single verifiable answer (deterministic machinery, seed 7):
+TRIAGE_ANSWER = {"D-TOX": "safety_refusal", "D-UNMAKE": "no_viable_route"}
+
+
+def _triage_campaign(seed: int = 7):
+    import tempfile as _tf
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.autoloop import CampaignConfig, run_campaign
+    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    prob = ProblemStatement(objective="agent triage eval", constraints=[
+        Constraint(name="potency", description="<= 20 uM", kind="hard",
+                   limit=20.0, unit="uM")])
+    cfg = CampaignConfig(problem=prob, hypotheses=[
+        {"statement": f"{c} inhibits the target", "candidate": c,
+         "assay_type": "binding", "predicted": "<= 20",
+         "predicted_value": 20.0, "rationale": "eval", "smiles": smi}
+        for c, smi in _AGENT_TRIAGE_HYP],
+        k=5, rounds=1, autonomy="act",
+        inbox=_tf.mkdtemp(prefix="agent-eval-"), poll_secs=0.02)
+    store = SqliteProvenanceStore(":memory:")
+    rep = run_campaign(cfg, SimulatorLab(seed=seed), store,
+                       notify=lambda m: None)
+    recs = store.branch_records(f"problem/{rep.problem_id}")
+    return rep, recs, store
+
+
+@register("agent-constrained-triage", "end-to-end gated triage -> one "
+          "verifiable answer: refusals exact, zero wrong confirms, chain "
+          "clean (DDB shape, deterministic grade)", suite="agent")
+def _a_triage():
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    rep, recs, store = _triage_campaign()
+    gates: dict[str, str] = {}
+    for r in recs:
+        d = r.decision or {}
+        if r.event_type.value == "gate_decision":
+            if d.get("kind") == "safety_refusal":
+                for cand in d.get("samples") or []:
+                    if cand in TRIAGE_ANSWER:
+                        gates[cand] = "safety_refusal"
+            elif d.get("kind") == "no_viable_route" and d.get("candidate"):
+                gates[d["candidate"]] = "no_viable_route"
+    answer_ok = gates == TRIAGE_ANSWER
+    # TESTED = an assay ever ran or a verdict posted. Refused compounds
+    # must NEVER appear there.
+    tested = {cand for r in recs for cand in
+              [str((r.decision or {}).get("candidate")
+                   or (r.artifact.metadata if r.artifact else {})
+                   .get("candidate") or "")]
+              if cand and r.event_type.value in (
+                  "lab_run", "hypothesis_tested", "hypothesis_validated",
+                  "hypothesis_invalidated", "hypothesis_inconclusive")}
+    refused_tested = [c for c in TRIAGE_ANSWER if c in tested]
+    # reported waste, NOT a failure (until gate ordering is fixed — see
+    # ROADMAP): a batch synthesized before the submission-stage refusal
+    wasted_lots = sorted({(r.decision or {}).get("lot", "")
+                          for r in recs
+                          if r.event_type.value == "synthesis_complete"
+                          and (r.decision or {}).get("candidate")
+                          in TRIAGE_ANSWER} - {""})
+    lab = SimulatorLab(seed=7)
+    wrong = [c for c, v in rep.verdicts.items()
+             if v == "confirmed" and lab.true_ic50_um("any", c) > 20.0]
+    chain_ok = not store.verify_chain(f"problem/{rep.problem_id}")
+    score = round(0.4 * answer_ok + 0.3 * (not refused_tested)
+                  + 0.2 * (not wrong) + 0.1 * chain_ok, 3)
+    return TaskResult("agent-constrained-triage",
+                      "DDB-shaped triage, deterministic grading",
+                      score, score >= PASS_THRESHOLD,
+                      {"answer_expected": TRIAGE_ANSWER, "answer_got": gates,
+                       "refused_but_tested": refused_tested,
+                       "batches_wasted_before_refusal": wasted_lots,
+                       "wrong_confirmed": wrong},
+                      f"triage answer {'EXACT' if answer_ok else 'WRONG'} "
+                      f"(expected {TRIAGE_ANSWER}, got {gates}); "
+                      f"{len(refused_tested)} refused compounds tested "
+                      f"(must be 0); {len(wrong)} wrong confirms; "
+                      f"{len(wasted_lots)} lot(s) burned before the "
+                      f"submission-stage refusal (ordering debt, see ROADMAP)")
+
+
+@register("agent-workflow-repro", "same campaign, two runs: verdict maps and "
+          "synthesis lots identical (DDB reproducibility caveat, inverted: "
+          "ours must be exact)", suite="agent")
+def _a_repro():
+    rep1, recs1, _s1 = _triage_campaign()
+    rep2, recs2, _s2 = _triage_campaign()
+    v1, v2 = dict(rep1.verdicts), dict(rep2.verdicts)
+    lots1 = sorted((r.decision or {}).get("lot", "") for r in recs1
+                   if (r.decision or {}).get("lot"))
+    lots2 = sorted((r.decision or {}).get("lot", "") for r in recs2
+                   if (r.decision or {}).get("lot"))
+    same = v1 == v2 and lots1 == lots2 and lots1
+    score = 1.0 if same else 0.0
+    return TaskResult("agent-workflow-repro",
+                      "workflow reproducibility (exact)",
+                      score, same,
+                      {"verdicts_1": v1, "verdicts_2": v2,
+                       "n_lots": len(lots1), "lots_match": lots1 == lots2},
+                      f"verdicts {'identical' if v1 == v2 else 'DRIFT'}; "
+                      f"{len(lots1)} seeded lots {'reproduced' if lots1 == lots2 and lots1 else 'MISMATCHED'}")
+
+
 # ------------------------------------------------------- reproductions suite
 
 @register("repro-cs02-az3246", "blind reproduction of the AZ3246/HPK1 paper "

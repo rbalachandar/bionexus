@@ -74,7 +74,7 @@
   "metrics": {
    "confirmed": 1,
    "with_agreement": 1,
-   "duration_s": 6.5
+   "duration_s": 6.4
   },
   "notes": "no confirmations at all -> 0 (mechanism unused)"
  },

@@ -1,6 +1,6 @@
 # BioNexus eval leaderboard
 
-Run 2026-10-05 21:39 · mean **0.980** · all pass
+Run 2026-10-05 22:01 · mean **0.980** · all pass
 
 ### epistemics — mean 0.980
 
@@ -8,7 +8,7 @@ Run 2026-10-05 21:39 · mean **0.980** · all pass
 |---|---|---|---|---|
 | hit-recovery | 0.917 | ✅ | 6.5s | 1.0 confident-correct · 0.5 honest abstain · 0 wrong |
 | verdict-honesty | 1.000 | ✅ | 10.2s | bar at E-03's true IC50 (10.75 uM); 2 borderline CIs, 0 overconfident verdicts |
-| confirmation-coverage | 1.000 | ✅ | 6.5s | no confirmations at all -> 0 (mechanism unused) |
+| confirmation-coverage | 1.000 | ✅ | 6.4s | no confirmations at all -> 0 (mechanism unused) |
 | method-recall | 0.950 | ✅ | 17.0s | recall 1.00 of 12 true actives (0 confident miss(es), 2 abstained) |
 | falsifiability-tiebreak | 1.000 | ✅ | 4.4s | all k picks must be mechanistic+cited |
 | adaptive-dose-design | 0.875 | ✅ | 2.6s | 3 wells beat 4: err 0.024 vs 0.090; CI coverage 15/16 (nominal 15.2) |
