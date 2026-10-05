@@ -10,7 +10,6 @@ import ProgramForm from './routes/ProgramForm'
 import Wizard from './routes/Wizard'
 import Approvals, { HaltBanner } from './routes/Approvals'
 import Experiment from './routes/Experiment'
-import Evals from './routes/Evals'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -20,11 +19,14 @@ function Shell({ children }: { children: React.ReactNode }) {
   const gov = useQuery({
     queryKey: ['gov-pill'],
     queryFn: async () => {
-      const [ap, halt] = await Promise.all([
+      const [ap, halt, ev] = await Promise.all([
         fetch('/api/approvals').then((r) => r.json()),
         fetch('/api/halt').then((r) => r.json()),
+        fetch('/api/evals').then((r) => r.json()).catch(() => null),
       ])
-      return { pending: (ap.pending ?? []).length, halted: !!halt.halted }
+      return { pending: (ap.pending ?? []).length, halted: !!halt.halted,
+        graded: ev?.available ? { mean: ev.mean, allPass: ev.all_pass,
+          tasks: ev.n_tasks } : null }
     },
     refetchInterval: 5000,
   })
@@ -58,7 +60,6 @@ function Shell({ children }: { children: React.ReactNode }) {
         </Link>
         <nav style={{ display: 'flex', gap: 4 }}>
           {navLink('/', 'Workspace')}
-          {navLink('/evals', 'Evals')}
         </nav>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7,
           marginLeft: 'auto', fontSize: 10, fontWeight: 600,
@@ -66,6 +67,14 @@ function Shell({ children }: { children: React.ReactNode }) {
           <span style={{ width: 5, height: 5, borderRadius: '50%',
             background: '#7dd3e8', boxShadow: '0 0 6px rgba(125,211,232,0.8)' }} />
           agents run the scientific method
+          {gov.data?.graded && (
+            <span title="graded offline by `bn eval` — full leaderboard: README + evals/leaderboard.md"
+              style={{ color: gov.data.graded.allPass ? '#6ee7a0' : '#fca5a5',
+                fontWeight: 700 }}>
+              {' '}· graded {gov.data.graded.mean?.toFixed(3)}
+              {' '}({gov.data.graded.tasks}/{gov.data.graded.tasks} bar-pass)
+            </span>
+          )}
         </span>
         {(gov.data?.halted || (gov.data?.pending ?? 0) > 0) && (
           <Link to="/approvals" title="open Approvals & governance"
@@ -100,8 +109,7 @@ export default function App() {
             <Route path="/programs/:slug" element={<Program />} />
             <Route path="/wizard" element={<Wizard />} />
             <Route path="/approvals" element={<Approvals />} />
-            <Route path="/evals" element={<Evals />} />
-            <Route path="/experiments/:eid" element={<Experiment />} />
+                        <Route path="/experiments/:eid" element={<Experiment />} />
           </Routes>
         </Shell>
       </BrowserRouter>

@@ -25,7 +25,7 @@
 > Those sub-1.0 scores are the point: the system is graded **down** for
 > the confidence it refused to claim. No competitor ships a harness that
 > does that. Full run: [`evals/leaderboard.md`](evals/leaderboard.md) ·
-> live in the workbench at **Evals**.
+> the workbench header carries it as a live “graded” badge.
 
 BioNexus is an open-source framework in which AI agents run the scientific
 method end to end: given a research problem and its constraints, agents propose
@@ -157,8 +157,9 @@ every run; the CI job fails if any score drops below the pass bar.
 The leaderboard **is** the pitch, so it leads the README and the
 workbench: `GET /api/evals` serves a read-model that flags every passing
 task scoring below 1.0 as an `honest_deduction` (the abstentions we are
-graded down for, not smoothed over), and the **Evals** tab renders it —
-the failing/near-failing tasks up top, before any agent narrative.
+graded down for, not smoothed over). The workbench header shows a live
+`graded 0.980 (13/13 bar-pass)` badge from `GET /api/evals` — the canonical
+listing stays here and in `evals/leaderboard.md`, not in a duplicate page.
 
 ### What keeps it trustworthy
 

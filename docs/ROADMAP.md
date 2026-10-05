@@ -300,9 +300,12 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   BIONEXUS_EVALS_DIR honored even when empty) flags every passing-but-
   sub-1.0 task as `honest_deduction`, lists `failing` explicitly, degrades
   to `available: False` on missing/corrupt artifacts (never 500s); new
-  **Evals** tab (`web/src/routes/Evals.tsx`: mean card, honesty callout
-  ABOVE the table, score bars where honest deductions render warn-colored
-  "honest ↓", notes column verbatim). Graceful-degrade + corrupt-json +
+  (Workbench lead shipped first as an **Evals** tab; REVISED same month by
+  owner call — a read-only copy of a committed artifact inside the app is
+  redundant surface: the tab was removed, the canonical listing is README +
+  evals/leaderboard.md, and the app keeps only a header badge "graded
+  0.980 (13/13 bar-pass)" fed by GET /api/evals — trust line where the
+  decision happens, no duplicated scoreboard.) Graceful-degrade + corrupt-json +
   failing-run + endpoint tests (5, `tests/test_evals_api.py`); the honesty
   framing is asserted, not cosmetic: hit-recovery MUST be <1.0 AND passed
   AND flagged. Suite 279 green; evals 0.979; SPA build clean.

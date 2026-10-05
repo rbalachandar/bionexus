@@ -30,7 +30,9 @@ python -m bionexus.cli auto --template dose-response-screen \
 ## Layout (hot files)
 - `src/bionexus/api/app.py` — FastAPI routes (incl. `GET /api/evals` — the
   leaderboard read-model the workbench leads with) · `web/src/` — React SPA
-  routes (Workspace / Program / Experiment / Wizard / **Evals**) ·
+  routes (Workspace / Program / Experiment / Wizard) · the header
+  badge shows the eval mean (`/api/evals` is read-only by design; the
+  leaderboard itself lives in README + evals/leaderboard.md) ·
   `src/bionexus/views.py` —
   the read-model the API serves (pipeline cards, verdict tally, rollups)
 - `src/bionexus/core/hypothesis.py` — Hypothesis lifecycle + **verdict logic**
