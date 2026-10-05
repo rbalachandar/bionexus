@@ -196,6 +196,11 @@ def propose_families_with_agent(
                                       v.get("predicted_value")
                                       or _gate["threshold"])}
             spec = {
+                "predicted_by": {"source": "llm",
+                                 "model": str(getattr(model, "model_version",
+                                                     "")
+                                              or getattr(model, "name",
+                                                         "llm"))},
                 "statement": v.get("statement", ""),
                 "candidate": v.get("candidate", ""),
                 "assay_type": _assay,

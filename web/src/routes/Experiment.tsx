@@ -86,6 +86,16 @@ function PipelineCards({ cards }: {
                   {c.predicted && <>
                     <span style={{ color: 'var(--faint)' }}>predicted</span>
                     <span>{c.predicted}</span></>}
+                  {c.predicted_by && (
+                    <span className="mono" title={c.predicted_by.note ?? undefined}
+                      style={{ fontSize: 10, color: c.predicted_by.note
+                        ? 'var(--warn)' : 'var(--muted)' }}>
+                      {' '}by {c.predicted_by.source}
+                      {c.predicted_by.model ? `:${c.predicted_by.model}` : ''}
+                      {c.predicted_by.policy ? `:${c.predicted_by.policy}` : ''}
+                      {c.predicted_by.note ? ' · see note' : ''}
+                    </span>
+                  )}
                   {c.mechanism && <>
                     <span style={{ color: 'var(--faint)' }}>mechanism</span>
                     <span>{c.mechanism}</span></>}

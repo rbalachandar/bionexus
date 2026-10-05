@@ -92,7 +92,10 @@ def _t_method_recall():
 
     specs = [{"statement": f"{c} binds", "candidate": c,
               "assay_type": "binding", "predicted": f"<= {threshold:g}",
-              "predicted_value": surrogate(c), "rationale": "surrogate"}
+              "predicted_value": surrogate(c), "rationale": "surrogate",
+              "predicted_by": {"source": "model",
+                               "policy": "noisy-hash-surrogate",
+                               "note": "deterministic, ±35% vs truth"}}
              for c in pool]
     _, lab, recs = run_offline_campaign(pool, threshold, 8, seed, INBOX,
                                         specs=specs, rounds=2)

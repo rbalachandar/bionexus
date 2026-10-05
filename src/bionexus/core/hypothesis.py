@@ -286,6 +286,8 @@ class HypothesisTracker:
                 # would leave the provenance record chemotype-blind
                 **({"smiles": spec["smiles"]} if spec.get("smiles") else {}),
                 **({"family": spec["family"]} if spec.get("family") else {}),
+                **({"predicted_by": spec["predicted_by"]}
+                   if spec.get("predicted_by") else {}),
                 **{k: v for k, v in (spec.get("metadata") or {}).items()
                    if k not in ("smiles", "family")},
             )
@@ -356,6 +358,8 @@ class HypothesisTracker:
                 # family tag + structure key ride IN the recorded decision:
                 # series claims derive their verdicts FROM the chain
                 family=fid,
+                **({"predicted_by": spec["predicted_by"]}
+                   if spec.get("predicted_by") else {}),
                 **({"smiles": spec["smiles"]} if spec.get("smiles") else {}),
                 **{k: v for k, v in (spec.get("metadata") or {}).items()
                    if k not in ("smiles", "family")},
@@ -463,6 +467,9 @@ class HypothesisTracker:
                                                  "citation": citation,
                                                  "citation_status":
                                                      citation_status,
+                                                 "predicted_by":
+                                                     (h.metadata or {}).get(
+                                                         "predicted_by"),
                                                  "smiles":
                                                      (h.metadata or {}).get(
                                                          "smiles", ""),

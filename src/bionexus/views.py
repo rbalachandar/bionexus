@@ -525,6 +525,11 @@ def pipeline_cards(recs) -> list[dict]:
             state = "proposed"
             stage = "proposed"
         crit = hp.get("criteria") or {}
+        _pb = hp.get("predicted_by")
+        if isinstance(_pb, dict) and (_pb.get("ad") or {}).get("extrapolation"):
+            _pb = {**_pb, "note": ("prediction came from a model OUTSIDE its "
+                                   "applicability domain — treated as a "
+                                   "question to test, never as evidence")}
         gate_lbl = (criteria_label(crit.get("metric"), crit.get("direction"),
                                    crit["threshold"])
                     if crit.get("threshold") is not None else None)
@@ -541,6 +546,7 @@ def pipeline_cards(recs) -> list[dict]:
             "head": str(head),
             "statement": stmt,
             "predicted": hp.get("predicted"),
+            "predicted_by": _pb,
             "mechanism": hp.get("mechanism"),
             "citation": hp.get("citation"),
             "citation_status": hp.get("citation_status"),

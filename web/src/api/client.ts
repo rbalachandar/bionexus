@@ -85,6 +85,8 @@ export interface PipelineCard {
   candidate: string | null
   head: string
   statement: string
+  predicted_by?: { source: string; model?: string;
+    policy?: string; note?: string } | null
   predicted: string | null
   mechanism: string | null
   citation: string | null
