@@ -370,6 +370,8 @@ def pipeline_data(recs) -> dict:
                                "observed": d.get("observed")
                                or d.get("ic50_um"),
                                "ci": d.get("observed_ci"),
+                               "extrapolation":
+                                   bool(d.get("extrapolation")),
                                "derivation": d.get("derivation"),
                                "seq": seq,
                                "evidence": d.get("evidence_run_id")}
@@ -476,6 +478,11 @@ def pipeline_cards(recs) -> list[dict]:
             (_der.get("derived") or {}).get("metric")
             or _der.get("criteria_metric") or _der.get("metric"))
         margin = _ci_margin(ci, (hp.get("criteria") or {}).get("threshold"))
+        ad_chip = ""
+        if verd.get("extrapolation"):
+            ad_chip = (" · ⚠ stamped extrapolation — value came from a "
+                       "model beyond its applicability domain")
+            margin += ad_chip
         observed = verd.get("observed")
         obs_txt = (f" — {unit_lbl} {observed}{ci_txt}"
                    if observed is not None else "")
@@ -487,10 +494,9 @@ def pipeline_cards(recs) -> list[dict]:
             stage = "validated (preliminary)" + obs_txt + margin
         elif v == "inconclusive":
             state = "inconclusive"
-            stage = "inconclusive — CI straddles the threshold" \
-                    + f" ({unit_lbl} {observed}{ci_txt})" \
-                    if observed is not None else \
-                    "inconclusive — CI straddles the threshold"
+            stage = ("inconclusive — CI straddles the threshold"
+                     + (f" ({unit_lbl} {observed}{ci_txt})"
+                        if observed is not None else "") + ad_chip)
         elif v in ("refuted", "invalidated"):
             state = "refuted"
             stage = "refuted" + f" ({unit_lbl} {observed}{ci_txt})" \
@@ -532,6 +538,7 @@ def pipeline_cards(recs) -> list[dict]:
             "threshold": crit.get("threshold"),
             "verdict": {"status": v or None,
                         "observed": observed,
+                        "extrapolation": bool(verd.get("extrapolation")),
                         "ci": list(ci) if ci else None,
                         "unit_label": unit_lbl,
                         "margin": margin.strip(" ·")} if verd else None,

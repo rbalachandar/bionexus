@@ -634,3 +634,59 @@ def _t_reviewer_llm_boundary():
          "verdicts_untouched": untouched},
         "the advisory layer cannot clear the deterministic floor"
         if ok else "LLM reviewer boundary failed")
+
+
+@register("applicability-domain",
+          "every model is a local model: the AD stamp must flag far "
+          "chemistry, spare near chemistry, and veto claim-grade verdicts "
+          "in BOTH directions for extrapolated values")
+def _t_applicability_domain():
+    from statistics import mean
+
+    from bionexus.benchmark import CharRidgePolicy
+    from bionexus.core.hypothesis import SuccessCriteria
+
+    # deterministic synthetic world: short aliphatics train the model;
+    # aromatics/peptidic queries sit beyond its chemistry (true response
+    # 30.0, outside every training value)
+    train = ([("C" * k + "O", 3.0 * k) for k in range(2, 7)]
+             + [("C" * k + "N", 3.0 * k + 0.5) for k in range(2, 7)]
+             + [("CC" * k, 2.0 * k) for k in range(1, 7)])
+    pol = CharRidgePolicy()
+    pol.fit(train)
+    in_qs = [s for s, _ in train[:6]]
+    far_qs = ["c1ccccc1O", "C1=CC=C(C=C1)C(=O)N", "CC(=O)NC1=CC=C(O)C=C1",
+              "C1CCNCC1S(=O)=O", "O=S(=O)(N)c1ccc2ccccc2c1",
+              "CCOC(=O)c1ccccc1O", "NCC(=O)NC(=O)CN", "C1=CC=C(C=C1)I",
+              "OC(=O)Cc1ccccc1", "CC(C)CC(N)C(=O)O", "c1ccc2ccccc2c1",
+              "Clc1ccccc1N"]
+    in_ok = sum(1 for s in in_qs
+                if not pol.predict_with_ad(s)[1]["extrapolation"])
+    far_ok = sum(1 for s in far_qs
+                 if pol.predict_with_ad(s)[1]["extrapolation"])
+    err_in = mean(abs(pol.predict_with_ad(s)[0] - y)
+                  for s, y in train[:6])
+    err_far = mean(abs(pol.predict(s) - 30.0) for s in far_qs)
+
+    crit = SuccessCriteria(metric="ic50_um", direction="min", threshold=25.0)
+    veto = (crit.classify(10.0, None, extrapolation=True) == "inconclusive"
+            and crit.classify(40.0, None, extrapolation=True) == "inconclusive"
+            and crit.classify(10.0, None) == "validated"
+            and crit.classify(40.0, None) == "invalidated")
+
+    score = round(0.35 * in_ok / len(in_qs)
+                  + 0.35 * far_ok / len(far_qs)
+                  + 0.15 * (err_far > err_in)
+                  + 0.15 * veto, 3)
+    return TaskResult("applicability-domain",
+                      "local-model guard: stamps + two-directional veto",
+                      score, score >= PASS_THRESHOLD,
+                      {"in_flagged": in_ok, "in_total": len(in_qs),
+                       "far_flagged": far_ok, "far_total": len(far_qs),
+                       "err_in": round(err_in, 3),
+                       "err_far": round(err_far, 3),
+                       "veto_ok": bool(veto), "floor": 0.5},
+                      f"{far_ok}/{len(far_qs)} far-chemistry queries stamped "
+                      f"extrapolation, {in_ok}/{len(in_qs)} near-chemistry "
+                      f"spared; err separation {err_far:.1f} vs {err_in:.1f}; "
+                      f"veto {'holds' if veto else 'BROKEN'}")

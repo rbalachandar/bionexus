@@ -14,10 +14,12 @@
 > harness **punishes our own overclaims**:
 >
 > ```
-> epistemics — mean 0.979 · 12/12 tasks pass
->   hit-recovery   0.917   honest abstains credited 0.5, not 1.0
->   adaptive-dose  0.875   3 wells beat 4 — a genuine negative result
->   verdict-honesty 1.000  must abstain where the CI straddles the gate
+> epistemics — mean 0.980 · 13/13 tasks pass
+>   hit-recovery         0.917  honest abstains credited 0.5, not 1.0
+>   adaptive-dose        0.875  3 wells beat 4 — a genuine negative result
+>   applicability-domain 1.000  far chemistry stamped extrapolation —
+>                       confident claims vetoed in BOTH directions
+>   verdict-honesty      1.000  must abstain where the CI straddles the gate
 > ```
 >
 > Those sub-1.0 scores are the point: the system is graded **down** for
@@ -179,6 +181,7 @@ the failing/near-failing tasks up top, before any agent narrative.
 | Evidence is the data | the Evidence section re-renders each branch's **recorded plate files** — the same curves and fits the verdicts were read from; a missing file renders as an honest gap, never a stock figure |
 | Retirement, not deletion | archived experiments leave the working set but their hash-chained records stay intact and auditable — consistent with the append-only provenance store |
 | Regime-gated assertions | deposited percent tables are fingerprinted for their normalization frame; absolute IC50 verdicts issue ONLY in externally validated frames (CS05), while self-normalized dialects (where CS06 showed numbers can't port) are admitted at the *shape* level only — affine-invariant concentration-dependence classes, labeled responders-never-verdicts (97.4% concordance with NCATS' own actives on their deposit). Trust is a declared envelope, not a hope |
+| Applicability domain | every learned predictor carries a nearest-neighbour Tanimoto domain (Morgan bits, char-gram fallback, declared conservative floor): values from beyond a model's training chemistry are stamped `extrapolation`, earn no claim-grade verdict in either direction, and chip it on the card — the model-side twin of the regime gate, graded by its own eval task |
 
 ## Using BioNexus
 

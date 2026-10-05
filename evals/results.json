@@ -63,7 +63,7 @@
   "metrics": {
    "straddling_ci": 2,
    "violations": 0,
-   "duration_s": 10.2
+   "duration_s": 10.1
   },
   "notes": "bar at E-03's true IC50 (10.75 uM); 2 borderline CIs, 0 overconfident verdicts"
  },
@@ -127,7 +127,7 @@
     "E-09",
     "E-11"
    ],
-   "duration_s": 4.4
+   "duration_s": 4.6
   },
   "notes": "all k picks must be mechanistic+cited"
  },
@@ -140,7 +140,7 @@
    "mean_err_adaptive_3well": 0.024,
    "mean_err_fixed_4well": 0.09,
    "ci_coverage": "15/16",
-   "duration_s": 2.5
+   "duration_s": 2.6
   },
   "notes": "3 wells beat 4: err 0.024 vs 0.090; CI coverage 15/16 (nominal 15.2)"
  },
@@ -243,5 +243,22 @@
    "duration_s": 0.0
   },
   "notes": "the advisory layer cannot clear the deterministic floor"
+ },
+ {
+  "task": "applicability-domain",
+  "score": 1.0,
+  "passed": true,
+  "metrics": {
+   "in_flagged": 6,
+   "in_total": 6,
+   "far_flagged": 12,
+   "far_total": 12,
+   "err_in": 3.167,
+   "err_far": 19.677,
+   "veto_ok": true,
+   "floor": 0.5,
+   "duration_s": 0.0
+  },
+  "notes": "12/12 far-chemistry queries stamped extrapolation, 6/6 near-chemistry spared; err separation 19.7 vs 3.2; veto holds"
  }
 ]

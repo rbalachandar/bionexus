@@ -779,10 +779,25 @@ The paper is an external audit of this project's thesis. Gap analysis mapped
 model-vs-process validation, ligand≠drug, local models, proxy-clinical links,
 Goodhart, and spurious XAI against our evals/TPP/problem-trees/attribution.
 
-- [ ] **Applicability domain (T0 of this section)**: nearest-neighbour
+- [x] **Applicability domain (T0 of this section)**: nearest-neighbour
   Tanimoto on Morgan/char features at predict time; below a declared
   similarity floor the prediction is stamped `extrapolation`, abstention
-  rules widen, cards show it. Answers "every model is a local model"
+  rules widen, cards show it. Answers "every model is a local model".
+  SHIPPED (Oct 2026): `bionexus/ad.py` — `ApplicabilityDomain`
+  (Morgan-2048/r=2 basis with deterministic char-3-gram fallback, basis
+  reported with every stamp; declared floor 0.5, conservative by design —
+  may over-abstain near-chemistry, never under-abstains far; empty/
+  unparseable structures are NEVER in-domain). `predict_with_ad()` on
+  CharRidgePolicy + MorganFingerprintRF (plain predict() untouched —
+  scores unchanged); `SuccessCriteria.classify(..., extrapolation=True)`
+  vetoes claim-grade verdicts in BOTH directions (confident negatives
+  from beyond the domain are as unfounded as positives); pipeline cards
+  chip "⚠ stamped extrapolation" through the inconclusive state too.
+  New graded task `applicability-domain` (stamps far chemistry 12/12,
+  spares near 6/6, err separation 19.7 vs 3.2, veto holds) — evals now
+  13 tasks, mean 0.980. Model-side twin of the CS06 regime gate: data
+  frames and model domains answered the same way — claim inside what's
+  validated, refuse outside, and SAY which happened.
 - [ ] **`proxy_of` on SuccessCriteria/TPP criteria**: explicit proxy ladder
   (ic50_um → target_engagement → cellular_efficacy → clinical); verdict and
   tree roll-up print evidence distance from the clinical question

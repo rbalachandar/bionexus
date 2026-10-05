@@ -87,10 +87,20 @@ class CharRidgePolicy:
         for j in range(d):
             ata[j][j] += self.l2
         self.w = _solve(ata, aty)
+        from bionexus.ad import ApplicabilityDomain
+        self.ad = ApplicabilityDomain.from_smiles([s for s, _ in data],
+                                                  basis="char3")
 
     def predict(self, smiles: str) -> float:
         x = self._featurize(smiles)
         return self.mean + sum(w * v for w, v in zip(self.w, x) if v)
+
+    def predict_with_ad(self, smiles: str) -> tuple[float, dict]:
+        """predict() + nearest-neighbour Tanimoto applicability-domain
+        stamp (char 3-gram basis): the number always comes back, but
+        outside the training chemistry it carries `extrapolation` so
+        abstention rules widen and cards chip — the local-model guard."""
+        return self.predict(smiles), self.ad.check(smiles)
 
 
 def _solve(a: list[list[float]], b: list[float]) -> list[float]:

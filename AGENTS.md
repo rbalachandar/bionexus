@@ -16,7 +16,7 @@ with a FastAPI + React workbench as the scientist surface.
 
 ## Commands
 ```sh
-.venv/bin/python -m pytest -q          # all tests (287 green as of this writing)
+.venv/bin/python -m pytest -q          # all tests (294 green as of this writing)
 make test                              # same suite via the Makefile
 make api                               # backend + built SPA on :8000
 make api-dev                           # backend only, auto-reload
@@ -34,6 +34,7 @@ python -m bionexus.cli auto --template dose-response-screen \
   `src/bionexus/views.py` —
   the read-model the API serves (pipeline cards, verdict tally, rollups)
 - `src/bionexus/core/hypothesis.py` — Hypothesis lifecycle + **verdict logic**
+- `src/bionexus/ad.py` — applicability domain (the local-model guard; model-side twin of the CS06 regime gate)
 - `src/bionexus/watch.py` — auto-analysis agent (+ orthogonal confirmation
   agreement check) · `autoloop.py` — campaign flow
 - `src/bionexus/diary.py` — swimlane lab narrative · `program.py` — TPP state

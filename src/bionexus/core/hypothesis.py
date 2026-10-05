@@ -44,12 +44,22 @@ class SuccessCriteria(BaseModel):
         return value <= self.threshold if self.direction == "min" else value >= self.threshold
 
     def classify(self, value: float,
-                 ci: tuple[float | None, float | None] | None = None) -> str:
+                 ci: tuple[float | None, float | None] | None = None,
+                 extrapolation: bool = False) -> str:
         """Point estimate decides; the CI can VETO certainty.
 
         If the 95% interval straddles the threshold, the honest verdict is
         'inconclusive' — not a coin-flip dressed as a result.
+
+        `extrapolation` (applicability domain, bionexus.ad): a value that
+        came from a model OUTSIDE its training chemistry cannot earn a
+        claim-grade verdict in EITHER direction — both arrows widen to
+        abstention. Local models do not get to make confident negatives
+        either; 'not active' from beyond the domain is as unfounded as
+        'active'.
         """
+        if extrapolation:
+            return "inconclusive"
         if ci is None or ci[0] is None or ci[1] is None:
             return "validated" if self.met(value) else "invalidated"
         lo, hi = ci

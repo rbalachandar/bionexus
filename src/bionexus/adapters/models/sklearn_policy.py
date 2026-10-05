@@ -39,8 +39,17 @@ class MorganFingerprintRF:
             self.model = RandomForestRegressor(n_estimators=self.n_estimators,
                                                random_state=self.seed, n_jobs=-1)
         self.model.fit(X, y)
+        from bionexus.ad import ApplicabilityDomain
+        self.ad = ApplicabilityDomain.from_smiles([s for s, _ in data],
+                                                  basis="morgan")
 
     def predict(self, smiles: str) -> float:
         if self.task == "classification":
             return float(self.model.predict_proba([self._fp(smiles)])[0][1])
         return float(self.model.predict([self._fp(smiles)])[0])
+
+    def predict_with_ad(self, smiles: str) -> tuple[float, dict]:
+        """predict() plus the applicability-domain stamp — the local-model
+        guard: outside the training chemistry the number comes back, but
+        flagged `extrapolation` so abstention rules widen and cards chip."""
+        return self.predict(smiles), self.ad.check(smiles)
