@@ -776,9 +776,13 @@ modality-selection output IS a BioNexus program definition. Adopted:
     back-mapping), applicability-domain verdict inline (claim-grade use
     vetoed on extrapolation), --json machine mode; plus `predict_admet`
     tool output now carries `why` (triggered rules). 3 CLI/tool tests
-  - [ ] rendered beside verdicts on the card — needs `predicted_by`
-    provenance on proposals first (which model produced predicted_value);
-    the pass-through plumbing (proxy_evidence pattern) is ready
+  - [x] rendered beside verdicts on the card — DONE with `predicted_by`
+    provenance (Oct 2026): every proposed prediction records its producer
+    (LLM path stamps model_version; eval surrogate names itself ±35%;
+    human/stated stays honestly absent); cards chip "by source:model",
+    warn-colored with "prediction came from a model OUTSIDE its
+    applicability domain — a question to test, never evidence" whenever
+    the payload carries an AD extrapolation stamp. tests/test_predicted_by.py
 - [x] Retrieval traces in provenance: hypothesis_generation records now carry
   prompt_sha256, model name, skill-guidance size, flywheel negatives
   injected (as candidate list), and candidate count — "what shaped this
