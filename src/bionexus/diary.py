@@ -85,8 +85,8 @@ def build_diary_html(records: list[Any], branch: str) -> str:
                 bits.append(f"rationale: {d['rationale']}")
             if d.get("citation"):
                 _cs = d.get("citation_status", "unverified")
-                _tag = {"verified": "✓ verified",
-                        "invalid": "⚠ UNVERIFIABLE — penalized",
+                _tag = {"verified": "verified",
+                        "invalid": "UNVERIFIABLE — penalized",
                         "check-failed": "? check failed (offline)"}.get(_cs, "")
                 bits.append(f"citation: {d['citation']}"
                             + (f" ({_tag})" if _tag else ""))
@@ -170,13 +170,13 @@ def build_diary_html(records: list[Any], branch: str) -> str:
         status = ""
         for e in lane["entries"]:
             if "CONFIRMED" in e:
-                status = "✅ confirmed"
+                status = "confirmed"
             elif "REFUTED" in e or "INVALIDATED" in e:
-                status = "❌ refuted"
+                status = "refuted"
             elif "INCONCLUSIVE" in e:
-                status = "∅ inconclusive"
+                status = "inconclusive"
             elif "VALIDATED" in e:
-                status = "✅ validated (unconfirmed)"
+                status = "validated (unconfirmed)"
         head = (f"<div class='lane-head'><b>{_html.escape(cand)}</b>"
                 f"<span class='mono'>{_html.escape(status)}</span></div>")
         return ("<div class='lane'>" + head + "".join(lane["entries"]) + "</div>")

@@ -1,12 +1,16 @@
 import type { ReactNode } from 'react'
 
-/** One visual language for verdicts, shared by workspace rows and the
- * experiment page: ✓ confirmed · ⏳ validated (awaiting orthogonal
- * confirmation) · ✗ refuted · ∅ abstained. */
-export const VERDICT_GLYPH: Record<string, string> = {
-  confirmed: '✓', validated: '⏳', preliminary: '⏳',
-  refuted: '✗', invalidated: '✗', refused: '✗', failed: '✗',
-  inconclusive: '∅',
+/** One visual language for verdicts: plain words + color, no glyphs.
+ * 'validated' reads as 'preliminary' — it is not yet confirmed. */
+export const VERDICT_LABEL: Record<string, { word: string; color: string }> = {
+  confirmed: { word: 'confirmed', color: 'var(--ok)' },
+  validated: { word: 'preliminary', color: 'var(--warn)' },
+  preliminary: { word: 'preliminary', color: 'var(--warn)' },
+  refuted: { word: 'refuted', color: 'var(--bad)' },
+  invalidated: { word: 'refuted', color: 'var(--bad)' },
+  refused: { word: 'refused', color: 'var(--bad)' },
+  failed: { word: 'failed', color: 'var(--bad)' },
+  inconclusive: { word: 'abstained', color: 'var(--warn)' },
 }
 
 /** Status badge: dot + label, tinted. Pulse for running states. */

@@ -61,7 +61,7 @@ function BriefAction({ slug, idx, action, tree, launched, status,
               style={{ flex: 'none', fontSize: 11, textDecoration: 'none',
                 display: 'inline-flex', gap: 4, alignItems: 'center' }}>
               {status === 'completed'
-                ? <Badge status="completed">done ✓</Badge>
+                ? <Badge status="completed">done</Badge>
                 : status === 'failed'
                   ? <Badge status="failed">failed</Badge>
                   : <Badge status="running">running</Badge>}

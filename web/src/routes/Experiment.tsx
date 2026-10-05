@@ -5,7 +5,7 @@ import { ShieldAlert, Target } from 'lucide-react'
 import { api } from '../api/client'
 import type { ExperimentDetail, PipelineCard } from '../api/client'
 import EvidenceCurves from '../components/EvidenceCurves'
-import { Badge, Section, VERDICT_GLYPH } from '../components/ui'
+import { Badge, Section, VERDICT_LABEL } from '../components/ui'
 import { useCampaignEvents } from '../api/useEvents'
 
 function Chip({ status }: { status: string }) {
@@ -48,7 +48,7 @@ function PipelineCards({ cards }: {
               </span>
               <span style={{ whiteSpace: 'nowrap', flex: 'none' }}>
                 <Badge status={c.state}>
-                  {`${VERDICT_GLYPH[c.state] ?? ''} ${c.state.replace(/_/g, ' ')}`.trim()}
+                  {c.state.replace(/_/g, ' ')}
                 </Badge>
               </span>
             </div>
@@ -159,7 +159,7 @@ function SeriesPanel({ series }:
               <tbody>
                 {s.matched_pairs.map((p) => (
                   <tr key={`${p.a}-${p.b}`}>
-                    <td className="mono">{p.a} ↔ {p.b}</td>
+                    <td className="mono">{p.a} vs {p.b}</td>
                     <td className="mono">{p.delta_log10}
                       {p.ci95 ? ` [${p.ci95[0]}, ${p.ci95[1]}]`
                         : ' (point-only — no CIs on record)'}
@@ -373,7 +373,7 @@ function DmtaCounts({ counts, rounds, bare }: { counts: Record<string, number>; 
                 <td>
                   {Object.entries(r.verdicts).map(([c, v]) => (
                     <span key={c} className={`chip ${v}`} style={{ marginRight: 6, fontSize: 11 }}>
-                      {`${VERDICT_GLYPH[v] ?? ''} ${c}: ${v.replace(/_/g, ' ')}`.trim()}
+                      {`${c}: ${v.replace(/_/g, ' ')}`}
                     </span>
                   )) || '—'}
                 </td>

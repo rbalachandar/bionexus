@@ -365,7 +365,7 @@ export default function Workspace({ initialForm = false }: {
                   {e.runs ?? 0} runs · r{e.rounds_done ?? 0}{e.rounds_planned ? `/${e.rounds_planned}` : ''}
                 </span>
                 {!NO_LABEL_STATUS.has(e.status) && <Badge status={e.status} />}
-                <ArchiveButton small label="✕" confirmLabel="archive?"
+                <ArchiveButton small label="archive" confirmLabel="archive?"
                   onConfirm={async () => {
                     await fetch(`/api/experiments/${e.eid}/archive`, { method: 'POST' })
                     qc.invalidateQueries({ queryKey: ['workspace'] })

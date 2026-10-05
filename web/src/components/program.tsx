@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import type { ProgramLink, ProblemTreeOut, ProgramOut, TasteReport } from '../api/client'
-import { Badge, VERDICT_GLYPH } from './ui'
+import { Badge, VERDICT_LABEL } from './ui'
 
 export const NO_LABEL_STATUS = new Set(['completed', 'archived'])
 
@@ -34,8 +34,9 @@ export function leafTitle(l: { eid: string; question: string | null;
   if (l.runs) bits.push(`${l.runs} runs`)
   const v = l.verdicts
   if (v && (v.confirmed || v.preliminary || v.refuted || v.inconclusive))
-    bits.push(`✓${v.confirmed}${v.preliminary ? ` ⏳${v.preliminary}` : ''}` +
-      ` ✗${v.refuted} ∅${v.inconclusive}`)
+    bits.push(`${v.confirmed} confirmed` +
+      (v.preliminary ? ` · ${v.preliminary} preliminary` : '') +
+      ` · ${v.refuted} refuted · ${v.inconclusive} abstained`)
   bits.push(l.eid)
   return bits.join(' · ')
 }
@@ -45,16 +46,19 @@ export function VerdictTally({ v }: {
     inconclusive: number }
 }) {
   if (!v) return null
-  const parts = [[v.confirmed, VERDICT_GLYPH.confirmed, 'var(--ok)'],
-    [v.preliminary ?? 0, VERDICT_GLYPH.preliminary, 'var(--warn)'],
-    [v.refuted, VERDICT_GLYPH.refuted, 'var(--bad)'],
-    [v.inconclusive, VERDICT_GLYPH.inconclusive, 'var(--warn)']] as const
+  const parts = [
+    [v.confirmed, VERDICT_LABEL.confirmed] as const,
+    [v.preliminary ?? 0, VERDICT_LABEL.preliminary] as const,
+    [v.refuted, VERDICT_LABEL.refuted] as const,
+    [v.inconclusive, VERDICT_LABEL.inconclusive] as const]
   const shown = parts.filter(([n]) => n > 0)
   if (shown.length === 0) return null
   return (
     <span className="mono" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
-      {shown.map(([n, g, c]) => (
-        <span key={g} style={{ color: c, marginRight: 6 }}>{g}{n}</span>
+      {shown.map(([n, l], i) => (
+        <span key={l.word} style={{ color: l.color, marginRight: 8 }}>
+          {i > 0 ? '' : ''}{n} {l.word}
+        </span>
       ))}
     </span>
   )

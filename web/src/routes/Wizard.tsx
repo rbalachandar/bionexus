@@ -193,7 +193,12 @@ export default function Wizard() {
           </h3>
           {readiness?.findings?.map((f: any, i: number) => (
             <p key={i} style={{ fontSize: 12, margin: '2px 0' }}>
-              {f.severity === 'blocker' ? '⛔' : f.severity === 'warning' ? '⚠️' : '✓'}{' '}
+              <span style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: f.severity === 'blocker' ? 'var(--bad)'
+                  : f.severity === 'warning' ? 'var(--warn)' : 'var(--ok)',
+              }}>{f.severity}</span>{' '}
               <strong>{f.check}</strong>: {f.message}
             </p>
           ))}

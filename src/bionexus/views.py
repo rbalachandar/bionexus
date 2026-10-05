@@ -485,8 +485,8 @@ def pipeline_cards(recs) -> list[dict]:
         margin = _ci_margin(ci, (hp.get("criteria") or {}).get("threshold"))
         ad_chip = ""
         if verd.get("extrapolation"):
-            ad_chip = (" · ⚠ stamped extrapolation — value came from a "
-                       "model beyond its applicability domain")
+            ad_chip = (" · stamped extrapolation — value came from a model "
+                       "beyond its applicability domain")
             margin += ad_chip
         observed = verd.get("observed")
         obs_txt = (f" — {unit_lbl} {observed}{ci_txt}"
@@ -534,7 +534,7 @@ def pipeline_cards(recs) -> list[dict]:
             gate_lbl += (f" · {_n} proxy rung{'s' if _n != 1 else ''} "
                          "from clinical")
         elif gate_lbl and isinstance(_evd, dict) and not _evd.get("resolved"):
-            gate_lbl += " · ⚠ proxy chain unresolved"
+            gate_lbl += " · proxy chain unresolved (distance unknown)"
         cards.append({
             "key": hid,
             "candidate": cand,

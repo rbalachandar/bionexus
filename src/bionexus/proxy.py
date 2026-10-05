@@ -71,8 +71,8 @@ def distance(metric: str, proxy_of: str | None = None) -> dict[str, Any]:
 def evidence_line(metric: str, proxy_of: str | None = None) -> str:
     d = distance(metric, proxy_of)
     if not d["resolved"]:
-        return (f"⚠ proxy chain from '{metric}' does not reach the clinical "
-                f"claim ({'→'.join(d['chain'])} — unresolved)")
+        return (f"proxy chain from '{metric}' does not reach the clinical "
+                f"claim ({'→'.join(d['chain'])}) — unresolved")
     n = d["rungs"]
     return (f"evidence distance: {n} rung{'s' if n != 1 else ''} from "
             f"clinical ({'→'.join(d['chain'])})")
