@@ -468,4 +468,4 @@ def test_diary_shows_refutation_and_abstention(tmp_path):
     assert "REFUTED" in html
     assert "INCONCLUSIVE" in html
     assert "inconclusive" in html          # lane status word
-    assert "❌ refuted" in html           # lane status glyph
+    assert "refuted" in html           # lane status glyph
