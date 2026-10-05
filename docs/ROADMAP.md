@@ -834,3 +834,22 @@ Goodhart, and spurious XAI against our evals/TPP/problem-trees/attribution.
   validation), post-cutoff case studies + BH correction (anti-Goodhart),
   TPP/problem-tree decomposition (ligand≠drug), tighten-only AI (spurious-XAI
   defense), provenance chain-of-custody for numbers
+
+## Benchmark corpus refresh (Oct 2026 — TDC / Polaris / Scale DDB)
+
+- [x] TDC ADMET Group frozen in-repo: Caco2_Wang, HIA_Hou, BBB_Martins on
+  TDC canonical scaffold folds (train_val/test from Zenodo 10.5281/
+  zenodo.10372419, MANIFEST.json w/ citations+sha256, no network, CI-
+  hermetic); 3 new models-tier tasks (6/6 pass, mean 0.873; floor-relative
+  only — small folds swing AUC, stated). deepchem S3 rejected as a source
+  (per-object ACLs: Caco2/Tox21 403 today while our 3 files serve — do not
+  depend on it).
+- [ ] **Agent-tier eval, DDB-shaped**: 2–3 end-to-end verifiable workflows
+  (multi-hop ChEMBL/PDB query → filter → compute → single answer) run by
+  the real hypothesis agent through the toolkit, DETERMINISTIC grading
+  (no LLM judge). Grounded in Scale DrugDiscoveryBench findings — planning
+  is the frontier gap; our problem trees should show it measurably.
+- [ ] Polaris certified datasets via their client (auth-gated downloads
+  don't fit the offline suite; revisit as a fixtures-materialization job).
+- [x] eval --task no longer clobbers committed leaderboard artifacts
+  (single-task debug guarded).

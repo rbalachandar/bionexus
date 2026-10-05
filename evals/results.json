@@ -74,7 +74,7 @@
   "metrics": {
    "confirmed": 1,
    "with_agreement": 1,
-   "duration_s": 6.6
+   "duration_s": 6.5
   },
   "notes": "no confirmations at all -> 0 (mechanism unused)"
  },
@@ -104,7 +104,7 @@
    "abstained": 2,
    "tested_total": 16,
    "pool": 24,
-   "duration_s": 17.2
+   "duration_s": 17.0
   },
   "notes": "recall 1.00 of 12 true actives (0 confident miss(es), 2 abstained)"
  },

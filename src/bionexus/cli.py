@@ -479,6 +479,10 @@ def cmd_eval(args: argparse.Namespace) -> int:
     print(f"\n{'PASS' if all_pass else 'FAIL'} — {len(results)} tasks, "
           f"mean score {overall:.3f} (pass bar {PASS_THRESHOLD})")
 
+    if args.task or (getattr(args, "suite", None) and not args.all):
+        # debug run (single task or custom suite): never clobber the
+        # committed epistemics artifacts — report and exit
+        return 0 if all_pass else 1
     import json as _json
     from pathlib import Path as _P
     out = _P("evals/leaderboard.md")

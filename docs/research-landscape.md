@@ -235,3 +235,40 @@ already shipped); the sharpened pitch line is borrowed, though: *"tools
 fail loudly and never synthesize"* — now echoed in the README trust row.
 
 Sources: plan https://github.com/GoogleCloudPlatform/LifeSciences/blob/main/applications/drug-design-engine/docs/dde-plan.md (plus orchestration/skills/tool guidance siblings in that docs/).
+
+## Scale DrugDiscoveryBench (Oct 2026): the agent tier, externally audited
+
+`labs.scale.com/leaderboard/drugdiscoverybench` — 82 EXPERT-AUTHORED
+multi-step early-discovery tasks (target ID + genetics, database screening,
+patent mining, structural reasoning, cheminformatics, SAR/affinity ranking),
+each grounded in a real artifact (PDB entry, granted patent, database
+record) and resolving to a single verifiable answer. Graded by an LLM
+judge against weighted outcome rubrics; process rubrics released but not
+scored. Artifacts: paper + `github.com/scaleapi/DrugDiscoveryBench`
+(Scale-Biomni env, Harbor format) + `ScaleAI/DrugDiscoveryBench-Preview`
+(HF task set).
+
+Findings that read as external validation of BioNexus's thesis:
+- **The best agent setting solves ~52% of tasks** (68.7 on the refreshed
+  board); pass scales with test-time compute; one model generation ≈
+  8–20 points. Agentic pharma is not solved — the honest framing wins.
+- **Expert-method recovery flips 76/82 to solved** when given the step
+  sequence (never the answer): the gap is UNGUIDED PLANNING, not tool
+  execution — precisely what problem trees, campaign templates and
+  work orders attack. Their failure analysis ("drops a critical
+  constraint mid-trajectory") is the failure mode our gates +
+  pre-registered criteria exist to prevent.
+- Their scoring is LLM-judge vs rubric; ours stays **deterministic**
+  (seeded truth, CI-aware abstention, checksummed fixtures). Their own
+  "false-positive refusals" and judge-agreement caveats show why the
+  deterministic floor matters. Adoption: borrow the shape — verifiable
+  end-to-end workflows with single answers — not the grader.
+- Roadmap consequence: new ticket for a **Bionexus agent-tier task**
+  (a few DDB-style workflows — multi-hop DB query → filter → compute →
+  one answer — run by our OWN hypothesis agent through toolkit +
+  deterministic grading), plus citing DDB in the eval section.
+
+Sources: https://labs.scale.com/leaderboard/drugdiscoverybench ·
+https://static.scale.com/uploads/6691558a94899f2f65a87a75/DrugDiscoveryBench.pdf ·
+https://github.com/scaleapi/DrugDiscoveryBench ·
+https://huggingface.co/datasets/ScaleAI/DrugDiscoveryBench-Preview

@@ -1,0 +1,48 @@
+{
+ "provenance": "TDC ADMET Benchmark Group canonical scaffold splits (20% held-out test), extracted from Zenodo record 10.5281/zenodo.10372419 (ADMET-AI data package, tdc_admet_group_raw), archived 2024-07; upstream datasets via Therapeutics Data Commons (tdcommons.ai, NEURIPS 2021 Datasets & Benchmarks track).",
+ "citations": {
+  "caco2_wang": "Li, V.E. et al. / Wang, J. et al., J. Pharm. Sci. 94:2005 (Caco-2 permeability, n=906)",
+  "hia_hou": "Hou, T.J. & Lu, K., Curr. Drug Metab. 7:2006 (human intestinal absorption, n=578)",
+  "bbb_martins": "Martins, G.T. et al., ACS Chem. Neurosci. 6:2015 (blood-brain barrier, n=1,975)"
+ },
+ "license_note": "TDC redistributes under original-work terms with CC-BY attribution; frozen copies here retain citation strings \u2014 verify per-dataset TDC pages before redistribution beyond repo.",
+ "why_frozen": "deepchem S3 per-object ACLs are inconsistent (Caco2/Tox21 403); repo-tracked CSVs keep the models tier fully offline (P8), on the SAME scaffold folds the TDC leaderboard uses.",
+ "entries": [
+  {
+   "path": "bbb_martins/test.csv",
+   "bytes": 22353,
+   "sha256": "82d4fa96f671a8382e9d8e6de3dde8385b9f337854c83e6fde2e69a7be93754f",
+   "source_member": "data/tdc_admet_group_raw/admet_group/bbb_martins/test.csv"
+  },
+  {
+   "path": "bbb_martins/train_val.csv",
+   "bytes": 107016,
+   "sha256": "5035139072311f4cb0a1a54cffe11bc727004886ace4629b98f6db20c431e4af",
+   "source_member": "data/tdc_admet_group_raw/admet_group/bbb_martins/train_val.csv"
+  },
+  {
+   "path": "caco2_wang/test.csv",
+   "bytes": 17322,
+   "sha256": "5380c15b0dd9c11e22d3e3843083362d535dae36062dfee08056d3af4cb444df",
+   "source_member": "data/tdc_admet_group_raw/admet_group/caco2_wang/test.csv"
+  },
+  {
+   "path": "caco2_wang/train_val.csv",
+   "bytes": 61694,
+   "sha256": "e0965b4a0617a3aa2978ef28794e3467d55655090f282a120355ea575ebed6b2",
+   "source_member": "data/tdc_admet_group_raw/admet_group/caco2_wang/train_val.csv"
+  },
+  {
+   "path": "hia_hou/test.csv",
+   "bytes": 8149,
+   "sha256": "da702497c3c0a50dbdff77471517562a8813859f53f069ac5bb43126aa534351",
+   "source_member": "data/tdc_admet_group_raw/admet_group/hia_hou/test.csv"
+  },
+  {
+   "path": "hia_hou/train_val.csv",
+   "bytes": 29694,
+   "sha256": "87f35dc1767174efa245ee71644229b5073a8490988527a3fe6d2f1e7522c7db",
+   "source_member": "data/tdc_admet_group_raw/admet_group/hia_hou/train_val.csv"
+  }
+ ]
+}

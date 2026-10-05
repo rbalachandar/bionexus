@@ -140,6 +140,27 @@ def _m_hiv():
     return run_model_task("hiv", min_spearman=0.3)
 
 
+@register("model-caco2_wang", "policy ladder on TDC Caco2_Wang (frozen canonical "
+          "scaffold split, offline)", suite="models")
+def _m_caco2():
+    from bionexus.evals.harness import run_split_pinned_task
+    return run_split_pinned_task("caco2_wang", min_score=0.3)
+
+
+@register("model-hia_hou", "policy ladder on TDC HIA_Hou (frozen canonical "
+          "scaffold split, offline)", suite="models")
+def _m_hia():
+    from bionexus.evals.harness import run_split_pinned_task
+    return run_split_pinned_task("hia_hou", min_score=0.65)
+
+
+@register("model-bbb_martins", "policy ladder on TDC BBB_Martins (frozen canonical "
+          "scaffold split, offline)", suite="models")
+def _m_bbb():
+    from bionexus.evals.harness import run_split_pinned_task
+    return run_split_pinned_task("bbb_martins", min_score=0.65)
+
+
 # ------------------------------------------------------- reproductions suite
 
 @register("repro-cs02-az3246", "blind reproduction of the AZ3246/HPK1 paper "

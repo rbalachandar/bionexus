@@ -230,6 +230,49 @@ def run_model_task(dataset: str, min_spearman: float = 0.3) -> TaskResult:
                       f"{floor:.3f}, bar {min_spearman})")
 
 
+def run_split_pinned_task(dataset: str, min_score: float = 0.3) -> TaskResult:
+    """Policy ladder on a frozen TDC ADMET dataset with CANONICAL scaffold
+    splits: fit on train_val, score on the held-out test fold (the same
+    folds the TDC leaderboard uses). No network, no re-splitting — the
+    generalization test is the one the community agreed on."""
+    from bionexus.adapters.data.admet import ADMETSplitDataset
+    from bionexus.benchmark import (CharRidgePolicy, MeanPolicy, RandomPolicy,
+                                    roc_auc, spearman)
+
+    ds = ADMETSplitDataset(dataset)
+    train = list(ds.train())
+    test = list(ds.test())
+    classification = ds.task == "classification"
+    metric = "roc_auc" if classification else "spearman"
+
+    results = {}
+    floor_name = "random"
+    for pol in (RandomPolicy(), MeanPolicy(), CharRidgePolicy(dim=256)):
+        pol.fit(train)
+        pred = [pol.predict(smi) for smi, _ in test]
+        truth = [y for _, y in test]
+        score_auc = roc_auc(pred, truth) if classification \
+            else spearman(pred, truth)
+        results[getattr(pol, "name", "?")] = score_auc
+    floor = results.get("random", results.get(floor_name, 0.0)) or 0.0
+    best_name = max(results, key=lambda k: results[k])
+    best = results[best_name]
+    if classification:
+        floor = max(floor, 0.5)
+    score = max(0.0, min(1.0, (best - (floor + 0.05)) / 0.4))
+    passed = best >= min_score and best > floor
+    return TaskResult(f"model-{dataset}",
+                      "policy ladder on frozen TDC ADMET scaffold split",
+                      round(score, 3), passed,
+                      {"policies": {k: round(v, 4) for k, v in results.items()},
+                       "best_policy": best_name, metric: round(best, 4),
+                       "floor_random": round(floor, 4),
+                       "n_train": len(train), "n_test": len(test),
+                       "splits": "TDC canonical scaffold (20% test)"},
+                      f"{best_name} {metric}={best:.3f} (floor {floor:.3f}, "
+                      f"bar {min_score}, folds: TDC scaffold)")
+
+
 def _evals_dir() -> Path:
     """Locate the committed eval artifacts (evals/results.json,
     leaderboard.md). An explicit BIONEXUS_EVALS_DIR is HONORED EVEN IF
