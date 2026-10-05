@@ -155,6 +155,17 @@ per-run ground-truth instability, confirmation labels that overrode the
 gate, and non-hermetic tests. `evals/leaderboard.md` is regenerated on
 every run; the CI job fails if any score drops below the pass bar.
 
+The opt-in **agent tier** grades the loop itself the way Scale's
+DrugDiscoveryBench grades frontier coding agents — multi-step
+early-discovery workflows resolving to one verifiable answer — but
+deterministically, no LLM judge. On its first full run it found its
+first real flaw: a batch was being synthesized for a compound the
+toxicophore screen would refuse moments later (screen at submission,
+Make ran first). Fixed the same day, with the eval's waste counter as
+the permanent regression test — an agent-tier finding, caught by
+grading, not by vibes. That is the difference we ship: when the
+system finds a flaw in itself, the fix leaves a number behind.
+
 The leaderboard **is** the pitch, so it leads the README and the
 workbench: `GET /api/evals` serves a read-model that flags every passing
 task scoring below 1.0 as an `honest_deduction` (the abstentions we are

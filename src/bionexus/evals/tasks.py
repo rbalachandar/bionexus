@@ -254,7 +254,10 @@ def _a_triage():
                       f"{len(refused_tested)} refused compounds tested "
                       f"(must be 0); {len(wrong)} wrong confirms; "
                       f"{len(wasted_lots)} lot(s) burned before the "
-                      f"submission-stage refusal (ordering debt, see ROADMAP)")
+                      + ("submission-stage refusal (ordering debt, see "
+                         "ROADMAP)" if wasted_lots else
+                         "submission-stage refusal — ordering debt FIXED "
+                         "and graded to zero, kept as a regression slot))
 
 
 @register("agent-workflow-repro", "same campaign, two runs: verdict maps and "

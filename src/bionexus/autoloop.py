@@ -425,6 +425,42 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                 best_route = None
                 smi = (h.metadata or {}).get("smiles")
                 mod = str((h.metadata or {}).get("modality", "")).lower()
+                # Gate-ordering debt (agent-tier finding, Oct 2026): the
+                # toxicophore screen ran only at SUBMISSION — after Make had
+                # already synthesized a batch that could never be assayed.
+                # Pre-screen the declared structure at Make entry with the
+                # same rules (intent respected: a declared covalent warhead
+                # still passes); the gateway rule remains the backstop.
+                # Refusal semantics unchanged; waste eliminated.
+                if smi and mod not in ("biologic", "cell therapy", "mrna"):
+                    from bionexus.adapters.bio.tox_alerts import (
+                        RULES_VERSION, screen_smiles)
+                    _intent = ("covalent" if "covalent" in
+                               (h.mechanism or "").lower() else "")
+                    _hits = screen_smiles(smi, _intent)["refuse"]
+                    if _hits:
+                        say(f"{h.candidate}: REFUSED at Make entry — "
+                            f"toxicophore pre-screen (never synthesized)")
+                        store.append(record_for(
+                            protocol.envelope, EventType.gate_decision,
+                            system_actor("safety"),
+                            decision={
+                                "kind": "safety_refusal",
+                                "stage": "make_prescreen",
+                                "candidate": h.candidate,
+                                "samples": [h.candidate],
+                                "reason": (
+                                    f"sample '{h.candidate}' carries "
+                                    f"{len(_hits)} toxicophore alert(s) "
+                                    f"[rules {RULES_VERSION}]: "
+                                    + "; ".join(f"{x['alert']} ({x['note']})"
+                                                for x in _hits[:3])
+                                    + " — screened before synthesis "
+                                      "(gateway rule remains the backstop)"),
+                                "action": "Make skipped; batch never "
+                                          "spent"})
+                        )
+                        continue
                 if (smi and mod not in ("biologic", "cell therapy", "mrna")
                         and cfg.synthesis_backend != "none"):
                     from bionexus.adapters.retrosynthesis import \

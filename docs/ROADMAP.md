@@ -858,10 +858,14 @@ Goodhart, and spurious XAI against our evals/TPP/problem-trees/attribution.
   FIRST FINDING OF THE AGENT TIER (already visible in the task notes):
   1 lot was burned before the submission-stage safety refusal — the
   toxicophore screen sits at submit, but Make synthesizes first.
-  - [ ] **Gate ordering debt**: pre-screen declared structures for
-    toxicophores BEFORE Make spends a batch (screen samples at Make
-    entry, keep the submit-stage rule as the backstop; refusal
-    semantics unchanged, waste eliminated).
+  - [x] **Gate ordering debt — FIXED (same day, Oct 2026)**: Make entry
+    now pre-screens declared structures with the same versioned toxicophore
+    rules (intent respected: declared covalent warheads still pass to
+    synthesis — pair-tested; the hard alpha-haloketone class has NO
+    exception), refusal recorded as safety_refusal{stage: make_prescreen},
+    gateway rule kept as backstop. The triage eval's waste counter went
+    1 → 0 lots and now carries a permanent regression slot ("ordering debt
+    FIXED and graded to zero"). Agent tier: 2/2, mean 1.000.
 - [ ] Polaris certified datasets via their client (auth-gated downloads
   don't fit the offline suite; revisit as a fixtures-materialization job).
 - [x] eval --task no longer clobbers committed leaderboard artifacts

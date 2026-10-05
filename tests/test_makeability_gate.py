@@ -5,7 +5,11 @@ long, at what cost, via how many routes — from named-reaction disconnection
 rules. Every number is modeled per candidate (seeded) and stamped
 SIMULATED; the block is earned by the yield/lead-time floors, not hard-coded.
 """
+import tempfile
+
 import pytest
+from bionexus.autoloop import CampaignConfig, run_campaign
+from bionexus.core.hypothesis import Constraint, ProblemStatement
 
 from bionexus.adapters.retrosynthesis import (SIM_LABEL, RoutePlan,
                                               RuleBasedRetrosynthesis,
@@ -130,3 +134,44 @@ def test_toolkit_check_synthesis_answers_the_four_questions():
     blocked = tk.executors()["check_synthesis"](NIGHTMARE)
     assert blocked["makeable"] is False
     assert "CANNOT MAKE" in blocked["answer"]
+
+
+def test_safety_prescreen_before_make_wastes_no_batch():
+    """Agent-tier finding, fixed: an UNDECLARED warhead is refused at Make
+    entry (no synthesis lot spent); a DECLARED covalent warhead still
+    passes to synthesis — intent respected, gateway stays the backstop."""
+    prob = ProblemStatement(objective="prescreen", constraints=[Constraint(
+        name="potency", description="<= 20 uM", kind="hard", limit=20.0,
+        unit="uM")])
+
+    def run(mechanism):
+        from bionexus.adapters.lab.simulator import SimulatorLab
+        from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+        hyps = [{"statement": "W inhibits", "candidate": "W-1",
+                 "assay_type": "binding", "predicted": "<= 20",
+                 "predicted_value": 20.0, "rationale": "t",
+                 "mechanism": mechanism,
+                 "smiles": "C=CC(=O)Nc1ccccc1"}]  # N-phenyl acrylamide:
+                 # MEDIUM electrophile — passable only when covalent intent
+                 # is declared (hard alpha-haloketone has no exception)
+        cfg = CampaignConfig(problem=prob, hypotheses=hyps, k=1, rounds=1,
+                             autonomy="act",
+                             inbox=tempfile.mkdtemp(prefix="pre-"),
+                             poll_secs=0.02)
+        store = SqliteProvenanceStore(":memory:")
+        rep = run_campaign(cfg, SimulatorLab(seed=7), store,
+                           notify=lambda m: None)
+        recs = store.branch_records(f"problem/{rep.problem_id}")
+        refusals = [r.decision for r in recs
+                    if r.event_type.value == "gate_decision"
+                    and (r.decision or {}).get("kind") == "safety_refusal"]
+        lots = [(r.decision or {}).get("lot") for r in recs
+                if r.event_type.value == "synthesis_complete"]
+        return refusals, lots
+
+    refusals, lots = run("")                      # undeclared
+    assert refusals and refusals[0]["stage"] == "make_prescreen"
+    assert lots == []                              # zero batch waste
+    refusals, lots = run("reversible covalent warhead — intent declared")
+    assert refusals == []                          # declared passes Make
+    assert lots                                    # synthesizes as before
