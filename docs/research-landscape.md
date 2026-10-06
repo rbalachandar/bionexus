@@ -272,3 +272,17 @@ Sources: https://labs.scale.com/leaderboard/drugdiscoverybench ·
 https://static.scale.com/uploads/6691558a94899f2f65a87a75/DrugDiscoveryBench.pdf ·
 https://github.com/scaleapi/DrugDiscoveryBench ·
 https://huggingface.co/datasets/ScaleAI/DrugDiscoveryBench-Preview
+
+## Look-alike hygiene: "Genesis Live Core" (Nov 2026 check)
+
+`github.com/mister3ai-cmyk/genesis-live-core` surfaced as "BioNexus with
+real lab interfaces". It is a category SIMULACRUM, not a peer: SiLA2
+"drivers" and hardware SLAs exist as prose in a README; the claims are
+marketing-number shaped (99% noise eliminated, p99 ns SLAs) with no
+ground-truth eval, no negative results, and self-issued DOIs inside a
+capital-raise structure. Recorded here as a hygiene note, not a landscape
+row: the category is warm enough that vocabulary-imitation is starting.
+The discriminator we ship and look-alikes cannot fake is cheap to state
+and expensive to build: a green CI eval leaderboard that includes the
+system's own failures (verdict-honesty 1.0, adaptive-dose 0.875 published,
+CS06 as a printed negative, CS07's two negatives above).

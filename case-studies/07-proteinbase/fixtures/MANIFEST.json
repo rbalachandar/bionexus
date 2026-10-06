@@ -1,0 +1,22 @@
+{
+ "source": {
+  "file": "proteinbase_all_data_28_01_2026.csv",
+  "sha256": "51c467edb1ec4cab647fd7739d760521f811e0d2310577f9565ce8749446d8ef",
+  "url": "https://storage.proteinbase.com/proteinbase_all_data_28_01_2026.csv",
+  "retrieved": "2026-10-05"
+ },
+ "license": "ODC-By v1.0 \u2014 attribution: 'This work used Proteinbase by Adaptyv Bio under ODC-By license'",
+ "derived": {
+  "proteins.csv": {
+   "sha256_raw": "d50efad1e91eace25210a6684161228cda87048c81402cf3f40fcba268c14093",
+   "rows": 5253,
+   "bytes_gz": 387195
+  },
+  "pairs.csv": {
+   "sha256_raw": "24e15e024c9483a9bb558b777185598a2f7dd25f88cc3492fa42b78210f55590",
+   "rows": 2630,
+   "bytes_gz": 21239
+  }
+ },
+ "semantics": "pair = (protein, target) experimental binding unit; binding value is boolean; kd_nM only where measured"
+}
