@@ -44,15 +44,20 @@ open question, not a solved one. (Honest caveat: retrospective replay on
 already-tested pools; the 405-slot Nipah allocation mixed comp ranks,
 expert review and community vote.)
 
-**2. Applicability-domain floor does NOT transfer to protein strings.**
-Nipah-fitted domain flags 96.6% of EGFR sequences as extrapolation —
-direction right — but its in-target control flags 84% too: the 0.5
-nearest-neighbour Tanimoto floor is calibrated on SMILES 3-grams (dense
-substructure overlap) and is simply the wrong constant for amino-acid
-k-mers. Per CS06's rule we publish the miss instead of retuning the floor
-to make the story fit; the ticket is a *data-derived* floor (quantile of
-the domain's own NN-distance distribution), which also fixes small-molecule
-cases where 0.5 is arbitrary.
+**2. Applicability-domain: calibration was the first-order problem — now
+quantile floors are in (`bionexus.ad`, `floor="auto"`).** The fixed 0.5
+Tanimoto floor flags 96.6% of cross-target (EGFR) sequences as
+extrapolation… and would flag most of the domain's own members under a
+leave-one-out test: designed binders against ONE target share only
+~0.05–0.10 aa-3-gram Jaccard with their nearest sibling, so their LOO-NN
+distribution lives far below 0.5. With the data-derived floor (p25 of the
+domain's own LOO-NN distribution → 0.105), the false-alarm rate is
+*declared* (25%, by construction) and cross-target flagging is 54% —
+directionally right, about 2× the control. Remaining weakness is the
+representation, not the constant: k-mer Jaccard is a coarse protein
+similarity; a larger k or embedding-space domain (ESM2-class) is the next
+ticket. This is CS06's lesson repeating: mechanisms transfer across
+modalities only when their calibration is data-derived, not inherited.
 
 ## Verdict for the competition question
 CS07 strengthens the reproduction claim (third modality, published numbers

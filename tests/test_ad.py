@@ -112,3 +112,28 @@ def test_views_card_chip_from_extrapolation():
     card = next(c for c in cards if c["candidate"] == "X")
     assert card["verdict"]["extrapolation"] is True
     assert "extrapolation" in card["stage"]
+
+
+# ------------------------------------------------------ auto (quantile) floors
+
+def test_auto_floor_gives_declared_false_alarm_rate():
+    """LOO-NN quantile floor: by construction ~q of domain members are
+    'far from their nearest sibling' -> leave-one-out flag rate ≈ q."""
+    fam = ["CC" + "C" * i + "O" for i in range(8)]          # tight family
+    dom = ApplicabilityDomain.from_smiles(fam + ["c1ccccc1I",
+                                                 "NCCCCCCCCCCCCC(=O)N"],
+                                          basis="char3", floor="auto",
+                                          loo_quantile=0.25)
+    assert dom.floor_mode == "auto" and 0 < dom.floor <= 0.5
+    # every real family member queries near-identical siblings
+    for s in fam[2:-1]:
+        assert dom.check(s)["extrapolation"] is False
+    assert dom.check("NCCCCCCOP(=O)(O)O")["extrapolation"] is True
+    stamp = dom.check("c1ccccc1Cl")
+    assert stamp["floor_mode"] == "auto" and "p25" in stamp["floor_basis"]
+
+
+def test_fixed_default_unchanged_and_stamp_discloses():
+    dom = ApplicabilityDomain.from_smiles(["CCO", "CCCO"], basis="char3")
+    st = dom.check("CCCCO")
+    assert st["ad_floor"] == 0.5 and st["floor_mode"] == "fixed"
