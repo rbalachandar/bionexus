@@ -140,7 +140,7 @@
    "mean_err_adaptive_3well": 0.024,
    "mean_err_fixed_4well": 0.09,
    "ci_coverage": "15/16",
-   "duration_s": 2.7
+   "duration_s": 2.6
   },
   "notes": "3 wells beat 4: err 0.024 vs 0.090; CI coverage 15/16 (nominal 15.2)"
  },
@@ -203,7 +203,7 @@
    "budget": 20,
    "rollup_recorded": true,
    "root": "partial",
-   "duration_s": 6.8
+   "duration_s": 6.7
   },
   "notes": "over-eager decomposition capped; leaves could not overspend the tree"
  },

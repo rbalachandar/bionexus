@@ -52,3 +52,35 @@ def test_replay_artifact_exists_and_honest():
     for tgt, d in r.items():
         assert d["hit_plddt_top"] < d["hit_baseline"]        # negative kept
         assert abs(d["hit_gated_random"] - d["hit_baseline"]) < 0.015
+
+
+def test_runpack_jobrunner_mock_flow(tmp_path):
+    import importlib.util
+    import hashlib
+    spec = importlib.util.spec_from_file_location(
+        "jobrunner", Path(__file__).parents[1] /
+        "case-studies/08-proteinbase-entry/runpack/jobrunner.py")
+    jr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(jr)
+    fasta = tmp_path / "d.fasta"
+    fasta.write_text(">short\nMABCDEFGH\n"
+                     ">good1\n" + "MADGHLNIKPQSTVWYEF" * 10 + "\n"
+                     ">good2\n" + "MQPKTRYHNSVAWLEGFC" * 9 + "\n"
+                     ">tooclose\n" + "MADGHLNIKPQSTVWYEF" * 10 + "\n"
+                     ">toolong\n" + "MA" * 200 + "\n")
+    binders = tmp_path / "b.fasta"
+    binders.write_text(">known\n" + "MADGHLNIKPQSTVWYEF" * 10 + "\n")
+    work = tmp_path / "work"
+    jr.main(["--fasta", str(fasta), "--binders", str(binders),
+             "--n-slots", "2", "--work", str(work)])
+    man = json.loads((work / "submission_manifest.json").read_text())
+    ids = {r["id"] for r in man["selected"]}
+    assert "tooclose" not in ids          # near-copy rule enforced
+    assert "toolong" not in ids           # length rule enforced
+    assert "good1" in ids and "good2" in ids
+    reasons = {r["id"]: r["gate_reasons"] for r in man["rejected_sample"]}
+    assert any("outside" in x for x in reasons.get("toolong", []))
+    assert any("near-copy" in x for x in reasons.get("tooclose", []))
+    body = {k: v for k, v in man.items() if k != "sha256_of_manifest_body"}
+    assert man["sha256_of_manifest_body"] == hashlib.sha256(
+        json.dumps(body, sort_keys=True).encode()).hexdigest()

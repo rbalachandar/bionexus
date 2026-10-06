@@ -1,6 +1,6 @@
 # BioNexus eval leaderboard
 
-Run 2026-10-06 19:51 · mean **0.980** · all pass
+Run 2026-10-06 20:49 · mean **0.980** · all pass
 
 ### epistemics — mean 0.980
 
@@ -11,10 +11,10 @@ Run 2026-10-06 19:51 · mean **0.980** · all pass
 | confirmation-coverage | 1.000 | ✅ | 6.4s | no confirmations at all -> 0 (mechanism unused) |
 | method-recall | 0.950 | ✅ | 17.0s | recall 1.00 of 12 true actives (0 confident miss(es), 2 abstained) |
 | falsifiability-tiebreak | 1.000 | ✅ | 4.4s | all k picks must be mechanistic+cited |
-| adaptive-dose-design | 0.875 | ✅ | 2.7s | 3 wells beat 4: err 0.024 vs 0.090; CI coverage 15/16 (nominal 15.2) |
+| adaptive-dose-design | 0.875 | ✅ | 2.6s | 3 wells beat 4: err 0.024 vs 0.090; CI coverage 15/16 (nominal 15.2) |
 | flywheel-memory | 1.000 | ✅ | 3.6s | the dead family must get zero lab slots |
 | verdict-stability | 1.000 | ✅ | 9.5s | unstable verdicts flag borderline evidence — reported, not hidden |
-| decomposition-integrity | 1.000 | ✅ | 6.8s | over-eager decomposition capped; leaves could not overspend the tree |
+| decomposition-integrity | 1.000 | ✅ | 6.7s | over-eager decomposition capped; leaves could not overspend the tree |
 | reviewer-integrity | 1.000 | ✅ | 0.0s | reviewer holds the analysis honest |
 | harness-governance | 1.000 | ✅ | 0.0s | code-level governance held under direct probe |
 | reviewer-llm-boundary | 1.000 | ✅ | 0.0s | the advisory layer cannot clear the deterministic floor |
