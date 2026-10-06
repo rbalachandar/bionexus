@@ -55,32 +55,35 @@ def test_replay_artifact_exists_and_honest():
 
 
 def test_runpack_jobrunner_mock_flow(tmp_path):
-    import importlib.util
     import hashlib
+    import importlib.util
     spec = importlib.util.spec_from_file_location(
         "jobrunner", Path(__file__).parents[1] /
         "case-studies/08-proteinbase-entry/runpack/jobrunner.py")
     jr = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(jr)
+    U1 = "MADGHLNIKPQSTVWYEW" * 10          # cysteine-free, 180aa: good
+    U2 = "MQPKTRYHNSVAWLEGFA" * 9           # cysteine-free, 162aa: good
+    K = "MWELIFVTSQPKINIHGDAL" * 9          # an INDEPENDENT known binder
     fasta = tmp_path / "d.fasta"
     fasta.write_text(">short\nMABCDEFGH\n"
-                     ">good1\n" + "MADGHLNIKPQSTVWYEF" * 10 + "\n"
-                     ">good2\n" + "MQPKTRYHNSVAWLEGFC" * 9 + "\n"
-                     ">tooclose\n" + "MADGHLNIKPQSTVWYEF" * 10 + "\n"
+                     ">good1\n" + U1 + "\n"
+                     ">good2\n" + U2 + "\n"
+                     ">tooclose\n" + K[:160] + K[:20] + "\n"
+                     ">toocys\n" + "MADCADCGDA" * 20 + "\n"
                      ">toolong\n" + "MA" * 200 + "\n")
     binders = tmp_path / "b.fasta"
-    binders.write_text(">known\n" + "MADGHLNIKPQSTVWYEF" * 10 + "\n")
+    binders.write_text(">known\n" + K + "\n")
     work = tmp_path / "work"
     jr.main(["--fasta", str(fasta), "--binders", str(binders),
              "--n-slots", "2", "--work", str(work)])
     man = json.loads((work / "submission_manifest.json").read_text())
     ids = {r["id"] for r in man["selected"]}
-    assert "tooclose" not in ids          # near-copy rule enforced
-    assert "toolong" not in ids           # length rule enforced
-    assert "good1" in ids and "good2" in ids
+    assert ids == {"good1", "good2"}        # only clean designs survive all 3 stages
     reasons = {r["id"]: r["gate_reasons"] for r in man["rejected_sample"]}
-    assert any("outside" in x for x in reasons.get("toolong", []))
-    assert any("near-copy" in x for x in reasons.get("tooclose", []))
+    assert any("outside" in x for x in reasons["toolong"])
+    assert any("near-copy" in x for x in reasons["tooclose"])
+    assert any("cysteine" in x.lower() for x in reasons["toocys"])
     body = {k: v for k, v in man.items() if k != "sha256_of_manifest_body"}
     assert man["sha256_of_manifest_body"] == hashlib.sha256(
         json.dumps(body, sort_keys=True).encode()).hexdigest()
