@@ -1,0 +1,22 @@
+{
+ "nipah-glycoprotein-g": {
+  "pool_n": 1030,
+  "slot_n": 257,
+  "gate_pass_rate": 0.9019,
+  "hit_baseline": 0.1,
+  "hit_random_slots": 0.0856,
+  "hit_plddt_top": 0.0739,
+  "hit_gated_random": 0.1012,
+  "hit_gated_diverse": 0.0856
+ },
+ "egfr": {
+  "pool_n": 826,
+  "slot_n": 206,
+  "gate_pass_rate": 0.8935,
+  "hit_baseline": 0.1574,
+  "hit_random_slots": 0.1262,
+  "hit_plddt_top": 0.1019,
+  "hit_gated_random": 0.165,
+  "hit_gated_diverse": 0.0534
+ }
+}

@@ -309,6 +309,18 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   failing-run + endpoint tests (5, `tests/test_evals_api.py`); the honesty
   framing is asserted, not cosmetic: hit-recovery MUST be <1.0 AND passed
   AND flagged. Suite 279 green; evals 0.979; SPA build clean.
+### CS08 — Proteinbase competition entry (opened Oct 2026)
+- [x] Step 1 (zero GPU): eligibility gates + near-copy rule + diversity +
+  policy replay on the frozen corpus. Replay truths: gating is free
+  (~90% pass, hit = baseline); every available ranker loses to random;
+  naive farthest-first diversity is actively harmful (EGFR 5.3%) —
+  'gate + randomize, do not rank' is the interim policy, diversity only
+  as a constraint inside quality-filtered sets. 4 CI tests.
+- [ ] Step 2 (4090 rental, ~10-25 GPU-h): BindCraft -> Boltz-1 interface
+  screening (the quality signal step 1 proved we lack) -> submission
+  pack. Run-pack written but UNEXECUTED; scripts self-flag as
+  intentions until hardware time happens.
+
 - [ ] **One lab pilot**: find the dry/hybrid scientist niche (small group
   running its own plates, living in spreadsheets) — install on their data,
   weekly eval report on their campaigns, their feedback reorders this list.
