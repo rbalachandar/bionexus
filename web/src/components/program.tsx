@@ -12,7 +12,9 @@ export function leafLabel(question: string | null,
   objective: string | null, i: number, candidates?: string[],
   wide = false) {
   const cands = wide
-    ? (candidates ?? []).join(', ')
+    ? (candidates?.length ?? 0) > 8
+      ? `${candidates!.length} candidates screened`
+      : (candidates ?? []).join(', ')
     : (candidates ?? []).slice(0, 3).join(', ') +
       ((candidates?.length ?? 0) > 3 ? ` +${candidates!.length - 3}` : '')
   if (!objective) return question ?? `Experiment ${i + 1}`

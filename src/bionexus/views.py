@@ -226,7 +226,10 @@ def problem_trees(db_path: str | Path = PROVENANCE_DB) -> tuple[list, set]:
         for leaf in tree.leaves():
             aliases = pid_aliases(tree.root.id, leaf.id)
             lrecs = []
-            for a in aliases:
+            # deterministic preference: the doubled (leaf-campaign) pid
+            # first — a root branch holding only genesis records must not
+            # shadow the leaf's real campaign records (set order is not)
+            for a in sorted(aliases, reverse=True):
                 lrecs = full.branch_records(f"problem/{a}")
                 if lrecs:
                     break
@@ -545,6 +548,7 @@ def pipeline_cards(recs) -> list[dict]:
             "candidate": cand,
             "head": str(head),
             "statement": stmt,
+            "rationale": hp.get("rationale"),
             "predicted": hp.get("predicted"),
             "predicted_by": _pb,
             "mechanism": hp.get("mechanism"),

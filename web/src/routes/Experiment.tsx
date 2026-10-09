@@ -79,23 +79,25 @@ function PipelineCards({ cards }: {
                 && <div>{c.stage.split(/\s+[—–]\s/)[0].trim()}</div>}
               {c.round && <div>tested in round {c.round}</div>}
               {(c.mechanism || c.refutation_condition || c.citation ||
-                c.predicted) && (
+                c.predicted || c.rationale) && (
                 <div style={{ display: 'grid',
                   gridTemplateColumns: 'minmax(72px, auto) minmax(0, 1fr)',
                   gap: '1px 10px', marginTop: 4 }}>
+                  {c.rationale && <>
+                    <span style={{ color: 'var(--faint)' }}>origin</span>
+                    <span>{c.rationale}</span></>}
                   {c.predicted && <>
                     <span style={{ color: 'var(--faint)' }}>predicted</span>
-                    <span>{c.predicted}</span></>}
-                  {c.predicted_by && (
-                    <span className="mono" title={c.predicted_by.note ?? undefined}
-                      style={{ fontSize: 10, color: c.predicted_by.note
-                        ? 'var(--warn)' : 'var(--muted)' }}>
-                      {' '}by {c.predicted_by.source}
-                      {c.predicted_by.model ? `:${c.predicted_by.model}` : ''}
-                      {c.predicted_by.policy ? `:${c.predicted_by.policy}` : ''}
-                      {c.predicted_by.note ? ' · see note' : ''}
-                    </span>
-                  )}
+                    <span>{c.predicted}{c.predicted_by && (
+                      <span className="mono" title={c.predicted_by.note ?? undefined}
+                        style={{ fontSize: 10, color: c.predicted_by.note
+                          ? 'var(--warn)' : 'var(--muted)', marginLeft: 6 }}>
+                        by {c.predicted_by.source}
+                        {c.predicted_by.model ? `:${c.predicted_by.model}` : ''}
+                        {c.predicted_by.policy ? `:${c.predicted_by.policy}` : ''}
+                        {c.predicted_by.note ? ' · see note' : ''}
+                      </span>
+                    )}</span></>}
                   {c.mechanism && <>
                     <span style={{ color: 'var(--faint)' }}>mechanism</span>
                     <span>{c.mechanism}</span></>}
@@ -107,7 +109,13 @@ function PipelineCards({ cards }: {
                     <span>{c.citation}
                       {c.citation_status === 'invalid' && (
                         <strong style={{ color: 'var(--bad)' }}> FABRICATED</strong>
-                      )}</span></>}
+                    )}</span></>}
+                  {!c.predicted && c.predicted_by && <>
+                    <span style={{ color: 'var(--faint)' }}>by</span>
+                    <span className="mono" style={{ fontSize: 10,
+                      color: 'var(--muted)' }}>{c.predicted_by.source}
+                      {c.predicted_by.policy ? `:${c.predicted_by.policy}` : ''}
+                    </span></>}
                 </div>
               )}
             </div>
@@ -379,7 +387,11 @@ function DmtaCounts({ counts, rounds, bare }: { counts: Record<string, number>; 
             {rounds.map((r) => (
               <tr key={r.round}>
                 <td>{r.round}</td>
-                <td>{r.candidates.join(', ')}</td>
+                <td style={{ maxWidth: 520 }}>
+                  {r.candidates.length > 12
+                    ? `${r.candidates.slice(0, 12).join(', ')} +${r.candidates.length - 12} more`
+                    : r.candidates.join(', ')}
+                </td>
                 <td>
                   {Object.entries(r.verdicts).map(([c, v]) => (
                     <span key={c} className={`chip ${v}`} style={{ marginRight: 6, fontSize: 11 }}>

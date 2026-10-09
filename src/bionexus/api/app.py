@@ -793,5 +793,18 @@ async def events(
 _web_dist = Path(__file__).resolve().parents[3] / "web" / "dist"
 if _web_dist.exists():                                    # pragma: no cover
     from fastapi.staticfiles import StaticFiles
-    app.mount("/", StaticFiles(directory=str(_web_dist), html=True),
-              name="spa")
+    app.mount("/assets", StaticFiles(directory=str(_web_dist / "assets")),
+              name="spa-assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def spa(full_path: str):
+        """BrowserRouter deep links: real files serve, everything else
+        (non-API client routes like /experiments/<eid>) gets the SPA shell.
+        Registered last — concrete /api routes above always win."""
+        if full_path.startswith("api/"):
+            raise HTTPException(404, "no such endpoint")
+        candidate = (_web_dist / full_path).resolve()
+        if (full_path and candidate.is_file()
+                and candidate.is_relative_to(_web_dist.resolve())):
+            return FileResponse(candidate)
+        return FileResponse(_web_dist / "index.html")
