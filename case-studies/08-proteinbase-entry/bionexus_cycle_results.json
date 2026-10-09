@@ -1,0 +1,41 @@
+{
+  "db": "/Users/bramakri/dev/repos/agentic-drug-discovery/.data/cs08-bionexus-cycle.db",
+  "floor": {
+    "pass": 82,
+    "reject": 0
+  },
+  "verdict_tallies": {
+    "design": {
+      "validated": 72,
+      "invalidated": 4,
+      "inconclusive": 6
+    },
+    "control_scramble": {
+      "invalidated": 10,
+      "inconclusive": 2,
+      "validated": 8
+    },
+    "control_random": {
+      "inconclusive": 3,
+      "invalidated": 4,
+      "validated": 3
+    }
+  },
+  "chain_intact": true,
+  "chain_problems": [],
+  "evidence_line": "proxy chain from 'iptm' does not reach the clinical claim (iptm\u2192pd_l1_binding_kd) \u2014 unresolved",
+  "embarrassing_records": [
+    "RND_03 (0.904 -> validated)",
+    "RND_04 (0.889 -> validated)",
+    "RND_05 (0.850 -> validated)",
+    "SCR_PDL1_l100_s343454_mpnn5 (0.937 -> validated)",
+    "SCR_PDL1_l100_s343454_mpnn8 (0.762 -> validated)",
+    "SCR_PDL1_l82_s722118_mpnn14 (0.931 -> validated)",
+    "SCR_PDL1_l88_s840556_mpnn11 (0.906 -> validated)",
+    "SCR_PDL1_l88_s840556_mpnn14 (0.903 -> validated)",
+    "SCR_PDL1_l88_s840556_mpnn15 (0.935 -> validated)",
+    "SCR_PDL1_l88_s840556_mpnn2 (0.773 -> validated)",
+    "SCR_PDL1_l88_s840556_mpnn6 (0.799 -> validated)"
+  ],
+  "design_median_iptm": 0.8944
+}

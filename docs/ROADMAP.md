@@ -316,10 +316,22 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   naive farthest-first diversity is actively harmful (EGFR 5.3%) —
   'gate + randomize, do not rank' is the interim policy, diversity only
   as a constraint inside quality-filtered sets. 4 CI tests.
-- [ ] Step 2 (4090 rental, ~10-25 GPU-h): BindCraft -> Boltz-1 interface
-  screening (the quality signal step 1 proved we lack) -> submission
-  pack. Run-pack written but UNEXECUTED; scripts self-flag as
-  intentions until hardware time happens.
+- [x] Step 2 (executed Oct 2026, RTX A5000, ~$5): BindCraft hotspot-56 PD-L1
+  designs (82 screened of 138) -> Boltz-2 ipTM + 30 SELF-RUN matched
+  controls (20 composition-scrambles of top-20, 10 random peptides),
+  identical protocol. PROSPECTIVE negative quantified: distributions
+  separate (MWU p~1e-4, bootstrap CI [+0.12,+0.30]) but ipTM does NOT
+  rank individuals — AUC 0.80, best anagram (0.937) beats ~70% of real
+  designs, 11/30 controls clear the 0.7 gate. Step-1's
+  'gate + randomize, do not rank' validated on data we generated.
+  Step 3: the same 112 sequences run through `ProteinDesignLabAdapter` +
+  CI-veto verdicts, hash-chained (`bionexus_cycle.py`), and surfaced in
+  the workbench with per-hypothesis origin + pre-registered refutation
+  conditions (`seed_workbench.py`) — the controls' own "refuted if"
+  clause fires on their validation: the experiment's pre-registration
+  refuting the score. Competition entry stance: NO-GO as ranker,
+  gated-diverse shortlist only. Raw artifacts:
+  `.data/cs08-designs/night1/` (112M, gitignored) + case-study README.
 
 - [ ] **One lab pilot**: find the dry/hybrid scientist niche (small group
   running its own plates, living in spreadsheets) — install on their data,

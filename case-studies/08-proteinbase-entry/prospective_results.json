@@ -1,0 +1,72 @@
+{
+  "n_designs": 82,
+  "n_scrambles": 20,
+  "n_random": 10,
+  "iptm": {
+    "designs": {
+      "median": 0.8944,
+      "mean": 0.8596,
+      "min": 0.5096,
+      "max": 0.9511
+    },
+    "scrambles": {
+      "median": 0.6801,
+      "max": 0.9367
+    },
+    "random": {
+      "median": 0.6944,
+      "max": 0.9035
+    }
+  },
+  "median_diff_bootstrap_ci95": [
+    0.1169,
+    0.3049
+  ],
+  "mannwhitney": {
+    "vs_scrambles_p": "8.38e-05",
+    "vs_random_p": "1.97e-04"
+  },
+  "auc_design_vs_control": 0.7967,
+  "controls_above_design_median": [
+    [
+      "RND_03",
+      0.904
+    ],
+    [
+      "SCR_PDL1_l100_s343454_mpnn5",
+      0.937
+    ],
+    [
+      "SCR_PDL1_l82_s722118_mpnn14",
+      0.931
+    ],
+    [
+      "SCR_PDL1_l88_s840556_mpnn11",
+      0.906
+    ],
+    [
+      "SCR_PDL1_l88_s840556_mpnn14",
+      0.903
+    ],
+    [
+      "SCR_PDL1_l88_s840556_mpnn15",
+      0.935
+    ]
+  ],
+  "quality_floor": {
+    "pass": 82,
+    "reject": []
+  },
+  "gate_band_abstentions": 7,
+  "verdicts": {
+    "confirm_predicted": 71,
+    "refute_predicted": 4,
+    "abstain": 7
+  },
+  "eligibility_gate_pass": {
+    "designs": "82/82",
+    "scrambles": "20/20",
+    "random": "9/10"
+  },
+  "labeled": "ALL verdicts are PREDICTED (proxy evidence: Boltz-2 on BindCraft designs). Nothing here is measured binding."
+}
