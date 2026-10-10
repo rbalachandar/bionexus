@@ -56,7 +56,7 @@ BioNexus is built on three principles:
 
 **Contents:** [Installation](#installation) · [CLI](#cli) ·
 [Evals](#how-do-you-know-it-works--the-eval-suite) ·
-[Case studies](#bionexus-case-studies-on-published-papers) ·
+[Case studies](#bionexus-case-studies--published-papers-and-one-dataset-we-made) ·
 [Using BioNexus](#using-bionexus) · [The virtual lab](#the-virtual-lab) ·
 [Five core interfaces](#five-core-interfaces) · [Agent Skills and MCP](#agent-skills-and-mcp) ·
 [Architecture](#architecture) · [Documentation](#documentation) ·
@@ -117,13 +117,16 @@ bn sop list                            # agent-proposed recurring procedures awa
 bn sop approve <sop-id> --by "lab lead"  # sign-off turns a procedure into standing policy
 ```
 
-## BioNexus case studies on published papers
+## BioNexus case studies — published papers, and one dataset we made
 
 The strongest test of the flow: hold out an entire published paper — values
 excluded from training and hidden from the agent — and ask the system to
-reproduce it. And then the harder, forward-looking version: run the real
+reproduce it. Then the harder, forward-looking version: run the real
 gated DMTA loop over a published data world with the field's actual futures
 removed, and score every claim against measurements it could not have known.
+And then the hardest: generate the data yourself on rented hardware with the
+field's real models (CS08) — nobody has seen it, there is no answer key, and
+the pre-registered refutation conditions are the only referee.
 
 | Study | Paper / corpus | Result |
 |---|---|---|
