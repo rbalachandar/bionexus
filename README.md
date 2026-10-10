@@ -7,6 +7,13 @@
 [![Python](https://img.shields.io/pypi/pyversions/bionexuslab)](https://pypi.org/project/bionexuslab/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
+`bn demo` — a scripted campaign on the production machinery (simulated
+numbers): a borderline CI abstains, an orthogonal method refutes a
+plausible-looking hit, confirmation passes only on agreement, and the
+whole run lands in a verified hash chain.
+
+![bn demo](assets/demo/bn-demo.gif)
+
 BioNexus is an open-source framework in which AI agents run the scientific
 method end to end: given a research problem and its constraints, agents propose
 a portfolio of hypotheses, select the ones worth testing, design experiments,
@@ -559,13 +566,19 @@ BioNexus decides *whether they run*, and records what happened. Focused skills:
 
 ## Architecture
 
-Hand-drawn blueprint-style diagrams (SVG — rendered directly on GitHub):
+Hand-drawn blueprint-style diagrams (SVG — rendered directly on GitHub).
+They cover the engine's architecture (blocks A–F); the adapter catalog and
+the workbench surface evolve faster than the blueprints — current state
+lives in [`docs/architecture.md`](docs/architecture.md) and the
+Five-core-interfaces table above.
 
 **1 · Layered View** — L0 governance → L3 infrastructure, with the five architectural blocks between.
 
 ![Layered View](diagrams/svg/01-layered-view.svg)
 
-**2 · Design Iteration Loop** — one active-learning round, from dossier to next-round proposals.
+**2 · Design Iteration Loop** — one active-learning round, from dossier to
+next-round proposals. (In-silico assay stages shown are adapters: ADMET
+ships today; docking and MD are roadmap `BioTool` implementations.)
 
 ![Design Iteration Loop](diagrams/svg/02-iteration-loop.svg)
 
@@ -581,7 +594,7 @@ Hand-drawn blueprint-style diagrams (SVG — rendered directly on GitHub):
 
 ![Fork / Snapshot Branching](diagrams/svg/05-branching.svg)
 
-**6 · Campaign Pipeline** — target ID through trial design with human gates and failure loops.
+**6 · Campaign Pipeline** — target ID through trial design with human gates and failure loops. ("FM-driven design" is the protein track: the simulator and the BindCraft/Boltz design loop of CS08; cloud-lab execution is the roadmap.)
 
 ![Campaign Pipeline](diagrams/svg/06-campaign.svg)
 
