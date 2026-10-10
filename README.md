@@ -7,26 +7,6 @@
 [![Python](https://img.shields.io/pypi/pyversions/bionexuslab)](https://pypi.org/project/bionexuslab/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-> ### Agentic science that can be graded.
->
-> Before the agent story, the scoreboard. `bn eval` runs real campaigns
-> against seeded ground truth — offline, deterministic, in CI — and the
-> harness **punishes our own overclaims**:
->
-> ```
-> epistemics — mean 0.980 · 13/13 tasks pass
->   hit-recovery         0.917  honest abstains credited 0.5, not 1.0
->   adaptive-dose        0.875  3 wells beat 4 — a genuine negative result
->   applicability-domain 1.000  far chemistry stamped extrapolation —
->                       confident claims vetoed in BOTH directions
->   verdict-honesty      1.000  must abstain where the CI straddles the gate
-> ```
->
-> Those sub-1.0 scores are the point: the system is graded **down** for
-> the confidence it refused to claim. No competitor ships a harness that
-> does that. Full run: [`evals/leaderboard.md`](evals/leaderboard.md) ·
-> the workbench header carries it as a live “graded” badge.
-
 BioNexus is an open-source framework in which AI agents run the scientific
 method end to end: given a research problem and its constraints, agents propose
 a portfolio of hypotheses, select the ones worth testing, design experiments,
@@ -146,7 +126,20 @@ so).
 ## How do you know it works? — the eval suite
 
 "Agentic science" is a measurable claim or it is marketing. `bn eval` runs
-scored tasks against seeded ground truth — deterministic, offline, in CI:
+scored tasks against seeded ground truth — deterministic, offline, in CI —
+and the harness **punishes our own overclaims**:
+
+```
+epistemics — mean 0.980 · 13/13 tasks pass
+  hit-recovery         0.917  honest abstains credited 0.5, not 1.0
+  adaptive-dose        0.875  3 wells beat 4 — a genuine negative result
+  applicability-domain 1.000  far chemistry stamped extrapolation —
+                      confident claims vetoed in BOTH directions
+  verdict-honesty      1.000  must abstain where the CI straddles the gate
+```
+
+Those sub-1.0 scores are the point: the system is graded **down** for the
+confidence it refused to claim. Full run: [`evals/leaderboard.md`](evals/leaderboard.md).
 
 | Tier | Question | Tasks |
 |---|---|---|
@@ -171,8 +164,8 @@ the permanent regression test — an agent-tier finding, caught by
 grading, not by vibes. That is the difference we ship: when the
 system finds a flaw in itself, the fix leaves a number behind.
 
-The leaderboard **is** the pitch, so it leads the README and the
-workbench: `GET /api/evals` serves a read-model that flags every passing
+The leaderboard **is** the pitch, so the workbench wears it:
+`GET /api/evals` serves a read-model that flags every passing
 task scoring below 1.0 as an `honest_deduction` (the abstentions we are
 graded down for, not smoothed over). The workbench header carries the live
 `graded 0.980 (13/13 bar-pass)` badge on every page, fed by
