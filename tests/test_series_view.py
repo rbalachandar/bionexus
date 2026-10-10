@@ -1,6 +1,8 @@
 """S-T1.1 chemotype/SAR series view: grouping, honest rollups, CI'd pairs."""
 import pytest
 
+pytest.importorskip("rdkit", reason="chemotype grouping is the rdkit backend")
+
 from bionexus.series import build_series, chemotype_key, matched_pairs, series_summary
 
 B1 = "Cc1ccc(NC(=O)c2ccccc2)cc1"      # acetanilide benzanilide

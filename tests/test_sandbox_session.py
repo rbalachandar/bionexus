@@ -1,6 +1,8 @@
 """S-T3 phase 1: SandboxSession routes tool invocations through a
 sandboxed worker (bn sandboxd) — routing, provenance, and failure
 honesty, on the dev-default LocalSandbox."""
+import importlib.util
+
 import pytest
 
 from bionexus.adapters.store.sqlite import SqliteProvenanceStore
@@ -22,13 +24,14 @@ def test_local_session_invokes_tool_e2e():
     s = SandboxSession(mode="per_experiment", sandbox="local",
                        branch_id="prob-e2e", store=store, actor=actor)
     res = s.invoke(_inv())
-    assert res.status == "succeeded"
-    rows = {r["smiles"]: r for r in res.output["results"]} \
-        if isinstance(res.output.get("results"), list) else {}
-    # output shape comes from MoleculeDescriptors — accept dict or raw
-    out = res.output or {}
-    blob = str(out)
-    assert "mol_wt" in blob and "CCO" in blob
+    if importlib.util.find_spec("rdkit"):
+        assert res.status == "succeeded"
+        blob = str(res.output or {})
+        assert "mol_wt" in blob and "CCO" in blob
+    else:
+        # rdkit-less venv: the worker must REJECT HONESTLY through the
+        # transport — which still proves the round-trip end to end
+        assert res.status == "rejected" and "rdkit" in (res.rejection_reason or "")
     events = {r.event_type.value for r in store.branch_records("prob-e2e")}
     assert {"sandbox_create", "sandbox_exec"} <= events
     s.destroy()
@@ -46,8 +49,10 @@ def test_registry_facade_routes_and_passthrough_matches():
     facaded = s.registry(inner)
     via_box = facaded.invoke(_inv("c1ccccc1"))
     direct = inner.invoke(_inv("c1ccccc1"))
-    assert via_box.status == direct.status == "succeeded"
-    assert via_box.output == direct.output      # same answers in or out
+    assert via_box.status == direct.status      # same outcome in or out
+    assert via_box.output == direct.output
+    if importlib.util.find_spec("rdkit"):
+        assert via_box.status == "succeeded"
     off = SandboxSession(mode="off").registry(inner)
     assert off.invoke(_inv()).status == "succeeded"   # untouched path
     s.destroy()

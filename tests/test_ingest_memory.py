@@ -116,10 +116,10 @@ def test_dry_run_writes_nothing(tmp_path):
 
 
 def test_cli_ingest_wired(tmp_path):
-    import subprocess
+    import subprocess, sys
     csv_path, _ = _exported_chain(tmp_path)
     out = subprocess.run(
-        [".venv/bin/python", "-m", "bionexus.cli", "ingest", str(csv_path),
+        [sys.executable, "-m", "bionexus.cli", "ingest", str(csv_path),
          "--flywheel-db", str(tmp_path / "fw6.db"), "--no-chain"],
         capture_output=True, text=True, cwd=Path(__file__).parent.parent)
     assert out.returncode == 0

@@ -137,6 +137,7 @@ def test_toolkit_check_synthesis_answers_the_four_questions():
 
 
 def test_safety_prescreen_before_make_wastes_no_batch():
+    pytest.importorskip("rdkit", reason="electrophile classes need rdkit")
     """Agent-tier finding, fixed: an UNDECLARED warhead is refused at Make
     entry (no synthesis lot spent); a DECLARED covalent warhead still
     passes to synthesis — intent respected, gateway stays the backstop."""
