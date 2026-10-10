@@ -548,7 +548,7 @@ and interchangeable. The contracts are the pydantic models in `bionexus.core.con
 | Interface | Adapters (now → roadmap) |
 |---|---|
 | `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub — Authorization header sent), anthropic → gemini |
-| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulators: SimulatorLab, imaging, recording/playback, replay, bioprocess, synthesis, protein-design skeleton. Real-I/O: PlateReaderShare (share-watch + `labread`). Reference drivers, NOT hardware-validated (see ROADMAP S-T4): Opentrons OT-2/Flex (HTTP), generic-HTTP device template (not a SiLA 2 binding), HCS & LC-MS (simulator-only — live mode raises), arm scheduler (REST template) → cloud labs |
+| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulators: SimulatorLab, imaging, recording/playback, replay, bioprocess, synthesis, protein-design skeleton. Real-I/O: PlateReaderShare (share-watch + `labread`). Contract-pinned + CI-verified vs a simulated robot: Opentrons OT-2/Flex (published v3 HTTP contract + ot2_sim; hardware confirmation = S-T4). Honest labels: generic-HTTP device template (not a SiLA 2 binding), HCS & LC-MS (simulator-only — live mode raises; vendor APIs unpublished), arm scheduler (REST template) → cloud labs |
 | `Sandbox` | local (copy-on-fork), docker (commit-based snapshots), OpenSandbox (gVisor/Kata/Firecracker runtimes, K8s scale, egress controls), AgentENV (VM-level snapshots) |
 | `ProvenanceStore` | sqlite → postgres, s3-worm |
 | `BioTool` | rdkit descriptors, ADMET, AlphaGenome Atlas variant scoring (AVI) → docking, ESMFold |

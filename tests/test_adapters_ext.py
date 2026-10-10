@@ -558,53 +558,55 @@ def test_autoloop_full_flow_act_and_observe(tmp_path):
 
 # ---- real device adapters (mock transport / generated exports) ----------------------
 
-class _FakeOtTransport:
-    """Records a realistic OT-2 HTTP session for playback-style testing."""
-    def __init__(self):
-        self.calls = []
-    def request(self, method, path, body=None):
-        self.calls.append((method, path))
-        if (method, path) == ("GET", "/health"):
-            return {"name": "OT2-LAB1", "apiVersion": "7.2.0", "fwVersion": "v1.0.0"}
-        if (method, path) == ("POST", "/protocols"):
-            return {"data": {"id": "prot-1"}}
-        if (method, path) == ("POST", "/runs"):
-            return {"data": {"id": "run-1"}}
-        if path == "/runs/run-1/actions":
-            return {}
-        if path == "/runs/run-1":
-            return {"data": {"status": "succeeded", "commands": [
-                {"commandType": "pickUpTip", "status": "succeeded", "params": {}},
-                {"commandType": "aspirate", "status": "succeeded", "params": {"volume": 50}},
-                {"commandType": "dispense", "status": "succeeded", "params": {"volume": 50}},
-            ]}}
-        raise AssertionError(f"unexpected call {method} {path}")
+# ---- real device adapters (contract-pinned; simulators with teeth) -------
 
+def test_opentrons_conformance_vs_simulated_robot():
+    """CI seam upgraded (audit Oct 10): the old fake mirrored our DRAFT
+    payloads — the exact anti-pattern the hardware audit found. Now the
+    adapter talks over a real socket to a spec-conformant simulated
+    robot that enforces the documented contract (Opentrons-Version
+    header, multipart field `files`, {"data":{"protocolId"}} runs,
+    actionType play/pause/stop) and derives command evidence from the
+    ACTUAL uploaded protocol source."""
+    import time
+    import urllib.error
+    import urllib.request
+    from bionexus.adapters.lab.opentrons import OpentronsLab, compile_protocol
+    from bionexus.adapters.lab.ot2_sim import SimulatedRobot
+    from bionexus.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
+                                         ProtocolSubmission)
 
-def test_opentrons_adapter_against_recorded_session(tmp_path):
-    from bionexus.adapters.lab.opentrons import OpentronsLab, OpentronsTransport, compile_protocol
-    from bionexus.core.contracts import Envelope, ProtocolOp, ProtocolStep, ProtocolSubmission
-
-    # compile: abstract protocol -> OT-2 python protocol
-    p = ProtocolSubmission(envelope=env(), title="dispense test", assay_type="binding",
-                           steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense,
-                                               params={"well": "A2", "volume_ul": 50})])
+    p = ProtocolSubmission(
+        envelope=env(), title="dispense test", assay_type="binding",
+        steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense,
+                            params={"well": "A2", "volume_ul": 50})])
     script = compile_protocol(p)
-    assert "protocol_api" in script and "pip.dispense(50.0, plate['A2'].top())" in script
+    assert "protocolName" in script            # documented metadata schema
+    assert "pip.dispense(50.0, plate['A2'].top())" in script
 
-    # run against the recorded session
-    transport = _FakeOtTransport()
-    lab = OpentronsLab(transport=OpentronsTransport.__new__(OpentronsTransport))
-    lab.client = transport
-    caps = lab.list_capabilities()
-    assert caps["robot"] == "OT2-LAB1" and caps["kind"] == "liquid_handler"
-    run_id = lab.submit_protocol(p)
-    assert ("POST", "/runs/run-1/actions") in transport.calls, "run started"
-    assert lab.get_status(run_id) == "done"
-    result = lab.fetch_results(run_id)
-    assert result.instrument.adapter == "opentrons"
-    assert len(result.measurements) == 3  # executed command evidence
-
+    with SimulatedRobot() as bot:
+        lab = OpentronsLab(base_url=bot.base_url)
+        caps = lab.list_capabilities()
+        assert caps["api_version"] == "v3back"
+        run_id = lab.submit_protocol(p)
+        st = "queued"
+        for _ in range(8):
+            st = lab.get_status(run_id)
+            if st in ("done", "failed"):
+                break
+            time.sleep(0.02)
+        assert st == "done"
+        res = lab.fetch_results(run_id)
+        kinds = [m.metadata["command"] for m in res.measurements]
+        assert "aspirate" in kinds and "dispense" in kinds  # from real source
+        # the sim has teeth: a header-less POST is rejected like a real
+        # robot would — a client that drifts from the contract FAILS CI
+        try:
+            urllib.request.urlopen(urllib.request.Request(
+                bot.base_url + "/protocols", method="POST", data=b"x"))
+            raise AssertionError("no-header upload must be rejected")
+        except urllib.error.HTTPError as e:
+            assert e.code == 400
 
 def test_plate_reader_share_parses_auto_export(tmp_path):
     from bionexus.adapters.lab.plate_reader_share import PlateReaderShare

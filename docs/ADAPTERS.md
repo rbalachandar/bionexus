@@ -96,13 +96,12 @@ Two production-shaped adapters ship in-tree:
 
 - **`adapters/lab/opentrons.py`** — Opentrons OT-2/Flex over the robot HTTP API
   (port 31950). The **Make** step of DMTA: compiles `ProtocolSubmission` into an
-  Opentrons Python protocol, uploads, plays the run, polls status.
-  **AUDIT (Oct 10): reference driver — request shapes are drafts, never
-  validated on a physical robot (multipart upload, `Opentrons-Version` header,
-  JSON:API run bodies all differ today). P8 tests mirror the draft, not the
-  device. Do not plan lab time against it until ROADMAP S-T4 runs. Results are
-  execution evidence (succeeded commands), not assay values — read the plate
-  afterwards with a reader adapter or `bn read`.
+  Opentrons Python protocol, uploads, plays the run, polls status.  **AUDIT (Oct 10, resolved same day): payloads are now pinned to the
+  published v3 contract (Opentrons/opentrons-integration-tools http-api
+  docs) and CI-verified against a spec-conformant simulated robot
+  (`bionexus.adapters.lab.ot2_sim.SimulatedRobot`) that rejects
+  contract violations the way a robot would. Hardware session remains
+  S-T4 confirmation, not contract discovery.**
 - **`adapters/lab/plate_reader_share.py`** — for readers configured to
   **auto-export completed reads to a network share** (Biotek Gen5, SoftMax Pro,
   SpectraMax...). Submit registers the expected run; `fetch_results` waits for

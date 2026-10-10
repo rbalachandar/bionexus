@@ -489,11 +489,15 @@ this is a security claim, not a feature. Order of work:
 
 The adapters audit found the repo's worst honesty failures to date —
 documented honestly HERE until the code catches up:
-- Opentrons driver: real HTTP, DRAFT payload shapes (multipart upload,
-  Opentrons-Version header, JSON:API run relationships all missing) —
-  never touched a robot; P8 fake mirrors the draft, so CI cannot catch
-  it. Action: validate against real hardware (loaned OT-2 or community
-  emulator with the official spec) OR keep labeled reference-driver.
+- Opentrons driver: WAS real HTTP with DRAFT payloads; P8 fake mirrored
+  the draft. FIXED same-day to the published contract (integration-tools
+  v3: multipart `files`, data.protocolId runs, actionType actions,
+  Opentrons-Version on every request), now CI-verified against
+  adapters/lab/ot2_sim.py — a spec-conformant SIMULATED robot with teeth
+  (400s header-less clients, 422s wrong multipart fields, serves command
+  evidence derived from the actually-uploaded protocol source). What
+  hardware still owns: behaviors the docs don't pin (timings, analysis
+  quirks, firmware drift) — the confirmation session, not the contract.
 - SiLA2 adapter: speaks invented JSON endpoints, NOT SiLA 2 (no gRPC/
   SDK). Relabeled generic-HTTP template; real binding needs the sila2
   SDK work.
@@ -505,8 +509,12 @@ documented honestly HERE until the code catches up:
 - tox_alerts missing-file fallback crashed NameError (fixed + test).
 Interim protections shipped: live-mode refusals, `simulated: true` in
 capabilities, honest docstrings, README table states validation status
-per adapter. Remaining: an S-T4 validation session on real hardware, or
-formal demotion of the unvalidated drivers to examples/.
+per adapter. Structural limit, stated plainly: SiLA2/LC-MS/HCS vendor
+interfaces are NOT public — there is no published contract to pin a
+simulator against; they stay simulator-only until vendor docs or a
+device arrives (a real-interface test requires a real interface spec).
+Remaining for S-T4: the OT-2/Flex confirmation session (contract is
+done; hardware is confirmation), and vendor access decisions.
 
 ## T0 — Uncertainty-aware verdicts (epistemic integrity)
 - [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap
