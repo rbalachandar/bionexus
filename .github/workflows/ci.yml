@@ -4,6 +4,8 @@ on:
   # push trigger REMOVED: private-repo free minutes; run on demand with
   #   gh workflow run ci.yml   (or open a PR / wait for Mondays)
   pull_request:
+    # once per PR, not every push to its branch; close+reopen re-runs cheaply
+    types: [opened, reopened]
   workflow_dispatch:
   schedule:
     - cron: "17 6 * * 1"  # weekly proof the suite still passes
