@@ -174,9 +174,9 @@ system finds a flaw in itself, the fix leaves a number behind.
 The leaderboard **is** the pitch, so it leads the README and the
 workbench: `GET /api/evals` serves a read-model that flags every passing
 task scoring below 1.0 as an `honest_deduction` (the abstentions we are
-graded down for, not smoothed over). The workbench header shows a live
-`graded 0.980 (13/13 bar-pass)` badge from `GET /api/evals` — the canonical
-listing stays here and in `evals/leaderboard.md`, not in a duplicate page.
+graded down for, not smoothed over). The workbench header carries the live
+`graded 0.980 (13/13 bar-pass)` badge on every page, fed by
+`GET /api/evals`.
 
 ### What keeps it trustworthy
 
@@ -403,9 +403,6 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
     per-series rollups, and a matched-pair SAR table whose calls carry CIs —
     straddling intervals abstain, and derived series claims show their
     status chip.
-  - **The header badge** carries the graded eval mean — "it can be graded"
-    leads the product; the leaderboard itself lives in this README and
-    `evals/leaderboard.md`, not in a duplicated tab.
   - **Real data to click through:** `bn demo` seeds the abstain-and-refute
     cascade; `case-studies/08-proteinbase-entry/seed_workbench.py` seeds the
     prospective PD-L1 design campaign (112 hypotheses, 30 of them controls
