@@ -573,6 +573,33 @@ def pipeline_cards(recs) -> list[dict]:
     return cards
 
 
+def _sandbox_summary(recs) -> dict | None:
+    """The sandbox receipt (S-T3 #4): if the experiment ran inside a
+    sandbox, the chain says which, with what policy, how many sealed
+    ops — None (rendered as nothing) when it didn't."""
+    info = None
+    for r in recs:
+        d = r.decision or {}
+        et = r.event_type.value
+        if et == "sandbox_create":
+            info = {"type": d.get("type") or "docker",
+                    "sandbox_id": d.get("sandbox_id") or d.get("created"),
+                    "policy": {k: d.get(k) for k in
+                               ("network", "memory", "cpus", "pids_limit")
+                               if d.get(k)},
+                    "execs": 0, "snapshots": 0, "forks": 0,
+                    "destroyed": False}
+        elif info and et == "sandbox_exec":
+            info["execs"] += 1
+        elif info and et == "sandbox_snapshot":
+            info["snapshots"] += 1
+        elif info and et == "sandbox_fork":
+            info["forks"] += 1
+        elif info and et == "sandbox_destroy":
+            info["destroyed"] = True
+    return info
+
+
 def _rounds_with_verdicts(recs) -> list[dict]:
     """Rounds with tested candidates AND the round's verdict map (from
     the round-N-complete stage markers)."""
@@ -981,6 +1008,7 @@ def experiment_detail(eid: str, wizard_store,
         or (spec or {}).get("success_metric"),
         "counts": dmta_counts(recs),
         "rounds": _rounds_with_verdicts(recs),
+        "sandbox": _sandbox_summary(recs),
         "cards": cards,
         "eliminated": eliminated,
     }

@@ -26,32 +26,46 @@ class SandboxSession:
                  branch_id: str = "campaign", store: Any = None,
                  actor: Any = None, image: str | None = None,
                  python: str | None = None, runner: Any = None):
+        """Config validated eagerly; the sandbox itself is created on
+        start() — the owner (e.g. run_campaign) binds the final branch."""
         self.mode = mode
         self.kind = sandbox
+        self.branch_id = branch_id
         self.store = store
         self.actor = actor
+        self.image = image
+        self.runner = runner
+        self.python = python
         self.sandbox = None
         if mode == "off":
             return
         if mode != "per_experiment":
             raise ValueError(f"unknown sandbox mode '{mode}' "
                              "(off | per_experiment; per_run is roadmap)")
-        if sandbox == "local":
-            from bionexus.adapters.sandbox.local import LocalSandbox
-            self.sandbox = LocalSandbox(branch_id=branch_id, store=store,
-                                        actor=actor)
-            self.python = python or sys.executable
-        elif sandbox == "docker":
-            from bionexus.adapters.sandbox.docker import DockerSandbox
-            self.sandbox = DockerSandbox(
-                image=image or "python:3.12-slim", branch_id=branch_id,
-                store=store, actor=actor, runner=runner)
-            self.python = python or "python3"
-        else:
+        if sandbox not in ("local", "docker"):
             raise ValueError(
                 f"sandbox type '{sandbox}' not supported for execution "
                 "(local | docker; agentenv is lifecycle-only, opensandbox "
                 "needs a live server) — loud refusal, no silent fallback")
+
+    def start(self, branch_id: str | None = None):
+        """Create the sandbox (once); branch defaults to the configured
+        one. Returns the session for chaining."""
+        if self.mode == "off" or self.sandbox is not None:
+            return self
+        branch = branch_id or self.branch_id
+        if self.kind == "local":
+            from bionexus.adapters.sandbox.local import LocalSandbox
+            self.sandbox = LocalSandbox(branch_id=branch, store=self.store,
+                                        actor=self.actor)
+            self.python = self.python or sys.executable
+        else:
+            from bionexus.adapters.sandbox.docker import DockerSandbox
+            self.sandbox = DockerSandbox(
+                image=self.image or "python:3.12-slim", branch_id=branch,
+                store=self.store, actor=self.actor, runner=self.runner)
+            self.python = self.python or "python3"
+        return self
 
     # ------------------------------------------------------------- routing
 
@@ -98,6 +112,7 @@ class SandboxSession:
         failure (never raises), so callers degrade visibly."""
         import base64
         import json
+        self.start()
         b64 = base64.b64encode(json.dumps(request).encode()).decode()
         cmd = f"{self.python} -m bionexus.sandboxd --request-b64 {b64}"
         try:
@@ -114,6 +129,7 @@ class SandboxSession:
     def fork(self) -> "SandboxSession":
         """per_run mode (roadmap): child experiment runs from this state;
         writes never flow back."""
+        self.start()
         if not self.sandbox:
             raise RuntimeError("cannot fork an off-mode session")
         child = SandboxSession(mode="off")
@@ -142,6 +158,7 @@ class SandboxedLab:
 
     def __init__(self, session: SandboxSession, seed: int = 7,
                  inner_kind: str = "simulator"):
+        session.start()
         if session.sandbox is None:
             raise ValueError("SandboxedLab needs an active session "
                              "(mode=off has no sandbox)")

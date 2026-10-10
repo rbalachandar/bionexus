@@ -392,7 +392,9 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
     CI shows *inconclusive*, margin label included), **origin** (what the
     molecule actually is), the `predicted_by` model stamp, mechanism, and
     the pre-registered **refuted-if** clause.
-  - **The record.** Hash-chained provenance; evidence curves re-rendered
+  - **The record.** Hash-chained provenance; a sandbox receipt when the
+    experiment ran in one (adapter, id, egress/memory policy, sealed op
+    count); evidence curves re-rendered
     from recorded run files (or an explicit "none recorded" state); reviewer audit; trust section; raw trace log. Harness
     decisions the code made (halts, authorization column, SOP sign-offs,
     physical-fault classification) all surface here. Wizard experiments are

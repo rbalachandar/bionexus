@@ -118,6 +118,10 @@ export interface ExperimentDetail {
   agent: { autonomy: string; problem_id: string | null; log_path: string | null }
   branch: string | null
   record_count: number
+  sandbox?: { type: string; sandbox_id: string | null;
+    policy: Record<string, string | number>;
+    execs: number; snapshots: number; forks: number;
+    destroyed: boolean } | null
   series?: {
     key: string; kind: string; backend: string; n_members: number
     n_tested?: number; rollup: Record<string, number>; label: string

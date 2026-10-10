@@ -613,6 +613,15 @@ export default function Experiment() {
           {d.program && <><strong style={{ color: 'var(--ink-2)' }}>{d.program.name}</strong> · </>}
           <span className="mono">ID: {d.id}</span>
         </p>
+        {d.sandbox && (
+          <p className="muted mono" style={{ fontSize: 11, margin: '2px 0 0' }}>
+            {'sandbox: '}{d.sandbox.type} · {d.sandbox.sandbox_id} · {d.sandbox.execs} sealed ops
+            {d.sandbox.snapshots > 0 ? ` · ${d.sandbox.snapshots} snapshots` : ''}
+            {d.sandbox.forks > 0 ? ` · ${d.sandbox.forks} forks` : ''}
+            {Object.entries(d.sandbox.policy).map(([k, v]) => ` · ${k}=${v}`)}
+            {d.sandbox.destroyed ? ' · destroyed (sealed)' : ' · open'}
+          </p>
+        )}
       </div>
       {d.program && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 'var(--s2)' }}>

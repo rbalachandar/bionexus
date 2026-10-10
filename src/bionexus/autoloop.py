@@ -163,11 +163,6 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     from bionexus.governance import AuthorizationMatrix, HaltSwitch
     gov = {"matrix": AuthorizationMatrix(), "halt": HaltSwitch()}
     say = notify or (lambda m: print(f"[campaign] {m}"))
-    if sandbox is not None:
-        from bionexus.sandbox_session import SandboxedLab
-        lab = SandboxedLab(sandbox, seed=getattr(lab, "seed", 7))
-        say(f"sandbox: lab ops execute inside the experiment sandbox "
-            f"({lab.name}) — every op is a sealed sandbox_exec")
 
     if cfg.autonomy == "gate":
         if approver is None:
@@ -206,6 +201,13 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     if cfg.problem.problem_id != _base_pid:
         say(f"branch '{_base_pid}' already holds a previous run — this "
             f"campaign recorded separately as '{cfg.problem.problem_id}'")
+    if sandbox is not None:
+        from bionexus.sandbox_session import SandboxedLab
+        sandbox.start(f"problem/{cfg.problem.problem_id}")
+        lab = SandboxedLab(sandbox, seed=getattr(lab, "seed", 7))
+        say(f"sandbox: lab ops execute inside the experiment sandbox "
+            f"({lab.name} @ problem/{cfg.problem.problem_id}) — every op "
+            f"is a sealed sandbox_exec")
     problem = tracker.define_problem(cfg.problem, environment={
         "lab": getattr(lab, "name", "unknown"),
         "lab_version": getattr(lab, "version", None),

@@ -449,9 +449,15 @@ this is a security claim, not a feature. Order of work:
 - [ ] 3. GRADE: eval task — isolation as a scored property: sibling-branch
   writes invisible across forks, egress attempts fail, lifecycle present
   in the chain. (Design principle #6: claims are measured.)
-- [ ] 4. SURFACE: workbench run card shows which sandbox executed the step
-  (type, image digest, snapshot tag) — diagram 05's fork-per-hypothesis
-  story gets a UI that proves it, or the diagram stays aspirational.
+- [x] 4. SURFACE (Oct 10): views._sandbox_summary aggregates the branch's
+  sandbox events into a receipt; the experiment header renders
+  `sandbox: <type> · <id> · N sealed ops · snapshots/forks ·
+  network=none memory=512m ... · destroyed (sealed)` — nothing renders
+  when no sandbox was used. Sessions now bind their branch inside
+  run_campaign (after the pid-collision dance), so receipt and campaign
+  records share one branch. Diagram 05's fork-per-hypothesis story is
+  now UI-visible wherever forks actually occur (API + per_run mode
+  remain the wiring for that).
 
 ## T0 — Uncertainty-aware verdicts (epistemic integrity)
 - [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap

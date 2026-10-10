@@ -180,3 +180,20 @@ def test_fork_diverges_and_session_cleans_up():
     assert s.sandbox.exec("ls") == ""       # writes never flow back
     s.destroy()
     child.destroy()
+
+
+def test_sandbox_receipt_read_model():
+    from bionexus.views import _sandbox_summary
+    store = SqliteProvenanceStore(":memory:")
+    s = SandboxSession(mode="per_experiment", sandbox="local",
+                       branch_id="prob-r", store=store,
+                       actor=system_actor("t"))
+    s.start()
+    s.sandbox.exec("echo hi")
+    s.destroy()
+    info = _sandbox_summary(store.branch_records("prob-r"))
+    assert info and info["type"] == "local" and info["execs"] >= 1
+    assert info["destroyed"] and info["policy"] == {}
+    # an ordinary chain without sandboxes renders nothing
+    from bionexus.core.hypothesis import ProblemStatement
+    assert _sandbox_summary(store.branch_records("nonexistent")) is None
