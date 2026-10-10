@@ -509,12 +509,37 @@ documented honestly HERE until the code catches up:
 - tox_alerts missing-file fallback crashed NameError (fixed + test).
 Interim protections shipped: live-mode refusals, `simulated: true` in
 capabilities, honest docstrings, README table states validation status
-per adapter. Structural limit, stated plainly: SiLA2/LC-MS/HCS vendor
-interfaces are NOT public — there is no published contract to pin a
-simulator against; they stay simulator-only until vendor docs or a
-device arrives (a real-interface test requires a real interface spec).
-Remaining for S-T4: the OT-2/Flex confirmation session (contract is
-done; hardware is confirmation), and vendor access decisions.
+per adapter.
+
+CORRECTION + STRATEGY (same day, via K-Dense LabMCP — see references):
+the "no published contract" claim was too broad. Published interfaces
+exist for more of the fleet than assumed: SiLA 2 is a consortium
+standard (FDL schemas + gRPC, reference bridges ship); microscopy has
+Micro-Manager (open device-adaptor layer over hundreds of vendors);
+LC-MS has vendor-NEUTRAL mzML (+ msconvert for proprietary raw). Still
+genuinely closed: Thermo IAPI (licensed .NET), several vendor REST
+silos. And the best contract source of all: an Opentrons robot SERVES
+ITS OWN OpenAPI SPEC at http://<robot>:31950/openapi.json — the device
+is the documentation; a hardware session can machine-verify our
+hand-written contract instead of trusting eyes.
+
+Borrowed safety stance (LabMCP's, now ours): stateless single-move
+commands (POST /runs/{id}/commands) are NOT exposed as adapter
+operations — without authoritative deck state they can crash pipettes
+into labware; complete analyzed protocols only.
+
+STRATEGY TICKET (opened): 4. MCP-as-device-layer — evaluate consuming
+labmcp-* servers (32 instruments, each with a manual-derived simulator,
+safety limits, read-only mode, audit log, and a community
+hardware-verification program) as the transport behind LabGateway
+adapters, instead of BioNexus hand-rolling 32 per-device drivers. Our
+value stays in governance/provenance/verdicts; their value is per-
+instrument manuals. Wire-up sketch: a generic MCP-McpLabAdapter that
+maps tools -> submit/status/fetch semantics, `--simulate` as the CI
+seam, `--address` as the hardware path.
+Remaining for S-T4: the OT-2/Flex confirmation session (contract done;
+the robot's own openapi.json makes it checkable), LabMCP integration
+evaluation, vendor access decisions.
 
 ## T0 — Uncertainty-aware verdicts (epistemic integrity)
 - [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap

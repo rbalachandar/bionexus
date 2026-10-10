@@ -11,6 +11,16 @@ Contract source (retrieved Oct 10, 2026):
     (docs.opentrons.com/http: "header Parameters |opentrons-version
     required")
 
+CONTRACT CROSS-CHECK (Oct 10, independent second reading): K-Dense
+LabMCP's opentrons server (github.com/K-Dense-AI/lab-instrument-mcps)
+confirms port 31950 + Opentrons-Version: 3 + the integration-tools
+guide as the source of truth, and adds the decisive detail: every robot
+serves its full OpenAPI spec at /openapi.json — so a hardware session
+can machine-diff this driver against the actual device. SAFETY STANCE
+adopted from the same source: stateless single-move commands are NOT
+exposed (POST /runs/{id}/commands without authoritative deck state can
+crash pipettes into labware); only complete, analyzed protocols run.
+
 HONEST STATUS (S-T4): payloads conform to the documented contract and
 CI runs them against ot2_sim.py — a spec-conformant SIMULATED robot that
 rejects what a real robot would reject (missing header -> 400, wrong
