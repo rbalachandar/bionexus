@@ -93,6 +93,15 @@ class AgentEnvSandbox:
 
     # -- Sandbox protocol ----------------------------------------------------
 
+    def exec(self, command: str, *, timeout: float = 60.0) -> str:
+        """Not implemented: this adapter speaks only the lifecycle endpoints
+        (create/pause/resume/delete) it has been verified against. Command
+        execution needs the AgentENV run endpoint wired and verified
+        against a live server — loud refusal, never a silent fake."""
+        raise NotImplementedError(
+            "AgentEnvSandbox.exec: lifecycle-only client; exec requires the "
+            "server run endpoint (verified against a live deployment first)")
+
     def snapshot(self) -> str:
         """Pause the sandbox; AgentENV persists full VM state server-side."""
         self.client.pause(self.sandbox_id)

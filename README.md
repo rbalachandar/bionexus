@@ -545,9 +545,15 @@ and interchangeable. The contracts are the pydantic models in `bionexus.core.con
 |---|---|
 | `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub), anthropic → gemini |
 | `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator, Opentrons OT-2/Flex (HTTP), PlateReaderShare, SiLA 2 (generic, multi-device), HCS microscope (per-cell imaging), LC-MS (ratiometric proteomics), RoboticArmScheduler (plate transport) → cloud labs |
-| `Sandbox` | local (copy-on-fork), docker (commit-based snapshots), OpenSandbox (gVisor/Kata/Firecracker runtimes, K8s scale, egress controls) → AgentENV |
+| `Sandbox` | local (copy-on-fork), docker (commit-based snapshots), OpenSandbox (gVisor/Kata/Firecracker runtimes, K8s scale, egress controls), AgentENV (VM-level snapshots) |
 | `ProvenanceStore` | sqlite → postgres, s3-worm |
 | `BioTool` | rdkit descriptors, ADMET, AlphaGenome Atlas variant scoring (AVI) → docking, ESMFold |
+
+Known limitation: the `Sandbox` adapters are contract-tested but not yet
+wired into campaign execution — agent tool calls currently run in-process,
+not inside a sandbox. Making the sandbox the execution substrate (seam,
+hardening, isolation evals) is tracked as S-T3 in
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Agent Skills and MCP
 

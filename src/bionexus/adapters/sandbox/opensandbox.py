@@ -53,13 +53,26 @@ class OpenSandboxSandbox:
 
     # -- protocol (sync surface; async SDKs are wrapped by the caller) --------
 
-    def exec(self, command: str) -> str:
-        """Run a command inside the sandbox; returns stdout text."""
-        result = self.client.commands.run(command)
-        logs = getattr(result, "logs", None)
-        if logs is not None and getattr(logs, "stdout", None):
-            return logs.stdout[0].text
-        return ""
+    def exec(self, command: str, *, timeout: float = 60.0) -> str:
+        """Run a command inside the sandbox; returns stdout text.
+        NOTE: timeout is accepted for protocol parity but enforced by the
+        OpenSandbox server policy, not passed to the SDK here; the exec
+        attempt is provenance-recorded either way."""
+        import hashlib
+        out = ""
+        try:
+            result = self.client.commands.run(command)
+            logs = getattr(result, "logs", None)
+            if logs is not None and getattr(logs, "stdout", None):
+                out = logs.stdout[0].text
+            return out
+        finally:
+            self._record(EventType.sandbox_exec,
+                         {"sandbox_id": self.sandbox_id,
+                          "command_sha256": hashlib.sha256(
+                              command.encode()).hexdigest()[:16],
+                          "timeout": timeout,
+                          "output_chars": len(out)})
 
     def write_file(self, path: str, content: str) -> None:
         self.client.files.write_files([(path, content)])

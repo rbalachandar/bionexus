@@ -916,6 +916,9 @@ class _FakeDocker:
         if args[0] == "commit":
             return "bionexus/branch:snap-1"
         return ""
+    def run_with_timeout(self, timeout, *args):
+        self.calls.append(list(args))
+        return ""
     def ok(self, *args):
         return True
 

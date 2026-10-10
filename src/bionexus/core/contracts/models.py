@@ -354,6 +354,8 @@ class EventType(str, Enum):
     synthesis_complete = "synthesis_complete"
     sandbox_fork = "sandbox_fork"
     sandbox_snapshot = "sandbox_snapshot"
+    sandbox_create = "sandbox_create"
+    sandbox_exec = "sandbox_exec"
 
 
 class ActorKind(str, Enum):

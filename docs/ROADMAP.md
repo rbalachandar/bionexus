@@ -387,6 +387,43 @@ modality packs, AssayLoop policy wiring, story-surface polish. The system is
 currently the most credible PROOF that agentic science can be honest; the gap
 to "the lab uses it" is data reality, not more verdict logic.
 
+### S-T3 — Sandbox as execution substrate (opened Oct 2026)
+
+Honest finding (Oct 10): the `Sandbox` interface has four adapters with
+contract tests, but ZERO call sites outside `adapters/sandbox/` — no
+workflow, agent path, CLI, or API instantiates one. PLAN.md P7 ("the
+workflow engine uses it") is unimplemented: tool and skill execution runs
+in-process; the isolation/safety the interface exists to provide is
+currently provided by nothing, while diagram 05 advertises it. `docker.py`
+also lacks egress lockdown / resource caps / read-only mounts. Closing
+this is a security claim, not a feature. Order of work:
+
+- [x] 1a. EXECUTION LAYER (Oct 10): `exec(command, timeout)` declared on
+  the Sandbox protocol — LocalSandbox implements it (private temp workdir,
+  process isolation only, docstring says so; forks inherit files, writes
+  never flow back), DockerSandbox gains timeout-enforced exec,
+  OpenSandbox records exec + accepts timeout (server-policy caveat noted),
+  AgentENV refuses loudly (lifecycle-only client, honest NotImplementedError).
+  New events sandbox_create/sandbox_exec recorded on every attempt
+  (command sha, exit code, timeout) — 5 contract tests in
+  `tests/test_sandbox_exec.py`.
+- [ ] 1b. CALLER WIRING: workflow/agent stages still execute in-process;
+  the first consumer pairs with code-gen enablement (stateful BioTools
+  serialize poorly; generated ANALYSIS code is the right tenant).
+- [x] 2a. HARDEN (args): DockerSandbox create is `--network none` by
+  default (explicit opt-out), `--memory 512m --cpus 1.0 --pids-limit 128
+  --cap-drop ALL --security-opt no-new-privileges`; inherited by forks and
+  resume; asserted in tests.
+- [ ] 2b. LIVE-DAEMON CI: run this contract suite against a real docker
+  service container, incl. a failed-egress probe — end mocked-only
+  verification for this interface.
+- [ ] 3. GRADE: eval task — isolation as a scored property: sibling-branch
+  writes invisible across forks, egress attempts fail, lifecycle present
+  in the chain. (Design principle #6: claims are measured.)
+- [ ] 4. SURFACE: workbench run card shows which sandbox executed the step
+  (type, image digest, snapshot tag) — diagram 05's fork-per-hypothesis
+  story gets a UI that proves it, or the diagram stays aspirational.
+
 ## T0 — Uncertainty-aware verdicts (epistemic integrity)
 - [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap
   (deterministic seed), `labread.fit_ic50_ci`; CI stored on compounds as

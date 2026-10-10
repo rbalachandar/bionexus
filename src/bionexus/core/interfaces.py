@@ -91,8 +91,10 @@ class LabAdapter(Protocol):
 
 @runtime_checkable
 class Sandbox(Protocol):
-    """Experiment-branch lifecycle (P7): create/fork/snapshot/resume. Adapters may
-    degrade (e.g. local deep-copy forks) but the interface must hold."""
+    """Experiment-branch lifecycle (P7): create/fork/snapshot/resume, plus
+    command execution inside the sandbox. Adapters may
+    degrade (e.g. local deep-copy forks, exec raising NotImplementedError)
+    but the interface must hold and degradation must be loud, not silent."""
 
     sandbox_id: str
     branch_id: str
@@ -103,6 +105,11 @@ class Sandbox(Protocol):
 
     def fork(self, snapshot_id: str | None = None) -> "Sandbox":
         """New sandbox branching from this one (or a stored snapshot)."""
+        ...
+
+    def exec(self, command: str, *, timeout: float = 60.0) -> str:
+        """Run a command INSIDE the sandbox; returns stdout. Adapters that
+        cannot execute raise NotImplementedError (never silently pretend)."""
         ...
 
     def resume(self, snapshot_id: str | None = None) -> None: ...
