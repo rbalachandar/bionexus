@@ -12,7 +12,8 @@ method end to end: given a research problem and its constraints, agents propose
 a portfolio of hypotheses, select the ones worth testing, design experiments,
 execute them on simulated or real laboratory equipment, observe the results as
 they arrive, and deliver verdicts against criteria that were registered before
-the experiment ran.
+the experiment ran. A scientist can use it manually, step by step, as a daily
+analysis tool — and hand stages of the loop to an agent as trust grows.
 
 BioNexus is built on three principles:
 
@@ -202,8 +203,7 @@ the objective in your own terms (any metric, unit, direction), the Make step
 words production per modality (chemical synthesis, bioprocessing, engineered
 cells), Test adapters supply the assay, and Analyze reads the registered
 metric against its gate — small-molecule, biologic, agrochemical, or
-materials programs differ in adapters, not in the framework. A scientist can use it manually, step by step, as a daily
-analysis tool — and hand stages of the loop to an agent as trust grows.
+materials programs differ in adapters, not in the framework.
 
 ### As a daily analysis tool — reading lab instrument exports
 
