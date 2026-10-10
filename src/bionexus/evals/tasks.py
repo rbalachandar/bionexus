@@ -861,6 +861,8 @@ def _t_sandbox_isolation():
                        branch_id="ev-a", store=store, actor=actor)
     b = SandboxSession(mode="per_experiment", sandbox="local",
                        branch_id="ev-b", store=store, actor=actor)
+    a.start()
+    b.start()
     a.sandbox.exec("echo token > secret.txt")
     seen = b.sandbox.exec(
         "test -f secret.txt && echo YES || echo NO") == "YES"
