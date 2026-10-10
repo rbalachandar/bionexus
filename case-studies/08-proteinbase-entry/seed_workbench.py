@@ -31,12 +31,7 @@ PROGRAM = "CS08 PD-L1 Designs"
 GATE, BAND_HALF = 0.7, 0.05
 
 
-def load_scores(pred_dir: Path) -> dict[str, dict]:
-    out = {}
-    for f in sorted(pred_dir.glob("*/confidence_*.json")):
-        name = f.name.removeprefix("confidence_").removesuffix("_model_0.json")
-        out[name] = json.loads(f.read_text())
-    return out
+from cs08_io import load_scores, binder_seqs   # noqa: E402
 
 
 def main() -> int:
@@ -57,11 +52,7 @@ def main() -> int:
 
     designs = load_scores(DATA / "boltz_predictions")
     ctrls = load_scores(DATA / "ctrl_predictions")
-    binder_seq = {}
-    for p in (DATA / "boltz_in2").glob("*.yaml"):
-        m = re.search(r"id: A\n      sequence: (\w+)", p.read_text())
-        if m:
-            binder_seq[p.stem] = m.group(1)
+    binder_seq = binder_seqs(DATA / "boltz_in2")
 
     store = SqliteProvenanceStore("bionexus.db")
     tr = HypothesisTracker(store, system_actor("cs08-workbench"))
@@ -181,11 +172,7 @@ def main() -> int:
                                     "complex_plddt": c["complex_plddt"]})
         return h.status
 
-    ctrl_seq = {}
-    for p in (DATA / "controls_in").glob("*.yaml"):
-        m = re.search(r"id: A\n      sequence: (\w+)", p.read_text())
-        if m:
-            ctrl_seq[p.stem] = m.group(1)
+    ctrl_seq = binder_seqs(DATA / "controls_in")
     for n, c in designs.items():
         c["n_seq"] = len(binder_seq.get(n, ""))
     for n, c in ctrls.items():

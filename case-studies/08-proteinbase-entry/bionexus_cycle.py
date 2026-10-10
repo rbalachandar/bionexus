@@ -34,12 +34,7 @@ from bionexus.core.interfaces import system_actor                         # noqa
 GATE, BAND_HALF = 0.7, 0.05
 
 
-def load_scores(pred_dir: Path) -> dict[str, dict]:
-    out = {}
-    for f in sorted(pred_dir.glob("*/confidence_*.json")):
-        name = f.name.removeprefix("confidence_").removesuffix("_model_0.json")
-        out[name] = json.loads(f.read_text())
-    return out
+from cs08_io import load_scores   # noqa: E402
 
 
 def main() -> None:
@@ -109,16 +104,17 @@ def main() -> None:
 
     bad = store.verify_chain()
     out = {
-        "db": str(DB),
+        "db": str(DB.relative_to(ROOT)),
         "floor": {"pass": len(passing), "reject": len(rejected)},
         "verdict_tallies": tally,
         "chain_intact": bad == [], "chain_problems": bad,
         "evidence_line": criteria.evidence_line(),
         "embarrassing_records": sorted(
             f"{n} ({c['iptm']:.3f} -> validated)"
-            for n, c in ctrls.items() if c["iptm"] + 0 > 0
-            and criteria.classify(c["iptm"], (c["iptm"] - BAND_HALF,
-                                              c["iptm"] + BAND_HALF)) == "validated"),
+            for n, c in ctrls.items()
+            if criteria.classify(c["iptm"], (c["iptm"] - BAND_HALF,
+                                             c["iptm"] + BAND_HALF))
+            == "validated"),
         "design_median_iptm": round(st.median(list(c["iptm"] for c in designs.values())), 4),
     }
     (HERE / "bionexus_cycle_results.json").write_text(json.dumps(out, indent=2))

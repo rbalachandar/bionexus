@@ -13,7 +13,6 @@ fallback, and never an exception that kills the campaign.
 """
 from __future__ import annotations
 
-import base64
 import json
 import sys
 from typing import Any
@@ -90,13 +89,12 @@ class SandboxSession:
     def invoke(self, invocation) -> ToolResult:
         data = self.call({"invocation": invocation.model_dump(mode="json")},
                          timeout=invocation.timeout_secs + 15)
-        if data is None or "error" in data:
+        if "error" in data:
             return ToolResult(
                 envelope=invocation.envelope,
                 invocation_id=invocation.invocation_id,
                 status="failed",
-                rejection_reason="sandbox transport: "
-                                 + (data or {}).get("error", "no response"))
+                rejection_reason=data["error"])
         try:
             return ToolResult.model_validate(data)
         except Exception as e:
@@ -106,20 +104,21 @@ class SandboxSession:
                 status="failed",
                 rejection_reason=f"sandbox transport: bad response ({e})")
 
-    def call(self, request: dict, timeout: float = 75.0) -> dict | None:
-        """One transport round-trip: b64-JSON request -> sandbox worker ->
-        parsed JSON response. Returns {'error': ...} dict on transport
-        failure (never raises), so callers degrade visibly."""
-        import base64
-        import json
+    def call(self, request: dict, timeout: float = 75.0) -> dict:
+        """One transport round-trip: JSON request on stdin -> sandbox
+        worker -> JSON response on stdout. The payload rides STDIN, not
+        argv, so growing lab-state can never hit ARG_MAX. Returns an
+        {'error': ...} dict on ANY transport failure (never raises), so
+        callers degrade visibly and the campaign survives."""
         self.start()
-        b64 = base64.b64encode(json.dumps(request).encode()).decode()
-        cmd = f"{self.python} -m bionexus.sandboxd --request-b64 {b64}"
         try:
-            out = self.sandbox.exec(cmd, timeout=timeout)
+            out = self.sandbox.exec(f"{self.python} -m bionexus.sandboxd",
+                                    timeout=timeout,
+                                    stdin_data=json.dumps(request))
             return json.loads(out)
-        except (TimeoutError, RuntimeError, json.JSONDecodeError) as e:
-            return {"error": f"sandbox transport: {str(e)[:200]}"}
+        except Exception as e:                      # loud FAILED, never a
+            return {"error": f"sandbox transport: {type(e).__name__}: "
+                             f"{str(e)[:200]}"}     # silent fallback
 
     # ----------------------------------------------------------- lifecycle
 
@@ -132,13 +131,20 @@ class SandboxSession:
         self.start()
         if not self.sandbox:
             raise RuntimeError("cannot fork an off-mode session")
-        child = SandboxSession(mode="off")
-        child.mode = "per_experiment"
-        child.kind = self.kind
-        child.python = self.python
-        child.store, child.actor = self.store, self.actor
-        child.sandbox = self.sandbox.fork()
-        return child
+        return SandboxSession._adopted(self.sandbox.fork(), kind=self.kind,
+                                       python=self.python, store=self.store,
+                                       actor=self.actor)
+
+    @classmethod
+    def _adopted(cls, sandbox, *, kind, python, store, actor) -> "SandboxSession":
+        """Internal: a session wrapping an EXISTING sandbox (fork child).
+        Private API — validation stays in the single constructor path."""
+        s = cls.__new__(cls)
+        s.mode, s.kind = "per_experiment", kind
+        s.branch_id = getattr(sandbox, "branch_id", "fork")
+        s.store, s.actor, s.python, s.sandbox = store, actor, python, sandbox
+        s.image, s.runner = None, None
+        return s
 
     def destroy(self) -> None:
         if self.sandbox:
@@ -157,28 +163,34 @@ class SandboxedLab:
     boundary question, not this transport's."""
 
     def __init__(self, session: SandboxSession, seed: int = 7,
-                 inner_kind: str = "simulator"):
+                 lab: Any = None):
+        """Pass the campaign's actual lab: its FULL configuration (seed,
+        replicates, interference, gates) transfers as initial state, so
+        sandboxed execution is a transport, not a re-defaulting. A lab
+        without state export is refused — silently swapping in a fresh
+        simulator would be the worst kind of lie."""
         session.start()
         if session.sandbox is None:
             raise ValueError("SandboxedLab needs an active session "
                              "(mode=off has no sandbox)")
-        if inner_kind != "simulator":
+        if lab is not None and not hasattr(lab, "export_state"):
             raise NotImplementedError(
-                f"sandboxed execution for lab '{inner_kind}' is not wired; "
-                "supported: simulator (see ROADMAP S-T3)")
+                f"sandboxed execution for lab "
+                f"'{getattr(lab, 'name', type(lab).__name__)}' is not "
+                "wired (needs export_state; see ROADMAP S-T3) — refusing "
+                "to substitute a different instrument")
         self.session = session
-        self.seed = seed
-        self.name = f"sandboxed:{inner_kind}"
-        self._state: dict | None = None
+        self.seed = getattr(lab, "seed", seed)
+        self.name = "sandboxed:simulator"
+        self._state = lab.export_state() if lab is not None else None
 
     def _op(self, op: str, payload: dict | None = None):
         req = {"kind": "lab", "seed": self.seed, "op": op,
                "payload": payload or {}, "lab_state": self._state}
         data = self.session.call(req)
-        if data is None or "error" in data:
+        if "error" in data:
             raise RuntimeError(
-                f"sandboxed lab op '{op}' failed: "
-                f"{(data or {}).get('error', 'no response')}")
+                f"sandboxed lab op '{op}' failed: {data['error']}")
         self._state = data["lab_state"]
         return data["result"]
 

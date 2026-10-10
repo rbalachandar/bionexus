@@ -204,7 +204,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     if sandbox is not None:
         from bionexus.sandbox_session import SandboxedLab
         sandbox.start(f"problem/{cfg.problem.problem_id}")
-        lab = SandboxedLab(sandbox, seed=getattr(lab, "seed", 7))
+        lab = SandboxedLab(sandbox, lab=lab)
         say(f"sandbox: lab ops execute inside the experiment sandbox "
             f"({lab.name} @ problem/{cfg.problem.problem_id}) — every op "
             f"is a sealed sandbox_exec")

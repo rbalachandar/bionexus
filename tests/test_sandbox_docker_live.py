@@ -134,3 +134,48 @@ def test_live_provenance_and_cleanup(image):
     gone = subprocess.run(["docker", "inspect", cid],
                           capture_output=True, text=True)
     assert gone.returncode != 0     # container actually removed from daemon
+
+
+SESSION_IMAGE = os.environ.get("BN_SANDBOX_IMAGE")
+
+
+@pytest.mark.skipif(not SESSION_IMAGE, reason=(
+    "needs the repo-installed image (BN_SANDBOX_IMAGE=bionexus-sandbox:ci; "
+    "CI job builds it) — the mocked-era excuse is over"))
+def test_docker_session_e2e_tools_and_lab_in_container():
+    """The honest headline test: tool calls AND lab ops round-trip
+    through the session INSIDE a real container with bionexus installed.
+    This is what 'per_experiment docker' actually promises."""
+    from bionexus.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
+                                         ProtocolSubmission, ReagentSpec,
+                                         SampleKind, SampleSpec,
+                                         ToolInvocation, ToolName)
+    from bionexus.sandbox_session import SandboxSession, SandboxedLab
+    store = SqliteProvenanceStore(":memory:")
+    actor = system_actor("live-e2e")
+    s = SandboxSession(mode="per_experiment", sandbox="docker",
+                       image=SESSION_IMAGE, python="python3",
+                       branch_id="live-e2e", store=store, actor=actor)
+    try:
+        inv = ToolInvocation(
+            envelope=Envelope(experiment_branch_id="live-e2e"),
+            tool=ToolName.fm_predict_property,
+            args={"smiles": ["CCO"]}, timeout_secs=120)
+        res = s.invoke(inv)
+        assert res.status == "succeeded", res.rejection_reason
+        assert "46.07" in str(res.output)          # ethanol MW, computed in-container
+        proto = ProtocolSubmission(
+            envelope=Envelope(experiment_branch_id="live-e2e"), title="t",
+            assay_type="binding",
+            steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense)],
+            samples=[SampleSpec(sample_id="C1", kind=SampleKind.compound,
+                                concentration="10 uM")],
+            reagents=[ReagentSpec(name="buffer", amount="1 mL", bsl_level=1)])
+        box = SandboxedLab(s, seed=42)
+        rid = box.submit_protocol(proto)
+        assert box.get_status(rid) == "done"
+        assert len(box.fetch_results(rid).measurements) >= 1
+        ev = [r.event_type.value for r in store.branch_records("live-e2e")]
+        assert ev.count("sandbox_exec") >= 4
+    finally:
+        s.destroy()

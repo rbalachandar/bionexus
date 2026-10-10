@@ -49,16 +49,23 @@ class OpenSandboxSandbox:
             created = client.create(image, timeout_secs)
             self.sandbox_id = getattr(created, "id", None) or str(created)
             self._record(EventType.sandbox_snapshot,
-                         {"created": self.sandbox_id, "image": image})
+                         {"type": "opensandbox", "created": self.sandbox_id,
+                          "image": image})
 
     # -- protocol (sync surface; async SDKs are wrapped by the caller) --------
 
-    def exec(self, command: str, *, timeout: float = 60.0) -> str:
+    def exec(self, command: str, *, timeout: float = 60.0,
+             stdin_data: str | None = None) -> str:
         """Run a command inside the sandbox; returns stdout text.
-        NOTE: timeout is accepted for protocol parity but enforced by the
-        OpenSandbox server policy, not passed to the SDK here; the exec
-        attempt is provenance-recorded either way."""
-        import hashlib
+        NOTE: timeout is enforced by OpenSandbox server policy, not the
+        SDK call, and stdin payloads are not supported by this server
+        client — asking for one raises rather than silently dropping it.
+        The exec attempt is provenance-recorded either way."""
+        from bionexus.adapters.sandbox import exec_decision
+        if stdin_data is not None:
+            raise NotImplementedError(
+                "OpenSandbox client has no stdin transport; use the "
+                "files API to stage input (loud refusal, no silent drop)")
         out = ""
         try:
             result = self.client.commands.run(command)
@@ -68,11 +75,8 @@ class OpenSandboxSandbox:
             return out
         finally:
             self._record(EventType.sandbox_exec,
-                         {"sandbox_id": self.sandbox_id,
-                          "command_sha256": hashlib.sha256(
-                              command.encode()).hexdigest()[:16],
-                          "timeout": timeout,
-                          "output_chars": len(out)})
+                         exec_decision(self.sandbox_id, command,
+                                       output=out, timeout=timeout))
 
     def write_file(self, path: str, content: str) -> None:
         self.client.files.write_files([(path, content)])

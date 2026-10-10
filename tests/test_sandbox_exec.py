@@ -73,9 +73,9 @@ def test_docker_create_args_are_hardened():
             calls.append(list(args))
             return "cont-9"
 
-        def run_with_timeout(self, timeout, *args):
-            calls.append(["TIMEOUT", timeout] + list(args))
-            return "out"
+        def run_capped(self, timeout, *args, input=None):
+            calls.append(["CAPPED", timeout] + list(args))
+            return (0, "out", False)
 
         def ok(self, *args):
             return True
@@ -91,11 +91,12 @@ def test_docker_create_args_are_hardened():
     assert [r.event_type.value for r in store.branch_records("d")][0] \
         == "sandbox_create"
     sb.exec("echo hi", timeout=5)
-    exec_call = [c for c in calls if c and c[0] == "TIMEOUT"][-1]
-    assert exec_call[1] == 5 and "exec" in exec_call
+    exec_call = [c for c in calls if c and c[0] == "CAPPED"][-1]
+    assert exec_call[1] == 13 and "exec" in exec_call      # 5 + grace
+    assert "timeout" in exec_call and "--kill-after=2" in exec_call
     ev = [r.decision for r in store.branch_records("d")
           if r.event_type.value == "sandbox_exec"]
-    assert ev and ev[0]["output_chars"] == 3
+    assert ev and ev[0]["output_chars"] == 3 and ev[0]["exit_code"] == 0
 
 
 def test_agentenv_exec_refuses_loudly():

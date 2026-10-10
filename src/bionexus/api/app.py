@@ -801,7 +801,7 @@ if _web_dist.exists():                                    # pragma: no cover
         """BrowserRouter deep links: real files serve, everything else
         (non-API client routes like /experiments/<eid>) gets the SPA shell.
         Registered last — concrete /api routes above always win."""
-        if full_path.startswith("api/"):
+        if full_path.startswith("api/") or full_path == "api":
             raise HTTPException(404, "no such endpoint")
         candidate = (_web_dist / full_path).resolve()
         if (full_path and candidate.is_file()

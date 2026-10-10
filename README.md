@@ -554,11 +554,14 @@ and interchangeable. The contracts are the pydantic models in `bionexus.core.con
 | `BioTool` | rdkit descriptors, ADMET, AlphaGenome Atlas variant scoring (AVI) → docking, ESMFold |
 
 Sandbox execution is opt-in: campaign config `sandbox:
-{mode: per_experiment, type: local|docker}` runs one sandbox per experiment
-(lifecycle provenance-recorded) and routes `BioTool` invocations through an
-in-sandbox worker. Lab submissions and analysis steps still run in-process;
-routing those is the next slice of S-T3 in
-[`docs/ROADMAP.md`](docs/ROADMAP.md).
+{mode: per_experiment, type: local|docker}` runs one sandbox per experiment —
+lab submissions, statuses and results execute in-sandbox (tool calls route
+through the same worker via `SandboxSession.registry()`), every op is
+provenance-sealed, and the experiment page carries a receipt. Docker mode
+uses the repo-installed image (`Dockerfile.sandbox`) with egress closed by
+default, verified end to end in CI. The analysis fit and the
+agent/reviewer/MCP registry lanes remain in-process (S-T3 1d/1e in
+[`docs/ROADMAP.md`](docs/ROADMAP.md)).
 
 ## Agent Skills and MCP
 

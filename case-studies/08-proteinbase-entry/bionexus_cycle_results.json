@@ -1,5 +1,5 @@
 {
-  "db": "/Users/bramakri/dev/repos/agentic-drug-discovery/.data/cs08-bionexus-cycle.db",
+  "db": ".data/cs08-bionexus-cycle.db",
   "floor": {
     "pass": 82,
     "reject": 0

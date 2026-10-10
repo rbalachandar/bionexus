@@ -441,10 +441,10 @@ def cmd_auto(args: argparse.Namespace) -> int:
             mode=sbx_cfg["mode"], sandbox=sbx_cfg.get("type", "local"),
             branch_id=branch, store=store, actor=_sa("sandbox-lifecycle"),
             image=sbx_cfg.get("image"))
-        _ts_notify(f"sandbox: {sbx_cfg['mode']} ({sbx_cfg.get('type', 'local')}"
-                   f") branch={branch} — create/fork/exec/destroy are "
-                   f"provenance-recorded; tool routing via "
-                   f"SandboxSession.registry()")
+        _ts_notify(f"sandbox: {sbx_cfg['mode']} ({sbx_cfg.get('type', 'local')}) "
+                   f"branch={branch} — lifecycle provenance-sealed; lab ops "
+                   f"route in-sandbox inside run_campaign; registry()/tool "
+                   f"calls route when routed through this session")
     try:
         report = run_campaign(cfg, lab, store,
                               approver=approver, notify=_ts_notify,
@@ -461,7 +461,7 @@ def cmd_sandboxd(args: argparse.Namespace) -> int:
     """In-sandbox tool worker (internal): reads a ToolInvocation request,
     executes inside this process, writes a ToolResult. See sandboxd.py."""
     from bionexus.sandboxd import main as _dmain
-    return _dmain([])
+    return _dmain(sys.argv[2:])
 
 
 def cmd_eval(args: argparse.Namespace) -> int:

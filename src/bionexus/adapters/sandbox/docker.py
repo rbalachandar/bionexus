@@ -17,7 +17,6 @@ Requires Docker on the host; no Python docker SDK needed (stdlib subprocess).
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import subprocess
 import uuid
@@ -39,11 +38,18 @@ class DockerRunner:
             input=input, capture_output=True, text=True, check=True)
         return result.stdout.strip()
 
-    def run_with_timeout(self, timeout: float, *args: str) -> str:
-        result = subprocess.run(
-            [self.binary, *args],
-            capture_output=True, text=True, check=True, timeout=timeout)
-        return result.stdout.strip()
+    def run_capped(self, timeout: float, *args: str,
+                   input: str | None = None):
+        """Returns (returncode, stdout, client_timed_out); never raises.
+        The exec path records outcomes BEFORE raising — failures belong on
+        the chain as much as successes do."""
+        try:
+            r = subprocess.run([self.binary, *args], input=input,
+                               capture_output=True, text=True,
+                               timeout=timeout)
+            return r.returncode, r.stdout.strip(), False
+        except subprocess.TimeoutExpired:
+            return 124, "", True
 
     def ok(self, *args: str) -> bool:
         try:
@@ -87,7 +93,8 @@ class DockerSandbox:
             self.container_id = self.runner.run(
                 *self._create_args(image), "sleep", "infinity")
             self._record(EventType.sandbox_create,
-                         {"created": self.container_id, "image": image,
+                         {"type": "docker", "created": self.container_id,
+                          "image": image, "sandbox_id": self.container_id,
                           "network": network, "memory": memory,
                           "cpus": cpus, "pids_limit": pids_limit})
 
@@ -134,6 +141,11 @@ class DockerSandbox:
         child._record(EventType.sandbox_fork,
                       {"parent_sandbox": self.container_id,
                        "from_image": image})
+        # mirror on THIS branch: the parent's receipt must show its own forks
+        self._record(EventType.sandbox_fork,
+                     {"child_branch": child_branch,
+                      "child_sandbox": child.container_id,
+                      "from_image": image})
         return child
 
     def resume(self, snapshot_id: str | None = None) -> None:
@@ -145,17 +157,34 @@ class DockerSandbox:
             self._record(EventType.sandbox_snapshot,
                          {"resumed_from": snapshot_id})
 
-    def exec(self, command: str, *, timeout: float = 60.0) -> str:
-        """Run a command inside the sandbox; returns stdout. Records a
-        sandbox_exec provenance event so WHAT RAN is part of the chain."""
-        out = self.runner.run_with_timeout(
-            timeout, "exec", self.container_id, "sh", "-c", command)
+    def exec(self, command: str, *, timeout: float = 60.0,
+             stdin_data: str | None = None) -> str:
+        """Run a command inside the sandbox; returns stdout. An INNER
+        `timeout` kills in-container orphans (killing only the docker-exec
+        client would leave the process running); the outer client timeout
+        is a backstop with grace. Every attempt is recorded BEFORE raising.
+        Raises TimeoutError / RuntimeError after sealing."""
+        from bionexus.adapters.sandbox import exec_decision
+        inner = max(1, int(timeout))
+        args = ["exec", *(["-i"] if stdin_data is not None else []),
+                self.container_id,
+                "timeout", "--kill-after=2", str(inner), "sh", "-c", command]
+        rc, out, client_timed = self.runner.run_capped(
+            timeout + 8, *args, input=stdin_data)
+        timed_out = client_timed or rc == 124
+        extra = {}
+        if stdin_data is not None:
+            import hashlib
+            extra["input_sha256"] = hashlib.sha256(
+                stdin_data.encode()).hexdigest()[:16]
         self._record(EventType.sandbox_exec,
-                     {"sandbox_id": self.sandbox_id,
-                      "command_sha256": hashlib.sha256(
-                          command.encode()).hexdigest()[:16],
-                      "timeout": timeout,
-                      "output_chars": len(out)})
+                     exec_decision(self.sandbox_id, command,
+                                   exit_code=rc, timed_out=timed_out,
+                                   output=out, timeout=timeout, **extra))
+        if timed_out:
+            raise TimeoutError(f"sandbox exec timed out after {timeout}s")
+        if rc != 0:
+            raise RuntimeError(f"exec failed (exit {rc})")
         return out
 
     def destroy(self) -> None:

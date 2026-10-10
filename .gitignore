@@ -13,3 +13,6 @@ case-studies/**/results.json
 case-studies/**/flow_results.json
 case-studies/**/.inbox-*/
 case-studies/*/study.db
+
+# local sandbox-image build inputs
+bionexuslab-*.whl

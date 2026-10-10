@@ -85,7 +85,18 @@ class LocalSandbox:
                     _env(child_branch, self.branch_id),
                     EventType.sandbox_fork,
                     self._actor,
-                    decision={"parent_sandbox": self.sandbox_id, "child_sandbox": child.sandbox_id},
+                    decision={"parent_sandbox": self.sandbox_id,
+                              "child_sandbox": child.sandbox_id},
+                )
+            )
+            # mirror on THIS branch so the parent's receipt counts its forks
+            self._store.append(
+                record_for(
+                    _env(self.branch_id, self.parent_branch_id),
+                    EventType.sandbox_fork,
+                    self._actor,
+                    decision={"child_branch": child_branch,
+                              "child_sandbox": child.sandbox_id},
                 )
             )
         return child
@@ -93,27 +104,41 @@ class LocalSandbox:
     def resume(self, snapshot_id: str | None = None) -> None:
         if snapshot_id:
             self.state = copy.deepcopy(self._snapshots[snapshot_id])
+            snap_dir = f"{self._root}/{snapshot_id}"
+            if os.path.isdir(snap_dir):
+                shutil.copytree(snap_dir, self.workdir, dirs_exist_ok=True)
 
-    def exec(self, command: str, *, timeout: float = 60.0) -> str:
+    def exec(self, command: str, *, timeout: float = 60.0,
+             stdin_data: str | None = None) -> str:
         """Run a command in a subprocess inside this sandbox's private
-        workdir. Raises on nonzero exit / timeout; either way the attempt
-        is provenance-recorded. Process isolation only — see module
-        docstring for the security posture."""
-        sha = hashlib.sha256(command.encode()).hexdigest()[:16]
+        workdir (optional payload on stdin). Raises on nonzero exit /
+        timeout; either way the attempt is provenance-recorded FIRST.
+        Process isolation only — see module docstring for posture."""
+        from bionexus.adapters.sandbox import exec_decision
         try:
             r = subprocess.run(["sh", "-c", command], cwd=self.workdir,
+                               input=stdin_data,
                                capture_output=True, text=True,
                                timeout=timeout, check=False)
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as e:
             self._record(EventType.sandbox_exec,
-                         {"sandbox_id": self.sandbox_id,
-                          "command_sha256": sha, "timed_out": True,
-                          "timeout": timeout})
+                         exec_decision(self.sandbox_id, command,
+                                       exit_code=124, timed_out=True,
+                                       output=(e.stdout or b"").decode(
+                                           "utf-8", "replace")
+                                       if isinstance(e.stdout, bytes)
+                                       else (e.stdout or ""),
+                                       timeout=timeout))
             raise TimeoutError(f"sandbox exec timed out after {timeout}s")
+        extra = {}
+        if stdin_data is not None:
+            extra["input_sha256"] = hashlib.sha256(
+                stdin_data.encode()).hexdigest()[:16]
         self._record(EventType.sandbox_exec,
-                     {"sandbox_id": self.sandbox_id, "command_sha256": sha,
-                      "exit_code": r.returncode, "timed_out": False,
-                      "output_chars": len(r.stdout)})
+                     exec_decision(self.sandbox_id, command,
+                                   exit_code=r.returncode,
+                                   timed_out=False, output=r.stdout,
+                                   timeout=timeout, **extra))
         if r.returncode != 0:
             raise RuntimeError(
                 f"exec failed (exit {r.returncode}): {r.stderr[:200]}")

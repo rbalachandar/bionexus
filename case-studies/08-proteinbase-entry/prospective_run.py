@@ -38,12 +38,7 @@ def seq_from_yaml(path: Path) -> str:
     return m.group(1) if m else ""
 
 
-def load_iptms(pred_dir: Path) -> dict[str, dict]:
-    out = {}
-    for f in sorted(pred_dir.glob("*/confidence_*.json")):
-        c = json.loads(f.read_text())
-        out[f.name.removeprefix("confidence_").removesuffix("_model_0.json")] = c
-    return out
+from cs08_io import load_scores as load_iptms   # noqa: E402
 
 
 def main() -> None:

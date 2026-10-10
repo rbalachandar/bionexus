@@ -426,9 +426,33 @@ this is a security claim, not a feature. Order of work:
   across stateless worker calls, so ops run fresh in-sandbox every
   time. PROOF: identical seeded campaign run on host vs sandbox ->
   verdicts byte-identical; 8 sandbox_exec events on the chain, verify
-  OK. Non-simulator labs refuse loudly. Analysis (fit) runs on host
-  against in-sandbox-generated exports — sandboxing the fit is S-T3-1d
-  territory (defensible: deterministic pure function of sealed bytes).
+  OK. Analysis (fit) runs on host against in-sandbox-generated exports —
+  sandboxing the fit is S-T3-1d territory (defensible: deterministic
+  pure function of sealed bytes).
+  REVIEW ROUND (post code-review, same day) — headline correction: the
+  original 1c proof was LOCAL ONLY, and docker mode as first shipped
+  could not have worked (python:3.12-slim has no bionexus installed).
+  Now:
+  - Dockerfile.sandbox builds the repo wheel INTO the image; the CI
+    sandbox-docker job runs a full session e2e there — descriptor tool
+    + lab submit/status/fetch execute inside a real container, results
+    verified, ops sealed.
+  - Transport moved argv -> STDIN (no ARG_MAX cliff as lab_state grows);
+    every attempt records input_sha256 (command is constant now).
+  - Failure policy closed: session.call catches ANY transport error;
+    docker rc!=0/timeout record BEFORE raising; in-container `timeout`
+    kills orphans that a client-side kill would leave running.
+  - SandboxedLab takes the REAL lab: export_state() carries seed,
+    replicates, interference, gates (silent re-defaulting was a
+    config-wipe bug the review caught); labs without state export are
+    refused — "not wired", never "substituted".
+  - Fork receipts fixed (parent-branch mirror events); docker create
+    stamps type; bare /api 404s like its siblings; dead predicate +
+    home-path leak in cs08 scripts removed; CS08 loaders deduped into
+    cs08_io.py; misleading notify text corrected.
+- [ ] 1e. REMAINING LANES: hypothesis agent / reviewer / advisory / MCP
+  still build in-process Registries — registry() routing is proven, but
+  those call sites opt in later (documented in README).
 - [x] 2a. HARDEN (args): DockerSandbox create is `--network none` by
   default (explicit opt-out), `--memory 512m --cpus 1.0 --pids-limit 128
   --cap-drop ALL --security-opt no-new-privileges`; inherited by forks and
@@ -446,9 +470,11 @@ this is a security claim, not a feature. Order of work:
   setgid(0)-as-root and port-80 binds are no-ops in modern containers —
   replaced by sethostname/CAP_SYS_ADMIN, which maps 1:1 to a dropped
   capability.)
-- [ ] 3. GRADE: eval task — isolation as a scored property: sibling-branch
-  writes invisible across forks, egress attempts fail, lifecycle present
-  in the chain. (Design principle #6: claims are measured.)
+- [x] 3. GRADE (Oct 10): `sandbox-isolation` eval task — 8 properties
+  scored offline (sibling invisibility, fork divergence both ways, loud
+  transport failure, sealed lifecycle, chain verify). Egress deliberately
+  NOT credited offline — the live CI job owns that claim. CI green:
+  epistemics 0.982, 14/14.
 - [x] 4. SURFACE (Oct 10): views._sandbox_summary aggregates the branch's
   sandbox events into a receipt; the experiment header renders
   `sandbox: <type> · <id> · N sealed ops · snapshots/forks ·

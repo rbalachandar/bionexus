@@ -116,10 +116,12 @@ def test_sandboxed_lab_matches_direct_simulator_exactly():
         d1.pop(volatile), d2.pop(volatile)
     assert d1 == d2                             # measurements/QC: exact match
     assert box.get_status(rid2) == "done"
-    # the chain saw every op
-    shas = {r.decision["command_sha256"] for r in store.branch_records("prob-l")
-            if r.event_type.value == "sandbox_exec"}
-    assert len(shas) >= 3
+    # the chain saw every op — with the payload hashed, since the
+    # COMMAND is constant now that the transport rides stdin
+    ev = [r.decision for r in store.branch_records("prob-l")
+          if r.event_type.value == "sandbox_exec"]
+    assert len(ev) >= 3
+    assert len({d.get("input_sha256") for d in ev}) >= 3
     s.destroy()
 
 
@@ -160,13 +162,6 @@ def test_sandboxed_lab_mirrors_autoloop_probe_surface():
     s.destroy()
 
 
-def test_sandboxed_lab_refuses_unknown_inner_kind():
-    from bionexus.sandbox_session import SandboxedLab
-    s = SandboxSession(mode="per_experiment", sandbox="local")
-    with pytest.raises(NotImplementedError):
-        SandboxedLab(s, inner_kind="opentrons")
-    s.destroy()
-
 
 def test_fork_diverges_and_session_cleans_up():
     store = SqliteProvenanceStore(":memory:")
@@ -197,3 +192,108 @@ def test_sandbox_receipt_read_model():
     # an ordinary chain without sandboxes renders nothing
     from bionexus.core.hypothesis import ProblemStatement
     assert _sandbox_summary(store.branch_records("nonexistent")) is None
+
+
+def test_docker_transport_failure_never_kills_caller():
+    # review fix: CalledProcessError-era escape hatch closed — rc!=0 AND
+    # timeout both surface as FAILED results, and BOTH are recorded first
+    from bionexus.core.contracts import (Envelope, ToolInvocation, ToolName)
+    calls = []
+
+    class FailingRunner:
+        def run(self, *a, input=None):
+            calls.append(list(a))
+            return "cont-f"
+
+        def run_capped(self, timeout, *a, input=None):
+            return (1, "", False)
+
+        def ok(self, *a):
+            return True
+
+    store = SqliteProvenanceStore(":memory:")
+    s = SandboxSession(mode="per_experiment", sandbox="docker",
+                       branch_id="prob-df", store=store,
+                       actor=system_actor("t"), runner=FailingRunner())
+    inv = ToolInvocation(
+        envelope=Envelope(experiment_branch_id="prob-df"),
+        tool=ToolName.fm_predict_property, args={"smiles": ["CCO"]})
+    res = s.invoke(inv)
+    assert res.status == "failed" and "exec failed" in res.rejection_reason
+    ev = [r.decision for r in store.branch_records("prob-df")
+          if r.event_type.value == "sandbox_exec"]
+    assert ev and ev[-1]["exit_code"] == 1        # failure sealed BEFORE raise
+    s.destroy()
+
+
+def test_lab_state_honours_nondefault_config():
+    # review fix: wrapping must not silently reset replicates/interference
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.core.contracts import (ProtocolOp, ProtocolStep,
+                                         ProtocolSubmission, ReagentSpec,
+                                         SampleKind, SampleSpec)
+    from bionexus.sandbox_session import SandboxedLab
+    proto = ProtocolSubmission(
+        envelope=Envelope(experiment_branch_id="prob-st"), title="t",
+        assay_type="binding",
+        steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense)],
+        samples=[SampleSpec(sample_id="C1", kind=SampleKind.compound,
+                            concentration="10 uM")],
+        reagents=[ReagentSpec(name="buffer", amount="1 mL", bsl_level=1)])
+    real = SimulatorLab(seed=42, replicates=5, interference_rate=0.9)
+    s = SandboxSession(mode="per_experiment", sandbox="local",
+                       branch_id="prob-st", store=SqliteProvenanceStore(
+                           ":memory:"), actor=system_actor("t"))
+    box = SandboxedLab(s, lab=real)
+    rid = box.submit_protocol(proto)
+    got = box.fetch_results(rid).model_dump(mode="json")
+    ref = real.fetch_results(real.submit_protocol(proto)).model_dump(mode="json")
+    for volatile in ("run_id", "envelope"):
+        got.pop(volatile), ref.pop(volatile)
+    assert got == ref            # replicates=5, interference=0.9 carried in
+    assert real.replicates == 5  # sanity: the config WAS non-default
+    s.destroy()
+
+
+def test_lab_wrapper_refuses_labs_it_cannot_transport():
+    from bionexus.sandbox_session import SandboxedLab
+    s = SandboxSession(mode="per_experiment", sandbox="local")
+    s.start()
+
+    class Robot:
+        name = "opentrons"
+
+    with pytest.raises(NotImplementedError, match="refusing to substitute"):
+        SandboxedLab(s, lab=Robot())
+    s.destroy()
+
+
+def test_fork_appears_on_parent_receipt():
+    from bionexus.views import _sandbox_summary
+    store = SqliteProvenanceStore(":memory:")
+    s = SandboxSession(mode="per_experiment", sandbox="local",
+                       branch_id="prob-pf", store=store,
+                       actor=system_actor("t"))
+    s.start()
+    s.fork()
+    info = _sandbox_summary(store.branch_records("prob-pf"))
+    assert info["forks"] >= 1
+    s.destroy()
+
+
+def test_stdin_transport_survives_big_payload():
+    # review fix: payloads ride stdin, not argv — no ARG_MAX cliff
+    from bionexus.core.contracts import (Envelope, ToolInvocation, ToolName)
+    big = "C" * 200_000
+    s = SandboxSession(mode="per_experiment", sandbox="local",
+                       branch_id="prob-big",
+                       store=SqliteProvenanceStore(":memory:"),
+                       actor=system_actor("t"))
+    inv = ToolInvocation(
+        envelope=Envelope(experiment_branch_id="prob-big"),
+        tool=ToolName.fm_predict_property, args={"smiles": [big]})
+    res = s.invoke(inv)
+    # whether rdkit exists or not, the TRANSPORT must have round-tripped:
+    assert res.status in ("succeeded", "rejected") and "transport" not in (
+        res.rejection_reason or "")
+    s.destroy()

@@ -916,9 +916,9 @@ class _FakeDocker:
         if args[0] == "commit":
             return "bionexus/branch:snap-1"
         return ""
-    def run_with_timeout(self, timeout, *args):
+    def run_capped(self, timeout, *args, input=None):
         self.calls.append(list(args))
-        return ""
+        return (0, "", False)
     def ok(self, *args):
         return True
 
@@ -936,7 +936,11 @@ def test_docker_sandbox_snapshot_fork_destroy():
     child = sbx.fork(tag)
     assert child.image == tag and child.parent_branch_id == "root"
     child.exec("ls /data")
-    assert runner.calls[-1][:3] == ["exec", child.container_id, "sh"]
+    # exec runs under an INNER container-side timeout (orphan guard):
+    # exec <cont> timeout --kill-after=2 N sh -c <cmd>
+    assert runner.calls[-1][:4] == ["exec", child.container_id,
+                                    "timeout", "--kill-after=2"]
+    assert "sh" in runner.calls[-1] and "-c" in runner.calls[-1]
     child.destroy()
     events = [r.event_type.value for r in store.branch_records("root")]
     assert "sandbox_snapshot" in events

@@ -120,4 +120,12 @@ jobs:
       - name: Wait for the docker daemon
         run: timeout 120 sh -c 'until docker info >/dev/null 2>&1; do sleep 2; done'
       - name: Live sandbox contract (egress, caps, ceilings, COW forks, cleanup)
-        run: python -m pytest tests/test_sandbox_docker_live.py -q --tb=short
+        run: python -m pytest tests/test_sandbox_docker_live.py -q --tb=short -k "not session"
+      - name: Build the in-sandbox worker image
+        run: |
+          python -m pip wheel . -w dist --no-deps
+          cp dist/bionexuslab-*.whl .
+          docker build -t bionexus-sandbox:ci -f Dockerfile.sandbox .
+      - name: Session e2e — tools AND lab ops inside a real container
+        env: {BN_SANDBOX_IMAGE: "bionexus-sandbox:ci"}
+        run: python -m pytest tests/test_sandbox_docker_live.py -q --tb=short -k session

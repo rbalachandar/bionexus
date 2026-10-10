@@ -107,9 +107,13 @@ class Sandbox(Protocol):
         """New sandbox branching from this one (or a stored snapshot)."""
         ...
 
-    def exec(self, command: str, *, timeout: float = 60.0) -> str:
-        """Run a command INSIDE the sandbox; returns stdout. Adapters that
-        cannot execute raise NotImplementedError (never silently pretend)."""
+    def exec(self, command: str, *, timeout: float = 60.0,
+             stdin_data: str | None = None) -> str:
+        """Run a command INSIDE the sandbox; optional payload on stdin;
+        returns stdout. Every attempt is provenance-recorded BEFORE any
+        raise (TimeoutError/RuntimeError). Adapters that cannot execute —
+        or cannot honour a parameter — raise NotImplementedError (never
+        silently pretend)."""
         ...
 
     def resume(self, snapshot_id: str | None = None) -> None: ...

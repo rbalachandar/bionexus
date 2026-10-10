@@ -1,0 +1,8 @@
+# In-sandbox tool/Lab execution image (S-T3). CI builds with the current
+# repo as a wheel; the sandboxd worker and SandboxedLab run inside this.
+# Local build:
+#   python -m pip wheel . -w dist --no-deps && cp dist/bionexuslab-*.whl .
+#   docker build -t bionexus-sandbox:ci -f Dockerfile.sandbox .
+FROM python:3.12-slim
+COPY bionexuslab-*.whl /tmp/
+RUN pip install --no-cache-dir /tmp/bionexuslab-*.whl rdkit && rm /tmp/*.whl
