@@ -226,15 +226,24 @@ the result for provenance. Format detection, control discovery, and QC
 are automatic:
 
 ```sh
-bn read synergy_export.csv
-# plate: synergy_export.csv [long] | wells: 10 | controls: 2 | Z'~ 0.956 (control-spread heuristic)
+bn read .data/exports/synergy_export_export.csv     # the virtual-lab export (from `bn demo`)
+# plate: synergy_export_export.csv [long] | wells: 10 | controls: 2 | Z'~ 0.956 (control-spread heuristic)
 # compound        IC50 (uM)  points  note
-# C-101                8.94       4  observed-max
-# C-102                9.17       4  observed-max
+# C-101               10.52       4  observed-max
+# C-102                4.77       4  observed-max
 
-bn read tecan_ON1.csv --layout plate_layout_96.csv --normalize pct_inhibition
-# plate: tecan_ON1.csv [kinetic] | wells: 192 | ... | reader: infinite 200Pro
-# (1409002252) | batch: 14.10.2016 · 14:11:38 | edge-effect -0.0 (OD600:600)
+bn read tests/data/instruments/biotek_1steptimer.csv
+# plate: biotek_1steptimer.csv [kinetic] | wells: 1536 | ... | reader: Synergy HTX (2206293D)
+# (a bare grid: no compound identity, no concentration series — said so, not simulated)
+
+bn read tests/data/instruments/tecan_ON1.csv --layout tests/data/instruments/plate_layout_96.csv
+# plate: tecan_ON1.csv [kinetic] | wells: 192 | ... | edge-effect -0.0 (OD600:600)
+# joins well -> sample/concentration from the plate map, fits what it can
+
+bn read tests/data/instruments/tecan_ON1.csv --normalize pct_inhibition
+# bn: error: cannot normalize to %inhibition: need >=2 blank AND >=2
+# full-inhibition control wells — raw values kept
+# (the REFUSE path, on the honest example: this plate has no control classes)
 ```
 
 A bare grid carries no compound identity — `--layout` joins a plate map
@@ -242,7 +251,8 @@ A bare grid carries no compound identity — `--layout` joins a plate map
 supported) so even vendor-dumb exports get dose–response fits;
 `--normalize pct_inhibition` rescales against the plate's OWN blank +
 full-inhibition controls and REFUSES when those classes are missing.
-The repo ships four genuine vendor exports under
+The repo ships three genuine vendor exports (Tecan i-control CSV+XLSX,
+BioTek 1-Step-Timer, Gen5 multi-channel) plus a plate map under
 `tests/data/instruments/` (attributed, MIT) so you can try it on real
 dirt before your own.
 
