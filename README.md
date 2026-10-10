@@ -180,8 +180,17 @@ graded down for, not smoothed over). The workbench header carries the live
 
 ### What keeps it trustworthy
 
+The mechanisms are modality-agnostic — the loop, the gates, and the record
+work the same for a kinase IC50, a plate reader export, or a protein
+binder's predicted interface confidence. Some rows below are one
+modality's *implementation* of a general rule, and say so.
+
 | Mechanism | What it guarantees |
 |---|---|
+| Uncertainty vetoes certainty | a 95% CI straddling the gate ABSTAINS on ANY metric — IC50, %-inhibition, ipTM alike; near-gate point estimates never earn a decisive verdict (CS05: 14 honest abstentions; CS08: 6) |
+| Pre-registered claims | every hypothesis records its predicted and **refuted-if** clauses before data arrives; verdicts are read against what was dared in advance — CS08's control clauses ("if this validates, the score's ranking value is refuted") fired, and the chain holds them |
+| Proxy-evidence ladder | every metric declares what it stands for; verdicts carry their evidence distance (`bn why`), and chains that never reach the real claim (`ipTM → binding affinity`) are labeled unresolved instead of laundered |
+| Provenance physics | the hash chain is engine-enforced and recomputed on read (`verify_chain`); verdict READING is payload-driven, recency-wins — the read path is as trusted as the write path |
 | Molecular safety gate | 18+ curated toxicophore SMARTS (versioned data file — refusals cite the rule version); hard classes always refuse; electrophilic warheads pass **only** with declared covalent intent in the hypothesis |
 | Execution governance | enforced in gateway code, outside the agent's tool surface: an operator halt switch it cannot lift (`bn halt`), a three-column authorization matrix (autonomous / human-approved / never — DURC and BSL-3+ default to never), and SOP sign-off before anything recurring runs unattended; every decision is a provenance record |
 | Physical-fault honesty | saturated plates, dark reads, negative values, and device errors are classified as **physical** failures before the retry reflex — flagged for operator inspection, never re-queried blindly and never turned into verdicts |
@@ -197,7 +206,7 @@ graded down for, not smoothed over). The workbench header carries the live
 | Attribution | per-prediction "why": exact n-gram contributions, importance-weighted RF bits (with hashed-bit caveats stated), triggered ADMET rules, AVI feature attributions |
 | Retrieval traces | every generation records prompt hash, model, injected flywheel negatives — "what shaped this hypothesis" is answerable from the chain |
 | Anchoring | Merkle root over the whole store; publish it anywhere you don't control for external tamper-evidence |
-| Evidence is the data | the Evidence section re-renders each branch's **recorded plate files** — the same curves and fits the verdicts were read from; a missing file renders as an honest gap, never a stock figure |
+| Evidence is the data | the Evidence section re-renders each branch's **recorded run files** — plate exports or model-prediction artifacts, the same numbers the verdicts were read from; a missing file renders as an honest gap, never a stock figure |
 | Retirement, not deletion | archived experiments leave the working set but their hash-chained records stay intact and auditable — consistent with the append-only provenance store |
 | Regime-gated assertions | deposited percent tables are fingerprinted for their normalization frame; absolute IC50 verdicts issue ONLY in externally validated frames (CS05), while self-normalized dialects (where CS06 showed numbers can't port) are admitted at the *shape* level only — affine-invariant concentration-dependence classes, labeled responders-never-verdicts (97.4% concordance with NCATS' own actives on their deposit). Trust is a declared envelope, not a hope |
 | Applicability domain | every learned predictor carries a nearest-neighbour Tanimoto domain (Morgan bits, char-gram fallback, declared conservative floor): values from beyond a model's training chemistry are stamped `extrapolation`, earn no claim-grade verdict in either direction, and chip it on the card — the model-side twin of the regime gate, graded by its own eval task |
