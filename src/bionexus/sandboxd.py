@@ -25,10 +25,51 @@ def _build_registry():
     return reg
 
 
+def _lab(req: dict) -> str:
+    """Kind 'lab': stateless-by-handoff execution of one simulator op.
+    Caller carries lab_state between calls (SandboxedLab), so every op
+    still runs FRESH inside the sandbox."""
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.core.contracts import ProtocolSubmission
+    try:
+        st = req.get("lab_state")
+        lab = (SimulatorLab.import_state(st) if st
+               else SimulatorLab(seed=req.get("seed", 7)))
+        op, pl = req["op"], req.get("payload", {})
+        if op == "caps":
+            result: object = lab.list_capabilities()
+        elif op == "submit":
+            result = lab.submit_protocol(
+                ProtocolSubmission.model_validate(pl["protocol"]))
+        elif op == "status":
+            result = lab.get_status(pl["run_id"])
+        elif op == "fetch":
+            result = lab.fetch_results(pl["run_id"]).model_dump(mode="json")
+        elif op == "cancel":
+            result = lab.cancel(pl["run_id"])
+        elif op == "true_ic50":
+            result = lab.true_ic50_um(pl["run_id"], pl["sample_id"])
+        elif op == "prop_true":
+            result = lab._property_true_value(pl["run_id"], pl["sample_id"])
+        elif op == "interferer":
+            result = lab.is_interferer(pl["run_id"], pl["sample_id"])
+        elif op == "set_property_gate":
+            result = lab.set_property_gate(pl["metric"], pl["direction"],
+                                           pl["threshold"])
+        else:
+            return json.dumps({"error": f"unknown lab op '{op}'"})
+        return json.dumps({"result": result,
+                           "lab_state": lab.export_state()})
+    except Exception as e:
+        return json.dumps({"error": f"{type(e).__name__}: {e}"})
+
+
 def run(request_json: str) -> str:
     try:
-        from bionexus.core.contracts import ToolInvocation, ToolResult
         req = json.loads(request_json)
+        if req.get("kind") == "lab":
+            return _lab(req)
+        from bionexus.core.contracts import ToolInvocation, ToolResult
         inv = ToolInvocation.model_validate(req["invocation"])
         try:
             result = _build_registry().invoke(inv)

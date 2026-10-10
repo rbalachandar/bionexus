@@ -416,10 +416,19 @@ this is a security claim, not a feature. Order of work:
   visible FAILED ToolResult, never a silent in-process fallback).
   Same-answers-in-or-out asserted in tests. 7 new tests; 108 green on
   touched files.
-- [ ] 1c. LAB-RUN PROXYING: the campaign's lab submissions and analysis
-  still execute in-process — routing THOSE through the session is what
-  makes "the full experiment in the sandbox" literally true; needs
-  LabRun/AssayResult serialization over the same worker transport.
+- [x] 1c. LAB-RUN PROXYING (Oct 10): SandboxedLab mirrors the LabAdapter
+  duck-type the campaign actually uses (submit/status/fetch/cancel/
+  property-gate AND the ground-truth probes true_ic50_um,
+  _property_true_value, is_interferer, _property_gate, replicates —
+  discovered the hard way: the export synthesizer peeks at them, and
+  silent absence turned real pharmacology into a constant ladder;
+  pinned by a probe-parity regression test). Simulator state hands off
+  across stateless worker calls, so ops run fresh in-sandbox every
+  time. PROOF: identical seeded campaign run on host vs sandbox ->
+  verdicts byte-identical; 8 sandbox_exec events on the chain, verify
+  OK. Non-simulator labs refuse loudly. Analysis (fit) runs on host
+  against in-sandbox-generated exports — sandboxing the fit is S-T3-1d
+  territory (defensible: deterministic pure function of sealed bytes).
 - [x] 2a. HARDEN (args): DockerSandbox create is `--network none` by
   default (explicit opt-out), `--memory 512m --cpus 1.0 --pids-limit 128
   --cap-drop ALL --security-opt no-new-privileges`; inherited by forks and

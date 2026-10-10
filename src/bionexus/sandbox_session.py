@@ -74,27 +74,37 @@ class SandboxSession:
         return _SessionRegistry()
 
     def invoke(self, invocation) -> ToolResult:
-        from bionexus.core.contracts import ToolInvocation
-        req = {"invocation": invocation.model_dump(mode="json")}
-        b64 = base64.b64encode(json.dumps(req).encode()).decode()
-        cmd = f"{self.python} -m bionexus.sandboxd --request-b64 {b64}"
-        try:
-            out = self.sandbox.exec(cmd,
-                                    timeout=invocation.timeout_secs + 15)
-            data = json.loads(out)
-            if "error" in data:
-                return ToolResult(
-                    envelope=invocation.envelope,
-                    invocation_id=invocation.invocation_id,
-                    status="failed",
-                    rejection_reason=f"sandboxd: {data['error']}")
-            return ToolResult.model_validate(data)
-        except (TimeoutError, RuntimeError, json.JSONDecodeError) as e:
+        data = self.call({"invocation": invocation.model_dump(mode="json")},
+                         timeout=invocation.timeout_secs + 15)
+        if data is None or "error" in data:
             return ToolResult(
                 envelope=invocation.envelope,
                 invocation_id=invocation.invocation_id,
                 status="failed",
-                rejection_reason=f"sandbox transport: {str(e)[:200]}")
+                rejection_reason="sandbox transport: "
+                                 + (data or {}).get("error", "no response"))
+        try:
+            return ToolResult.model_validate(data)
+        except Exception as e:
+            return ToolResult(
+                envelope=invocation.envelope,
+                invocation_id=invocation.invocation_id,
+                status="failed",
+                rejection_reason=f"sandbox transport: bad response ({e})")
+
+    def call(self, request: dict, timeout: float = 75.0) -> dict | None:
+        """One transport round-trip: b64-JSON request -> sandbox worker ->
+        parsed JSON response. Returns {'error': ...} dict on transport
+        failure (never raises), so callers degrade visibly."""
+        import base64
+        import json
+        b64 = base64.b64encode(json.dumps(request).encode()).decode()
+        cmd = f"{self.python} -m bionexus.sandboxd --request-b64 {b64}"
+        try:
+            out = self.sandbox.exec(cmd, timeout=timeout)
+            return json.loads(out)
+        except (TimeoutError, RuntimeError, json.JSONDecodeError) as e:
+            return {"error": f"sandbox transport: {str(e)[:200]}"}
 
     # ----------------------------------------------------------- lifecycle
 
@@ -118,3 +128,88 @@ class SandboxSession:
         if self.sandbox:
             self.sandbox.destroy()
             self.sandbox = None
+
+
+class SandboxedLab:
+    """LabAdapter facade (S-T3 1c): every protocol op executes INSIDE the
+    session's sandbox via the sandboxd worker. State (seed, queued runs,
+    property gate) is carried by the caller between calls, so each op runs
+    fresh in-sandbox; results come back as identical pydantic models.
+
+    Supported inner labs: the simulator today. Anything else raises —
+    a real robot behind a gateway is the gateway's (physical) trust
+    boundary question, not this transport's."""
+
+    def __init__(self, session: SandboxSession, seed: int = 7,
+                 inner_kind: str = "simulator"):
+        if session.sandbox is None:
+            raise ValueError("SandboxedLab needs an active session "
+                             "(mode=off has no sandbox)")
+        if inner_kind != "simulator":
+            raise NotImplementedError(
+                f"sandboxed execution for lab '{inner_kind}' is not wired; "
+                "supported: simulator (see ROADMAP S-T3)")
+        self.session = session
+        self.seed = seed
+        self.name = f"sandboxed:{inner_kind}"
+        self._state: dict | None = None
+
+    def _op(self, op: str, payload: dict | None = None):
+        req = {"kind": "lab", "seed": self.seed, "op": op,
+               "payload": payload or {}, "lab_state": self._state}
+        data = self.session.call(req)
+        if data is None or "error" in data:
+            raise RuntimeError(
+                f"sandboxed lab op '{op}' failed: "
+                f"{(data or {}).get('error', 'no response')}")
+        self._state = data["lab_state"]
+        return data["result"]
+
+    # -- LabAdapter protocol ---------------------------------------------------
+
+    def list_capabilities(self) -> dict:
+        return self._op("caps")
+
+    def submit_protocol(self, protocol) -> str:
+        return self._op("submit",
+                        {"protocol": protocol.model_dump(mode="json")})
+
+    def get_status(self, run_id: str) -> str:
+        return self._op("status", {"run_id": run_id})
+
+    def fetch_results(self, run_id: str):
+        from bionexus.core.contracts import AssayResult
+        return AssayResult.model_validate(
+            self._op("fetch", {"run_id": run_id}))
+
+    def set_property_gate(self, metric: str, direction: str,
+                          threshold: float) -> None:
+        self._op("set_property_gate", {"metric": metric,
+                                       "direction": direction,
+                                       "threshold": float(threshold)})
+
+    def cancel(self, run_id: str) -> None:
+        self._op("cancel", {"run_id": run_id})
+
+    # -- autoloop-visible lab traits (the campaign reads these; mirroring
+    #    SimulatorLab's duck-typed surface keeps fidelity inside the box) --
+
+    @property
+    def _property_gate(self) -> dict | None:
+        return (self._state or {}).get("property_gate")
+
+    @property
+    def replicates(self) -> int:
+        return (self._state or {}).get("replicates", 3)
+
+    def true_ic50_um(self, run_id: str, sample_id: str) -> float:
+        return self._op("true_ic50",
+                        {"run_id": run_id, "sample_id": sample_id})
+
+    def _property_true_value(self, run_id: str, sample_id: str) -> float:
+        return self._op("prop_true",
+                        {"run_id": run_id, "sample_id": sample_id})
+
+    def is_interferer(self, run_id: str, sample_id: str) -> bool:
+        return self._op("interferer",
+                        {"run_id": run_id, "sample_id": sample_id})

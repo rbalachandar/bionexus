@@ -447,7 +447,8 @@ def cmd_auto(args: argparse.Namespace) -> int:
                    f"SandboxSession.registry()")
     try:
         report = run_campaign(cfg, lab, store,
-                              approver=approver, notify=_ts_notify)
+                              approver=approver, notify=_ts_notify,
+                              sandbox=session)
     finally:
         if session:
             session.destroy()

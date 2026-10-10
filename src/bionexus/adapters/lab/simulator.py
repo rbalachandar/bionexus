@@ -222,3 +222,31 @@ class SimulatorLab:
 
     def cancel(self, run_id: str) -> None:
         self._runs.pop(run_id, None)
+
+    # -- state transport for sandboxed execution (S-T3 1c) ------------------
+
+    def export_state(self) -> dict:
+        """JSON-safe snapshot of everything a fetch depends on."""
+        from bionexus.core.contracts import ProtocolSubmission as _PS
+        return {
+            "seed": self.seed, "replicates": self.replicates,
+            "interference_rate": self.interference_rate,
+            "seq": getattr(self, "_seq", 0),
+            "runs": {rid: p.model_dump(mode="json")
+                     for rid, p in self._runs.items()},
+            "capabilities": self._capabilities,
+            "property_gate": getattr(self, "_property_gate", None),
+        }
+
+    @classmethod
+    def import_state(cls, st: dict) -> "SimulatorLab":
+        from bionexus.core.contracts import ProtocolSubmission as _PS
+        lab = cls(seed=st["seed"], instruments=st.get("capabilities"),
+                  replicates=st["replicates"],
+                  interference_rate=st["interference_rate"])
+        lab._seq = st["seq"]
+        lab._runs = {rid: _PS.model_validate(d)
+                     for rid, d in st["runs"].items()}
+        if st.get("property_gate"):
+            lab._property_gate = st["property_gate"]
+        return lab

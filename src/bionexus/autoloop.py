@@ -143,7 +143,8 @@ def announced_branches() -> dict:
 def run_campaign(cfg: CampaignConfig, lab: Any,
                  store: ProvenanceStore,
                  approver: Callable[[str], bool] | None = None,
-                 notify: Callable[[str], None] | None = None) -> CampaignReport:
+                 notify: Callable[[str], None] | None = None,
+                 sandbox: Any = None) -> CampaignReport:
     """Start-to-finish: problem -> portfolio -> filter -> test -> verdict -> confirm."""
     actor = system_actor(cfg.actor_name)
     from bionexus.flywheel import Flywheel
@@ -162,6 +163,11 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     from bionexus.governance import AuthorizationMatrix, HaltSwitch
     gov = {"matrix": AuthorizationMatrix(), "halt": HaltSwitch()}
     say = notify or (lambda m: print(f"[campaign] {m}"))
+    if sandbox is not None:
+        from bionexus.sandbox_session import SandboxedLab
+        lab = SandboxedLab(sandbox, seed=getattr(lab, "seed", 7))
+        say(f"sandbox: lab ops execute inside the experiment sandbox "
+            f"({lab.name}) — every op is a sealed sandbox_exec")
 
     if cfg.autonomy == "gate":
         if approver is None:
