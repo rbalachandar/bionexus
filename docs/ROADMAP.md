@@ -433,9 +433,19 @@ this is a security claim, not a feature. Order of work:
   default (explicit opt-out), `--memory 512m --cpus 1.0 --pids-limit 128
   --cap-drop ALL --security-opt no-new-privileges`; inherited by forks and
   resume; asserted in tests.
-- [ ] 2b. LIVE-DAEMON CI: run this contract suite against a real docker
-  service container, incl. a failed-egress probe — end mocked-only
-  verification for this interface.
+- [x] 2b. LIVE-DAEMON CI (Oct 10): tests/test_sandbox_docker_live.py —
+  5 tests verified against a REAL daemon (local + CI job
+  `sandbox-docker`): container exec works; socket connect out fails
+  (EGRESS_BLOCKED, the security claim proven by the kernel); CapEff == 0
+  under cap-drop ALL; cgroup memory.max == 512MiB; snapshot/fork real
+  copy-on-write (child writes never flow back); destroy actually
+  removes the container and the chain holds create/exec/destroy.
+  BN_REQUIRE_DOCKER=1 makes a missing daemon FAIL the job — a silent
+  skip is not a pass; fast jobs pin offline via BN_SKIP_DOCKER=1.
+  (Two probe bugs caught on the way and fixed with the same discipline:
+  setgid(0)-as-root and port-80 binds are no-ops in modern containers —
+  replaced by sethostname/CAP_SYS_ADMIN, which maps 1:1 to a dropped
+  capability.)
 - [ ] 3. GRADE: eval task — isolation as a scored property: sibling-branch
   writes invisible across forks, egress attempts fail, lifecycle present
   in the chain. (Design principle #6: claims are measured.)

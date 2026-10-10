@@ -13,7 +13,9 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install pydantic pytest fastapi httpx python-multipart && pip install -e . --no-deps
-      - run: python -m pytest tests/ -q    # includes the anti-bloat import scan
+      - name: Unit suite (offline — live docker contract has its own job)
+        env: {BN_SKIP_DOCKER: "1"}
+        run: python -m pytest tests/ -q    # includes the anti-bloat import scan
 
   api:  # web backend: endpoints + SSE over seeded stores
     runs-on: ubuntu-latest
@@ -53,6 +55,7 @@ jobs:
       # - name: Provenance audit (template)
       #   run: python -m bionexus.cli prove demo-run --db bionexus.db
       - name: Test suite
+        env: {BN_SKIP_DOCKER: "1"}
         run: python -m pytest tests/ -q
 
   eval:  # T1: the measurable claim — epistemics + model tiers, offline
@@ -100,3 +103,16 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install pydantic pytest scikit-learn rdkit && pip install -e . --no-deps
       - run: python case-studies/01-egfr-blind-reproduction/run.py
+
+  sandbox-docker:  # S-T3 2b: live-kernel verification — no daemon = fail loud
+    runs-on: ubuntu-latest
+    env: {BN_REQUIRE_DOCKER: "1"}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pydantic pytest && pip install -e . --no-deps
+      - name: Wait for the docker daemon
+        run: timeout 120 sh -c 'until docker info >/dev/null 2>&1; do sleep 2; done'
+      - name: Live sandbox contract (egress, caps, ceilings, COW forks, cleanup)
+        run: python -m pytest tests/test_sandbox_docker_live.py -q --tb=short
