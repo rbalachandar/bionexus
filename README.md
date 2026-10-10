@@ -378,24 +378,39 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
 | ![Problem workspace](assets/screenshots/workspace.png) | ![Experiment record](assets/screenshots/experiment.png) |
 
 - **`make api`** — the single web portal (React + FastAPI), all local, no accounts,
-  no cloud. The Experiments section is a **Problem workspace**: your problem
-  trees as an interactive hierarchy (every node shows its roll-up status and
-  run budget; clicking a leaf opens its experiment page under a lineage
-  breadcrumb). Each experiment page shows a live hypothesis pipeline (stage,
-  runs, harness decisions, verdicts with CI and margin), harness decisions
-  the code made (halts, authorization column, SOP sign-offs, physical-fault
-  classification), the hash-chained record of the run with verdicts and
-  evidence plots re-rendered from that branch's recorded plate files, and
-  the raw trace log. Experiments are archived (retired from the working
-  set, provenance intact), never silently deleted, and every experiment
-  page is deep-linkable: `/experiment?exp=<id>`. Wizard experiments are
-  provenance-chained too — `bn prove wizard/<id>`. Experiment pages also
-  carry the **Series view** (proposed→tested→judged grouped by family or
-  chemotype, per-series rollups, and a matched-pair SAR table whose calls
-  carry CIs — straddling intervals abstain, and derived series claims show
-  their status chip); the **Evals** tab renders the live leaderboard with
-  its honest sub-1.0 deductions up top — "it can be graded" leads the
-  product, inside and out.
+  no cloud. The workspace leads with **Program cards**: each program shows its
+  own verdict (`achieved / partial / no-tree` — read from its pre-registered
+  claims, not a mood), the problem tree(s) launched under it with per-node
+  roll-up status and run budget, experiment rows with verdict tallies
+  (confirmed / preliminary / refuted / inconclusive) and run counts, and the
+  taste lines distilled from its own portfolio decisions. Clicking a leaf
+  opens its experiment page under a lineage breadcrumb — every page is
+  deep-linkable (`/programs/<slug>`, `/experiments/<eid>`). Each experiment
+  page shows: the DMTA funnel, a round table of what was TESTED, and a
+  hypothesis card per candidate — state badge, observed value **with its
+  95% CI drawn against the gate** (a straddling CI shows *inconclusive*,
+  margin label included), **origin** (what the molecule actually is), the
+  `predicted_by` model stamp, mechanism, and the **refuted-if** clause
+  written before the data existed. Then the record itself: hash-chained
+  provenance, evidence curves re-rendered from recorded plate files (or an
+  explicit "none recorded" — never simulated), the reviewer's audit, the
+  trust section, and the raw trace log. Wizard experiments are
+  provenance-chained too — `bn prove wizard/<id>`. Harness decisions the code made
+  (halts, authorization column, SOP sign-offs, physical-fault
+  classification) all surface here. Experiments are archived (retired from
+  the working set, provenance intact), never silently deleted. Experiment
+  pages also carry the **Series view** (proposed→tested→judged grouped by
+  family or chemotype, per-series rollups, and a matched-pair SAR table
+  whose calls carry CIs — straddling intervals abstain, and derived series
+  claims show their status chip). The header badge shows the graded eval
+  mean — "it can be graded" leads the product; the leaderboard itself lives
+  in this README and `evals/leaderboard.md`, not in a duplicated tab.
+  Want real data to click through? `bn demo` seeds the abstain-and-refute
+  cascade; `case-studies/08-proteinbase-entry/seed_workbench.py` seeds the
+  prospective PD-L1 design campaign (112 hypotheses, 30 of them controls
+  whose pre-registered refutation clauses fire against the scorer itself).
+  *(The two screenshots above predate the program-card trees — refresh
+  queued.)*
 - **`bn serve`** — a headless alternative cockpit (stdlib HTTP, no
   dependencies) for approval queues and diaries on machines without a
   browser; useful for remote/headless boxes.
