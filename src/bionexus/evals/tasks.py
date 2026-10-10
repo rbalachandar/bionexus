@@ -290,16 +290,18 @@ def _a_repro():
 @register("repro-cs02-az3246", "blind reproduction of the AZ3246/HPK1 paper "
           "(contamination-free)", suite="reproductions", optional=True)
 def _r_cs02():
-    return _run_case_study("02-az3246-hpk1")
+    return _run_case_study("02-az3246-hpk1",
+                             task_id="repro-cs02-az3246")
 
 
 @register("repro-cs03-flow", "multi-paper flow validation (quantitative rows, "
           "no LLM)", suite="reproductions", optional=True)
 def _r_cs03():
-    return _run_case_study("03-multi-paper", args=["run.py"])
+    return _run_case_study("03-multi-paper", args=["run.py"],
+                             task_id="repro-cs03-flow")
 
 
-def _run_case_study(dirname: str, args=None):
+def _run_case_study(dirname: str, args=None, task_id: str | None = None):
     import os
     import subprocess
     import sys
@@ -307,23 +309,24 @@ def _run_case_study(dirname: str, args=None):
 
     from bionexus.evals.harness import TaskResult
     if os.environ.get("BIONEXUS_EVAL_REPRO") != "1":
-        return TaskResult(f"repro-{dirname}", f"case study {dirname}", 0.0,
+        return TaskResult(task_id or f"repro-{dirname}",
+                          f"case study {dirname}", 0.0,
                           True, notes="SKIPPED (opt-in) — set "
                           "BIONEXUS_EVAL_REPRO=1 to run; network-heavy, "
                           "~10 min per study")
     d = Path("case-studies") / dirname
     script = d / (args[0] if args else "run.py")
     if not script.exists():
-        return TaskResult(f"repro-{dirname}", "", 0.0, False,
+        return TaskResult(task_id or f"repro-{dirname}", "", 0.0, False,
                           notes="SKIPPED — script missing")
     try:
         r = subprocess.run([sys.executable, script.name], cwd=str(d),
                            capture_output=True, text=True, timeout=600)
     except subprocess.TimeoutExpired:
-        return TaskResult(f"repro-{dirname}", "", 0.0, False,
+        return TaskResult(task_id or f"repro-{dirname}", "", 0.0, False,
                           notes="SKIPPED — timeout (needs network?)")
     ok = r.returncode == 0 and "COMPLETE" in (r.stdout + r.stderr)
-    return TaskResult(f"repro-{dirname.split('-')[0]}",
+    return TaskResult(task_id or f"repro-{dirname}",
                       f"case study {dirname} rerun", 1.0 if ok else 0.0, ok,
                       {"returncode": r.returncode},
                       "reproduced" if ok else
@@ -835,3 +838,88 @@ def _t_applicability_domain():
                       f"extrapolation, {in_ok}/{len(in_qs)} near-chemistry "
                       f"spared; err separation {err_far:.1f} vs {err_in:.1f}; "
                       f"veto {'holds' if veto else 'BROKEN'}")
+
+
+@register("sandbox-isolation",
+          "isolation as a MEASURED property: sibling writes invisible, "
+          "forks diverge both ways, lifecycle sealed in the chain, "
+          "degradation loud — graded offline (egress is verified by the "
+          "live sandbox-docker CI job, not here: an eval never silently "
+          "skips a claim it cannot check)")
+def _t_sandbox_isolation():
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.core.contracts import (Envelope, ToolInvocation, ToolName)
+    from bionexus.core.interfaces import system_actor
+    from bionexus.sandbox_session import SandboxSession
+
+    store = SqliteProvenanceStore(":memory:")
+    actor = system_actor("eval-sbx")
+    checks: dict[str, bool] = {}
+
+    # 1. sibling isolation
+    a = SandboxSession(mode="per_experiment", sandbox="local",
+                       branch_id="ev-a", store=store, actor=actor)
+    b = SandboxSession(mode="per_experiment", sandbox="local",
+                       branch_id="ev-b", store=store, actor=actor)
+    a.sandbox.exec("echo token > secret.txt")
+    seen = b.sandbox.exec(
+        "test -f secret.txt && echo YES || echo NO") == "YES"
+    checks["sibling_isolation"] = not seen
+
+    # 2. fork: inherits at snapshot, diverges both ways afterwards
+    a.sandbox.exec("echo pre > parent_pre.txt")
+    child = a.fork()
+    inherits = child.sandbox.exec(
+        "test -f parent_pre.txt && echo YES || echo NO") == "YES"
+    child.sandbox.exec("echo kid > kid.txt")
+    a.sandbox.exec("echo post > parent_post.txt")
+    back_to_parent = a.sandbox.exec(
+        "test -f kid.txt && echo YES || echo NO") == "YES"
+    forward_to_child = child.sandbox.exec(
+        "test -f parent_post.txt && echo YES || echo NO") == "YES"
+    checks["fork_inherits"] = inherits
+    checks["fork_no_writeback"] = not back_to_parent
+    checks["fork_no_late_leak"] = not forward_to_child
+
+    # 3. transport failure is FAILED, never a silent fallback or exception
+    a.python = "/nonexistent/interpreter"
+    inv = ToolInvocation(
+        envelope=Envelope(experiment_branch_id="ev-a"),
+        tool=ToolName.fm_predict_property, args={"smiles": ["CCO"]})
+    res = a.invoke(inv)
+    checks["loud_transport_failure"] = (
+        res.status == "failed" and "transport" in (res.rejection_reason or ""))
+
+    # 4. lifecycle + exec attempts all sealed; chain verifies
+    from bionexus.adapters.sandbox.agentenv import AgentEnvSandbox
+    try:
+        AgentEnvSandbox.__dict__["exec"](
+            type("_x", (), {"sandbox_id": "x"})(), "echo hi")
+        loud_refusal = False
+    except NotImplementedError:
+        loud_refusal = True
+    except Exception:
+        loud_refusal = False
+    checks["loud_degradation"] = loud_refusal
+
+    a.destroy()
+    b.destroy()
+    child.destroy()
+    evs = {r.event_type.value
+           for br in ("ev-a", "ev-b")
+           for r in store.branch_records(br)}
+    checks["lifecycle_provenance"] = {"sandbox_create", "sandbox_exec",
+                                      "sandbox_destroy"} <= evs
+    checks["chain_intact"] = store.verify_chain() == []
+
+    ok = sum(checks.values())
+    score = round(ok / len(checks), 3)
+    return TaskResult(
+        "sandbox-isolation",
+        "isolation, divergence, provenance, loud failure — graded",
+        score, score >= PASS_THRESHOLD,
+        {**{k: int(v) for k, v in checks.items()}},
+        (f"{ok}/{len(checks)} isolation properties hold — failed: "
+         + ", ".join(k for k, v in checks.items() if not v))
+        if ok < len(checks) else
+        f"{ok}/{len(checks)} isolation properties hold")

@@ -135,11 +135,13 @@ offline, in CI. Scores below 1.0 are kept as reported: an honest abstention
 is graded down rather than counted as a pass. Example run:
 
 ```
-epistemics — mean 0.980 · 13/13 tasks pass
+epistemics — mean 0.982 · 14/14 tasks pass
   hit-recovery         0.917  honest abstains credited 0.5, not 1.0
   adaptive-dose        0.875  3 wells beat 4 — a genuine negative result
   applicability-domain 1.000  far chemistry stamped extrapolation —
                       confident claims vetoed in BOTH directions
+  sandbox-isolation    1.000  sibling writes invisible, forks diverge,
+                      lifecycle sealed, degradation loud
   verdict-honesty      1.000  must abstain where the CI straddles the gate
 ```
 
@@ -167,7 +169,7 @@ day, with the tier's waste counter as the permanent regression test.
 
 The `GET /api/evals` read-model serves these scores and flags every passing
 task below 1.0 as an `honest_deduction`; the workbench header carries the
-live `graded 0.980 (13/13 bar-pass)` badge on every page.
+live `graded 0.954 · 24 tasks, all pass` badge on every page.
 
 ### Trust mechanisms
 

@@ -515,9 +515,10 @@ def cmd_eval(args: argparse.Namespace) -> int:
     out = _P("evals/leaderboard.md")
     out.parent.mkdir(exist_ok=True)
     by_suite: dict[str, list] = {}
-    for task, r in zip([t for t in TASKS if t.task_id in
-                        {x.task_id for x in results}], results):
-        by_suite.setdefault(task.suite, []).append(r)
+    _suite_of = {t.task_id: t.suite for t in TASKS}
+    for r in results:   # keyed by RESULT id, never positional zip —
+        # a mismatched task id must land in "other", not vanish silently
+        by_suite.setdefault(_suite_of.get(r.task_id, "other"), []).append(r)
     sections = ""
     for suite, rs in by_suite.items():
         rows = "\n".join(
