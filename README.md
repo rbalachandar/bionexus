@@ -16,8 +16,8 @@ the experiment ran.
 
 BioNexus is built on three principles:
 
-- **Safety first, and it checks molecules too.** The only path from an agent
-  to a lab is the gateway: every submission passes a policy engine the agent
+- **Safety enforcement.** The only path from an agent to a lab is the
+  gateway: every submission passes a policy engine the agent
   cannot modify or approve itself, and budgets cap what a campaign may
   consume. When experiments declare structures, those are screened against
   versioned toxicophore rules, so a declared covalent warhead can pass while
@@ -35,8 +35,8 @@ BioNexus is built on three principles:
   that the record has not been edited.
 
 **Contents:** [Installation](#installation) · [CLI](#cli) ·
-[Evals](#how-do-you-know-it-works--the-eval-suite) ·
-[Case studies](#bionexus-case-studies--published-papers-and-one-dataset-we-made) ·
+[Evals](#evaluation-suite) ·
+[Case studies](#case-studies) ·
 [Using BioNexus](#using-bionexus) · [The virtual lab](#the-virtual-lab) ·
 [Five core interfaces](#five-core-interfaces) · [Agent Skills and MCP](#agent-skills-and-mcp) ·
 [Architecture](#architecture) · [Documentation](#documentation) ·
@@ -58,9 +58,9 @@ Every capability is a `bn` command; the same functionality is available as a
 Python API (see [Using BioNexus](#using-bionexus)).
 
 ```sh
-bn demo                                # first run: watch it ABSTAIN on a borderline
-                                       # CI and REFUTE its own fake hit (real
-                                       # machinery, simulated numbers)
+ bn demo                                # first run: abstains on a borderline
+                                        # CI and refutes a planted false hit (real
+                                        # machinery, simulated numbers)
 bn read results.csv --csv out.csv      # auto-analyze an instrument export
 bn read plate.csv --layout map.csv \
         --normalize pct_inhibition     # join a plate map; %INH vs the plate's
@@ -84,50 +84,47 @@ bn run examples/workflow.yml           # tournament + assay on the configured la
 bn mcp                                 # MCP server: drive BioNexus from Claude/Cursor
 bn new-adapter lab my_robot            # scaffold a tested LabAdapter
 bn skills list                         # discovered Agent Skills (theirs and ours)
-bn eval --all                          # the measurable claim: scored task suite + leaderboard
+ bn eval --all                          # scored task suite + leaderboard
 bn why char-ridge train.csv CCCCCO       # attribution panel: per-prediction drivers + caveats + applicability domain
 bn eval --suite epistemics,models      # run tiers separately
 bn anchor --verify                     # Merkle root: prove the whole store's state
 bn fixtures verify <study-dir>         # byte-reproducible case-study data
 bn connect describe <device>           # interview you into an agent-readable device card
-bn auto --dose-design adaptive ...     # Bayesian sequential dosing (3 wells, not 4)
-bn halt --engage --reason "spill"      # operator stop-condition the agent cannot reach
+ bn auto --dose-design adaptive ...     # Bayesian sequential dosing (typically 3 wells, not 4)
+ bn halt --engage --reason "spill"      # operator stop-condition outside the agent's reach
 bn halt --clear                        # only a human clears it
 bn sop list                            # agent-proposed recurring procedures awaiting sign-off
 bn sop approve <sop-id> --by "lab lead"  # sign-off turns a procedure into standing policy
 ```
 
-## BioNexus case studies — published papers, and one dataset we made
+## Case studies
 
-The strongest test of the flow: hold out an entire published paper — values
-excluded from training and hidden from the agent — and ask the system to
-reproduce it. Then the harder, forward-looking version: run the real
-gated DMTA loop over a published data world with the field's actual futures
-removed, and score every claim against measurements it could not have known.
-And then the hardest: generate the data yourself on rented hardware with the
-field's real models (CS08) — nobody has seen it, there is no answer key, and
-the pre-registered refutation conditions are the only referee.
+The case studies exercise the flow on three kinds of data: blind
+reproductions of published papers (CS01–03), re-analysis of deposited
+screening data (CS04–06), and a published protein-display dataset (CS07).
+CS08 generates a new dataset on rented GPU hardware — designs screened
+against composition-matched controls, with the refutation conditions
+registered before the scores existed.
 
-| Study | Paper / corpus | Result |
+| Study | Data | Result |
 |---|---|---|
 | [Case study 01](case-studies/01-egfr-blind-reproduction/) | Gazit et al., *J. Med. Chem.* 1989 — the original tyrphostins paper | Q1 hypothesis identified, **qualified**: a probe confirmed the model has prior exposure to this literature (recognition, not derivation). Q2 ranking vs published IC50s passed. |
 | [Case study 02](case-studies/02-az3246-hpk1/) | AZ3246 HPK1 inhibitor, *J. Med. Chem.* 2025 — post-training-cutoff | **Contamination-free** (self-report + never-published-variant probes). Agent derived the pyrazine-carboxamide hypothesis from structures alone; its blinded ranking (ρ = +0.42) outperformed a Random Forest trained on other HPK1 measurements (ρ = +0.08). *Figures predate a training-pool pagination fix; re-run on frozen fixtures is queued in the roadmap.* |
 | [Case study 03](case-studies/03-multi-paper/) | Multi-paper blind validation on recent ChEMBL studies | **Blind chemotype identification on 4/4 papers** (cores match the actual chemistry); contamination clean by self-report on 4/4, and the never-published-variant probe independently flagged **1 leakage-suspect** case the self-report missed. Flow integrity + budgets verified; scaffold leakage ~absent; no enrichment claim survives CIs + BH at n=31–67 — all reported as such |
-| [Case study 04](case-studies/04-prospective-hit2lead/) | Prospective hit-to-lead on real published data — EGFR, 26,322 ChEMBL measurement rows, the seven successor drugs (gefitinib→osimertinib) blinded | No simulator carried the load: gated `act` campaigns ran on ReplayLab against published truths. **5 hit claims — all true actives; 6 kills — all correct; 2 explicit left-censor abstentions on the two sub-350pM compounds** (the most potent molecules were the two we refused to number); reviewer clean; 209 hash-chained records. The blinded surrogate independently ranked Michael-acceptor chemistry #1–6, and the safety gate made testing it cost a declared covalent mechanism — the full refuse→redesign→gate→confirm loop on real data. Running real data also caught four product bugs, each fixed with a regression test. |
-| [Case study 05](case-studies/05-paper-pilot/) | The paper pilot — a proxy for the lab pilot: Jacobs et al., *J. Med. Chem.* 2013, the NIH MLPCN anti-SARS-CoV 3CLpro cascade, reproduced **from the lab's own deposited raw tables** (PubChem AIDs 1890/1879; 290,893 → 405 → 136 → 44) | **98.9% agreement on decisive verdicts, zero false actives** (32 TP / 54 TN / 0 FP vs the submitters' calls) — and 14 honest abstentions where our bootstrap CIs straddle the paper's own 10 µM gate (their point estimates 4.6–9.9 µM). The single disagreement is disclosed curve-and-all; 5 cross-plate inconsistencies found in *their own* cascade (secondary vs their confirmatory curves). The dirt was real (REST header truncates the dose columns; the meta rows are the truth) — `bn read` now parses PubChem deposits natively, structurally blind to the answer keys |
-| [Case study 06](case-studies/06-ncats-deposit/) | The deposit pilot — a modern NCATS qHTS (AID 2061307, deposited 2025-09-13): 2,427 ALDH3A1 reassay curves vs NCATS' own AI-fit ACTIVE/INACTIVE/INCONCLUSIVE calls | **A negative result, published as such.** Our fixed-reference 50%-crossing + CI rules do NOT port to internally self-normalized qHTS dialects (ρ = 0.107 vs their fits; 216 of their Inactives pass our trend filter). The pilot did its job — surfacing friction no simulator shows: self-normalized baselines, autofluorescence flatlines needing curve-CLASS rejection not threshold rejection, and a degenerate-fit trap (a known-max Hill "fits" a flat line as infinitely potent — caught by the absurdity of the crosstab itself, not by tuning). Parser dialects + polarity refusals shipped with tests; answer keys untouched until verdicts locked |
-| [Case study 07](case-studies/07-proteinbase/) | Reproduction of the Proteinbase paper (40 MB deposit, 5,253 proteins / 2,630 measured display pairs) — hit rates, selection replay, applicability-domain transfer | 98% agreement reproducing their measured hit rates from raw deposit; **two published negatives**: our selection policies replay at/below baseline on their tested pairs (echoing CS08), and an AD floor built on their data false-alarms 84% in-domain — calibration on real distributions, not vibes |
-| [Case study 08](case-studies/08-proteinbase-entry/) | Binder-design competition trial (Proteinbase/Adaptyv entry): 82 BindCraft PD-L1 designs generated and screened with Boltz-2 on rented GPU hardware (~$5), alongside 30 composition-matched controls (scrambles of our own top designs + random peptides) — data that exists in no published paper — then all 112 through the full hypothesis loop | **Boltz-2 ipTM separates designs from controls at the distribution level (MWU p≈1e-4, bootstrap CI [+0.12, +0.30]) but does not rank individual sequences**: AUC 0.80; the best composition-matched scramble scores 0.937, above ~70% of real designs, and 11/30 controls clear the 0.7 gate — supporting use as a gate, not as a ranking. No LLM in the loop; deterministic, keyless. All 112 are hash-chained hypotheses with pre-registered refutation conditions; the controls' own clause ("if this validates, ipTM's ranking value is refuted") fires on the chain. In the workbench: `seed_workbench.py` → program card "CS08 PD-L1 Designs", verdict `partial`, 2 batched runs, origin-labeled cards |
+| [Case study 04](case-studies/04-prospective-hit2lead/) | Prospective hit-to-lead on real published data — EGFR, 26,322 ChEMBL measurement rows, the seven successor drugs (gefitinib→osimertinib) blinded | Gated `act` campaigns ran on ReplayLab against published truths, no simulator support. **5 hit claims — all true actives; 6 kills — all correct; 2 left-censored abstentions on the two sub-350pM compounds** (the most potent molecules were deliberately not numbered); reviewer clean; 209 hash-chained records. The blinded surrogate independently ranked Michael-acceptor chemistry #1–6, and the safety gate made testing it cost a declared covalent mechanism — the full refuse→redesign→gate→confirm loop on real data. Running real data also caught four product bugs, each fixed with a regression test. |
+| [Case study 05](case-studies/05-paper-pilot/) | The paper pilot — a proxy for the lab pilot: Jacobs et al., *J. Med. Chem.* 2013, the NIH MLPCN anti-SARS-CoV 3CLpro cascade, reproduced **from the lab's own deposited raw tables** (PubChem AIDs 1890/1879; 290,893 → 405 → 136 → 44) | **98.9% agreement on decisive verdicts, zero false actives** (32 TP / 54 TN / 0 FP vs the submitters' calls) — and 14 abstentions where our bootstrap CIs straddle the paper's own 10 µM gate (their point estimates 4.6–9.9 µM). The single disagreement is disclosed curve-and-all; 5 cross-plate inconsistencies found in *their own* cascade (secondary vs their confirmatory curves). The deposit had real formatting defects (the REST header truncates the dose columns; the meta rows carry the truth) — `bn read` now parses PubChem deposits natively, structurally blind to the answer keys |
+| [Case study 06](case-studies/06-ncats-deposit/) | The deposit pilot — a modern NCATS qHTS (AID 2061307, deposited 2025-09-13): 2,427 ALDH3A1 reassay curves vs NCATS' own AI-fit ACTIVE/INACTIVE/INCONCLUSIVE calls | **Negative result.** Fixed-reference 50%-crossing + CI rules do not port to internally self-normalized qHTS dialects (ρ = 0.107 vs their fits; 216 of their Inactives pass our trend filter). The pilot surfaced issues simulators do not produce: self-normalized baselines, autofluorescence flatlines needing curve-class rejection rather than threshold rejection, and a degenerate-fit trap (a known-max Hill fits a flat line as infinitely potent — detected by crosstab plausibility, not by tuning). Parser dialects + polarity refusals shipped with tests; answer keys untouched until verdicts locked |
+| [Case study 07](case-studies/07-proteinbase/) | Reproduction of the Proteinbase paper (40 MB deposit, 5,253 proteins / 2,630 measured display pairs) — hit rates, selection replay, applicability-domain transfer | 98% agreement reproducing their measured hit rates from raw deposit; **two negative results**: selection policies replay at/below baseline on their tested pairs (consistent with CS08), and an AD floor built on their data false-alarms 84% in-domain — a calibration problem on real distributions |
+| [Case study 08](case-studies/08-proteinbase-entry/) | Binder-design competition trial (Proteinbase/Adaptyv entry): 82 BindCraft PD-L1 designs generated and screened with Boltz-2 on rented GPU hardware (~$5), plus 30 composition-matched controls (scrambles of the top designs + random peptides) — newly generated data with no published source — all 112 through the hypothesis loop | **Boltz-2 ipTM separates designs from controls at the distribution level (MWU p≈1e-4, bootstrap CI [+0.12, +0.30]) but does not rank individual sequences**: AUC 0.80; the best composition-matched scramble scores 0.937, above ~70% of real designs, and 11/30 controls clear the 0.7 gate — supporting use as a gate, not as a ranking. The pipeline ran end to end without an LLM API key. All 112 are hash-chained hypotheses with pre-registered refutation conditions; for the 11 validating controls, their own clause ("if this validates, ipTM's ranking value is refuted") is recorded as fired. In the workbench: `seed_workbench.py` → program card "CS08 PD-L1 Designs", verdict `partial`, 2 batched runs, origin-labeled cards |
 
 Each case-study README documents its own limitations explicitly (e.g. CS04's
-potency-only view misses osimertinib's real T790M-selectivity win — and says
-so).
+potency-only view misses osimertinib's real T790M-selectivity win).
 
-## How do you know it works? — the eval suite
+## Evaluation suite
 
-"Agentic science" is a measurable claim or it is marketing. `bn eval` runs
-scored tasks against seeded ground truth — deterministic, offline, in CI —
-and the harness **punishes our own overclaims**:
+`bn eval` runs scored tasks against seeded ground truth — deterministic,
+offline, in CI. Scores below 1.0 are kept as reported: an honest abstention
+is graded down rather than counted as a pass. Example run:
 
 ```
 epistemics — mean 0.980 · 13/13 tasks pass
@@ -138,71 +135,64 @@ epistemics — mean 0.980 · 13/13 tasks pass
   verdict-honesty      1.000  must abstain where the CI straddles the gate
 ```
 
-Those sub-1.0 scores are the point: the system is graded **down** for the
-confidence it refused to claim. Full run: [`evals/leaderboard.md`](evals/leaderboard.md).
+Full run: [`evals/leaderboard.md`](evals/leaderboard.md).
 
-| Tier | Question | Tasks |
+| Tier | Covers | Tasks |
 |---|---|---|
-| **epistemics** | does it reason like a scientist? | hit-recovery vs truth · verdict-honesty (must abstain where the CI straddles) · confirmation-coverage · falsifiability-tiebreak · adaptive-dose-design · flywheel-memory |
-| **models** | how good are its baselines? | policy ladder on MoleculeNet (Lipophilicity, ESOL, HIV) plus TDC ADMET Group (Caco2, HIA, BBB) on canonical scaffold folds — frozen in-repo, no network; vs the random floor. Fold-relative sanity (small held-out folds swing AUC; these are not leaderboard claims), scaffold-split throughout |
-| **reproductions** | can it redo published discoveries? | the blind paper studies (opt-in; frozen data fixtures) |
-| **agent** *(opt-in)* | does the full loop triage correctly end to end? | DDB-shaped workflows with ONE verifiable answer — exact refusal map (safety + makeability gates), zero refused-compounds-tested, zero wrong-confirms vs seeded truth, and byte-exact reruns — all graded deterministically, no LLM judge (`bn eval --suite agent`) |
+| **epistemics** | scientific reasoning under uncertainty | hit-recovery vs truth · verdict-honesty (abstains where the CI straddles) · confirmation-coverage · falsifiability-tiebreak · adaptive-dose-design · flywheel-memory |
+| **models** | baseline quality | policy ladder on MoleculeNet (Lipophilicity, ESOL, HIV) plus TDC ADMET Group (Caco2, HIA, BBB) on canonical scaffold folds — frozen in-repo, no network; vs the random floor. Fold-relative sanity (small held-out folds swing AUC; these are not leaderboard claims), scaffold-split throughout |
+| **reproductions** | published-paper reruns | the blind paper studies (opt-in; frozen data fixtures) |
+| **agent** *(opt-in)* | end-to-end loop triage | DDB-shaped workflows with ONE verifiable answer — exact refusal map (safety + makeability gates), zero refused-compounds-tested, zero wrong-confirms vs seeded truth, and byte-exact reruns — all graded deterministically, no LLM judge (`bn eval --suite agent`) |
 
-The suite has already earned its keep: it caught an observed-max fit bias,
+Findings the suite produced during development: an observed-max fit bias,
 per-run ground-truth instability, confirmation labels that overrode the
-gate, and non-hermetic tests. `evals/leaderboard.md` is regenerated on
-every run; the CI job fails if any score drops below the pass bar.
+gate, and non-hermetic tests — all fixed, with the tasks kept as regression
+tests. `evals/leaderboard.md` is regenerated on every run; the CI job
+fails if any score drops below the pass bar.
 
-The opt-in **agent tier** grades the loop itself the way Scale's
-DrugDiscoveryBench grades frontier coding agents — multi-step
-early-discovery workflows resolving to one verifiable answer — but
-deterministically, no LLM judge. On its first full run it found its
-first real flaw: a batch was being synthesized for a compound the
-toxicophore screen would refuse moments later (screen at submission,
-Make ran first). Fixed the same day, with the eval's waste counter as
-the permanent regression test — an agent-tier finding, caught by
-grading, not by vibes. That is the difference we ship: when the
-system finds a flaw in itself, the fix leaves a number behind.
+The opt-in **agent tier** grades multi-step early-discovery workflows that
+resolve to a single verifiable answer, deterministically and without an LLM
+judge. Its first full run found a real ordering flaw: a batch was being
+synthesized for a compound the toxicophore screen would refuse moments
+later (Make ran before the submission screen). The fix shipped the same
+day, with the tier's waste counter as the permanent regression test.
 
-The leaderboard **is** the pitch, so the workbench wears it:
-`GET /api/evals` serves a read-model that flags every passing
-task scoring below 1.0 as an `honest_deduction` (the abstentions we are
-graded down for, not smoothed over). The workbench header carries the live
-`graded 0.980 (13/13 bar-pass)` badge on every page, fed by
-`GET /api/evals`.
+The `GET /api/evals` read-model serves these scores and flags every passing
+task below 1.0 as an `honest_deduction`; the workbench header carries the
+live `graded 0.980 (13/13 bar-pass)` badge on every page.
 
-### What keeps it trustworthy
+### Trust mechanisms
 
 The mechanisms are modality-agnostic — the loop, the gates, and the record
-work the same for a kinase IC50, a plate reader export, or a protein
-binder's predicted interface confidence. Some rows below are one
-modality's *implementation* of a general rule, and say so.
+work the same for a kinase IC50, a plate-reader export, or a protein
+binder's predicted interface confidence. Some rows are one modality's
+*implementation* of a general rule.
 
 | Mechanism | What it guarantees |
 |---|---|
-| Uncertainty vetoes certainty | a 95% CI straddling the gate ABSTAINS on ANY metric — IC50, %-inhibition, ipTM alike; near-gate point estimates never earn a decisive verdict (CS05: 14 honest abstentions; CS08: 6) |
-| Pre-registered claims | every hypothesis records its predicted and **refuted-if** clauses before data arrives; verdicts are read against what was dared in advance — CS08's control clauses ("if this validates, the score's ranking value is refuted") fired, and the chain holds them |
-| Proxy-evidence ladder | every metric declares what it stands for; verdicts carry their evidence distance (`bn why`), and chains that never reach the real claim (`ipTM → binding affinity`) are labeled unresolved instead of laundered |
-| Provenance physics | the hash chain is engine-enforced and recomputed on read (`verify_chain`); verdict READING is payload-driven, recency-wins — the read path is as trusted as the write path |
+| Uncertainty vetoes certainty | a 95% CI straddling the gate abstains on any metric — IC50, %-inhibition, ipTM alike; near-gate point estimates do not earn a decisive verdict (CS05: 14 abstentions; CS08: 6) |
+| Pre-registered claims | every hypothesis records its predicted and **refuted-if** clauses before data arrives; verdicts are read against the pre-registered condition — CS08's control clauses ("if this validates, the score's ranking value is refuted") evaluated true, in the chain |
+| Proxy-evidence ladder | every metric declares what it stands for; verdicts carry their evidence distance (`bn why`), and chains that do not reach the target claim (`ipTM → binding affinity`) are labeled unresolved |
+| Provenance physics | the hash chain is engine-enforced and recomputed on read (`verify_chain`); verdict reading is payload-driven, recency-wins — the read path is verified like the write path |
 | Molecular safety gate | 18+ curated toxicophore SMARTS (versioned data file — refusals cite the rule version); hard classes always refuse; electrophilic warheads pass **only** with declared covalent intent in the hypothesis |
 | Execution governance | enforced in gateway code, outside the agent's tool surface: an operator halt switch it cannot lift (`bn halt`), a three-column authorization matrix (autonomous / human-approved / never — DURC and BSL-3+ default to never), and SOP sign-off before anything recurring runs unattended; every decision is a provenance record |
-| Physical-fault honesty | saturated plates, dark reads, negative values, and device errors are classified as **physical** failures before the retry reflex — flagged for operator inspection, never re-queried blindly and never turned into verdicts |
+| Physical-fault honesty | saturated plates, dark reads, negative values, and device errors are classified as **physical** failures before any retry — flagged for operator inspection, not re-queried blindly and not turned into verdicts |
 | DURC screening | campaigns naming select agents / regulated toxins are refused before any work, and the refusal is recorded |
-| Citation enforcement | PMIDs/DOIs resolved against PubMed; a fabricated reference scores below silence; offline checks never falsely accuse |
-| Makeability is a gate | before Make burns a batch, a named-reaction rule corpus plans routes (how many, how long, at what cost, modeled yield); a compound whose routes all fail the yield/lead-time floors is refused with a `no_viable_route` provenance record — batch numbers are drawn from the chosen route and every plan is stamped simulated |
-| Series discipline | proposed→tested→judged grouped by family or Murcko chemotype (grouping backend stamped, never overclaimed); matched-pair SAR deltas carry propagated CIs and ABSTAIN when straddling the retention band; a series claim's verdict is derived only from its members and can never aggregate its way to false confidence |
-| Institutional memory | `bn ingest` folds pre-BioNexus ELN outcomes into ALREADY RULED OUT and family priors — stamped `imported`, sha256-sealed against the export sidecar; an edited-after-export CSV imports loudly unsealed, never silently |
+| Citation enforcement | PMIDs/DOIs resolved against PubMed; a fabricated reference ranks below no citation at all; offline checks never falsely accuse |
+| Makeability is a gate | before Make allocates a batch, a named-reaction rule corpus plans routes (how many, how long, at what cost, modeled yield); a compound whose routes all fail the yield/lead-time floors is refused with a `no_viable_route` provenance record — batch numbers are drawn from the chosen route and every plan is stamped simulated |
+| Series discipline | proposed→tested→judged grouped by family or Murcko chemotype (grouping backend stamped); matched-pair SAR deltas carry propagated CIs and abstain when straddling the retention band; a series claim's verdict is derived only from its members and cannot aggregate past what its data supports |
+| Institutional memory | `bn ingest` folds pre-BioNexus ELN outcomes into ALREADY RULED OUT and family priors — stamped `imported`, sha256-sealed against the export sidecar; a CSV edited after export imports as unsealed, with a warning |
 | `bn reproduce` | the execution environment (lab, version, seed, concentrations) is in the provenance root — replay a branch, diff verdicts |
-| Fault tolerance | junk/adversarial instrument files degrade to honest "unreadable, no verdicts changed" — never crashes, never false confidence |
-| Input trust boundary | instrument labels are sanitized data; injection-shaped sample names provably cannot reach the gate as instructions |
+| Fault tolerance | junk/adversarial instrument files degrade to "unreadable, no verdicts changed" — no crashes, no verdicts from noise |
+| Input trust boundary | instrument labels are sanitized data; injection-shaped sample names cannot reach the gate as instructions (tested) |
 | Verdict stability | same ground truth, N noise draws — verdicts that flip are flagged borderline, not averaged away |
 | Attribution | per-prediction "why": exact n-gram contributions, importance-weighted RF bits (with hashed-bit caveats stated), triggered ADMET rules, AVI feature attributions |
 | Retrieval traces | every generation records prompt hash, model, injected flywheel negatives — "what shaped this hypothesis" is answerable from the chain |
 | Anchoring | Merkle root over the whole store; publish it anywhere you don't control for external tamper-evidence |
-| Evidence is the data | the Evidence section re-renders each branch's **recorded run files** — plate exports or model-prediction artifacts, the same numbers the verdicts were read from; a missing file renders as an honest gap, never a stock figure |
+| Evidence is the data | the Evidence section re-renders each branch's **recorded run files** — plate exports or model-prediction artifacts, the same numbers the verdicts were read from; a missing file renders as an explicit gap, not a stock figure |
 | Retirement, not deletion | archived experiments leave the working set but their hash-chained records stay intact and auditable — consistent with the append-only provenance store |
-| Regime-gated assertions | deposited percent tables are fingerprinted for their normalization frame; absolute IC50 verdicts issue ONLY in externally validated frames (CS05), while self-normalized dialects (where CS06 showed numbers can't port) are admitted at the *shape* level only — affine-invariant concentration-dependence classes, labeled responders-never-verdicts (97.4% concordance with NCATS' own actives on their deposit). Trust is a declared envelope, not a hope |
-| Applicability domain | every learned predictor carries a nearest-neighbour Tanimoto domain (Morgan bits, char-gram fallback, declared conservative floor): values from beyond a model's training chemistry are stamped `extrapolation`, earn no claim-grade verdict in either direction, and chip it on the card — the model-side twin of the regime gate, graded by its own eval task |
+| Regime-gated assertions | deposited percent tables are fingerprinted for their normalization frame; absolute IC50 verdicts issue only in externally validated frames (CS05), while self-normalized dialects (where CS06 showed numbers do not port) are admitted at the *shape* level only — affine-invariant concentration-dependence classes, labeled responders-never-verdicts (97.4% concordance with NCATS' own actives on their deposit). Trust is a declared envelope |
+| Applicability domain | every learned predictor carries a nearest-neighbour Tanimoto domain (Morgan bits, char-gram fallback, declared conservative floor): values from beyond a model's training chemistry are stamped `extrapolation`, earn no claim-grade verdict in either direction, and are surfaced on the card — the model-side counterpart of the regime gate, graded by its own eval task |
 
 ## Using BioNexus
 
@@ -218,14 +208,14 @@ analysis tool — and hand stages of the loop to an agent as trust grows.
 ### As a daily analysis tool — reading lab instrument exports
 
 Point `bn read` at a plate-reader export. Long CSV/TSV/XLSX (any column
-order, any vendor header block), plate grids, **real kinetic tables**
-(Tecan i-control, BioTek KC1/Gen5: time-rows × well-columns,
-Windows-1252 bytes and `?????` missing tokens tolerated, multi-channel
-kept separate), and `.npy` images — all auto-detected. IC50 fits carry
-CIs, Z′ is real only when the plate has both control classes (otherwise
-labeled `Z'~` honestly), and reader/device/serial/date are scraped into
-the result for provenance. Format detection, control discovery, and QC
-are automatic:
+order, any vendor header block), plate grids, **kinetic tables**
+(Tecan i-control, BioTek KC1/Gen5: time-rows × well-columns, with vendor
+quirks tolerated — Windows-1252 encoding, `?????` placeholders for missing
+values, multi-channel kept separate), and `.npy` images — all auto-detected.
+IC50 fits carry CIs; Z′ is computed only when the plate has both control
+classes (otherwise reported as `Z'~`, control-spread heuristic);
+reader/device/serial/date are scraped into the result for provenance.
+Format detection, control discovery, and QC are automatic:
 
 ```sh
 bn read .data/exports/synergy_export_export.csv     # the virtual-lab export (from `bn demo`)
@@ -236,7 +226,7 @@ bn read .data/exports/synergy_export_export.csv     # the virtual-lab export (fr
 
 bn read tests/data/instruments/biotek_1steptimer.csv
 # plate: biotek_1steptimer.csv [kinetic] | wells: 1536 | ... | reader: Synergy HTX (2206293D)
-# (a bare grid: no compound identity, no concentration series — said so, not simulated)
+# (a bare grid: no compound identity, no concentration series — reported as such)
 
 bn read tests/data/instruments/tecan_ON1.csv --layout tests/data/instruments/plate_layout_96.csv
 # plate: tecan_ON1.csv [kinetic] | wells: 192 | ... | edge-effect -0.0 (OD600:600)
@@ -245,18 +235,18 @@ bn read tests/data/instruments/tecan_ON1.csv --layout tests/data/instruments/pla
 bn read tests/data/instruments/tecan_ON1.csv --normalize pct_inhibition
 # bn: error: cannot normalize to %inhibition: need >=2 blank AND >=2
 # full-inhibition control wells — raw values kept
-# (the REFUSE path, on the honest example: this plate has no control classes)
+# (the refusal path: this plate has no control-class wells)
 ```
 
 A bare grid carries no compound identity — `--layout` joins a plate map
 (well → sample/concentration, multi-layer conc/sample/reagent maps
-supported) so even vendor-dumb exports get dose–response fits;
-`--normalize pct_inhibition` rescales against the plate's OWN blank +
-full-inhibition controls and REFUSES when those classes are missing.
+supported) so exports without compound identity can still be fitted;
+`--normalize pct_inhibition` rescales against the plate's own blank +
+full-inhibition controls and refuses when those classes are missing.
 The repo ships three genuine vendor exports (Tecan i-control CSV+XLSX,
 BioTek 1-Step-Timer, Gen5 multi-channel) plus a plate map under
-`tests/data/instruments/` (attributed, MIT) so you can try it on real
-dirt before your own.
+`tests/data/instruments/` (attributed, MIT) so the parser can be tried on
+real vendor output before your own.
 
 ```python
 from bionexus.labread import read_plate
@@ -297,7 +287,7 @@ Or with your own config:
 bn auto campaign.json
 ```
 
-<details><summary>campaign.json — the problem, stated like a scientist would</summary>
+<details><summary>campaign.json — an example problem statement</summary>
 
 ```json
 {
@@ -361,12 +351,12 @@ then narrows as the flywheel discounts failed families (`"k": 2` keeps it
 constant). The run budget still caps the total either way.
 
 Verdicts are uncertainty-aware: a fitted IC50 whose 95% CI straddles the
-threshold comes back `inconclusive`, never a coin-flip called validated. An
+threshold comes back `inconclusive` rather than a decisive verdict. An
 orthogonal confirmation verifies the *direction* of the preliminary verdict —
 agreement confirms hits, refutes non-hits, and disagreement on a claimed hit
 refutes it. Campaigns may run `--dose-design adaptive`: a Bayesian posterior
 picks each next concentration (measured: 3 adaptive wells beat a fixed
-4-point series, ~4x lower error — `bn eval` proves it).
+4-point series, ~4x lower error — scored by `bn eval`).
 
 A `ResourceBudget` (max lab runs, hypotheses, confirmations, wall clock) is
 enforced at submission and generation time. Every step — problem, hypotheses,
@@ -382,8 +372,8 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
 - **`make api`** — the single web portal (React + FastAPI), all local, no
   accounts, no cloud.
   - **Workspace — program cards.** Each program shows its verdict
-    (`achieved / partial / no-tree`, read from its pre-registered claims,
-    not a mood), its launched problem trees with per-node roll-up status and
+    (`achieved / partial / no-tree`), computed from its pre-registered
+    claims, its launched problem trees with per-node roll-up status and
     run budget, experiment rows with verdict tallies and run counts, and
     taste lines distilled from its own portfolio decisions.
   - **Experiment pages** (deep-linkable: `/programs/<slug>`,
@@ -392,10 +382,9 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
     observed value **with its 95% CI drawn against the gate** (a straddling
     CI shows *inconclusive*, margin label included), **origin** (what the
     molecule actually is), the `predicted_by` model stamp, mechanism, and
-    the **refuted-if** clause written before the data existed.
+    the pre-registered **refuted-if** clause.
   - **The record.** Hash-chained provenance; evidence curves re-rendered
-    from recorded plate files (or an explicit "none recorded" — never
-    simulated); reviewer audit; trust section; raw trace log. Harness
+    from recorded run files (or an explicit "none recorded" state); reviewer audit; trust section; raw trace log. Harness
     decisions the code made (halts, authorization column, SOP sign-offs,
     physical-fault classification) all surface here. Wizard experiments are
     provenance-chained too — `bn prove wizard/<id>`. Experiments are
@@ -408,7 +397,8 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
   - **Real data to click through:** `bn demo` seeds the abstain-and-refute
     cascade; `case-studies/08-proteinbase-entry/seed_workbench.py` seeds the
     prospective PD-L1 design campaign (112 hypotheses, 30 of them controls
-    whose pre-registered refutation clauses fire against the scorer itself).
+    whose pre-registered refutation clauses evaluated true against the
+    score's own ranking utility).
 - **`bn serve`** — a headless alternative cockpit (stdlib HTTP, no
   dependencies) for approval queues and diaries on machines without a
   browser; useful for remote/headless boxes.
@@ -437,7 +427,7 @@ BioNexus structures the Design-Make-Test-Analyze cycle as first-class objects:
   define the problem in your own terms — objective in plain words, any
   metric, unit, and direction (`pathogenicity_score ≥ 0.8`, `fold_change`
   `≤ 2`, IC50 in µM — anything). That gate is what wizard hypotheses and
-  agent experiments inherit; it is not decoration
+  agent experiments inherit
 - **Flywheel** — every verdict is remembered: mechanistic families that fail
   are discounted in later portfolios, and the hypothesis agent is shown what
   the lab already ruled out
@@ -501,7 +491,7 @@ science when composed through the BioNexus flow.
 The intelligence comes from the models: the LLM derives the SAR hypothesis, the
 QSAR model makes the calibrated prediction.
 BioNexus is the layer that makes those results executable, bounded, measurable,
-and auditable — and the case studies above test exactly that layer:
+and auditable — the case studies above exercise this layer:
 
 | Campaign step | What the model does | What BioNexus does |
 |---|---|---|
@@ -621,7 +611,7 @@ Deeper design docs: [`docs/architecture.md`](docs/architecture.md) (blocks A–F
 | [`docs/domain-review.md`](docs/domain-review.md) | flow fidelity review vs. the real drug-discovery cycle |
 | [`docs/stability.md`](docs/stability.md) | versioning, stability tiers, deprecation policy |
 | [`docs/research-landscape.md`](docs/research-landscape.md) | review vs. Google, Anthropic, Isomorphic, Cradle, Lila, FutureHouse, OpenAI Rosalind |
-| [`docs/critical-review.md`](docs/critical-review.md) | unsympathetic independent review: what works, what fails |
+| [`docs/critical-review.md`](docs/critical-review.md) | independent critical review: strengths and failure modes |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | live TODO plan: uncertainty-aware verdicts, eval harness, adaptive design |
 | [`docs/architecture.md`](docs/architecture.md) · [`docs/flows.md`](docs/flows.md) · [`docs/blocks/`](docs/blocks/) | architectural blocks A–F, components, interfaces, end-to-end flows |
