@@ -5,12 +5,11 @@ high-content screening microscopes. Returns per-cell fluorescence data
 as structured measurements that feed into the vision-LLM readout and
 the missing-denominator check.
 
-In simulation mode, generates synthetic per-cell data matching the
-ImagingSimulatorLab's seeded ground truth. In live mode, connects to
-the microscope's REST API or file-export share.
-
-Requires the imaging extra (numpy) for simulation; live mode is a thin
-REST/file adapter.
+HONEST STATUS (hardware trust audit, Oct 10): this adapter is a
+SIMULATOR ONLY. "Live mode" is NOT implemented — simulator=False raises
+rather than silently returning synthetic readings dressed as instrument
+data. Vendor REST/file binding is roadmap work (ROADMAP S-T4). All
+results are labeled simulated in capabilities.
 """
 from __future__ import annotations
 
@@ -73,6 +72,11 @@ class HCSMicroscopeAdapter:
                  image_dir: str | None = None):
         self.seed = seed
         self.image_dir = image_dir
+        if not simulator:
+            raise NotImplementedError(
+                "HCS live mode is not implemented — this adapter only "
+                "simulates (ROADMAP S-T4). Refusing to fabricate "
+                "'instrument' readings (simulator=False)")
         self.simulator = simulator
         self._runs: dict[str, dict] = {}
         if simulator:
@@ -87,6 +91,8 @@ class HCSMicroscopeAdapter:
             "resolution": "single-cell",
             "denominator_capable": True,
             "bsl_max": 2,
+            "simulated": True,        # ALL output is synthetic (S-T4)
+            "hardware_validated": False,
         }
 
     def submit_protocol(self, protocol: ProtocolSubmission) -> str:

@@ -1,4 +1,11 @@
-"""Opentrons OT-2 / Flex adapter — real liquid-handler integration.
+"""Opentrons OT-2 / Flex REFERENCE DRIVER — NOT hardware-validated.
+
+Audit status (Oct 10, ROADMAP S-T4): the HTTP transport is real, but the
+request/response shapes are best-effort drafts that have NEVER been run
+against a physical OT-2 (the upload needs multipart + the mandatory
+`Opentrons-Version` header; runs use JSON:API `relationships`; commands
+live at /commands). A real robot will reject these payloads today. Use
+as a template and a CI seam — do not schedule lab time against it.
 
 Talks to the robot's HTTP API (port 31950): health check, protocol upload,
 run creation, status polling. Transport is injected so CI tests run against
@@ -11,8 +18,8 @@ log), not assay values — the plate then goes to a reader (see
 
 Requires no extra dependencies (stdlib urllib).
 
-Hardware API caveats are real: robot firmware moves; this adapter pins the
-endpoints we use and fails loudly on unexpected shapes.
+Until S-T4 validates it on a machine, treat every endpoint here as
+unverified; the P8 test transport mirrors THIS draft, not the robot.
 """
 from __future__ import annotations
 

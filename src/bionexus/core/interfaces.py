@@ -123,8 +123,8 @@ class Sandbox(Protocol):
 
 @runtime_checkable
 class ProvenanceStore(Protocol):
-    """Append-only, hash-chained lineage (P5). Implementations: SQLite, Postgres,
-    WORM bucket. Records are immutable once written."""
+    """Append-only, hash-chained lineage (P5). Ships with SQLite; Postgres and
+    WORM-bucket stores are roadmap. Records are immutable once written."""
 
     def append(self, record: ProvenanceRecord) -> ProvenanceRecord:
         """Compute and stamp record_hash from prev chain; store; return final."""

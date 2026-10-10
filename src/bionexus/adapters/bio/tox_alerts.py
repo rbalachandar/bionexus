@@ -22,12 +22,27 @@ from pathlib import Path
 _RULES_PATH = Path(__file__).parent / "safety_rules.json"
 
 
+_MIN_ALERTS = [  # self-contained (the module-level _FALLBACK derives from
+    {"name": "aromatic_nitro",  # ALERTS, which needs this very function —
+     "smarts": "c[N+](=O)[O-]",  # referencing it here was a NameError when
+     "severity": "high",         # the data file is missing. Minimal high-
+     "note": "builtin fallback"},  # severity set; version string says so.
+    {"name": "aziridine", "smarts": "C1CN1", "severity": "high",
+     "note": "builtin fallback"},
+    {"name": "mustard_like", "smarts": "ClCCS(=O)=O", "severity": "high",
+     "note": "builtin fallback"},
+    {"name": "hydrazine", "smarts": "NN", "severity": "high",
+     "note": "builtin fallback"},
+]
+_MIN_AGENTS = ["bacillus anthracis", "variola", "ebola", "yersinia pestis"]
+
+
 def _load_rules() -> dict:
     try:
         return json.loads(_RULES_PATH.read_text())
     except Exception:
-        return {"version": "builtin-fallback", "alerts": _FALLBACK,
-                "select_agents": _FALLBACK_AGENTS}
+        return {"version": "builtin-fallback", "alerts": _MIN_ALERTS,
+                "select_agents": _MIN_AGENTS}
 
 
 # (name, smarts, severity, note)

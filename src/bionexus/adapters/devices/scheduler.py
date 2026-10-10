@@ -1,4 +1,4 @@
-"""Robotic arm / plate scheduling adapter — Automata LINQ, HighRes Cellario.
+"""Robotic arm / plate scheduling adapter — Automata LINQ (endpoint shapes UNVALIDATED — S-T4), HighRes Cellario.
 
 In a multi-device lab, plates must be transported between instruments
 (incubator → dispenser → reader → LC-MS). This adapter handles plate
@@ -46,7 +46,7 @@ class RoboticArmScheduler:
     """Schedules plate transport between devices via REST API.
 
     Connects to centralized scheduling software (Cellario, Overlord,
-    Automata LINQ). The agent sends a high-level `transport_plate` command;
+    Automata LINQ (endpoint shapes UNVALIDATED — S-T4)). The agent sends a high-level `transport_plate` command;
     the scheduling software handles robot selection, path planning, and
     collision avoidance.
     """

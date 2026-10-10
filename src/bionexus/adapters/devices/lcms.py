@@ -61,6 +61,11 @@ class LCMSAdapter:
     name = "lcms"
 
     def __init__(self, seed: int = 7, simulator: bool = True):
+        if not simulator:
+            raise NotImplementedError(
+                "LC-MS live mode (.raw parsing / vendor API) is not "
+                "implemented — this adapter only simulates (ROADMAP "
+                "S-T4); refusing to dress synthetic values as spectra")
         self.rng = random.Random(seed)
         self.sim = LCMSSimulator(seed)
         self.simulator = simulator
@@ -73,7 +78,10 @@ class LCMSAdapter:
             "measures": ["edited_fraction", "splice_junction_peptides",
                          "unmodified_target"],
             "denominator_capable": True,
-            "note": "The instrument that supplies the missing denominator",
+            "simulated": True, "hardware_validated": False,
+            "note": "SIMULATOR ONLY (S-T4): supplies the missing "
+                    "denominator in virtual campaigns; no .raw parsing "
+                    "or vendor API exists yet",
         }
 
     def submit_protocol(self, protocol: ProtocolSubmission) -> str:

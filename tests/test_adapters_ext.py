@@ -1643,7 +1643,7 @@ def test_sila2_adapter_mock_channel():
 
 
 def test_hcs_microscope_per_cell():
-    from bionexus.adapters.devices.hcs_microscope import HCSMicroscopeAdapter
+    from bionexus.adapters.devices.hcs_microscope import HCSMicroscopeAdapter as HCSMicroscopeAdapter
     from bionexus.core.contracts import ProtocolOp, ProtocolStep
     lab = HCSMicroscopeAdapter.__new__(HCSMicroscopeAdapter)
     lab.seed = 7
@@ -1919,3 +1919,69 @@ def test_repeated_problem_id_gets_unique_branch(tmp_path):
     assert r2.problem.problem_id if hasattr(r2, "problem") else True
     assert len(store.branch_records("problem/prob-same")) == n1   # untouched
     assert store.branch_records("problem/prob-same-2")            # new branch
+
+
+def test_tox_alerts_fallback_survives_missing_data_file():
+    """Audit (Oct 10): the missing-file path NameErrored because the
+    except-branch referenced _FALLBACK before it existed. Must degrade
+    loudly-but-usable, never crash the gate."""
+    import pathlib
+    from bionexus.adapters.bio import tox_alerts as m
+    real = m._RULES_PATH
+    try:
+        m._RULES_PATH = pathlib.Path("/nonexistent/safety_rules.json")
+        r = m._load_rules()
+        assert r["version"] == "builtin-fallback" and r["alerts"]
+    finally:
+        m._RULES_PATH = real
+
+
+def test_device_adapters_refuse_fake_live_mode():
+    """Audit (Oct 10): HCS/LCMS accepted simulator=False and served
+    RNG values as instrument data — the exact fake-functionality shape.
+    Now they raise."""
+    import pytest
+    from bionexus.adapters.devices.hcs_microscope import HCSMicroscopeAdapter as HCSMicroscope
+    from bionexus.adapters.devices.lcms import LCMSAdapter
+    with pytest.raises(NotImplementedError):
+        HCSMicroscope(simulator=False)
+    with pytest.raises(NotImplementedError):
+        LCMSAdapter(simulator=False)
+
+
+def test_openai_compat_sends_authorization():
+    """Audit (Oct 10): api_key was stored but never sent — every real
+    endpoint would 401."""
+    import json
+    seen = {}
+
+    class Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return json.dumps({"choices": [{"message": {
+                "content": "ok", "tool_calls": None}}]}).encode()
+
+    def fake_urlopen(req, timeout=None):
+        seen["headers"] = dict(req.headers)
+        return Resp()
+
+    import urllib.request
+    from bionexus.adapters.models.openai_compat import OpenAICompatProvider
+    orig = urllib.request.urlopen
+    urllib.request.urlopen = fake_urlopen
+    try:
+        from bionexus.core.contracts import (Envelope, ToolInvocation,
+                                             ToolName)
+        inv = ToolInvocation(envelope=Envelope(experiment_branch_id="t"),
+                             tool=ToolName.fm_predict_property)
+        p = OpenAICompatProvider(model="gpt-x", base_url="http://api.test/v1",
+                                 api_key="sk-test-123")
+        p.generate(inv, "hi")
+        assert seen["headers"].get("Authorization") == "Bearer sk-test-123"
+    finally:
+        urllib.request.urlopen = orig

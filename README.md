@@ -547,8 +547,8 @@ and interchangeable. The contracts are the pydantic models in `bionexus.core.con
 
 | Interface | Adapters (now → roadmap) |
 |---|---|
-| `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub), anthropic → gemini |
-| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulator, imaging-simulator, Opentrons OT-2/Flex (HTTP), PlateReaderShare, SiLA 2 (generic, multi-device), HCS microscope (per-cell imaging), LC-MS (ratiometric proteomics), RoboticArmScheduler (plate transport) → cloud labs |
+| `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub — Authorization header sent), anthropic → gemini |
+| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulators: SimulatorLab, imaging, recording/playback, replay, bioprocess, synthesis, protein-design skeleton. Real-I/O: PlateReaderShare (share-watch + `labread`). Reference drivers, NOT hardware-validated (see ROADMAP S-T4): Opentrons OT-2/Flex (HTTP), generic-HTTP device template (not a SiLA 2 binding), HCS & LC-MS (simulator-only — live mode raises), arm scheduler (REST template) → cloud labs |
 | `Sandbox` | local (copy-on-fork), docker (commit-based snapshots), OpenSandbox (gVisor/Kata/Firecracker runtimes, K8s scale, egress controls), AgentENV (VM-level snapshots) |
 | `ProvenanceStore` | sqlite → postgres, s3-worm |
 | `BioTool` | rdkit descriptors, ADMET, AlphaGenome Atlas variant scoring (AVI) → docking, ESMFold |

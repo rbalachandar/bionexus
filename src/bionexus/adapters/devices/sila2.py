@@ -1,26 +1,4 @@
-"""SiLA 2 generic device adapter — one adapter, many devices.
-
-SiLA 2 (Standardization in Lab Automation) is the industry standard for
-lab-device communication. Every SiLA 2-compliant device exposes a gRPC or
-HTTP endpoint with standardised commands (Execute, Get, Subscribe) and
-properties. This adapter wraps any SiLA 2 device into the BioNexus
-`LabAdapter` protocol.
-
-Supported device categories (by SiLA 2 feature namespace):
-  - Liquid handling (ALHs)
-  - Plate readers (multimode)
-  - Incubators
-  - Centrifuges
-  - Robotic arms / plate hotels
-  - Custom features
-
-Requires the `sila2` Python package (extra: `[sila2]`) for full gRPC
-support, or works with the HTTP gateway mode using stdlib only.
-
-References:
-  - SiLA 2 standard: https://sila2.gitlab.io/
-  - SiLA 2 Python SDK: https://github.com/SiLA2/sila_python
-"""
+"""GENERIC HTTP device adapter — NOT a SiLA 2 binding (audit Oct 10, S-T4): the real SiLA 2 protocol needs the gRPC sila2 SDK and its feature/resolve semantics, which are not implemented here. This speaks a simple JSON POST/GET contract (/command, /status, /results) that real SiLA 2 devices do NOT serve. Honest name: template-hub-style HTTP device shim."""
 from __future__ import annotations
 
 import json

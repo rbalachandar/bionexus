@@ -69,7 +69,9 @@ class OpenAICompatProvider:
         req = urllib.request.Request(
             f"{self.base_url.rstrip('/')}/chat/completions",
             data=json.dumps(body).encode(),
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json",
+                     **({"Authorization": f"Bearer {self.api_key}"}
+                        if self.api_key else {})},
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=120) as resp:
@@ -100,7 +102,9 @@ class OpenAICompatProvider:
         req = urllib.request.Request(
             f"{self.base_url.rstrip('/')}/chat/completions",
             data=json.dumps(body).encode(),
-            headers={"Content-Type": "application/json"}, method="POST")
+            headers={"Content-Type": "application/json",
+                     **({"Authorization": f"Bearer {self.api_key}"}
+                        if self.api_key else {})}, method="POST")
         with urllib.request.urlopen(req, timeout=120) as resp:
             data = json.loads(resp.read())
         msg = data["choices"][0]["message"]

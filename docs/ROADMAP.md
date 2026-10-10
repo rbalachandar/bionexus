@@ -485,6 +485,29 @@ this is a security claim, not a feature. Order of work:
   now UI-visible wherever forks actually occur (API + per_run mode
   remain the wiring for that).
 
+### S-T4 — Hardware truth: the device adapters tell no lies (opened Oct 10, wave-2 audit)
+
+The adapters audit found the repo's worst honesty failures to date —
+documented honestly HERE until the code catches up:
+- Opentrons driver: real HTTP, DRAFT payload shapes (multipart upload,
+  Opentrons-Version header, JSON:API run relationships all missing) —
+  never touched a robot; P8 fake mirrors the draft, so CI cannot catch
+  it. Action: validate against real hardware (loaned OT-2 or community
+  emulator with the official spec) OR keep labeled reference-driver.
+- SiLA2 adapter: speaks invented JSON endpoints, NOT SiLA 2 (no gRPC/
+  SDK). Relabeled generic-HTTP template; real binding needs the sila2
+  SDK work.
+- HCS microscope + LC-MS: SIMULATOR ONLY — simulator=False now raises
+  (it used to serve RNG values as instrument data — violates our own
+  labeling rule). Live bindings = vendor sessions.
+- Scheduler: vendor endpoint shapes unvalidated.
+- openai_compat api_key was never sent (fixed + regression test).
+- tox_alerts missing-file fallback crashed NameError (fixed + test).
+Interim protections shipped: live-mode refusals, `simulated: true` in
+capabilities, honest docstrings, README table states validation status
+per adapter. Remaining: an S-T4 validation session on real hardware, or
+formal demotion of the unvalidated drivers to examples/.
+
 ## T0 — Uncertainty-aware verdicts (epistemic integrity)
 - [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap
   (deterministic seed), `labread.fit_ic50_ci`; CI stored on compounds as
