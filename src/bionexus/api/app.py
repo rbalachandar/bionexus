@@ -138,9 +138,9 @@ def approval_decide(aid: str, body: dict) -> dict:
 
 # ------------------------------------------------------------- programs
 @app.get("/api/programs")
-def programs() -> dict:
+def programs(include_archived: bool = False) -> dict:
     ws = get_ws()
-    return views.workspace(ws)
+    return views.workspace(ws, include_archived=include_archived)
 
 
 @app.get("/api/taste")
@@ -756,8 +756,9 @@ async def events(
         request: Request,
         topics: str = "workspace") -> StreamingResponse:
     """Server-sent events. topics: comma-separated
-    (campaign:<eid>, workspace, approvals). Replays missed events when
-    a Last-Event-ID header is present."""
+    (campaign:<eid>, workspace). Replays missed events when a
+    Last-Event-ID header is present. The approvals queue is
+    polled (refetch), not streamed — no approvals topic is emitted."""
     from bionexus.api.sse import replay_events
     wanted = {t.strip() for t in topics.split(",") if t.strip()}
     last_id = 0

@@ -42,7 +42,8 @@ bn anchor && bn anchor --verify       # Merkle root: externally checkable
 ## Run the reference round (no network, no model server)
 
 ```sh
-python examples/iteration_loop.py     # or: bn sim
+python examples/demo_full_flow.py     # or: bn sim  (iteration_loop.py
+# retired with the notebooks cleanup; demo_full_flow covers the same loop)
 ```
 
 This runs one full design round: candidate generation (offline stub) →

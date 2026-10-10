@@ -26,7 +26,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       ])
       return { pending: (ap.pending ?? []).length, halted: !!halt.halted,
         graded: ev?.available ? { mean: ev.mean, allPass: ev.all_pass,
-          tasks: ev.n_tasks } : null }
+          tasks: ev.n_tasks, failing: (ev.failing ?? []).length } : null }
     },
     refetchInterval: 5000,
   })
@@ -72,7 +72,7 @@ function Shell({ children }: { children: React.ReactNode }) {
               style={{ color: gov.data.graded.allPass ? '#6ee7a0' : '#fca5a5',
                 fontWeight: 700 }}>
               {' '}· graded {gov.data.graded.mean?.toFixed(3)}
-              {' '}({gov.data.graded.tasks}/{gov.data.graded.tasks} bar-pass)
+              {' '}({gov.data.graded.tasks - gov.data.graded.failing}/{gov.data.graded.tasks} bar-pass)
             </span>
           )}
         </span>

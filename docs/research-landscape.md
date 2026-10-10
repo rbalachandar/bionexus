@@ -221,7 +221,7 @@ seen, so it goes in full.
    verdict veto.
 3. **Nothing is scored.** No leaderboard, no reproduction studies, no
    published failures. Our differentiator is precisely that our
-   honesty-claims are graded (0.979 eval mean; CS05 98.9%/0-FP; CS06
+   honesty-claims are graded (0.954 eval mean (24 tasks); CS05 98.9%/0-FP; CS06
    published negative).
 4. Cloud/Gemini-shaped (scion, Vertex tooling); ours is provider-agnostic
    and hermetic-offline by CI.

@@ -14,7 +14,8 @@ typed, domain-specific — not bloated.
 | P4 | Wet lab is an adapter | Simulator and hardware implement one `LabAdapter` protocol; CI runs simulator only |
 | P5 | Provenance mandatory, storage pluggable | Every interface result is provenance-wrapped; store is an adapter |
 | P6 | Safety is core, non-bypassable | Policy engine sits in core; physical actions cannot be dispatched without passing it |
-| P7 | Fork/snapshot first-class | `Sandbox` protocol has fork/snapshot/resume; the workflow engine uses it, adapters may degrade gracefully |
+| P7 | Fork/snapshot first-class | `Sandbox` protocol has fork/snapshot/resume; engine use is PARTIAL — the
+opt-in S-T3 session wraps lab ops + routed tools; blanket enforcement open, adapters may degrade gracefully |
 | P8 | Simulator-first CI | Full example workflows run against the virtual lab on every commit; hardware tested vs recordings only |
 
 ## Architecture (framework view)
@@ -68,7 +69,8 @@ User code / reference agents
       (degraded snapshot: deep-copy); documents AgentENV adapter as the real one *(P7)*
 - [x] T2.5 `adapters/bio/rdkit_ops.py` (optional extra) — descriptors / filters
       as `BioTool`s *(P2)*
-- [x] T2.6 Example: `examples/iteration_loop.py` — full design round with stub
+- [x] T2.6 Example: `examples/iteration_loop.py` (since retired; superseded by
+  `examples/demo_full_flow.py`) — full design round with stub
       model: generate → evaluate → gate → protocol → simulator → analysis *(P8)*
 
 ### Phase 3 — Trust & polish
@@ -80,7 +82,8 @@ User code / reference agents
       README rewrite for framework positioning
 
 ### Phase 4 — Ecosystem (post-1.0)
-- [x] T4.1 Anthropic/Gemini model adapters; MCP tool exposure
+- [x] T4.1 Anthropic adapter + MCP tool exposure; Gemini via the OpenAI-compatible
+  endpoint (no dedicated adapter — claim corrected by the Oct-10 audit)
 - [x] T4.2 AgentENV sandbox adapter (fork/snapshot for real)
 - [ ] T4.3 Opentrons adapter; cloud-lab HTTP adapter
 - [x] T4.4 Fine-tune flywheel hooks (export confirmed results as training pairs)

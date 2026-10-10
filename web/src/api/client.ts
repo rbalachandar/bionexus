@@ -169,7 +169,7 @@ async function post<T>(path: string): Promise<T> {
 }
 
 export const api = {
-  workspace: () => get<Workspace>('/api/programs'),
+  workspace: () => get<Workspace>('/api/programs?include_archived=1'),
   program: (slug: string) => get<ProgramOut>(`/api/programs/${slug}`),
   brief: (slug: string) =>
     post<{ narrative: string }>(`/api/programs/${slug}/brief`),

@@ -44,7 +44,9 @@ Rules of thumb:
 
 ## Compatibility commitments
 
-- Python: latest two minor versions supported (currently 3.12+)
+- Python: >=3.10 per pyproject; supported = latest two minors of CI practice
+  (3.12/3.13 in CI; note: the Oct-10 audit found the docs said 3.12+ while the
+  floor is 3.10)
 - Core dependencies kept minimal (`pydantic`); its major version bumps are
   coordinated with ours, not surprise MAJOR jumps
 - Contract files are usable without installing the package (they are the

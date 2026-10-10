@@ -96,7 +96,11 @@ Two production-shaped adapters ship in-tree:
 
 - **`adapters/lab/opentrons.py`** — Opentrons OT-2/Flex over the robot HTTP API
   (port 31950). The **Make** step of DMTA: compiles `ProtocolSubmission` into an
-  Opentrons Python protocol, uploads, plays the run, polls status. Results are
+  Opentrons Python protocol, uploads, plays the run, polls status.
+  **AUDIT (Oct 10): reference driver — request shapes are drafts, never
+  validated on a physical robot (multipart upload, `Opentrons-Version` header,
+  JSON:API run bodies all differ today). P8 tests mirror the draft, not the
+  device. Do not plan lab time against it until ROADMAP S-T4 runs. Results are
   execution evidence (succeeded commands), not assay values — read the plate
   afterwards with a reader adapter or `bn read`.
 - **`adapters/lab/plate_reader_share.py`** — for readers configured to

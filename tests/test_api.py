@@ -349,3 +349,29 @@ def test_program_delete_purge_vs_archive(tmp_path):
     assert ws.get("purge-exp-1") is None
     assert program_cfg.list_programs() == [] or \
         all(p["slug"] != "purge-1" for p in program_cfg.list_programs())
+
+
+def test_decomposed_launch_inherits_program_autonomy(tmp_path, monkeypatch):
+    """Audit fix (Oct 10): _spawn_plan hardcoded --autonomy act — a
+    gate-mode program must never silently spawn unattended campaigns."""
+    import bionexus.api.launch as L
+    seen = {}
+
+    def fake_popen(cmd, **kw):
+        seen["cmd"] = cmd
+
+        class P:
+            pid = 1
+
+            def poll(self):
+                return None
+        return P()
+    monkeypatch.setattr(L.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(L, "CAMPAIGN_DIR", tmp_path)
+    L._spawn_plan({"objective": "o", "autonomy": "gate"}, "GateProgram-X")
+    assert "gate" in seen["cmd"] and "act" not in seen["cmd"]
+    L._spawn_plan({"objective": "o"}, "GateProgram-Y")   # absent -> gate
+    assert seen["cmd"][-1] == "gate"
+    import bionexus.program as pcfg
+    pcfg.delete_program("GateProgram-X")
+    pcfg.delete_program("GateProgram-Y")

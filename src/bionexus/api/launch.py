@@ -117,9 +117,12 @@ def _spawn_plan(doc: dict, program_name: str) -> None:
     import os as _os
     cands = ",".join(c.strip() for c in
                      (doc.get("candidates") or "").split(",") if c.strip())
+    # autonomy comes from the PROGRAM, never hardcoded here: a gate-mode
+    # program must not spawn unattended campaigns (audit fix, Oct 10)
+    autonomy = doc.get("autonomy") or "gate"
     cmd = [sys.executable, "-u", "-m", "bionexus.cli", "plan",
            "--objective", doc.get("objective") or "optimize",
-           "--model", "anthropic", "--run", "--autonomy", "act"]
+           "--model", "anthropic", "--run", "--autonomy", autonomy]
     if cands:
         cmd += ["--candidates", cands]
     logf = CAMPAIGN_DIR / f"plan-{int(time.time())}.log"

@@ -304,7 +304,7 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   owner call — a read-only copy of a committed artifact inside the app is
   redundant surface: the tab was removed, the canonical listing is README +
   evals/leaderboard.md, and the app keeps only a header badge "graded
-  0.980 (13/13 bar-pass)" fed by GET /api/evals — trust line where the
+  0.982 (14/14 epistemics)" fed by GET /api/evals — trust line where the
   decision happens, no duplicated scoreboard.) Graceful-degrade + corrupt-json +
   failing-run + endpoint tests (5, `tests/test_evals_api.py`); the honesty
   framing is asserted, not cosmetic: hit-recovery MUST be <1.0 AND passed
@@ -562,7 +562,7 @@ formal demotion of the unvalidated drivers to examples/.
   to the paper = memorization. Wired into CS02 (provenance-recorded) and
   CS03 (`contamination_variants` row); stub-tested offline. [ ] results
   land when studies are re-run (network day)
-- Verify: `make eval-suite` (new target) runs offline except LLM rows
+- Verify: `bn eval --suite epistemics,models` runs offline except LLM rows
 
 ## T1 — Mechanistic, falsifiable hypotheses
 - [x] Hypothesis fields: `mechanism`, `refutation_condition`,
@@ -739,7 +739,7 @@ Gap analysis against our evals/funnel/governance:
 
 ## Session bootstrap
 ```sh
-make test-unit                      # 31 tests green as of this writing
+make test-unit                      # fast lane (target absent — use pytest -k)
 make api                            # web app (:8000)
 git log --oneline -10               # recent context
 ```

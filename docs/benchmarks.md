@@ -18,7 +18,9 @@ embedded fixtures (P8: CI stays offline).
 | **ProteinGym** | protein mutation effect | 217 assays | Biology Agent / protein-FM benchmark |
 | **FLIP / TAPE** | protein fitness/function | varies | protein-adapter benchmarks |
 
-## First results — `examples/run_benchmark.py` / `run_benchmark_real.py`
+## First results — historical, from since-retired scripts (`run_benchmark.py`,
+`run_benchmark_real.py`); the maintained equivalent is `examples/run_benchmarks.py`
+plus the graded `bn eval` models tier
 
 Split: first 80% train / last 20% test (HIV: stratified subsample, 3% actives).
 Baselines are deliberately weak floors; the point is that real model adapters
@@ -42,7 +44,8 @@ must beat them and the harness is honest.
 | char3gram-ridge (stdlib) | 0.757 |
 | **morgan2048-rf** (rdkit+sklearn) | **0.855** |
 
-**LLM ablation — Lipophilicity (n=40, glm-5.1, `run_llm_ablation.py`)**
+**LLM ablation — Lipophilicity (n=40, glm-5.1; `run_llm_ablation.py` was retired —
+table is a historical record, not reproducible from the repo)**
 
 | Policy | Spearman |
 |---|---|
@@ -86,4 +89,5 @@ Policies implement `fit(data)` / `predict(smiles)` — the same shape as
 `ANTHROPIC_AUTH_TOKEN` / Anthropic model env vars). It speaks the Anthropic
 Messages protocol over stdlib urllib and works with any compatible endpoint
 (including LLM proxies). LLM calls are expensive — evaluate with `n_test`
-caps, as `run_benchmark_real.py` does.
+caps, as the retired `run_benchmark_real.py` did (models tier of `bn eval`
+covers this ground now).

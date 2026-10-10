@@ -19,7 +19,10 @@ Read with `docs/SAFETY.md` (SafetyEngine mechanics) and `docs/PLAN.md` (P6).
 └──────────────────────────────────┴──────────────────────┘
 ```
 
-Agents run *inside* sandboxes and reach the lab only through `LabGateway`.
+Agents reach the lab only through `LabGateway`. Sandbox execution is
+opt-in and currently covers lab ops + routed tool calls per experiment
+(ROADMAP S-T3); blanket agent-in-sandbox enforcement is NOT yet true —
+agent/reviewer/MCP lanes run in-process (S-T3 1e).
 Adapters are operator-installed code — they are part of the trusted core, not
 the agent.
 

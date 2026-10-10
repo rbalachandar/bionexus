@@ -8,7 +8,8 @@ with a FastAPI + React workbench as the scientist surface.
 - **`docs/ROADMAP.md` — the live TODO plan**. Epistemic P0s (uncertainty-aware
   verdicts, small-n stats, provenance physics, governance-on-agent-surfaces)
   are CLOSED (Oct 2026 review — `docs/REVIEW-2026-10.md`). The frontier is now
-  **Scientist Utility** (S-T0: prospective real-data case study, real-plate
+  **S-T4 (hardware truth for device adapters) + S-T3 1d/1e (finish the sandbox
+  lanes) + Scientist Utility** (S-T0: prospective real-data case study, real-plate
   ingestion, Make-as-gate). Start there in any new session; update status
   boxes as you complete items.
 - `docs/PLAN.md` — original design (principles P1–P8)
@@ -16,7 +17,8 @@ with a FastAPI + React workbench as the scientist surface.
 
 ## Commands
 ```sh
-.venv/bin/python -m pytest -q          # all tests (303 green as of this writing)
+.venv/bin/python -m pytest -q          # all tests (352 green as of Oct 10 — trust
+                                          # audits wave 1-2; see docs/ROADMAP S-T3/S-T4)
 make test                              # same suite via the Makefile
 make api                               # backend + built SPA on :8000
 make api-dev                           # backend only, auto-reload
