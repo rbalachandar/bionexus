@@ -409,8 +409,6 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
   cascade; `case-studies/08-proteinbase-entry/seed_workbench.py` seeds the
   prospective PD-L1 design campaign (112 hypotheses, 30 of them controls
   whose pre-registered refutation clauses fire against the scorer itself).
-  *(The two screenshots above predate the program-card trees — refresh
-  queued.)*
 - **`bn serve`** — a headless alternative cockpit (stdlib HTTP, no
   dependencies) for approval queues and diaries on machines without a
   browser; useful for remote/headless boxes.
