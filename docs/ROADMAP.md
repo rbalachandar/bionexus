@@ -541,6 +541,23 @@ Remaining for S-T4: the OT-2/Flex confirmation session (contract done;
 the robot's own openapi.json makes it checkable), LabMCP integration
 evaluation, vendor access decisions.
 
+  POC SHIPPED (Oct 10): adapters/devices/ezo_ph.py — Atlas EZO pH probe
+  as a wire-level LabAdapter against a datasheet-faithful simulator
+  (documented stand-in for labmcp_atlas_ezo, Apache-2.0; production
+  swaps the _tx seam for a real UART bridge or the imported simulator,
+  adapter code unchanged). Proves the three-layer thesis end to end:
+  (1) raw verbs (Cal, r, sleep) live at the WIRE — capabilities expose
+  only what the probe measures and how well; agents never hold a
+  command; (2) datasheet quirks (*ER, *WA wake-retry, mid-clears-cal)
+  run through the SAME code as production — mocks that skip quirks
+  teach lies; (3) calibration-state uncertainty feeds the PRODUCTION
+  classify(): the identical 7.35 pH reading is INCONCLUSIVE
+  uncalibrated (CI 7.11-7.58 straddles the 7.20 gate) and VALIDATED
+  buffered (CI 7.340-7.360). Measurement quality is part of the
+  verdict. Next: same adapter driven through LabGateway + provenance in
+  a live campaign, then the generic McpLabAdapter against labmcp
+  --simulate.
+
 ## T0 — Uncertainty-aware verdicts (epistemic integrity)
 - [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap
   (deterministic seed), `labread.fit_ic50_ci`; CI stored on compounds as
