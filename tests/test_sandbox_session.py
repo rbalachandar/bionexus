@@ -54,7 +54,8 @@ def test_registry_facade_routes_and_passthrough_matches():
     if importlib.util.find_spec("rdkit"):
         assert via_box.status == "succeeded"
     off = SandboxSession(mode="off").registry(inner)
-    assert off.invoke(_inv()).status == "succeeded"   # untouched path
+    assert off.invoke(_inv()).status == via_box.status  # same policy,
+    # in-process and sandboxed — whatever rdkit availability dictates
     s.destroy()
 
 
