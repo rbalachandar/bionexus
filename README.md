@@ -566,10 +566,9 @@ BioNexus decides *whether they run*, and records what happened. Focused skills:
 
 ## Architecture
 
-Hand-drawn blueprint-style diagrams (SVG — rendered directly on GitHub).
-They cover the engine's architecture (blocks A–F); the adapter catalog and
-the workbench surface evolve faster than the blueprints — current state
-lives in [`docs/architecture.md`](docs/architecture.md) and the
+Blueprint-style diagrams (SVG) of the engine architecture, blocks A–F.
+Adapter and workbench details are documented in
+[`docs/architecture.md`](docs/architecture.md) and the
 Five-core-interfaces table above.
 
 **1 · Layered View** — L0 governance → L3 infrastructure, with the five architectural blocks between.
@@ -577,8 +576,8 @@ Five-core-interfaces table above.
 ![Layered View](diagrams/svg/01-layered-view.svg)
 
 **2 · Design Iteration Loop** — one active-learning round, from dossier to
-next-round proposals. (In-silico assay stages shown are adapters: ADMET
-ships today; docking and MD are roadmap `BioTool` implementations.)
+next-round proposals. (In-silico assay stages shown are adapters: ADMET is
+implemented; docking and MD are roadmap `BioTool` implementations.)
 
 ![Design Iteration Loop](diagrams/svg/02-iteration-loop.svg)
 
