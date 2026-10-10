@@ -186,3 +186,30 @@ def test_shape_claims_survive_renormalization_bridge():
         w = classify_curve([(c, a * v + b) for c, v in weak])
         assert s["class"] == w["class"] == "rise-complete", (a, b, s, w)
         assert s["midpoint_uM"] < w["midpoint_uM"]
+
+
+def test_frame_median_rule_is_live_not_dead_code():
+    # sabotage audit found: with the med>55 clause sabotaged away, the
+    # whole suite stayed green (flat-saturation covered every fixture).
+    # This curve set is NOT flat (range 35) but starts high — only the
+    # median rule can catch it.
+    from bionexus.labread import _pubchem_frame
+    recs = [{"sample": f"S{i}", "conc_um": c, "value": v}
+            for i in range(8) for c, v in ((1.0, 60.0), (3.0, 85.0), (10.0, 95.0))]
+    assert _pubchem_frame(recs) == "self-normalized"
+    ext = [{"sample": f"S{i}", "conc_um": c, "value": v}
+           for i in range(8) for c, v in ((1.0, 2.0), (3.0, 8.0), (10.0, 20.0))]
+    assert _pubchem_frame(ext) == "external-reference"
+
+
+def test_sub_micromolar_ic50_fit_needs_the_wide_log_range():
+    # sabotage audit found: widening the Hill lower bound to 0 (killing
+    # sub-1uM capability) left the suite green. Truth: 0.1 uM sigmoidal.
+    import math
+    from bionexus.labread import fit_ic50_ci
+    ic50_true = 0.1
+    pts = [(c, 100.0 / (1.0 + ic50_true / c))
+           for c in (0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0)]
+    f = fit_ic50_ci(pts)
+    assert f is not None
+    assert 0.05 <= f["ic50"] <= 0.2, f"sub-uM recovery broken: {f}"

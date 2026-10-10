@@ -103,7 +103,8 @@ def test_eln_export_carries_instrument_and_detached_checksum(tmp_path):
     text = out.read_text()
     assert "sim-v1" in text                      # version surfaced
     check = out.with_suffix(".csv.sha256")
-    assert check.exists() and out.read_bytes().hex or True
+    assert check.exists()
+    assert len(out.read_bytes().hex()) > 0
     import hashlib
     assert check.read_text().split()[0] == hashlib.sha256(
         out.read_bytes()).hexdigest()

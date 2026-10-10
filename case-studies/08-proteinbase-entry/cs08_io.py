@@ -28,3 +28,20 @@ def binder_seqs(yaml_dir: str | Path) -> dict[str, str]:
         if m:
             out[p.stem] = m.group(1)
     return out
+
+
+GATE, BAND = 0.7, 0.05   # pre-registered gate + declared single-prediction band
+
+
+def verdict(iptm: float, gate: float = GATE, band: float = BAND) -> str:
+    """ONE verdict mechanism for every CS08 artifact. Mirrors
+    SuccessCriteria.classify(direction=max) exactly: the 4dp-rounded
+    95% band can veto certainty — lo >= gate confirms, hi < gate
+    refutes, straddling abstains. (Three scripts previously computed
+    this three ways; a code review caught the drift.)"""
+    lo, hi = round(iptm - band, 4), round(iptm + band, 4)
+    if lo >= gate:
+        return "confirm_predicted"
+    if hi < gate:
+        return "refute_predicted"
+    return "abstain"

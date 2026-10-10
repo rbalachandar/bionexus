@@ -21,7 +21,7 @@ Attribution: "This work used Proteinbase by Adaptyv Bio under ODC-By license".
 |---|---|---|
 | Nipah-G hit rate | 10.0% (103/1,030) | 9.3% (111/1,200) ✓ |
 | EGFR hit rate (both comps pooled) | 15.7% | 14.0% (comp 2) / 2.5% (comp 1) ✓ |
-| expression-failure proteins | 276/5,253 = 5.3% all-protein; measurement-level 11.6% | 1,093/9,414 = 11.6% ✓ |
+| expression-failure proteins | 276/5,253 = 5.3% all-protein; measurement-level 11.6% | 1,093/9,414 = 11.6% ✓ (measurement level computed on the FULL 40 MB deposit, sha256 51c467ed… per fixtures/MANIFEST.json — the committed fixtures hold the 2,630 TESTED pairs only; all-protein figures derive from proteins.csv.gz and are fixture-reproducible) |
 | method spread (Nipah) | rfdiffusion 17.6% · unlabeled 13.8% · bindcraft 7.4% · boltzgen 1.9% · dsm 0% | same ranking class ✓ |
 
 ## What FAILED to work — the two findings that matter

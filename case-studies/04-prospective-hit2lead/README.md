@@ -128,6 +128,11 @@ in `study.db` (209 records), verifiable with
 ```
 
 Inputs frozen under `fixtures/` (manifest checksums; `bn fixtures verify
-case-studies/04-prospective-hit2lead`). Outputs regenerate deterministically:
-`results.json` and `study.db` (provenance branches) are written per run and
-not committed. Seeds fixed; no LLM call — fully offline and deterministic.
+case-studies/04-prospective-hit2lead`). Seeds fixed; no LLM call — fully
+offline and deterministic. `results.json` is COMMITTED as the evidence for
+every number above, pinned to the Oct-4 run (commit 4bc47ba). Honest caveat
+found by the Oct-10 trust audit: rerunning at a later HEAD drifts — the
+engine itself evolved since (submission-time make-prescreen reordered
+refusals, shifting counts: measured 9 vs 6, make-refused 0 vs 6). The
+committed file is the record of what was claimed; drift between it and a
+fresh rerun is a finding to note, not a reason to silently re-pin.

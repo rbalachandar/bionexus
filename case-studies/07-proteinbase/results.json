@@ -1,0 +1,211 @@
+{
+ "study": "CS07 Proteinbase reproduction (third-modality, wet-lab labels)",
+ "attribution": "This work used Proteinbase by Adaptyv Bio under ODC-By license",
+ "hits_vs_published": [
+  {
+   "target": "nipah-glycoprotein-g",
+   "n": 1030,
+   "hits": 103,
+   "hit_rate": 0.1,
+   "published": 0.093
+  },
+  {
+   "target": "egfr",
+   "n": 826,
+   "hits": 130,
+   "hit_rate": 0.1574,
+   "published": 0.14
+  },
+  {
+   "target": "human-serum-albumin",
+   "n": 103,
+   "hits": 0,
+   "hit_rate": 0.0,
+   "published": null
+  },
+  {
+   "target": "il7r",
+   "n": 97,
+   "hits": 62,
+   "hit_rate": 0.6392,
+   "published": null
+  },
+  {
+   "target": "pd-l1",
+   "n": 75,
+   "hits": 39,
+   "hit_rate": 0.52,
+   "published": null
+  },
+  {
+   "target": "human-insulin-receptor",
+   "n": 35,
+   "hits": 21,
+   "hit_rate": 0.6,
+   "published": null
+  },
+  {
+   "target": "human-tnfa",
+   "n": 35,
+   "hits": 0,
+   "hit_rate": 0.0,
+   "published": null
+  },
+  {
+   "target": "hnmt",
+   "n": 30,
+   "hits": 2,
+   "hit_rate": 0.0667,
+   "published": null
+  },
+  {
+   "target": "human-ambp",
+   "n": 30,
+   "hits": 5,
+   "hit_rate": 0.1667,
+   "published": null
+  },
+  {
+   "target": "human-gm2a",
+   "n": 30,
+   "hits": 0,
+   "hit_rate": 0.0,
+   "published": null
+  },
+  {
+   "target": "human-idi2",
+   "n": 30,
+   "hits": 5,
+   "hit_rate": 0.1667,
+   "published": null
+  },
+  {
+   "target": "human-mzb1-perp1",
+   "n": 30,
+   "hits": 15,
+   "hit_rate": 0.5,
+   "published": null
+  },
+  {
+   "target": "human-orm2",
+   "n": 30,
+   "hits": 0,
+   "hit_rate": 0.0,
+   "published": null
+  },
+  {
+   "target": "human-pdgfr-beta",
+   "n": 30,
+   "hits": 18,
+   "hit_rate": 0.6,
+   "published": null
+  },
+  {
+   "target": "human-pmvk",
+   "n": 30,
+   "hits": 10,
+   "hit_rate": 0.3333,
+   "published": null
+  },
+  {
+   "target": "human-rfk",
+   "n": 30,
+   "hits": 2,
+   "hit_rate": 0.0667,
+   "published": null
+  }
+ ],
+ "nipah_methods": [
+  {
+   "method": "rfdiffusion",
+   "n": 17,
+   "hits": 3,
+   "rate": 0.1765
+  },
+  {
+   "method": "unlabeled",
+   "n": 441,
+   "hits": 61,
+   "rate": 0.1383
+  },
+  {
+   "method": "bindcraft",
+   "n": 27,
+   "hits": 2,
+   "rate": 0.0741
+  },
+  {
+   "method": "protpardelle-proteinmpnn",
+   "n": 16,
+   "hits": 1,
+   "rate": 0.0625
+  },
+  {
+   "method": "boltzgen",
+   "n": 107,
+   "hits": 2,
+   "rate": 0.0187
+  },
+  {
+   "method": "dsm-synteract",
+   "n": 19,
+   "hits": 0,
+   "rate": 0.0
+  }
+ ],
+ "expression": {
+  "proteins": 5253,
+  "with_expr_failure": 276,
+  "rate": 0.0525
+ },
+ "selection_replays": [
+  {
+   "target": "nipah-glycoprotein-g",
+   "signal": "plddt",
+   "pool_n": 1022,
+   "baseline_hit": 0.1008,
+   "top_quartile_hit": 0.0745,
+   "lift": -0.0263
+  },
+  {
+   "target": "nipah-glycoprotein-g",
+   "signal": "mpnn",
+   "pool_n": 1022,
+   "baseline_hit": 0.1008,
+   "top_quartile_hit": 0.0235,
+   "lift": -0.0773
+  },
+  {
+   "target": "egfr",
+   "signal": "plddt",
+   "pool_n": 826,
+   "baseline_hit": 0.1574,
+   "top_quartile_hit": 0.1019,
+   "lift": -0.0554
+  },
+  {
+   "target": "egfr",
+   "signal": "mpnn",
+   "pool_n": 826,
+   "baseline_hit": 0.1574,
+   "top_quartile_hit": 0.1505,
+   "lift": -0.0069
+  }
+ ],
+ "ad_transfer": {
+  "domain_n": 1030,
+  "query_n": 826,
+  "fixed_floor_050": {
+   "cross_target_flagged": 0.9661,
+   "verdict": "absurd: LOO-NN of designed-protein pools sits far below 0.5, so fixed floors mis-flag"
+  },
+  "auto_floor_p25": {
+   "floor": 0.1053,
+   "leave_one_out_flagged": null,
+   "declared_false_alarm": 0.25,
+   "cross_target_flagged": 0.5424
+  },
+  "conclusion": "calibration was half the problem (fixed 0.5 -> 96.6% cross AND massive in-domain over-flag); quantile floors restore the declared error rate, and the residual weakness is the aa-3gram representation itself (designed binders of ONE target share only ~0.05-0.10 3-gram Jaccard with their nearest sibling) -> ticketed: larger k or embedding-based domain"
+ },
+ "headline_negative": "plddt-selection on nipah-glycoprotein-g achieves 7.4% vs pool 10.1% (lift -2.6%)"
+}

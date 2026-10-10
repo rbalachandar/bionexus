@@ -1,0 +1,114 @@
+[
+ {
+  "paper": "2025 paper, target CHEMBL4508, 67 compounds",
+  "strategy": "random",
+  "n_compounds": 67,
+  "n_true_actives": 5,
+  "tested": 30,
+  "rounds": 6,
+  "recall_of_actives": 0.8,
+  "best_compound_rank": 1,
+  "chain_intact": true,
+  "flow_stages_recorded": [
+   "hypothesis_invalidated",
+   "hypothesis_proposed",
+   "hypothesis_validated",
+   "lab_run",
+   "problem_defined"
+  ],
+  "flow_ok": true
+ },
+ {
+  "paper": "2025 paper, target CHEMBL4508, 67 compounds",
+  "strategy": "rf",
+  "n_compounds": 67,
+  "n_true_actives": 5,
+  "tested": 30,
+  "rounds": 3,
+  "recall_of_actives": 0.4,
+  "best_compound_rank": 1,
+  "chain_intact": true,
+  "flow_stages_recorded": [
+   "hypothesis_invalidated",
+   "hypothesis_proposed",
+   "hypothesis_validated",
+   "lab_run",
+   "problem_defined"
+  ],
+  "flow_ok": true
+ },
+ {
+  "paper": "2025 paper, target CHEMBL614245, 53 compounds",
+  "strategy": "random",
+  "n_compounds": 54,
+  "n_true_actives": 11,
+  "tested": 30,
+  "rounds": 4,
+  "recall_of_actives": 0.636,
+  "best_compound_rank": 1,
+  "chain_intact": true,
+  "flow_stages_recorded": [
+   "hypothesis_invalidated",
+   "hypothesis_proposed",
+   "hypothesis_validated",
+   "lab_run",
+   "problem_defined"
+  ],
+  "flow_ok": true
+ },
+ {
+  "paper": "2025 paper, target CHEMBL614245, 53 compounds",
+  "strategy": "rf",
+  "n_compounds": 54,
+  "n_true_actives": 11,
+  "tested": 30,
+  "rounds": 3,
+  "recall_of_actives": 0.182,
+  "best_compound_rank": null,
+  "chain_intact": true,
+  "flow_stages_recorded": [
+   "hypothesis_invalidated",
+   "hypothesis_proposed",
+   "hypothesis_validated",
+   "lab_run",
+   "problem_defined"
+  ],
+  "flow_ok": true
+ },
+ {
+  "paper": "CHEMBL6078657",
+  "strategy": "random",
+  "n_compounds": 54,
+  "n_true_actives": 0,
+  "tested": 30,
+  "rounds": 4,
+  "recall_of_actives": 1.0,
+  "best_compound_rank": null,
+  "chain_intact": true,
+  "flow_stages_recorded": [
+   "hypothesis_invalidated",
+   "hypothesis_proposed",
+   "lab_run",
+   "problem_defined"
+  ],
+  "flow_ok": true
+ },
+ {
+  "paper": "CHEMBL6078657",
+  "strategy": "rf",
+  "n_compounds": 54,
+  "n_true_actives": 0,
+  "tested": 30,
+  "rounds": 3,
+  "recall_of_actives": 1.0,
+  "best_compound_rank": null,
+  "chain_intact": true,
+  "flow_stages_recorded": [
+   "hypothesis_invalidated",
+   "hypothesis_proposed",
+   "lab_run",
+   "problem_defined"
+  ],
+  "flow_ok": true
+ }
+]

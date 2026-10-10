@@ -120,3 +120,10 @@ Artifacts: `case_study.db` (hash-chained provenance — inspect with
 - Add a baseline: untrained LLM without series context, to isolate the value
   of SAR reasoning across the series.
 - Human expert comparison: how do medicinal chemists score the same blind task?
+
+## Reproducibility (trust-audit label, Oct 10)
+
+The corpus numbers above came from a live ChEMBL + LLM run; the
+chain DB (case_study.db) is local-only and the run is not offline-
+reproducible from the repo. Committed fixtures verify the INPUT bytes;
+claims marked "qualified" in the table above reflect that limit honestly.

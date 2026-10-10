@@ -1,0 +1,841 @@
+{
+ "campaign_a": {
+  "selected": 30,
+  "judged": 6,
+  "correct_hit_claims": 1,
+  "FALSE_hit_claims": 0,
+  "correct_miss_calls": 5,
+  "WRONGLY_KILLED_actives": 0,
+  "honest_abstentions": 0,
+  "safety_refused": 18,
+  "synthesis_refused": 6
+ },
+ "campaign_b": {
+  "reproposed_with_declared_covalent_intent": 6,
+  "gate_then_allowed": 6,
+  "judged": 6,
+  "correct_hit_claims": 4,
+  "FALSE_hit_claims": 0,
+  "correct_miss_calls": 0,
+  "WRONGLY_KILLED_actives": 0,
+  "honest_abstentions": 2,
+  "verdicts": {
+   "EG-01": "inconclusive",
+   "EG-02": "confirmed",
+   "EG-03": "confirmed",
+   "EG-04": "inconclusive",
+   "EG-05": "confirmed",
+   "EG-06": "confirmed"
+  }
+ },
+ "per_compound": [
+  {
+   "candidate": "EG-04",
+   "campaign": "A",
+   "smiles": "CCN1CCC(=Cc2ccc(C(=O)N[C@@H]3[C@H]4Oc5ccc(Oc6ccnc7c6CCC(=O)N7)cc5[C@@H]34)cc2C(F)(F)F)CC1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 9.585,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL5730776",
+    "CHEMBL5730777",
+    "CHEMBL5730778"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-04",
+   "campaign": "B",
+   "smiles": "CCN1CCC(=Cc2ccc(C(=O)N[C@@H]3[C@H]4Oc5ccc(Oc6ccnc7c6CCC(=O)N7)cc5[C@@H]34)cc2C(F)(F)F)CC1",
+   "verdict": "inconclusive",
+   "bucket": "abstains",
+   "published_median_pic50": 9.585,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL5730776",
+    "CHEMBL5730777",
+    "CHEMBL5730778"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-01",
+   "campaign": "A",
+   "smiles": "CCN1CCN(Cc2ccc(C(=O)N[C@@H]3[C@H]4Oc5ccc(Oc6ccnc7c6CCC(=O)N7)cc5[C@@H]34)cc2C(F)(F)F)CC1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 9.47,
+   "n_measurements": 6,
+   "assays": [
+    "CHEMBL5730776",
+    "CHEMBL5730777",
+    "CHEMBL5730778"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-01",
+   "campaign": "B",
+   "smiles": "CCN1CCN(Cc2ccc(C(=O)N[C@@H]3[C@H]4Oc5ccc(Oc6ccnc7c6CCC(=O)N7)cc5[C@@H]34)cc2C(F)(F)F)CC1",
+   "verdict": "inconclusive",
+   "bucket": "abstains",
+   "published_median_pic50": 9.47,
+   "n_measurements": 6,
+   "assays": [
+    "CHEMBL5730776",
+    "CHEMBL5730777",
+    "CHEMBL5730778"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-05",
+   "campaign": "A",
+   "smiles": "CN(C)[C@@H]1CCCN(Cc2ccc(C(=O)N[C@@H]3[C@H]4Oc5ccc(Oc6ccnc7c6CCC(=O)N7)cc5[C@@H]34)cc2C(F)(F)F)C1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 9.004,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL5730776",
+    "CHEMBL5730777",
+    "CHEMBL5730778"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-05",
+   "campaign": "B",
+   "smiles": "CN(C)[C@@H]1CCCN(Cc2ccc(C(=O)N[C@@H]3[C@H]4Oc5ccc(Oc6ccnc7c6CCC(=O)N7)cc5[C@@H]34)cc2C(F)(F)F)C1",
+   "verdict": "confirmed",
+   "bucket": "claims_hit",
+   "published_median_pic50": 9.004,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL5730776",
+    "CHEMBL5730777",
+    "CHEMBL5730778"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-09",
+   "campaign": "A",
+   "smiles": "C=CC(=O)Nc1cc2c(Nc3ccc(F)c(Cl)c3)ncnc2cc1OC",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 9.0,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL3877213",
+    "CHEMBL4178351",
+    "CHEMBL4178361"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-06",
+   "campaign": "A",
+   "smiles": "CCN1CCN(Cc2ccc(C(=O)N[C@@H]3[C@H]4Oc5ccc(Oc6ccnc7c6CCC(=O)N7)cc5[C@@H]34)cc2OC)CC1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 8.745,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL5730776",
+    "CHEMBL5730777",
+    "CHEMBL5730778"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-06",
+   "campaign": "B",
+   "smiles": "CCN1CCN(Cc2ccc(C(=O)N[C@@H]3[C@H]4Oc5ccc(Oc6ccnc7c6CCC(=O)N7)cc5[C@@H]34)cc2OC)CC1",
+   "verdict": "confirmed",
+   "bucket": "claims_hit",
+   "published_median_pic50": 8.745,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL5730776",
+    "CHEMBL5730777",
+    "CHEMBL5730778"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-08",
+   "campaign": "A",
+   "smiles": "C=CC(=O)Nc1cccc(Oc2nc(Nc3ccc(N4CCN(C(=O)CO)CC4)cc3OC)ncc2C(F)(F)F)c1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 8.349,
+   "n_measurements": 6,
+   "assays": [
+    "CHEMBL3706050",
+    "CHEMBL3707998",
+    "CHEMBL5734421"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-03",
+   "campaign": "A",
+   "smiles": "CN1CCN(Cc2ccc(C(=O)N[C@@H]3[C@H]4Oc5ccc(Oc6ccnc7c6CCC(=O)N7)cc5[C@@H]34)cc2C(F)(F)F)CC1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 8.346,
+   "n_measurements": 6,
+   "assays": [
+    "CHEMBL5730776",
+    "CHEMBL5730777",
+    "CHEMBL5730778"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-03",
+   "campaign": "B",
+   "smiles": "CN1CCN(Cc2ccc(C(=O)N[C@@H]3[C@H]4Oc5ccc(Oc6ccnc7c6CCC(=O)N7)cc5[C@@H]34)cc2C(F)(F)F)CC1",
+   "verdict": "confirmed",
+   "bucket": "claims_hit",
+   "published_median_pic50": 8.346,
+   "n_measurements": 6,
+   "assays": [
+    "CHEMBL5730776",
+    "CHEMBL5730777",
+    "CHEMBL5730778"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-10",
+   "campaign": "A",
+   "smiles": "O=C(Nc1nccs1)C(c1ncn2c1CCC2)N1Cc2c(F)cc(C#Cc3ccc(CN4CCC(CO)CC4)cc3)cc2C1=O",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 8.301,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL5120428",
+    "CHEMBL5120429",
+    "CHEMBL5143769"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-18",
+   "campaign": "A",
+   "smiles": "C=CC(=O)N[C@@H]1CN(c2nc(Nc3cn(C4CCN(C)C4)nc3OC)c3ncn(C(C)C)c3n2)C[C@H]1F",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 8.301,
+   "n_measurements": 5,
+   "assays": [
+    "CHEMBL3609987",
+    "CHEMBL3609988",
+    "CHEMBL3609989"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-23",
+   "campaign": "A",
+   "smiles": "COc1cc2ncnc3c2cc1OCCOCCOCCOc1ccc(Cl)cc1N3",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 8.072,
+   "n_measurements": 4,
+   "assays": [
+    "CHEMBL5153034",
+    "CHEMBL5153035",
+    "CHEMBL5153036"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-12",
+   "campaign": "A",
+   "smiles": "C=CC(=O)Nc1cccc(-n2c(=O)cnc3cnc(Nc4ccc(OC)cc4)nc32)c1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 7.959,
+   "n_measurements": 7,
+   "assays": [
+    "CHEMBL2439334",
+    "CHEMBL2439335",
+    "CHEMBL2439336"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-07",
+   "campaign": "A",
+   "smiles": "C=CC(=O)Nc1cccc(N2C(=O)N(C)Cc3cnc(Nc4ccc(N5CCOCC5)cc4OC)nc32)c1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 7.785,
+   "n_measurements": 5,
+   "assays": [
+    "CHEMBL2033651",
+    "CHEMBL2033652",
+    "CHEMBL2033653"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-11",
+   "campaign": "A",
+   "smiles": "O=C(CCOc1ccccc1)Nc1ccc2ncnc(Nc3cccc(Br)c3)c2c1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 7.664,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL2428431",
+    "CHEMBL2428432",
+    "CHEMBL2428558"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-13",
+   "campaign": "A",
+   "smiles": "C=CC(=O)N1Cc2nc(-c3cc(-c4c(C(F)F)ccnc4F)c(F)cc3F)n(-c3ccncn3)c2C1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 7.6,
+   "n_measurements": 6,
+   "assays": [
+    "CHEMBL6126248",
+    "CHEMBL6126249",
+    "CHEMBL6126272"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-21",
+   "campaign": "A",
+   "smiles": "C=CC(=O)N1Cc2ccc(Nc3nc(Nc4cccc(OC)c4)ncc3C(F)(F)F)cc2C1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 7.26,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL5733991",
+    "CHEMBL5735051",
+    "CHEMBL5738142"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-14",
+   "campaign": "A",
+   "smiles": "C=CC(=O)N1Cc2nc(-c3cc(-c4ccc(-c5cocn5)cc4F)c(F)cn3)n(-c3ccncn3)c2C1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 7.2,
+   "n_measurements": 6,
+   "assays": [
+    "CHEMBL6126248",
+    "CHEMBL6126249",
+    "CHEMBL6126272"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-15",
+   "campaign": "A",
+   "smiles": "CN1CCN(c2ccc(Nc3cc4c(N[C@@H]5CCCN(C)C5)nc(Nc5ccccc5)nc4cn3)nc2)CC1",
+   "verdict": "confirmed",
+   "bucket": "claims_hit",
+   "published_median_pic50": 6.885,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL4124414",
+    "CHEMBL4124415",
+    "CHEMBL4124416"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-17",
+   "campaign": "A",
+   "smiles": "COc1cc(N(C)CCN(C)C)c2cc1Nc1nccc(n1)-c1cn(c3ccccc13)CCCC(=O)N2",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 6.839,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL6131493",
+    "CHEMBL6131494",
+    "CHEMBL6131495"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-02",
+   "campaign": "A",
+   "smiles": "CCN1CCN(Cc2ccc(C(=O)N[C@H]3[C@@H]4Oc5ccc(Oc6ccnc7c6CCC(=O)N7)cc5[C@H]34)cc2C(F)(F)F)CC1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 6.533,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL5730776",
+    "CHEMBL5730777",
+    "CHEMBL5730778"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-02",
+   "campaign": "B",
+   "smiles": "CCN1CCN(Cc2ccc(C(=O)N[C@H]3[C@@H]4Oc5ccc(Oc6ccnc7c6CCC(=O)N7)cc5[C@H]34)cc2C(F)(F)F)CC1",
+   "verdict": "confirmed",
+   "bucket": "claims_hit",
+   "published_median_pic50": 6.533,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL5730776",
+    "CHEMBL5730777",
+    "CHEMBL5730778"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-16",
+   "campaign": "A",
+   "smiles": "C=CC(=O)Nc1cc(Nc2nc(Nc3ccc(OCCOC)cc3)ncc2F)ccc1Cl",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 6.26,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL5733991",
+    "CHEMBL5735051",
+    "CHEMBL5738142"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-19",
+   "campaign": "A",
+   "smiles": "C=CC(=O)N1CCC[C@@H](Nc2nc(Nc3ccc(OC)nc3)ncc2F)C1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 6.26,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL5733991",
+    "CHEMBL5735051",
+    "CHEMBL5738142"
+   ],
+   "true_active": true
+  },
+  {
+   "candidate": "EG-24",
+   "campaign": "A",
+   "smiles": "COc1cc(N2CCN(C)CC2)ccc1Nc1ncc(Cl)c(Oc2cccc(NC(=O)/C(C#N)=C/c3ccco3)c2)n1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 5.886,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL3430219",
+    "CHEMBL3430220",
+    "CHEMBL3430221"
+   ],
+   "true_active": false
+  },
+  {
+   "candidate": "EG-26",
+   "campaign": "A",
+   "smiles": "Oc1ccc(-c2nc(-c3ccc(F)cc3)c(-c3ccncc3)[nH]2)cc1",
+   "verdict": "refuted",
+   "bucket": "claims_miss",
+   "published_median_pic50": 5.721,
+   "n_measurements": 11,
+   "assays": [
+    "CHEMBL1050839",
+    "CHEMBL1051285",
+    "CHEMBL1051286"
+   ],
+   "true_active": false
+  },
+  {
+   "candidate": "EG-20",
+   "campaign": "A",
+   "smiles": "C=CC(=O)Nc1cccc(-c2nccc(Nc3cc(C)[nH]n3)n2)c1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 5.553,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL3606403",
+    "CHEMBL3606404",
+    "CHEMBL3606405"
+   ],
+   "true_active": false
+  },
+  {
+   "candidate": "EG-28",
+   "campaign": "A",
+   "smiles": "Cc1ccc(C(=O)/C(C#N)=C/c2ccc(O)c(O)c2)cc1",
+   "verdict": "refuted",
+   "bucket": "claims_miss",
+   "published_median_pic50": 5.435,
+   "n_measurements": 4,
+   "assays": [
+    "CHEMBL676067",
+    "CHEMBL676152",
+    "CHEMBL763200"
+   ],
+   "true_active": false
+  },
+  {
+   "candidate": "EG-27",
+   "campaign": "A",
+   "smiles": "N#C/C(=C\\c1ccc(O)c(O)c1)C(N)=O",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 5.174,
+   "n_measurements": 10,
+   "assays": [
+    "CHEMBL674643",
+    "CHEMBL674699",
+    "CHEMBL675636"
+   ],
+   "true_active": false
+  },
+  {
+   "candidate": "EG-29",
+   "campaign": "A",
+   "smiles": "O=C1CCC(N2C(=O)c3cccc(NCCOCCOCCOCC#Cc4cccc5c4C(=O)N([C@@H](C(=O)Nc4nccs4)c4cc(F)ccc4O)C5)c3C2=O)C(=O)N1",
+   "verdict": "refuted",
+   "bucket": "claims_miss",
+   "published_median_pic50": 5.072,
+   "n_measurements": 4,
+   "assays": [
+    "CHEMBL5736750",
+    "CHEMBL5736754",
+    "CHEMBL5736755"
+   ],
+   "true_active": false
+  },
+  {
+   "candidate": "EG-25",
+   "campaign": "A",
+   "smiles": "Cc1ccc2nc(NCCN)c3ncc(C)n3c2c1",
+   "verdict": "refuted",
+   "bucket": "claims_miss",
+   "published_median_pic50": 5.0,
+   "n_measurements": 12,
+   "assays": [
+    "CHEMBL1908693",
+    "CHEMBL1908694",
+    "CHEMBL1908695"
+   ],
+   "true_active": false
+  },
+  {
+   "candidate": "EG-22",
+   "campaign": "A",
+   "smiles": "CC(=O)Nc1cccc(-n2c(-c3nc(-c4cnn(C5CCN(C)CC5)c4)cnc3N)nc3ccccc32)c1",
+   "verdict": "refuted",
+   "bucket": "claims_miss",
+   "published_median_pic50": 4.523,
+   "n_measurements": 3,
+   "assays": [
+    "CHEMBL3817137",
+    "CHEMBL3817138",
+    "CHEMBL3817139"
+   ],
+   "true_active": false
+  },
+  {
+   "candidate": "EG-30",
+   "campaign": "A",
+   "smiles": "O=C(Nc1ccc(Nc2ncnc3[nH]ccc23)cc1)c1ccccc1",
+   "verdict": "proposed",
+   "bucket": "unjudged",
+   "published_median_pic50": 4.423,
+   "n_measurements": 4,
+   "assays": [
+    "CHEMBL5629492",
+    "CHEMBL5629493",
+    "CHEMBL5629505"
+   ],
+   "true_active": false
+  }
+ ],
+ "gate_refusals": [
+  {
+   "samples": [
+    "EG-01",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-01' carries 1 toxicophore alert(s) [rules safety-rules-v1]: hydroquinone (redox cycling / quinone formation)"
+  },
+  {
+   "samples": [
+    "EG-02",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-02' carries 1 toxicophore alert(s) [rules safety-rules-v1]: hydroquinone (redox cycling / quinone formation)"
+  },
+  {
+   "samples": [
+    "EG-03",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-03' carries 1 toxicophore alert(s) [rules safety-rules-v1]: hydroquinone (redox cycling / quinone formation)"
+  },
+  {
+   "samples": [
+    "EG-04",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-04' carries 1 toxicophore alert(s) [rules safety-rules-v1]: hydroquinone (redox cycling / quinone formation)"
+  },
+  {
+   "samples": [
+    "EG-05",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-05' carries 1 toxicophore alert(s) [rules safety-rules-v1]: hydroquinone (redox cycling / quinone formation)"
+  },
+  {
+   "samples": [
+    "EG-06",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-06' carries 1 toxicophore alert(s) [rules safety-rules-v1]: hydroquinone (redox cycling / quinone formation)"
+  },
+  {
+   "samples": [
+    "EG-07",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-07' carries 2 toxicophore alert(s) [rules safety-rules-v1]: aromatic_amine_vic (p-phenylenediamine: methemoglobinemia/redox); acrylamide (soft thiol electrophile)"
+  },
+  {
+   "samples": [
+    "EG-09",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-09' carries 1 toxicophore alert(s) [rules safety-rules-v1]: acrylamide (soft thiol electrophile)"
+  },
+  {
+   "samples": [
+    "EG-12",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-12' carries 1 toxicophore alert(s) [rules safety-rules-v1]: acrylamide (soft thiol electrophile)"
+  },
+  {
+   "samples": [
+    "EG-13",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-13' carries 1 toxicophore alert(s) [rules safety-rules-v1]: acrylamide (soft thiol electrophile)"
+  },
+  {
+   "samples": [
+    "EG-14",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-14' carries 1 toxicophore alert(s) [rules safety-rules-v1]: acrylamide (soft thiol electrophile)"
+  },
+  {
+   "samples": [
+    "EG-17",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-17' carries 1 toxicophore alert(s) [rules safety-rules-v1]: aromatic_amine_vic (p-phenylenediamine: methemoglobinemia/redox)"
+  },
+  {
+   "samples": [
+    "EG-18",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-18' carries 1 toxicophore alert(s) [rules safety-rules-v1]: acrylamide (soft thiol electrophile)"
+  },
+  {
+   "samples": [
+    "EG-19",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-19' carries 1 toxicophore alert(s) [rules safety-rules-v1]: acrylamide (soft thiol electrophile)"
+  },
+  {
+   "samples": [
+    "EG-20",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-20' carries 1 toxicophore alert(s) [rules safety-rules-v1]: acrylamide (soft thiol electrophile)"
+  },
+  {
+   "samples": [
+    "EG-24",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-24' carries 2 toxicophore alert(s) [rules safety-rules-v1]: aromatic_amine_vic (p-phenylenediamine: methemoglobinemia/redox); acrylamide (soft thiol electrophile)"
+  },
+  {
+   "samples": [
+    "EG-27",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-27' carries 1 toxicophore alert(s) [rules safety-rules-v1]: acrylamide (soft thiol electrophile)"
+  },
+  {
+   "samples": [
+    "EG-30",
+    "ctrl-neg1",
+    "ctrl-neg2"
+   ],
+   "reason": "[toxicophores] sample 'EG-30' carries 1 toxicophore alert(s) [rules safety-rules-v1]: aromatic_amine_vic (p-phenylenediamine: methemoglobinemia/redox)"
+  }
+ ],
+ "future_convergence": [
+  {
+   "drug": "gefitinib",
+   "generation": "1st",
+   "published_median_pic50": 7.824,
+   "published_range": [
+    4.642,
+    10.0
+   ],
+   "passes_gate_on_truth_alone": true,
+   "loop_confirmed_same_scaffold": 0,
+   "nearest_confirmed_tanimoto": 0.173,
+   "nearest_confirmed_was_true_active": true
+  },
+  {
+   "drug": "erlotinib",
+   "generation": "1st",
+   "published_median_pic50": 7.584,
+   "published_range": [
+    3.376,
+    10.538
+   ],
+   "passes_gate_on_truth_alone": true,
+   "loop_confirmed_same_scaffold": 0,
+   "nearest_confirmed_tanimoto": 0.172,
+   "nearest_confirmed_was_true_active": true
+  },
+  {
+   "drug": "lapatinib",
+   "generation": "dual EGFR/HER2",
+   "published_median_pic50": 8.0,
+   "published_range": [
+    3.423,
+    10.222
+   ],
+   "passes_gate_on_truth_alone": true,
+   "loop_confirmed_same_scaffold": 0,
+   "nearest_confirmed_tanimoto": 0.125,
+   "nearest_confirmed_was_true_active": true
+  },
+  {
+   "drug": "afatinib",
+   "generation": "2nd",
+   "published_median_pic50": 9.0,
+   "published_range": [
+    5.854,
+    11.0
+   ],
+   "passes_gate_on_truth_alone": true,
+   "loop_confirmed_same_scaffold": 0,
+   "nearest_confirmed_tanimoto": 0.148,
+   "nearest_confirmed_was_true_active": true
+  },
+  {
+   "drug": "dacomitinib",
+   "generation": "2nd",
+   "published_median_pic50": 8.222,
+   "published_range": [
+    6.357,
+    9.201
+   ],
+   "passes_gate_on_truth_alone": true,
+   "loop_confirmed_same_scaffold": 0,
+   "nearest_confirmed_tanimoto": 0.187,
+   "nearest_confirmed_was_true_active": true
+  },
+  {
+   "drug": "neratinib",
+   "generation": "2nd",
+   "published_median_pic50": 8.562,
+   "published_range": [
+    4.995,
+    10.699
+   ],
+   "passes_gate_on_truth_alone": true,
+   "loop_confirmed_same_scaffold": 0,
+   "nearest_confirmed_tanimoto": 0.138,
+   "nearest_confirmed_was_true_active": true
+  },
+  {
+   "drug": "osimertinib",
+   "generation": "3rd",
+   "published_median_pic50": 7.862,
+   "published_range": [
+    3.319,
+    11.699
+   ],
+   "passes_gate_on_truth_alone": true,
+   "loop_confirmed_same_scaffold": 0,
+   "nearest_confirmed_tanimoto": 0.164,
+   "nearest_confirmed_was_true_active": true
+  }
+ ],
+ "meta": {
+  "gate": {
+   "metric": "ic50_um",
+   "threshold": 1.0,
+   "truth_rule": "published median pIC50 >= 6.0"
+  },
+  "ladder": [
+   "0.001uM",
+   "0.003uM",
+   "0.01uM",
+   "0.03uM",
+   "0.1uM",
+   "0.3uM",
+   "1uM",
+   "3uM",
+   "10uM"
+  ],
+  "seed": 42,
+  "branch_a": "problem/cs04-hit2lead",
+  "campaign_a_tail": [
+   "[agent] orthogonal confirmation for EG-25: primary 11.38 vs secondary 10.24 \u00b5M (ratio 1.1x, rule ci-overlap) -> REFUTED",
+   "[agent] orthogonal confirmation for EG-29: primary 9.72 vs secondary 10.24 \u00b5M (ratio 1.1x, rule ci-overlap) -> REFUTED",
+   "[agent] orthogonal confirmation for EG-26: primary 1.94 vs secondary 1.70 \u00b5M (ratio 1.1x, rule ci-overlap) -> REFUTED",
+   "[agent] orthogonal confirmation for EG-22: primary 28.66 vs secondary 26.48 \u00b5M (ratio 1.1x, rule ci-overlap) -> REFUTED",
+   "reviewer: no findings \u2014 analysis consistent",
+   "CAMPAIGN COMPLETE cs04-hit2lead: EG-01=proposed, EG-02=proposed, EG-03=proposed, EG-04=proposed, EG-05=proposed, EG-06=proposed, EG-07=proposed, EG-08=proposed, EG-09=proposed, EG-10=proposed, EG-11=proposed, EG-12=proposed, EG-13=proposed, EG-14=proposed, EG-15=confirmed, EG-16=proposed, EG-17=proposed, EG-18=proposed, EG-19=proposed, EG-20=proposed, EG-21=proposed, EG-22=refuted, EG-23=proposed, EG-24=proposed, EG-25=refuted, EG-26=refuted, EG-27=proposed, EG-28=refuted, EG-29=refuted, EG-30=proposed"
+  ],
+  "lab": "replay-published (replay-v1): IC50 truth = published median; curve shape + well noise are a declared replay model"
+ }
+}

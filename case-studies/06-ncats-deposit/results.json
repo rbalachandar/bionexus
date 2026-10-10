@@ -1,0 +1,86 @@
+{
+ "study": "CS06 NCATS deposit pilot \u2014 ALDH3A1 reassay (AID 2061307)",
+ "gate_uM": 1.0,
+ "scale_disclosure": "% inhibition (ascending effect scale; activity columns flipped: 100 - x)",
+ "n_fitted": 2427,
+ "n_total": 2427,
+ "crosstab_their_to_ours": {
+  "Active": {
+   "Active": 502,
+   "Inactive": 0,
+   "Abstain": 39
+  },
+  "Inconclusive": {
+   "Active": 639,
+   "Inactive": 0,
+   "Abstain": 250
+  },
+  "Inactive": {
+   "Active": 216,
+   "Inactive": 0,
+   "Abstain": 781
+  }
+ },
+ "our_counts": {
+  "Active": 1357,
+  "Inactive": 0,
+  "Abstain": 1070
+ },
+ "abstain_alignment": {
+  "ours": 1070,
+  "theirs": 889,
+  "intersection": 250,
+  "of_ours_in_theirs": 0.234,
+  "qc_reasons": {
+   "fit pinned at grid floor": 5,
+   "no concentration dependence": 1065
+  }
+ },
+ "potency_pairs": 1354,
+ "spearman_our_ic50_vs_their_fit": 0.107,
+ "series_view_top6": [
+  {
+   "key": "O=C1c2ccccc2NC(c2cccc(COc3ccccc3)c2)N1Cc",
+   "kind": "chemotype:Murcko",
+   "n": 26,
+   "confirmed": 26,
+   "backend": "rdkit-Murcko"
+  },
+  {
+   "key": "c1ccc(-c2csc(N3CCCCC3)n2)cc1",
+   "kind": "chemotype:Murcko",
+   "n": 17,
+   "confirmed": 15,
+   "backend": "rdkit-Murcko"
+  },
+  {
+   "key": "c1ccccc1",
+   "kind": "chemotype:Murcko",
+   "n": 30,
+   "confirmed": 13,
+   "backend": "rdkit-Murcko"
+  },
+  {
+   "key": "c1ccc(-c2c[nH+]on2)cc1",
+   "kind": "chemotype:Murcko",
+   "n": 21,
+   "confirmed": 12,
+   "backend": "rdkit-Murcko"
+  },
+  {
+   "key": "S=C(Nc1ccccn1)N1CCN(c2ccccc2)CC1",
+   "kind": "chemotype:Murcko",
+   "n": 17,
+   "confirmed": 12,
+   "backend": "rdkit-Murcko"
+  },
+  {
+   "key": "O=C1Nc2ccccc2C1=Cc1ccccc1",
+   "kind": "chemotype:Murcko",
+   "n": 14,
+   "confirmed": 11,
+   "backend": "rdkit-Murcko"
+  }
+ ],
+ "blinding": "labread parser structurally cannot read OUTCOME/Fit_*; verdicts locked before key read"
+}

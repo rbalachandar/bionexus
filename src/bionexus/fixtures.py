@@ -32,7 +32,11 @@ def _entries(study: Path) -> list[dict]:
     if not (study / "fixtures" / MANIFEST).exists():
         return []
     doc = json.loads((study / "fixtures" / MANIFEST).read_text())
-    return doc["entries"] if isinstance(doc, dict) else doc
+    if isinstance(doc, dict):
+        # manifests come in two dialects; a dict without "entries" is the
+        # CS07 (source/derived) shape, handled by verify() directly
+        return doc.get("entries", [])
+    return doc
 
 
 # ------------------------------------------------------------------ freeze
@@ -69,18 +73,35 @@ def freeze(study_dir: str | Path, sources: list[tuple[str, Path]]) -> dict:
 
 def verify(study_dir: str | Path) -> tuple[bool, list[str]]:
     study = Path(study_dir)
-    entries = _entries(study)
-    if not entries:
-        return False, ["no manifest — run `bn fixtures freeze`"]
     problems = []
     import gzip
-    for e in entries:
-        p = study / "fixtures" / (e["path"] + ".gz")
-        if not p.exists():
-            problems.append(f"missing: {e['path']}")
-        elif _sha_bytes(gzip.decompress(p.read_bytes())) != e["sha256"]:
-            problems.append(f"CHECKSUM MISMATCH: {e['path']}")
-    return not problems, problems
+    entries = _entries(study)
+    if entries:
+        for e in entries:
+            p = study / "fixtures" / (e["path"] + ".gz")
+            if not p.exists():
+                problems.append(f"missing: {e['path']}")
+            elif _sha_bytes(gzip.decompress(p.read_bytes())) != e["sha256"]:
+                problems.append(f"CHECKSUM MISMATCH: {e['path']}")
+        return not problems, problems
+    # second manifest dialect (CS07-style MANIFEST.json: source + derived
+    # files with raw sha256 and row counts) — both shapes must verify
+    m = study / "fixtures" / "MANIFEST.json"
+    if m.exists():
+        doc = json.loads(m.read_text())
+        for name, spec in (doc.get("derived") or {}).items():
+            p = study / "fixtures" / (name + ".gz")
+            if not p.exists():
+                problems.append(f"missing: {name}")
+                continue
+            raw = gzip.decompress(p.read_bytes())
+            if _sha_bytes(raw) != spec["sha256_raw"]:
+                problems.append(f"CHECKSUM MISMATCH: {name}")
+            elif spec.get("rows") and raw.count(b"\n") - 1 != spec["rows"]:
+                problems.append(f"ROW COUNT: {name}")
+        src_sha = (doc.get("source") or {}).get("sha256")
+        return (not problems), problems
+    return False, ["no manifest — run `bn fixtures freeze`"]
 
 
 # ------------------------------------------------------------- materialize

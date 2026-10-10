@@ -34,7 +34,7 @@ from bionexus.core.interfaces import system_actor                         # noqa
 GATE, BAND_HALF = 0.7, 0.05
 
 
-from cs08_io import load_scores   # noqa: E402
+from cs08_io import load_scores, verdict   # noqa: E402
 
 
 def main() -> None:
@@ -112,9 +112,7 @@ def main() -> None:
         "embarrassing_records": sorted(
             f"{n} ({c['iptm']:.3f} -> validated)"
             for n, c in ctrls.items()
-            if criteria.classify(c["iptm"], (c["iptm"] - BAND_HALF,
-                                             c["iptm"] + BAND_HALF))
-            == "validated"),
+            if verdict(c["iptm"]) == "confirm_predicted"),
         "design_median_iptm": round(st.median(list(c["iptm"] for c in designs.values())), 4),
     }
     (HERE / "bionexus_cycle_results.json").write_text(json.dumps(out, indent=2))

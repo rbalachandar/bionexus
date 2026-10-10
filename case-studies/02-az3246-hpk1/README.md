@@ -107,3 +107,10 @@ python run.py   # from this directory
 Requires network (ChEMBL) and `BIONEXUS_LLM_*` / `ANTHROPIC_*` env for the
 agent. Artifacts: `case_study.db` — inspect with
 `bn prove case-study-02 --db case_study.db --html report.html`.
+
+## Reproducibility (trust-audit label, Oct 10)
+
+Post-cutoff study: needs network + LLM; the sealed chain (case_study.db,
+local-only) carries the contamination probes and verdicts. The ρ values
+were produced in that run; an offline re-rank of the frozen training pool
+is queued in the ROADMAP — treat the number as recorded, not reproducible.

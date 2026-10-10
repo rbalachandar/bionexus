@@ -57,11 +57,11 @@
     "pass": 82,
     "reject": []
   },
-  "gate_band_abstentions": 7,
+  "gate_band_abstentions": 6,
   "verdicts": {
-    "confirm_predicted": 71,
+    "confirm_predicted": 72,
     "refute_predicted": 4,
-    "abstain": 7
+    "abstain": 6
   },
   "eligibility_gate_pass": {
     "designs": "82/82",

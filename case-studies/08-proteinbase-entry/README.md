@@ -78,7 +78,7 @@ Findings (each is the point of the experiment):
    as a group (Mann-Whitney p≈1e-4; median-difference bootstrap
    CI95 [+0.12, +0.30]) — but **AUC is only 0.80**, 6/30 controls sit
    above the design median, and the best *scramble* (0.937) out-ranks
-   ~70% of real designs. "Order my list by ipTM" is not a ranking of
+   89% of real designs (73/82 below 0.937). "Order my list by ipTM" is not a ranking of
    binders; it is a ranking of Boltz's confidence, which shuffling
    composition-preserved garbage can also achieve.
 2. **The Step-1 replay conclusion is validated prospectively on

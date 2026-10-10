@@ -68,10 +68,7 @@ def main() -> None:
     gate_rnd = [check_sequence(ctrl_seqs[k])["pass"] for k in rnd if k in ctrl_seqs]
 
     # --- verdicts: gate + abstention band, all labeled PREDICTED ----------
-    def verdict(iptm: float) -> str:
-        if BAND[0] <= iptm <= BAND[1]:
-            return "abstain"
-        return "confirm_predicted" if iptm >= GATE else "refute_predicted"
+    from cs08_io import verdict   # ONE mechanism across the study
 
     verd = {n: verdict(c["iptm"]) for n, c in designs.items()}
 
