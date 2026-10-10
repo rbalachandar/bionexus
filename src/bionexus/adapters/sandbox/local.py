@@ -44,6 +44,9 @@ class LocalSandbox:
         self._store = store
         self._actor = actor
         self._snapshots = _snapshots if _snapshots is not None else {}
+        self._record(EventType.sandbox_create,
+                     {"sandbox_id": self.sandbox_id, "type": "local",
+                      "workdir_under": self._root})
 
     def snapshot(self) -> str:
         snap_id = f"snap-{uuid.uuid4().hex[:8]}"
@@ -117,6 +120,8 @@ class LocalSandbox:
         return r.stdout.strip()
 
     def destroy(self) -> None:
+        self._record(EventType.sandbox_destroy,
+                     {"sandbox_id": self.sandbox_id, "type": "local"})
         self.state = {}
         shutil.rmtree(self._root, ignore_errors=True)
 

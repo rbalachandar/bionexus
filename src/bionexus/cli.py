@@ -430,11 +430,37 @@ def cmd_auto(args: argparse.Namespace) -> int:
     import time as _time
     def _ts_notify(msg: str) -> None:
         print(f"[{_time.strftime('%H:%M:%S')}] {msg}", flush=True)
-    report = run_campaign(cfg, lab, SqliteProvenanceStore(args.db),
-                          approver=approver, notify=_ts_notify)
+    store = SqliteProvenanceStore(args.db)
+    sbx_cfg = cfg_doc.get("sandbox") or {}
+    session = None
+    if sbx_cfg.get("mode", "off") != "off":
+        from bionexus.sandbox_session import SandboxSession
+        from bionexus.core.interfaces import system_actor as _sa
+        branch = f"problem/{cfg.problem.problem_id or 'auto'}"
+        session = SandboxSession(
+            mode=sbx_cfg["mode"], sandbox=sbx_cfg.get("type", "local"),
+            branch_id=branch, store=store, actor=_sa("sandbox-lifecycle"),
+            image=sbx_cfg.get("image"))
+        _ts_notify(f"sandbox: {sbx_cfg['mode']} ({sbx_cfg.get('type', 'local')}"
+                   f") branch={branch} — create/fork/exec/destroy are "
+                   f"provenance-recorded; tool routing via "
+                   f"SandboxSession.registry()")
+    try:
+        report = run_campaign(cfg, lab, store,
+                              approver=approver, notify=_ts_notify)
+    finally:
+        if session:
+            session.destroy()
     print(json.dumps({"problem": report.problem_id, "selected": report.selected,
                       "verdicts": report.verdicts}, indent=1))
     return 0
+
+
+def cmd_sandboxd(args: argparse.Namespace) -> int:
+    """In-sandbox tool worker (internal): reads a ToolInvocation request,
+    executes inside this process, writes a ToolResult. See sandboxd.py."""
+    from bionexus.sandboxd import main as _dmain
+    return _dmain([])
 
 
 def cmd_eval(args: argparse.Namespace) -> int:
@@ -818,6 +844,10 @@ def main(argv: list[str] | None = None) -> int:
                        help="also write a self-contained HTML report")
     prove.add_argument("--eln", help="export branch as ELN CSV (+ .json sidecar)")
     prove.set_defaults(func=cmd_prove)
+
+    sbxd = sub.add_parser("sandboxd",
+                          help=argparse.SUPPRESS)  # internal worker
+    sbxd.set_defaults(func=cmd_sandboxd)
 
     demo = sub.add_parser("demo",
                           help="guided first run: watch the system ABSTAIN on "

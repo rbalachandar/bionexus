@@ -549,10 +549,11 @@ and interchangeable. The contracts are the pydantic models in `bionexus.core.con
 | `ProvenanceStore` | sqlite → postgres, s3-worm |
 | `BioTool` | rdkit descriptors, ADMET, AlphaGenome Atlas variant scoring (AVI) → docking, ESMFold |
 
-Known limitation: the `Sandbox` adapters are contract-tested but not yet
-wired into campaign execution — agent tool calls currently run in-process,
-not inside a sandbox. Making the sandbox the execution substrate (seam,
-hardening, isolation evals) is tracked as S-T3 in
+Sandbox execution is opt-in: campaign config `sandbox:
+{mode: per_experiment, type: local|docker}` runs one sandbox per experiment
+(lifecycle provenance-recorded) and routes `BioTool` invocations through an
+in-sandbox worker. Lab submissions and analysis steps still run in-process;
+routing those is the next slice of S-T3 in
 [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Agent Skills and MCP

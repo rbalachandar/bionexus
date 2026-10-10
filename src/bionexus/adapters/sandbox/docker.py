@@ -159,6 +159,9 @@ class DockerSandbox:
         return out
 
     def destroy(self) -> None:
+        self._record(EventType.sandbox_destroy,
+                     {"sandbox_id": self.sandbox_id, "type": "docker",
+                      "container": self.container_id})
         self.runner.run("rm", "-f", self.container_id)
         for tag in self.snapshots:
             try:

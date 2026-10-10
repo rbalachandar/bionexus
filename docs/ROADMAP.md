@@ -407,9 +407,19 @@ this is a security claim, not a feature. Order of work:
   New events sandbox_create/sandbox_exec recorded on every attempt
   (command sha, exit code, timeout) — 5 contract tests in
   `tests/test_sandbox_exec.py`.
-- [ ] 1b. CALLER WIRING: workflow/agent stages still execute in-process;
-  the first consumer pairs with code-gen enablement (stateful BioTools
-  serialize poorly; generated ANALYSIS code is the right tenant).
+- [x] 1b. ROUTING + LIFECYCLE (Oct 10): `SandboxSession` (opt-in,
+  cfg `sandbox: {mode, type}`; mode off = byte-identical behavior)
+  wraps ONE sandbox per experiment — create/destroy sealed on the
+  problem branch, `bn auto` verified e2e (local). `registry()` facade
+  routes ToolInvocation through the in-sandbox worker `bn sandboxd`
+  (stdio b64 JSON, shell-safe across local/docker; failures return a
+  visible FAILED ToolResult, never a silent in-process fallback).
+  Same-answers-in-or-out asserted in tests. 7 new tests; 108 green on
+  touched files.
+- [ ] 1c. LAB-RUN PROXYING: the campaign's lab submissions and analysis
+  still execute in-process — routing THOSE through the session is what
+  makes "the full experiment in the sandbox" literally true; needs
+  LabRun/AssayResult serialization over the same worker transport.
 - [x] 2a. HARDEN (args): DockerSandbox create is `--network none` by
   default (explicit opt-out), `--memory 512m --cpus 1.0 --pids-limit 128
   --cap-drop ALL --security-opt no-new-privileges`; inherited by forks and

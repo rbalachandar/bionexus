@@ -356,6 +356,7 @@ class EventType(str, Enum):
     sandbox_snapshot = "sandbox_snapshot"
     sandbox_create = "sandbox_create"
     sandbox_exec = "sandbox_exec"
+    sandbox_destroy = "sandbox_destroy"
 
 
 class ActorKind(str, Enum):
