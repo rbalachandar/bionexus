@@ -49,6 +49,11 @@ python -m bionexus.cli auto --template dose-response-screen \
 - `src/bionexus/adapters/` — everything pluggable; tests are the contract
 
 ## Conventions
+- **ALL communication with the user in ENGLISH, always** — every reply,
+  every summary, every explanation, regardless of what language the
+  session history contains. Never reason in another language and never
+  let it leak into responses. This has been violated repeatedly; treat
+  each turn as a fresh test of it.
 - pydantic contracts in `core/contracts` are the source of truth (no YAML)
 - Simulated data must be labeled simulated; verdicts must be honest about
   uncertainty — a CI straddling the gate abstains, and READING a verdict is
