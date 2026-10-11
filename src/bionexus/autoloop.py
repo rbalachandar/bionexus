@@ -91,6 +91,12 @@ class CampaignConfig:
     poll_secs: float = 0.5
     actor_name: str = "campaign"
 
+    # S-T5: operator-declared instrument pool + the experiment's needs.
+    # labs entries: {simulator:{...}} | {adapter:"pkg:Class",options:{}}
+    # | {mcp:{command:[...],profile:"ezo|mettler|ika|{...}"}}
+    labs: list[dict[str, Any]] | None = None
+    lab_requirement: dict[str, Any] | None = None
+
 
 @dataclass
 class CampaignReport:
@@ -163,6 +169,43 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     from bionexus.governance import AuthorizationMatrix, HaltSwitch
     gov = {"matrix": AuthorizationMatrix(), "halt": HaltSwitch()}
     say = notify or (lambda m: print(f"[campaign] {m}"))
+
+    # S-T5: the pool is the operator's fence; this matcher only picks
+    # WITHIN it, and the decision — with every refusal reason — is
+    # sealed before any lab acts.
+    if cfg.labs:
+        from bionexus.labselect import LabRequirement, build_pool, select_lab
+        pool = build_pool(cfg.labs)
+        req = LabRequirement.build(cfg.lab_requirement)
+        if not req.assay_types and not req.readouts and cfg.hypotheses:
+            req = LabRequirement(
+                assay_types=frozenset(
+                    {h.get("assay_type", "binding")
+                     for h in cfg.hypotheses}),
+                max_bsl=req.max_bsl, physical=req.physical)
+        sel, refusals = select_lab(pool, req)
+        sbranch = f"problem/{cfg.problem.problem_id or 'pending'}"
+        if sel is None:
+            store.append(record_for(
+                Envelope(experiment_branch_id=sbranch),
+                EventType.gate_decision, actor,
+                decision={"kind": "lab_refusal", "pool": [n for n, _ in pool],
+                          "refusals": refusals,
+                          "action": "campaign refused: no permitted "
+                                    "instrument serves the declared need"}))
+            raise ValueError(
+                "lab selection refused — no instrument in the operator-"
+                f"declared pool serves {sorted(req.assay_types)}"
+                f"{sorted(req.readouts) and ['+ readouts: ' + str(sorted(req.readouts))]};"
+                f" refusals: {refusals}")
+        lab = sel.lab
+        store.append(record_for(
+            Envelope(experiment_branch_id=sbranch),
+            EventType.gate_decision, actor,
+            decision={"kind": "lab_selected", **sel.rationale}))
+        say(f"lab: '{sel.name}' selected from a pool of {len(pool)} "
+            f"(simulated={sel.rationale['chosen']['simulated']}); "
+            f"decision sealed")
 
     if cfg.autonomy == "gate":
         if approver is None:

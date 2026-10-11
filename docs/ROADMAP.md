@@ -583,6 +583,38 @@ evaluation, vendor access decisions.
   separate (bigger, correct) design question. Hardware confirmation
   session unchanged.
 
+### S-T5 — Capability-matched lab selection inside the operator's fence (opened + POC shipped, Oct 11)
+
+The audit-question that named the gap: nothing joined "what the
+experiment needs" to "what instrument is available" — the lab was a
+config string (and `bn auto` silently ignored even that, hardcoding the
+simulator: bug fixed, `lab:` honored).
+
+SHIPPED (POC scope, tests green):
+- labselect.py: normalize_caps (legacy dicts, sensors, MCP tool schemas
+  -> one vocabulary), LabRequirement (assay types, readouts, BSL
+  ceiling, physical), select_lab — deterministic, capability-superset +
+  BSL-compatible, hardware-validated preferred over simulated, operator
+  declaration order breaks ties; ALWAYS returns the refusals list.
+- build_pool from campaign config: {simulator}, {adapter:"pkg:Class"},
+  {mcp:{command,profile}} — three ways to declare one fence.
+- run_campaign: selection happens BEFORE any lab acts; the decision
+  (chosen + simulated flag + per-instrument decline reasons) is a sealed
+  gate_decision; inability to serve = lab_refusal event + campaign
+  refused, never a silent simulator fallback.
+- Authority model, stated: program creator fences (consent for physical
+  action — tighten-only, agents can only recommend); the machine matches
+  within the fence; the chain records both.
+- 5 tests: hardware-preference, refusal-with-reasons, real MCP pool
+  member selected via its declared readOnly tools (mettler), campaign-
+  level refusal sealed + happy-path selection sealed, chain verified.
+
+Open: workbench surface (pool editor in the program form; selection
+chip on program cards), ReadoutSpec capabilities actually FEEDING
+LabRequirement (readiness still checks self-declared needs — the join
+now exists one level up), per-round re-selection, multi-instrument
+protocols (Make on rig X, Test on reader Y — a plan, not a choice).
+
 ## T0 — Uncertainty-aware verdicts (epistemic integrity)
 - [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap
   (deterministic seed), `labread.fit_ic50_ci`; CI stored on compounds as

@@ -375,6 +375,8 @@ def _campaign_from_doc(cfg_doc: dict) -> "CampaignConfig":
         model=cfg_doc.get("_model"),
         k=(k_cfg[0] if isinstance(k_cfg, (list, tuple)) else k_cfg),
         k_schedule=k_schedule,
+        labs=cfg_doc.get('labs'),
+        lab_requirement=cfg_doc.get('lab_requirement'),
         autonomy=cfg_doc.get("autonomy", "act"),
         rounds=cfg_doc.get("rounds", 1),
         inbox=cfg_doc.get("inbox", ".data/inbox"),
@@ -425,7 +427,11 @@ def cmd_auto(args: argparse.Namespace) -> int:
         from bionexus.approvals import web_approver
         approver = web_approver(inbox=args.inbox or ".data/approvals.jsonl",
                                 notify=lambda m: print(f"[campaign] {m}"))
-    lab = SimulatorLab(seed=cfg_doc.get("seed", 42))
+    if cfg_doc.get("lab") and "adapter" in (cfg_doc.get("lab") or {}):
+        lab = _load_adapter(cfg_doc["lab"]["adapter"],
+                            cfg_doc["lab"].get("options", {}))
+    else:
+        lab = SimulatorLab(seed=cfg_doc.get("seed", 42))
 
     import time as _time
     def _ts_notify(msg: str) -> None:

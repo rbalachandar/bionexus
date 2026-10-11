@@ -214,6 +214,16 @@ cells), Test adapters supply the assay, and Analyze reads the registered
 metric against its gate — small-molecule, biologic, agrochemical, or
 materials programs differ in adapters, not in the framework.
 
+Which instrument runs an experiment is two decisions, never one: the
+**program creator declares the fence** — a pool of permitted instruments
+(campaign config `labs:`; virtual-lab, adapter path, or an MCP server +
+profile) — and the **matcher selects within it** by the experiment's
+declared needs (assay types, readouts, BSL ceiling), preferring
+hardware-validated over simulated. The selection — including why each
+other instrument was declined — is sealed into the branch before any
+instrument acts; no capable instrument means refusal, never a silent
+fallback to simulation (`bionexus.labselect`).
+
 ### As a daily analysis tool — reading lab instrument exports
 
 Point `bn read` at a plate-reader export. Long CSV/TSV/XLSX (any column
