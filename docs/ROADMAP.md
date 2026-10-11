@@ -624,6 +624,15 @@ SHIPPED (POC scope, tests green):
   end-to-end for autonomous launches: _spawn_plan -> --labs-json ->
   bn plan -> run_tree -> every leaf CampaignConfig.
 
+EMPTY-FENCE FIX (later same day): the picker copy promised "empty =
+virtual lab, labeled" but the empty path had skipped the matcher
+entirely — copy overpromising behavior, exactly the audit disease. Now
+the fence ALWAYS exists: empty selection defaults to the explicit
+[{"instrument": "bionexus-virtual-lab"}] pool on both auto-launch paths
+(cmd_auto config + _spawn_plan), so a lab_selected decision with
+simulated:true is sealed even when the creator ticks nothing; picker
+copy reworded; assertions updated (spawn test now requires --labs-json).
+
 Open: selection chip on program cards (form-side fence shipped);
 wizard guided-path fence (the wizard builds its own config today); ReadoutSpec capabilities actually FEEDING
 LabRequirement (readiness still checks self-declared needs — the join

@@ -369,9 +369,15 @@ def test_decomposed_launch_inherits_program_autonomy(tmp_path, monkeypatch):
     monkeypatch.setattr(L.subprocess, "Popen", fake_popen)
     monkeypatch.setattr(L, "CAMPAIGN_DIR", tmp_path)
     L._spawn_plan({"objective": "o", "autonomy": "gate"}, "GateProgram-X")
-    assert "gate" in seen["cmd"] and "act" not in seen["cmd"]
+    assert seen["cmd"][seen["cmd"].index("--autonomy") + 1] == "gate"
+    assert "act" not in seen["cmd"]
+    # S-T5: the fence is ALWAYS forwarded — absent selection defaults to
+    # the explicit virtual-lab pool (never a matcher-less run)
+    import json as _j
+    assert _j.loads(seen["cmd"][seen["cmd"].index("--labs-json") + 1]) == \
+        [{"instrument": "bionexus-virtual-lab"}]
     L._spawn_plan({"objective": "o"}, "GateProgram-Y")   # absent -> gate
-    assert seen["cmd"][-1] == "gate"
+    assert seen["cmd"][seen["cmd"].index("--autonomy") + 1] == "gate"
     import bionexus.program as pcfg
     pcfg.delete_program("GateProgram-X")
     pcfg.delete_program("GateProgram-Y")
@@ -411,3 +417,22 @@ def test_spawn_plan_forwards_program_fence(monkeypatch, tmp_path):
         "bionexus-virtual-lab"
     import bionexus.program as pcfg
     pcfg.delete_program("FenceTestProg")
+
+
+def test_empty_fence_defaults_to_virtual_lab_poolspec():
+    from bionexus.cli import _campaign_from_doc
+    doc = {
+        "problem": {"objective": "o", "constraints": [],
+                    "success_metric": "s"},
+        "hypotheses": [{"statement": "S1 binds", "candidate": "S1",
+                        "assay_type": "binding", "predicted": "<= 20",
+                        "predicted_value": 20.0}],
+        "autonomy": "act",
+    }
+    cfg = _campaign_from_doc(doc)
+    assert cfg.labs == [{"instrument": "bionexus-virtual-lab"}]
+    doc2 = dict(doc); doc2["lab"] = {"adapter": "x:Y"}
+    assert _campaign_from_doc(doc2).labs is None   # explicit single-lab
+    doc3 = dict(doc)
+    doc3["labs"] = [{"instrument": "labmcp-ika"}]
+    assert _campaign_from_doc(doc3).labs == [{"instrument": "labmcp-ika"}]

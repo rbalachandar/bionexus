@@ -193,9 +193,10 @@ export default function ProgramForm({ onLaunched, onDone }: {
               Instrument fence — which instruments this program may use
             </div>
             <p className="muted" style={{ fontSize: 11, margin: '0 0 6px' }}>
-              Campaigns match capability WITHIN this list only; the
-              selection (and every refusal) is sealed on the branch.
-              Empty = the virtual lab, labeled as simulated.
+              The matcher picks by declared capability from this list
+              only, and seals its decision (with every decline reason)
+              before an instrument acts. Empty defaults to the virtual
+              lab, sealed and labeled simulated.
             </p>
             {instruments.map((ins) => (
               <label key={ins.id} style={{ display: 'flex', gap: 8,

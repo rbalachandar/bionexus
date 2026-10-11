@@ -375,7 +375,8 @@ def _campaign_from_doc(cfg_doc: dict) -> "CampaignConfig":
         model=cfg_doc.get("_model"),
         k=(k_cfg[0] if isinstance(k_cfg, (list, tuple)) else k_cfg),
         k_schedule=k_schedule,
-        labs=cfg_doc.get('labs'),
+        labs=cfg_doc.get('labs') or (None if cfg_doc.get('lab')
+               else [{'instrument': 'bionexus-virtual-lab'}]),
         lab_requirement=cfg_doc.get('lab_requirement'),
         autonomy=cfg_doc.get("autonomy", "act"),
         rounds=cfg_doc.get("rounds", 1),

@@ -125,9 +125,10 @@ def _spawn_plan(doc: dict, program_name: str) -> None:
            "--model", "anthropic", "--run", "--autonomy", autonomy]
     if cands:
         cmd += ["--candidates", cands]
-    if doc.get("labs"):
-        import json as _j
-        cmd += ["--labs-json", _j.dumps(doc["labs"])]
+    import json as _j
+    cmd += ["--labs-json", _j.dumps(doc.get("labs")
+                                    or [{"instrument":
+                                         "bionexus-virtual-lab"}])]
     logf = CAMPAIGN_DIR / f"plan-{int(time.time())}.log"
     env = {**_os.environ, "BN_PROGRAM": program_name,
            "PYTHONPATH": str(Path.cwd() / "src")}
