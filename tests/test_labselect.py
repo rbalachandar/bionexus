@@ -175,8 +175,10 @@ def test_fence_info_resolves_and_flags_honestly():
     fence = fence_info([{"instrument": "labmcp-mettler-toledo"}])
     f = fence[0]
     assert f["name"].startswith("Mettler Toledo")
-    assert f["simulated"] is True and f["installed"] is True
-    assert f["hardware_validated"] is False
+    assert f["simulated"] is True            # catalog-declared status
+    assert f["hardware_validated"] is False  # ...and honest about it
+    # installed is environment-dependent (server installed or not) —
+    # the earlier available_instruments test owns that branch
     # unknown id: declared but unresolvable — kept visible, flagged
     f2 = fence_info([{"instrument": "ghost-9000"}])[0]
     assert f2["unknown"] is True and f2["installed"] is False
