@@ -203,6 +203,26 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             Envelope(experiment_branch_id=sbranch),
             EventType.gate_decision, actor,
             decision={"kind": "lab_selected", **sel.rationale}))
+        # gate-mode autonomy extends to the instrument itself: when the
+        # fence leaves a real CHOICE (2+ eligible), the human confirms
+        # the machine's ranking before any lab is built around it
+        if cfg.autonomy == "gate" and len(sel.rationale["eligible"]) > 1:
+            ok = bool(approver and approver(
+                f"LAB [problem/{cfg.problem.problem_id or 'pending'}]: use "
+                f"'{sel.name}' for this campaign? eligible: "
+                f"{sel.rationale['eligible']}"))
+            store.append(record_for(
+                Envelope(experiment_branch_id=sbranch),
+                EventType.gate_decision, actor,
+                decision={"kind": "lab_confirmed" if ok
+                          else "lab_confirmation_declined",
+                          "chosen": sel.name,
+                          "eligible": sel.rationale["eligible"]}))
+            if not ok:
+                raise ValueError(
+                    f"lab choice '{sel.name}' declined by the approver — "
+                    f"campaign refused (eligible were "
+                    f"{sel.rationale['eligible']})")
         say(f"lab: '{sel.name}' selected from a pool of {len(pool)} "
             f"(simulated={sel.rationale['chosen']['simulated']}); "
             f"decision sealed")

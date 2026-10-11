@@ -193,10 +193,13 @@ export default function ProgramForm({ onLaunched, onDone }: {
               Instrument fence — which instruments this program may use
             </div>
             <p className="muted" style={{ fontSize: 11, margin: '0 0 6px' }}>
-              The matcher picks by declared capability from this list
-              only, and seals its decision (with every decline reason)
-              before an instrument acts. Empty defaults to the virtual
-              lab, sealed and labeled simulated.
+              Tick what is physically available to this lab. Campaigns
+              can run ONLY on ticked instruments: each experiment's needs
+              are matched against their declared capabilities, the
+              choice (and every decline reason) is sealed before an
+              instrument acts, and under gate autonomy a multi-instrument
+              choice is confirmed by you. Empty = simulated virtual lab
+              only.
             </p>
             {instruments.map((ins) => (
               <label key={ins.id} style={{ display: 'flex', gap: 8,

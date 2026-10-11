@@ -101,3 +101,52 @@ def test_campaign_runs_with_pool_and_seals_selection():
     assert sel and sel[0]["chosen"]["simulated"] is True
     assert store.verify_chain() == []
     assert rep.verdicts
+
+
+def _gate_cfg(labs):
+    c = _cfg(labs, assay="binding")
+    c.autonomy = "gate"
+    return c
+
+
+def test_gate_mode_human_confirms_multi_eligible_choice():
+    """Machine ranks, human signs: with 2 eligible instruments under gate
+    autonomy, the approver is asked about the LAB and the confirmation
+    is sealed."""
+    store = SqliteProvenanceStore(":memory:")
+    calls = []
+    rep = run_campaign(
+        _gate_cfg([{"simulator": {"seed": 7}},
+                   {"simulator": {"seed": 8}}]),
+        None, store,
+        approver=lambda title: calls.append(title) or True,
+        notify=lambda m: None)
+    assert any(str(c).startswith("LAB [") for c in calls)
+    kinds = [r.decision.get("kind") for br in store.branches()
+             for r in store.branch_records(br)
+             if r.event_type.value == "gate_decision"]
+    assert "lab_selected" in kinds and "lab_confirmed" in kinds
+    assert rep.verdicts
+
+
+def test_gate_mode_declined_lab_choice_refuses_campaign():
+    store = SqliteProvenanceStore(":memory:")
+    with pytest.raises(ValueError, match="declined by the approver"):
+        run_campaign(
+            _gate_cfg([{"simulator": {"seed": 7}},
+                       {"simulator": {"seed": 8}}]),
+            None, store, approver=lambda title: False,
+            notify=lambda m: None)
+    kinds = [r.decision.get("kind") for br in store.branches()
+             for r in store.branch_records(br)
+             if r.event_type.value == "gate_decision"]
+    assert "lab_confirmation_declined" in kinds
+
+
+def test_single_eligible_instrument_needs_no_confirmation():
+    store = SqliteProvenanceStore(":memory:")
+    calls = []
+    run_campaign(_gate_cfg([{"simulator": {"seed": 7}}]), None, store,
+                 approver=lambda title: calls.append(title) or True,
+                 notify=lambda m: None)
+    assert not any(str(c).startswith("LAB [") for c in calls)

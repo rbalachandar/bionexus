@@ -126,7 +126,8 @@ def select_lab(pool: list, req: LabRequirement):
                    "chosen": {"name": name, "simulated": caps["simulated"]},
                    "order_rule": "hardware-validated first, then declared "
                                  "order; capability-superset required",
-                   "declined": refusals}), refusals
+                   "declined": refusals,
+                   "eligible": [n for n, _, _ in eligible]}), refusals
 
 
 CATALOG_PATH = Path(__file__).parent / "instruments.json"
