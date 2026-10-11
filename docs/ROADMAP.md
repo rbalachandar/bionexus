@@ -554,9 +554,20 @@ evaluation, vendor access decisions.
   classify(): the identical 7.35 pH reading is INCONCLUSIVE
   uncalibrated (CI 7.11-7.58 straddles the 7.20 gate) and VALIDATED
   buffered (CI 7.340-7.360). Measurement quality is part of the
-  verdict. Next: same adapter driven through LabGateway + provenance in
-  a live campaign, then the generic McpLabAdapter against labmcp
-  --simulate.
+  verdict. INTEGRATION SHIPPED (same day): LabGateway + tracker +
+  chain-campaign over the sensor (gateway-mediated, safety-screened,
+  verdict sealed with uncertainty in its decision), AND the generic
+  MCP transport — bionexus/mcp_instrument.py: McpLabAdapter (MCP client:
+  initialize/tools/list/tools/call over a subprocess; capabilities are
+  the server's DECLARED typed tool schemas; auto-invocation restricted
+  to readOnly-annotated tools — mutating calibrate_sensor refuses to
+  auto-run) + a reference MCP server wrapping the wire-sim, itself a
+  drop-in seam for `uvx labmcp-atlas-ezo --simulate`. The transport-swap
+  claim is now a TEST, not prose: serial vs MCP, identical readings,
+  identical verdicts, chain intact (tests/test_ezo_campaign_mcp.py;
+  runnable story: examples/ezo_sensor_campaign.py). Remaining: run the
+  real labmcp package through the same adapter when it is installable in
+  an operator env, and the hardware confirmation session.
 
 ## T0 — Uncertainty-aware verdicts (epistemic integrity)
 - [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap

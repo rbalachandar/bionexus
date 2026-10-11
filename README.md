@@ -566,7 +566,10 @@ agent/reviewer/MCP registry lanes remain in-process (S-T3 1d/1e in
 ## Agent Skills and MCP
 
 BioNexus ships as an [Agent Skills](https://agentskills.io/) package
-(`skills/`, `plugin.json`) and exposes its tools over MCP:
+(`skills/`, `plugin.json`) and exposes its tools over MCP — and, via the
+S-T4 `McpLabAdapter`, consumes MCP instrument servers too (typed tool
+schemas for understanding, readOnly-annotated auto-invocation only,
+gateway upstream — `mcp_instrument.py`):
 
 ```json
 {"bionexus": {"command": "bn", "args": ["mcp"]}}
