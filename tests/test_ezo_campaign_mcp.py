@@ -145,3 +145,58 @@ def test_mutating_tool_is_never_auto_invoked():
             a.submit_protocol(sub)
     finally:
         a.close()
+
+
+def test_real_labmcp_server_balance_campaign():
+    """S-T4 'can you run all 32?' — the honest answer, demonstrated: the
+    transport + profile layer run a REAL third-party MCP server
+    (labmcp-mettler-toledo --simulate from PyPI, untouched) through the
+    same gateway campaign with identical governance. Instruments whose
+    vocabulary a profile can describe are in; instruments without a
+    declared read-only value tool are refused, never guessed."""
+    import shutil
+    exe = (Path(__file__).resolve().parents[1]
+           / ".venv/bin" / "labmcp-mettler-toledo")
+    if not exe.exists():
+        exe2 = shutil.which("labmcp-mettler-toledo")
+        if not exe2:
+            pytest.skip("labmcp-mettler-toledo not installed "
+                        "(pip install labmcp-mettler-toledo)")
+        exe = Path(exe2)
+    from bionexus.mcp_instrument import LABMCP_METTLER_PROFILE
+    a = McpLabAdapter(command=[str(exe), "--simulate"],
+                      profile=LABMCP_METTLER_PROFILE)
+    try:
+        caps = a.list_capabilities()
+        tools = {t["name"] for t in caps["tools"]}
+        assert {"read_weight", "tare",
+                "run_internal_adjustment"} <= tools      # 17-tool surface
+        tare = next(t for t in caps["tools"]
+                    if t["name"] == "tare")
+        assert tare["read_only"] is False               # mutating, visible
+        r = _campaign(a, "mcp-labmcp")
+        assert r["value"] > 0 and r["verdict"] in (
+            "validated", "inconclusive", "invalidated")
+        assert r["chain_ok"]
+    finally:
+        a.close()
+
+
+def test_profile_cannot_smuggle_a_mutating_read_tool():
+    """A profile that LIES — pointing the read tool at a mutating verb —
+    must be refused by the server's annotations, not by our trust."""
+    import shutil
+    from bionexus.mcp_instrument import LABMCP_METTLER_PROFILE
+    exe = Path(__file__).resolve().parents[1] / ".venv/bin/labmcp-mettler-toledo"
+    if not exe.exists() and not shutil.which("labmcp-mettler-toledo"):
+        pytest.skip("labmcp-mettler-toledo not installed")
+    if not exe.exists():
+        exe = Path(shutil.which("labmcp-mettler-toledo"))
+    bad = dict(LABMCP_METTLER_PROFILE)
+    bad["read_tool"] = "tare"          # not readOnly -> must refuse
+    a = McpLabAdapter(command=[str(exe), "--simulate"], profile=bad)
+    try:
+        with pytest.raises(McpError, match="readOnly"):
+            a.submit_protocol(_submission("problem/nope"))
+    finally:
+        a.close()

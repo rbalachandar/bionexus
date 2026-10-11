@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install pydantic pytest pyyaml numpy fastapi httpx python-multipart rdkit && pip install -e . --no-deps
+      - run: pip install pydantic pytest pyyaml numpy fastapi httpx python-multipart rdkit labmcp-mettler-toledo && pip install -e . --no-deps
       - name: Full flow (all layers)
         run: python examples/demo_full_flow.py
       - name: Provenance audit

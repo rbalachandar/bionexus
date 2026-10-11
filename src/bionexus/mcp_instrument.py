@@ -40,9 +40,33 @@ from bionexus.core.contracts import (AssayResult, Envelope, InstrumentInfo,
 
 _PROTOCOL_VERSION = "2024-11-05"
 
+# Instrument profiles: the declarative vocabulary layer. The transport is
+# generic MCP; the SEMANTICS are per-instrument-family and must be
+# declared, not guessed. uncertainty_field=None means the server reports
+# no calibration-state uncertainty -> the adapter falls back to the
+# empirical spread of replicate reads (never silently to zero).
+REFERENCE_EZO_PROFILE = {
+    "read_tool": "read_ph", "value_field": "ph", "unit": "pH",
+    "uncertainty_field": "uncertainty_ph", "cal_field": "cal_state",
+    "stable_field": None,
+}
+# labmcp-mettler-toledo (real PyPI server, verified live Oct 11):
+# read_weight -> {"value": g, "unit": "g", "stable": bool, "timestamp":...}
+LABMCP_METTLER_PROFILE = {
+    "read_tool": "read_weight", "value_field": "value", "unit": None,
+    "uncertainty_field": None, "cal_field": None, "stable_field": "stable",
+}
+
 
 class McpError(RuntimeError):
     pass
+
+
+def _derived(readings: list[float], stable) -> dict[str, float]:
+    d = {"n_reads": float(len(readings))}
+    if stable is not None:
+        d["stable"] = 1.0 if stable else 0.0
+    return d
 
 
 class McpLabAdapter:
@@ -51,7 +75,9 @@ class McpLabAdapter:
     name = "mcp-instrument"
 
     def __init__(self, command: list[str], timeout: float = 30.0,
-                 approval_timeout: float = 60.0):
+                 approval_timeout: float = 60.0,
+                 profile: dict | None = None):
+        self.profile = dict(profile or REFERENCE_EZO_PROFILE)
         self._proc = subprocess.Popen(
             command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, text=True)
@@ -152,60 +178,89 @@ class McpLabAdapter:
         }
 
     def submit_protocol(self, protocol: ProtocolSubmission) -> str:
-        readonly = self._readonly_tools()
-        if "read_ph" not in readonly:
-            raise McpError("server's read_ph tool is not annotated "
-                           "readOnly — refusing to auto-invoke unreviewed")
+        prof = self.profile
+        tool = prof["read_tool"]
+        if tool not in self._readonly_tools():
+            raise McpError(
+                f"profile read tool {tool!r} is not declared readOnly by "
+                "the server — refusing to auto-invoke an unreviewed verb")
         for point in protocol.samples:
-            cal = (point.metadata or {}).get("calibrate")
-            if cal:
+            mut = (point.metadata or {}).get("calibrate")
+            if mut:
                 raise McpError(
-                    f"calibration ({cal!r}) requested inside a campaign: "
-                    "calibrate_sensor is a MUTATING tool — operator action "
-                    "only (see readOnly-gate in _readonly_tools)")
+                    f"instrument mutation ({mut!r}) requested inside a "
+                    "campaign: mutating tools (tare, calibrate,...) are "
+                    "operator actions, never campaign steps")
         n = 3
         if protocol.steps:
             n = int((protocol.steps[0].params or {}).get("reads", 3))
         readings: list[float] = []
+        out: dict = {}
         for _ in range(n):
-            out = self._call("read_ph", {})
-            val = out.get("ph")
+            out = self._call(tool, {})
+            val = out.get(prof["value_field"])
             if not isinstance(val, (int, float)):
-                raise McpError(f"read_ph returned no numeric ph: {out}")
+                raise McpError(f"{tool}: no numeric "
+                               f"{prof['value_field']!r} in {out}")
             readings.append(float(val))
+        mean = sum(readings) / len(readings)
+        reported = (out.get(prof["uncertainty_field"])
+                    if prof.get("uncertainty_field") else None)
+        if reported is not None:
+            uncertainty = float(reported)     # calibration-state truth
+        else:
+            uncertainty = (sum((r - mean) ** 2 for r in readings)
+                           / max(1, len(readings) - 1)) ** 0.5 or None
+            # no reported uncertainty: empirical replicate spread stands
+            # in (and a zero spread on one unfiltered read stays None —
+            # uncertainty unknown, not uncertainty zero)
+        # profile unit=<name> fixes the unit; unit=None reads it from the
+        # server's result (e.g. labmcp balances report "g")
+        unit = prof["unit"] if prof.get("unit") else out.get("unit")
+        stable = (out.get(prof["stable_field"])
+                  if prof.get("stable_field") else None)
         self._seq += 1
         run_id = f"mcp-{self._seq:03d}"
-        unc = out.get("uncertainty_ph")
         self._runs[run_id] = {"protocol": protocol, "readings": readings,
-                              "uncertainty": float(unc) if unc else None,
-                              "cal_state": out.get("cal_state")}
+                              "uncertainty": uncertainty,
+                              "unit": unit,
+                              "stable": stable,
+                              "cal_state": out.get(
+                                  prof.get("cal_field") or "cal_state")}
         return run_id
 
     def get_status(self, run_id: str) -> str:
         return "done" if run_id in self._runs else "unknown"
 
     def fetch_results(self, run_id: str) -> AssayResult:
+        from bionexus.core.contracts import MeasurementFlag
         run = self._runs[run_id]
         readings = run["readings"]
         mean = sum(readings) / len(readings)
         protocol: ProtocolSubmission = run["protocol"]
+        assay = getattr(protocol.assay_type, "value",
+                        str(protocol.assay_type))
+        flags = ([] if run.get("stable") in (None, True)
+                 else [MeasurementFlag.suspect])
         return AssayResult(
             envelope=Envelope(experiment_branch_id="mcp-instrument"),
             run_id=run_id, protocol_id=protocol.protocol_id,
-            instrument=InstrumentInfo(adapter="mcp-instrument(sim)",
-                                      instrument_id="ezo-ph-mcp-01",
-                                      raw_output_uri="mcp://tools/read_ph"),
+            instrument=InstrumentInfo(adapter="mcp-instrument",
+                                      instrument_id=self.profile["read_tool"],
+                                      raw_output_uri="mcp://tools/"
+                                      + self.profile["read_tool"]),
             status=RunStatus.completed,
             measurements=[Measurement(
-                sample_id=s.sample_id, assay_type="ph",
-                value=round(mean, 3), unit="pH",
-                uncertainty=run["uncertainty"],
-                derived_metrics={"n_reads": len(readings)},
+                sample_id=s.sample_id, assay_type=assay,
+                value=round(mean, 3), unit=run.get("unit") or "1",
+                uncertainty=run["uncertainty"], flags=flags,
+                derived_metrics=_derived(readings, run.get("stable")),
                 metadata={"cal_state": run["cal_state"]})
                 for s in protocol.samples
                 if s.kind.value != "buffer"],
-            qc={"controls_passed": True, "calibration": run["cal_state"],
-                "note": "SIMULATED via MCP transport (S-T4 POC)"},
+            qc={"controls_passed": run.get("stable") is not False,
+                "calibration": run["cal_state"],
+                "note": "MCP transport (S-T4); stability flag honored"},
         )
 
     def close(self) -> None:

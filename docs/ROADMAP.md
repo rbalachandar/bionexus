@@ -566,8 +566,22 @@ evaluation, vendor access decisions.
   claim is now a TEST, not prose: serial vs MCP, identical readings,
   identical verdicts, chain intact (tests/test_ezo_campaign_mcp.py;
   runnable story: examples/ezo_sensor_campaign.py). Remaining: run the
-  real labmcp package through the same adapter when it is installable in
-  an operator env, and the hardware confirmation session.
+  REAL labmcp package through the same adapter — DONE:
+  labmcp-mettler-toledo (PyPI, 0.1.3, untouched) runs a full gateway
+  campaign through McpLabAdapter + LABMCP_METTLER_PROFILE: 17-tool
+  surface declared with typed schemas, readOnly gating honored
+  (tare is visibly mutating and campaign-refused), result unit "g"
+  read from the server, stability flag mapped, chain sealed; a lying
+  profile pointing read_tool at `tare` is refused by the SERVER's
+  annotation, not our trust (tests run in CI: e2e job installs the
+  server). Honest coverage math for "all 32": the transport is proven
+  generic; each readout instrument family needs a DECLARED profile
+  (~10 lines) and a test — that's a per-family task, not one big
+  mechanism task. Non-readout servers (pump jog, draft shield,
+  displays) are actuator components for Make-step protocols, not
+  LabAdapters; they'd be reached via gateway-gated protocol steps, a
+  separate (bigger, correct) design question. Hardware confirmation
+  session unchanged.
 
 ## T0 — Uncertainty-aware verdicts (epistemic integrity)
 - [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap
