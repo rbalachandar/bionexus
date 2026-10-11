@@ -216,8 +216,10 @@ materials programs differ in adapters, not in the framework.
 
 Which instrument runs an experiment is two decisions, never one: the
 **program creator declares the fence** — a pool of permitted instruments
-(campaign config `labs:`; virtual-lab, adapter path, or an MCP server +
-profile) — and the **matcher selects within it** by the experiment's
+(campaign config `labs:` referencing instrument ids from the catalog
+`bionexus/instruments.json` — or inline adapter/MCP entries; the program
+form shows the available instruments as a tickable fence with
+simulated/needs-device badges) — and the **matcher selects within it** by the experiment's
 declared needs (assay types, readouts, BSL ceiling), preferring
 hardware-validated over simulated. The selection — including why each
 other instrument was declined — is sealed into the branch before any

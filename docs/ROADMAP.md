@@ -609,8 +609,23 @@ SHIPPED (POC scope, tests green):
   member selected via its declared readOnly tools (mettler), campaign-
   level refusal sealed + happy-path selection sealed, chain verified.
 
-Open: workbench surface (pool editor in the program form; selection
-chip on program cards), ReadoutSpec capabilities actually FEEDING
+  level refusal sealed + happy-path selection sealed, chain verified.
+
+  CATALOG-DRIVEN (same day): profiles moved OUT of Python imports into
+  DATA — bionexus/instruments.json holds every instrument: id, kind
+  (simulator | mcp | adapter), launch command, capability declaration,
+  profile mapping, simulated/hardware status, vendor + license
+  attribution. build_pool resolves {"instrument": "<id>"};
+  McpLabAdapter now refuses to run without a profile (constants deleted;
+  the catalog is the only home for named profiles). GET
+  /api/instruments = catalog + installed-availability; the program form
+  carries an "Instrument fence" picker (checkboxes, simulated /
+  needs-device badges, uninstalled disabled); the fence is forwarded
+  end-to-end for autonomous launches: _spawn_plan -> --labs-json ->
+  bn plan -> run_tree -> every leaf CampaignConfig.
+
+Open: selection chip on program cards (form-side fence shipped);
+wizard guided-path fence (the wizard builds its own config today); ReadoutSpec capabilities actually FEEDING
 LabRequirement (readiness still checks self-declared needs — the join
 now exists one level up), per-round re-selection, multi-instrument
 protocols (Make on rig X, Test on reader Y — a plan, not a choice).
