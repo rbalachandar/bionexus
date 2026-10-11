@@ -44,6 +44,9 @@ export default function ProgramForm({ onLaunched, onDone }: {
   const [candidates, setCandidates] = useState('')
   const [decompose, setDecompose] = useState(true)
   const [labs, setLabs] = useState<string[]>([])
+  const [openInst, setOpenInst] = useState(false)
+  const [instConfig, setInstConfig] = useState<Record<string,
+    Record<string, string>>>({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -58,7 +61,8 @@ export default function ProgramForm({ onLaunched, onDone }: {
         program: name, objective, modality: effectiveModality, metric,
         unit, direction, gate_value: gateValue, mode, autonomy,
         k, rounds, candidates, decompose: decompose && mode === 'autonomous',
-        labs: labs.map((id) => ({ instrument: id })),
+        labs: labs.map((id) => ({ instrument: id,
+          config: instConfig[id] ?? {} })),
       }
       const r = await fetch('/api/programs', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -188,40 +192,74 @@ export default function ProgramForm({ onLaunched, onDone }: {
             <input value={candidates} onChange={(e) => setCandidates(e.target.value)}
               style={inputStyle} placeholder="gefitinib, erlotinib" />
           </label>
-          <div style={{ marginTop: 10 }}>
+          <div style={{ position: 'relative', marginTop: 10 }}>
             <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-              Instrument fence — which instruments this program may use
+              Instruments — which are permitted for this program
             </div>
             <p className="muted" style={{ fontSize: 11, margin: '0 0 6px' }}>
-              Tick what is physically available to this lab. Campaigns
-              can run ONLY on ticked instruments: each experiment's needs
-              are matched against their declared capabilities, the
-              choice (and every decline reason) is sealed before an
-              instrument acts, and under gate autonomy a multi-instrument
-              choice is confirmed by you. Empty = simulated virtual lab
-              only.
+              Only installed/configured instruments are selectable.
+              Campaigns run on these only, matched by capability; every
+              choice and refusal is sealed. Empty = simulated virtual lab.
             </p>
-            {instruments.map((ins) => (
-              <label key={ins.id} style={{ display: 'flex', gap: 8,
-                alignItems: 'baseline', fontSize: 12, padding: '2px 0',
-                opacity: ins.installed ? 1 : 0.45 }}>
-                <input type="checkbox" disabled={!ins.installed}
-                  checked={labs.includes(ins.id)}
-                  onChange={(e) => setLabs((prev) => e.target.checked
-                    ? [...prev, ins.id]
-                    : prev.filter((x) => x !== ins.id))} />
-                <span>{ins.name}</span>
-                <span className="muted mono" style={{ fontSize: 10 }}>
-                  {ins.vendor}
-                </span>
-                {ins.simulated && <span className="chip"
-                  style={{ fontSize: 10 }}>simulated</span>}
-                {ins.requires_network && <span className="chip"
-                  style={{ fontSize: 10 }}>needs device</span>}
-                {!ins.installed && <span className="muted"
-                  style={{ fontSize: 10 }}>not installed</span>}
-              </label>
-            ))}
+            <button type="button" onClick={() => setOpenInst(!openInst)}
+              style={inputStyle}>
+              {labs.length === 0 ? 'No instruments selected — virtual lab (simulated)'
+                : `${labs.length} instrument${labs.length > 1 ? 's' : ''} permitted`}
+            </button>
+            {openInst && (
+              <div style={{ position: 'absolute', zIndex: 30, top: '100%',
+                left: 0, right: 0, background: 'var(--bg)',
+                border: '1px solid var(--border)', borderRadius: 8,
+                boxShadow: '0 8px 24px rgba(0,0,0,.18)', padding: 8,
+                maxHeight: 280, overflowY: 'auto' }}>
+                {instruments.filter((ins) => ins.installed).map((ins) => {
+                  const sel = labs.includes(ins.id)
+                  const schema = (ins.config_schema ?? [])
+                    .filter((f: any) => f.type === 'string')
+                  return (
+                    <div key={ins.id} style={{ borderBottom:
+                      '1px solid var(--border)', padding: '6px 2px' }}>
+                      <label style={{ display: 'flex', gap: 8,
+                        alignItems: 'baseline', fontSize: 12,
+                        cursor: 'pointer' }}>
+                        <input type="checkbox"
+                          checked={sel}
+                          onChange={(e) => setLabs((prev) => e.target.checked
+                            ? [...prev, ins.id]
+                            : prev.filter((x) => x !== ins.id))} />
+                        <span>{ins.name}</span>
+                        <span className="muted mono" style={{ fontSize: 10 }}>
+                          {ins.vendor}
+                        </span>
+                        {ins.simulated && <span className="chip"
+                          style={{ fontSize: 10 }}>simulated</span>}
+                        {ins.requires_network && <span className="chip"
+                          style={{ fontSize: 10 }}>needs device</span>}
+                      </label>
+                      {sel && schema.map((f: any) => (
+                        <div key={f.key} style={{ display: 'flex', gap: 6,
+                          alignItems: 'center', margin: '4px 0 0 24px' }}>
+                          <span className="muted mono"
+                            style={{ fontSize: 10, minWidth: 64 }}>
+                            --{f.key}
+                          </span>
+                          <input style={inputStyle}
+                            placeholder={f.default ?? f.description}
+                            onChange={(e) => {
+                              const v = f.type === 'bool'
+                                ? e.target.value !== 'false'
+                                : e.target.value
+                              setInstConfig((prev) => ({ ...prev,
+                                [ins.id]: { ...(prev[ins.id] ?? {}),
+                                  [f.key]: v } }))
+                            }} />
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </details>
 

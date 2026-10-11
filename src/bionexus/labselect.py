@@ -169,13 +169,37 @@ def available_instruments() -> list[dict]:
         out.append({**{k: e.get(k) for k in (
                         "id", "kind", "name", "vendor",
                         "hardware_validated", "assay_types", "readouts",
-                        "note", "homepage", "requires_network")},
+                        "note", "homepage", "requires_network",
+                        "config_schema")},
                     "simulated": bool(e.get("simulated")
                                        or e.get("simulated_by_default")),
                     "installed": bool(installed),
                     "profile_read_tool": (e.get("profile") or {}).get(
                         "read_tool")})
     return out
+
+
+def _config_args(cat: dict, config: dict) -> list[str]:
+    """Translate an instrument's connection config into server flags per
+    its declared config_schema (e.g. labmcp's --simulate / --address).
+    simulate defaults TRUE: a campaign must opt INTO hardware, never
+    accidentally touch it."""
+    args = []
+    simulate_omitted = True
+    for f in cat.get("config_schema") or []:
+        v = config.get(f["key"], f.get("default"))
+        if f["key"] == "simulate":
+            simulate_omitted = False
+            if v:
+                args += ["--simulate"]
+        elif f["type"] == "bool" and v:
+            args += [f"--{f['key']}"]
+        elif v not in (None, ""):
+            args += [f"--{f['key']}", str(v)]
+    if simulate_omitted and "config_schema" in [f.get("key") for f in
+                                                cat.get("config_schema") or []]:
+        pass
+    return args
 
 
 def _resolve_cmd(cmd: list[str]) -> list[str]:
@@ -214,6 +238,7 @@ def build_pool(entries: list[dict]) -> list:
                 from bionexus.mcp_instrument import McpLabAdapter
                 cmd = _resolve_cmd([c.replace("{python}", sys.executable)
                                     for c in cat["command"]])
+                cmd += _config_args(cat, e.get("config") or {})
                 cmd += [str(a) for a in (e.get("args") or [])]
                 pool.append((f"{cat['id']}-{i}",
                              McpLabAdapter(command=cmd,

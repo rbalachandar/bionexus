@@ -1,90 +1,151 @@
 {
-  "version": 1,
-  "updated": "2026-10-11",
-  "attribution": "labmcp-* entries reference K-Dense LabMCP servers (Apache-2.0, github.com/K-Dense-AI/lab-instrument-mcps); profiles here are BioNexus-side mappings of their declared result fields",
-  "instruments": [
+ "version": 1,
+ "updated": "2026-10-11",
+ "attribution": "labmcp-* entries reference K-Dense LabMCP servers (Apache-2.0, github.com/K-Dense-AI/lab-instrument-mcps); profiles here are BioNexus-side mappings of their declared result fields",
+ "instruments": [
+  {
+   "id": "bionexus-virtual-lab",
+   "kind": "simulator",
+   "name": "Virtual lab (dose–response simulator)",
+   "vendor": "BioNexus",
+   "simulated": true,
+   "hardware_validated": false,
+   "assay_types": [
+    "binding",
+    "enzymatic",
+    "cytotoxicity",
+    "counterscreen",
+    "adme",
+    "pcr",
+    "elisa",
+    "dsf",
+    "custom"
+   ],
+   "options": {
+    "seed": 42
+   }
+  },
+  {
+   "id": "ezo-ph-reference-mcp",
+   "kind": "mcp",
+   "name": "EZO pH probe (BioNexus reference MCP server)",
+   "vendor": "Atlas Scientific grammar; simulator stands in for labmcp_atlas_ezo",
+   "command": [
+    "{python}",
+    "-m",
+    "bionexus.mcp_instrument"
+   ],
+   "simulated": true,
+   "hardware_validated": false,
+   "assay_types": [
+    "sensor"
+   ],
+   "readouts": [
+    "read_ph"
+   ],
+   "profile": {
+    "read_tool": "read_ph",
+    "value_field": "ph",
+    "unit": "pH",
+    "uncertainty_field": "uncertainty_ph",
+    "cal_field": "cal_state",
+    "stable_field": null
+   }
+  },
+  {
+   "id": "labmcp-mettler-toledo",
+   "kind": "mcp",
+   "name": "Mettler Toledo balance (LabMCP)",
+   "vendor": "K-Dense LabMCP (Apache-2.0)",
+   "command": [
+    "labmcp-mettler-toledo"
+   ],
+   "availability_executable": "labmcp-mettler-toledo",
+   "homepage": "https://github.com/K-Dense-AI/lab-instrument-mcps",
+   "simulated_by_default": true,
+   "hardware_validated": false,
+   "assay_types": [],
+   "readouts": [
+    "read_weight",
+    "get_tare",
+    "read_temperature"
+   ],
+   "profile": {
+    "read_tool": "read_weight",
+    "value_field": "value",
+    "unit": null,
+    "uncertainty_field": null,
+    "cal_field": null,
+    "stable_field": "stable"
+   },
+   "config_schema": [
     {
-      "id": "bionexus-virtual-lab",
-      "kind": "simulator",
-      "name": "Virtual lab (dose–response simulator)",
-      "vendor": "BioNexus",
-      "simulated": true,
-      "hardware_validated": false,
-      "assay_types": ["binding", "enzymatic", "cytotoxicity", "counterscreen", "adme", "pcr", "elisa", "dsf", "custom"],
-      "options": {"seed": 42}
+     "key": "simulate",
+     "type": "bool",
+     "default": true,
+     "description": "practice mode — no hardware contacted"
     },
     {
-      "id": "ezo-ph-reference-mcp",
-      "kind": "mcp",
-      "name": "EZO pH probe (BioNexus reference MCP server)",
-      "vendor": "Atlas Scientific grammar; simulator stands in for labmcp_atlas_ezo",
-      "command": ["{python}", "-m", "bionexus.mcp_instrument"],
-      "simulated": true,
-      "hardware_validated": false,
-      "assay_types": ["sensor"],
-      "readouts": ["read_ph"],
-      "profile": {
-        "read_tool": "read_ph",
-        "value_field": "ph",
-        "unit": "pH",
-        "uncertainty_field": "uncertainty_ph",
-        "cal_field": "cal_state",
-        "stable_field": null
-      }
-    },
-    {
-      "id": "labmcp-mettler-toledo",
-      "kind": "mcp",
-      "name": "Mettler Toledo balance (LabMCP)",
-      "vendor": "K-Dense LabMCP (Apache-2.0)",
-      "command": ["labmcp-mettler-toledo", "--simulate"],
-      "availability_executable": "labmcp-mettler-toledo",
-      "homepage": "https://github.com/K-Dense-AI/lab-instrument-mcps",
-      "simulated_by_default": true,
-      "hardware_validated": false,
-      "assay_types": [],
-      "readouts": ["read_weight", "get_tare", "read_temperature"],
-      "profile": {
-        "read_tool": "read_weight",
-        "value_field": "value",
-        "unit": null,
-        "uncertainty_field": null,
-        "cal_field": null,
-        "stable_field": "stable"
-      }
-    },
-    {
-      "id": "labmcp-ika",
-      "kind": "mcp",
-      "name": "IKA hotplate/stirrer (LabMCP)",
-      "vendor": "K-Dense LabMCP (Apache-2.0)",
-      "command": ["labmcp-ika", "--simulate"],
-      "availability_executable": "labmcp-ika",
-      "homepage": "https://github.com/K-Dense-AI/lab-instrument-mcps",
-      "simulated_by_default": true,
-      "hardware_validated": false,
-      "assay_types": [],
-      "readouts": ["get_status", "wait_for_temperature"],
-      "profile": {
-        "read_tool": "get_status",
-        "value_field": "hotplate_temperature_c",
-        "unit": "°C",
-        "uncertainty_field": null,
-        "cal_field": null,
-        "stable_field": null
-      }
-    },
-    {
-      "id": "opentrons-reference-driver",
-      "kind": "adapter",
-      "name": "Opentrons OT-2/Flex driver (contract-pinned)",
-      "vendor": "Opentrons HTTP API v3",
-      "adapter": "bionexus.adapters.lab.opentrons:OpentronsLab",
-      "simulated": false,
-      "hardware_validated": false,
-      "requires_network": true,
-      "assay_types": ["make"],
-      "note": "CI-verified against a spec-conformant simulated robot; physical confirmation pending (S-T4)"
+     "key": "address",
+     "type": "string",
+     "default": null,
+     "description": "COM3 / /dev/ttyUSB0 / tcp://ip:port (from `labmcp ports`)"
     }
-  ]
+   ]
+  },
+  {
+   "id": "labmcp-ika",
+   "kind": "mcp",
+   "name": "IKA hotplate/stirrer (LabMCP)",
+   "vendor": "K-Dense LabMCP (Apache-2.0)",
+   "command": [
+    "labmcp-ika"
+   ],
+   "availability_executable": "labmcp-ika",
+   "homepage": "https://github.com/K-Dense-AI/lab-instrument-mcps",
+   "simulated_by_default": true,
+   "hardware_validated": false,
+   "assay_types": [],
+   "readouts": [
+    "get_status",
+    "wait_for_temperature"
+   ],
+   "profile": {
+    "read_tool": "get_status",
+    "value_field": "hotplate_temperature_c",
+    "unit": "°C",
+    "uncertainty_field": null,
+    "cal_field": null,
+    "stable_field": null
+   },
+   "config_schema": [
+    {
+     "key": "simulate",
+     "type": "bool",
+     "default": true,
+     "description": "practice mode — no hardware contacted"
+    },
+    {
+     "key": "address",
+     "type": "string",
+     "default": null,
+     "description": "serial/virtual-COM address of the hotplate"
+    }
+   ]
+  },
+  {
+   "id": "opentrons-reference-driver",
+   "kind": "adapter",
+   "name": "Opentrons OT-2/Flex driver (contract-pinned)",
+   "vendor": "Opentrons HTTP API v3",
+   "adapter": "bionexus.adapters.lab.opentrons:OpentronsLab",
+   "simulated": false,
+   "hardware_validated": false,
+   "requires_network": true,
+   "assay_types": [
+    "make"
+   ],
+   "note": "CI-verified against a spec-conformant simulated robot; physical confirmation pending (S-T4)"
+  }
+ ]
 }

@@ -150,3 +150,21 @@ def test_single_eligible_instrument_needs_no_confirmation():
                  approver=lambda title: calls.append(title) or True,
                  notify=lambda m: None)
     assert not any(str(c).startswith("LAB [") for c in calls)
+
+
+def test_config_schema_flows_to_server_flags():
+    """The review's interface-config idea: connection details (address,
+    simulate) are per-instrument config translated to server flags via
+    the catalog's declared config_schema — simulate defaults ON so a
+    campaign must opt INTO hardware, never accidentally touch it."""
+    from bionexus.labselect import _config_args
+    cat = next(e for e in __import__("json").loads(
+        (Path(__file__).resolve().parents[1]
+         / "src/bionexus/instruments.json").read_text())["instruments"]
+        if e["id"] == "labmcp-mettler-toledo")
+    assert _config_args(cat, {}) == ["--simulate"]
+    assert _config_args(cat, {"simulate": True,
+                              "address": "tcp://10.0.0.5:1234"}) == \
+        ["--simulate", "--address", "tcp://10.0.0.5:1234"]
+    assert _config_args(cat, {"simulate": False,
+                              "address": "COM3"}) == ["--address", "COM3"]
