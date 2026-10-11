@@ -63,9 +63,30 @@ def create_session(question: str, target: str, claim: str,
                                   question=question, status="designing")
         except Exception:
             pass
+    fence: list[dict] = []
+    if program:
+        try:
+            from bionexus import program as program_cfg
+            from bionexus.labselect import fence_info
+            _pdoc = _w.get_program(program_cfg._slug(program)) or {}
+            fence = fence_info(_pdoc.get("labs"))
+        except Exception:
+            fence = []
     sid = f"wsn-{uuid.uuid4().hex[:8]}"
     doc = {"question": question, "target": target, "claim": claim,
-           "eid": eid, "controls": [], "selected": []}
+           "eid": eid, "controls": [], "selected": [], "fence": fence}
+    try:
+        from bionexus.wizard_chain import record_wizard_event
+        from bionexus.core.contracts import EventType
+        if fence:
+            record_wizard_event(eid, EventType.gate_decision, {
+                "kind": "lab_fence_declared",
+                "instruments": [f["name"] for f in fence],
+                "note": "guided experiment: the scientist operates the "
+                        "declared instrument(s) and uploads the export; "
+                        "BioNexus governs the analysis and verdict"})
+    except Exception:
+        pass
     now = time.time()
     ws._conn.execute(
         "INSERT INTO wizard_sessions VALUES (?,?,?,?,?,?)",

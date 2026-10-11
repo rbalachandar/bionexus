@@ -270,3 +270,33 @@ def build_pool(entries: list[dict]) -> list:
         else:
             raise ValueError(f"unrecognized lab pool entry: {e!r}")
     return pool
+
+
+def fence_info(labs_entries: list | None) -> list[dict]:
+    """Human-facing view of a program's fence: which instruments the
+    creator permitted, by name, with honest status. This is DECLARATION
+    data (what the fence allows) — not a live probe of the devices."""
+    out = []
+    for e in labs_entries or []:
+        iid = e.get("instrument") if "instrument" in e else None
+        if iid:
+            try:
+                cat = _catalog_entry(iid)
+            except ValueError:
+                out.append({"id": iid, "name": iid, "installed": False,
+                            "unknown": True})
+                continue
+            installed = any(x["id"] == iid and x["installed"]
+                            for x in available_instruments())
+            out.append({"id": iid, "name": cat.get("name", iid),
+                        "vendor": cat.get("vendor"),
+                        "simulated": bool(cat.get("simulated")
+                                          or cat.get("simulated_by_default")),
+                        "hardware_validated":
+                            bool(cat.get("hardware_validated", False)),
+                        "installed": installed})
+        elif "simulator" in e:
+            out.append({"id": "bionexus-virtual-lab",
+                        "name": "Virtual lab (simulator)",
+                        "simulated": True, "installed": True})
+    return out

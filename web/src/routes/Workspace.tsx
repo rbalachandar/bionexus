@@ -138,6 +138,14 @@ function ProgramCard({ p, onDelete, deleting }: {
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         {p.modality && <span className="chip meta">{p.modality}</span>}
+        {(p.fence ?? []).map((f) => (
+          <span key={f.id} className="chip meta" title={
+            `${f.name} — ${f.installed ? 'installed' : 'not installed'}`
+            + (f.simulated ? ', simulated' : '')}>
+            {f.simulated ? '⚗ ' : '🔬 '}{f.name.split(' (')[0]}
+            {!f.installed && ' (not installed)'}
+          </span>
+        ))}
         <span className="chip meta">{p.mode}</span>
         {running > 0 && <Badge status="running">{running} running</Badge>}
         {p.taste && p.taste.n > 0 && <span className="chip meta">

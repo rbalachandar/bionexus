@@ -1118,6 +1118,16 @@ def program_policy(p: dict, doc: dict) -> dict:
             "runs": runs, "cycles": cycles, "limits": pol}
 
 
+def labselect_fence(labs_entries) -> list[dict]:
+    """Program fence -> human names (delegates to labselect.fence_info;
+    never raises — a broken catalog must not kill the workspace)."""
+    try:
+        from bionexus.labselect import fence_info
+        return fence_info(labs_entries)
+    except Exception:
+        return []
+
+
 def workspace(wizard_store,
               provenance_db: str | Path | None = None,
               include_archived: bool = False) -> dict:
@@ -1275,6 +1285,7 @@ def workspace(wizard_store,
             "gate_summary": p.get("gate_summary"),
             "modality": doc.get("modality"),
             "mode": doc.get("mode", "autonomous"),
+            "fence": labselect_fence(doc.get("labs")),
             "links": atts,
             "tally": tally,
             "taste": taste,

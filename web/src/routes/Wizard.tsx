@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { api } from '../api/client'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSearchParams } from 'react-router-dom'
@@ -17,6 +18,12 @@ export default function Wizard() {
   const nav = useNavigate()
   const [params] = useSearchParams()
   const program = params.get('program') ?? ''
+  const progQ = useQuery({
+    queryKey: ['program', program],
+    queryFn: () => api.program(program!),
+    enabled: !!program,
+  })
+  const fence = progQ.data?.fence ?? []
   const [sid, setSid] = useState('')
   const [eid, setEid] = useState('')
   const [step, setStep] = useState(1)
@@ -88,6 +95,15 @@ export default function Wizard() {
           <p className="muted" style={{ fontSize: 12 }}>
             guided launch under program <strong>{program}</strong> — the
             experiment will be linked to it
+          </p>
+        )}
+        {program && fence.length > 0 && (
+          <p className="muted" style={{ fontSize: 12 }}>
+            declared instrument fence: <span className="mono">
+              {fence.map((f) => f.name
+                + (f.simulated ? ' (simulated)' : '')).join(', ')}
+            </span>{' '}— operate instruments accordingly; uploads are
+            analyzed under this program's governance
           </p>
         )}
         <div className="card" style={{ maxWidth: 640, display: 'grid', gap: 10 }}>

@@ -30,6 +30,8 @@ export interface ProgramOut {
   gate_summary: string | null
   modality: string | null
   mode: string
+  fence?: { id: string; name: string;
+    installed: boolean; simulated: boolean }[]
   links: ProgramLink[]
   tally: Record<string, number>
   taste?: TasteReport

@@ -168,3 +168,15 @@ def test_config_schema_flows_to_server_flags():
         ["--simulate", "--address", "tcp://10.0.0.5:1234"]
     assert _config_args(cat, {"simulate": False,
                               "address": "COM3"}) == ["--address", "COM3"]
+
+
+def test_fence_info_resolves_and_flags_honestly():
+    from bionexus.labselect import fence_info
+    fence = fence_info([{"instrument": "labmcp-mettler-toledo"}])
+    f = fence[0]
+    assert f["name"].startswith("Mettler Toledo")
+    assert f["simulated"] is True and f["installed"] is True
+    assert f["hardware_validated"] is False
+    # unknown id: declared but unresolvable — kept visible, flagged
+    f2 = fence_info([{"instrument": "ghost-9000"}])[0]
+    assert f2["unknown"] is True and f2["installed"] is False
