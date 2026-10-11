@@ -633,6 +633,18 @@ the fence ALWAYS exists: empty selection defaults to the explicit
 simulated:true is sealed even when the creator ticks nothing; picker
 copy reworded; assertions updated (spawn test now requires --labs-json).
 
+  GATE-MODE LAB CONFIRMATION (from the picker-copy review question
+  "shouldn't the user choose?"): three decisions, three owners. The
+  FENCE is the creator's (they know the physical lab); the MATCHER is
+  the machine's (per-experiment capability superset against live
+  tools/list / list_capabilities — within-only by construction: the
+  pool is the only source of adapters, unknown ids hard-error); under
+  gate autonomy a genuine CHOICE goes to a HUMAN — 2+ eligible means
+  the approver is asked "LAB: use X? eligible [...]" before any
+  submission, a decline refuses the campaign with
+  lab_confirmation_declined sealed, single-eligible asks nothing. The
+  sealed lab_selected decision now carries the full eligible ranking.
+  3 new tests pin all three branches.
 Open: selection chip on program cards (form-side fence shipped);
 wizard guided-path fence (the wizard builds its own config today); ReadoutSpec capabilities actually FEEDING
 LabRequirement (readiness still checks self-declared needs — the join
