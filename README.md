@@ -567,9 +567,15 @@ agent/reviewer/MCP registry lanes remain in-process (S-T3 1d/1e in
 
 BioNexus ships as an [Agent Skills](https://agentskills.io/) package
 (`skills/`, `plugin.json`) and exposes its tools over MCP — and, via the
-S-T4 `McpLabAdapter`, consumes MCP instrument servers too (typed tool
+S-T4 `McpLabAdapter`, consumes MCP instrument servers too: typed tool
 schemas for understanding, readOnly-annotated auto-invocation only,
-gateway upstream — `mcp_instrument.py`):
+gateway upstream (`mcp_instrument.py`). Tested live against two real
+[K-Dense LabMCP](https://github.com/K-Dense-AI/lab-instrument-mcps)
+servers from PyPI (Mettler Toledo balance, IKA hotplate — Apache-2.0,
+unmodified); compatible with the rest of the 32-server catalog via a
+declared ~10-line instrument profile (read tool + result fields, tested
+per family) — readout instruments today, actuator-only verbs are
+Make-step components, and nothing is hardware-validated (S-T4):
 
 ```json
 {"bionexus": {"command": "bn", "args": ["mcp"]}}

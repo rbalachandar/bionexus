@@ -92,6 +92,15 @@ silently, never fatally.
 
 ## Real device adapters (reference implementations)
 
+MCP instrument servers (S-T4): `bionexus.mcp_instrument.McpLabAdapter`
+drives any MCP-speaking instrument server as a LabAdapter — capabilities
+come from the server's declared typed tool schemas, only `readOnlyHint`
+tools auto-run, and mutating verbs (tare, calibrate, set_temperature)
+are operator-only. Verified live against two unmodified PyPI servers
+(`labmcp-mettler-toledo`, `labmcp-ika` — K-Dense LabMCP, Apache-2.0 —
+thanks to them for the manuals-in-code). New instrument family = one
+declared profile dict + one test; do not hand-write per-vendor drivers.
+
 Two production-shaped adapters ship in-tree:
 
 - **`adapters/lab/opentrons.py`** — Opentrons OT-2/Flex over the robot HTTP API

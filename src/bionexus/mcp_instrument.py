@@ -58,6 +58,14 @@ LABMCP_METTLER_PROFILE = {
 }
 
 
+# labmcp-ika (C-MAG HS7 hotplate/stirrer — second vendor family, live
+# verified Oct 11): get_status -> {..., "hotplate_temperature_c": 22.1}
+LABMCP_IKA_PROFILE = {
+    "read_tool": "get_status", "value_field": "hotplate_temperature_c",
+    "unit": "°C", "uncertainty_field": None, "cal_field": None,
+    "stable_field": None,
+}
+
 class McpError(RuntimeError):
     pass
 

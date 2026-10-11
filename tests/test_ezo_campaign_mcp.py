@@ -200,3 +200,30 @@ def test_profile_cannot_smuggle_a_mutating_read_tool():
             a.submit_protocol(_submission("problem/nope"))
     finally:
         a.close()
+
+
+def test_real_labmcp_second_vendor_family():
+    """Compatibility claim, second family: labmcp-ika hotplate (C-MAG
+    HS7) -- different vendor, compound get_status result, same adapter,
+    same governed campaign."""
+    import shutil
+    exe = (Path(__file__).resolve().parents[1]
+           / ".venv/bin" / "labmcp-ika")
+    if not exe.exists():
+        found = shutil.which("labmcp-ika")
+        if not found:
+            pytest.skip("labmcp-ika not installed")
+        exe = Path(found)
+    from bionexus.mcp_instrument import LABMCP_IKA_PROFILE
+    a = McpLabAdapter(command=[str(exe), "--simulate"],
+                      profile=LABMCP_IKA_PROFILE)
+    try:
+        caps = a.list_capabilities()
+        tools = {t["name"]: t for t in caps["tools"]}
+        assert tools["get_status"]["read_only"] is True
+        assert tools["set_temperature"]["read_only"] is False
+        r = _campaign(a, "mcp-labmcp-ika")
+        assert 15 < r["value"] < 40          # plausible bench temperature
+        assert r["chain_ok"]
+    finally:
+        a.close()
