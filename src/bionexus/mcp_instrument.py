@@ -40,22 +40,10 @@ from bionexus.core.contracts import (AssayResult, Envelope, InstrumentInfo,
 
 _PROTOCOL_VERSION = "2024-11-05"
 
-# Instrument profiles: the declarative vocabulary layer. The transport is
-# generic MCP; the SEMANTICS are per-instrument-family and must be
-# declared, not guessed. uncertainty_field=None means the server reports
-# no calibration-state uncertainty -> the adapter falls back to the
-# empirical spread of replicate reads (never silently to zero).
-REFERENCE_EZO_PROFILE = {
-    "read_tool": "read_ph", "value_field": "ph", "unit": "pH",
-    "uncertainty_field": "uncertainty_ph", "cal_field": "cal_state",
-    "stable_field": None,
-}
-# labmcp-mettler-toledo (real PyPI server, verified live Oct 11):
-# read_weight -> {"value": g, "unit": "g", "stable": bool, "timestamp":...}
-LABMCP_METTLER_PROFILE = {
-    "read_tool": "read_weight", "value_field": "value", "unit": None,
-    "uncertainty_field": None, "cal_field": None, "stable_field": "stable",
-}
+# PROFILES LIVE IN DATA: src/bionexus/instruments.json (catalog ids;
+# labselect.build_pool resolves them). An inline profile dict is still
+# accepted for one-off/lab-level use, but the ONLY source of named
+# profiles is the catalog — never this module.
 
 
 # labmcp-ika (C-MAG HS7 hotplate/stirrer — second vendor family, live
@@ -85,7 +73,12 @@ class McpLabAdapter:
     def __init__(self, command: list[str], timeout: float = 30.0,
                  approval_timeout: float = 60.0,
                  profile: dict | None = None):
-        self.profile = dict(profile or REFERENCE_EZO_PROFILE)
+        if not profile:
+            raise ValueError(
+                "McpLabAdapter needs an instrument profile — resolve one "
+                "from bionexus/instruments.json (labselect.build_pool) or "
+                "pass the dict explicitly")
+        self.profile = dict(profile)
         self._proc = subprocess.Popen(
             command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, text=True)

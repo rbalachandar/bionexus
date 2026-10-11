@@ -667,10 +667,12 @@ def cmd_plan(args: argparse.Namespace) -> int:
         print("--run needs --candidates (or --model, for agent-proposed "
               "hypotheses)")
         return 2
+    import json as _j
+    _labs = _j.loads(args.labs_json) if getattr(args, "labs_json", None)         else None
     summary = run_tree(tree, lambda: SimulatorLab(seed=args.seed),
                        SqliteProvenanceStore(args.db), candidates=cands,
                        model=model, autonomy=args.autonomy,
-                       rounds=rounds, notify=print)
+                       rounds=rounds, notify=print, labs=_labs)
     print("root status:", summary[tree.root.id])
     return 0
 
@@ -1009,6 +1011,9 @@ def main(argv: list[str] | None = None) -> int:
     pl.add_argument("--max-children", type=int, default=4)
     pl.add_argument("--max-depth", type=int, default=2)
     pl.add_argument("--max-nodes", type=int, default=12)
+    pl.add_argument("--labs-json", default=None,
+                    help='operator-declared instrument pool (S-T5): JSON '
+                         'array of {"instrument": "<catalog-id>"} entries')
     matp = sub.add_parser("materials-run",
                           help="run a materials formulation sweep against "
                                "the program gate (material modality)")

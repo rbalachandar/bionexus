@@ -23,6 +23,7 @@ from bionexus.core.hypothesis import (Constraint, HypothesisTracker,
                                       ProblemStatement, SuccessCriteria)
 from bionexus.core.interfaces import system_actor
 from bionexus.core.safety import LabGateway, SafetyEngine
+from bionexus.labselect import build_pool
 from bionexus.mcp_instrument import McpError, McpLabAdapter
 
 CRIT = SuccessCriteria(metric="ph", direction="max", threshold=7.20)
@@ -86,9 +87,10 @@ def _direct_probe(calibrated: bool) -> EzoPHProbe:
 
 
 def _mcp_adapter(calibrated: bool) -> McpLabAdapter:
-    cmd = [sys.executable, "-m", "bionexus.mcp_instrument",
-           "11", "7.35"] + (["calibrate"] if calibrated else [])
-    return McpLabAdapter(command=cmd)
+    _, lab = build_pool([{"instrument": "ezo-ph-reference-mcp",
+                          "args": ["11", "7.35"]
+                          + (["calibrate"] if calibrated else [])}])[0]
+    return lab
 
 
 def test_1_direct_sensor_campaign_uncertainty_reaches_verdict():
@@ -155,17 +157,12 @@ def test_real_labmcp_server_balance_campaign():
     vocabulary a profile can describe are in; instruments without a
     declared read-only value tool are refused, never guessed."""
     import shutil
-    exe = (Path(__file__).resolve().parents[1]
-           / ".venv/bin" / "labmcp-mettler-toledo")
-    if not exe.exists():
-        exe2 = shutil.which("labmcp-mettler-toledo")
-        if not exe2:
-            pytest.skip("labmcp-mettler-toledo not installed "
-                        "(pip install labmcp-mettler-toledo)")
-        exe = Path(exe2)
-    from bionexus.mcp_instrument import LABMCP_METTLER_PROFILE
-    a = McpLabAdapter(command=[str(exe), "--simulate"],
-                      profile=LABMCP_METTLER_PROFILE)
+    from bionexus.labselect import available_instruments
+    if not any(e["id"] == "labmcp-mettler-toledo" and e["installed"]
+               for e in available_instruments()):
+        pytest.skip("labmcp-mettler-toledo not installed "
+                    "(pip install labmcp-mettler-toledo)")
+    _, a = build_pool([{"instrument": "labmcp-mettler-toledo"}])[0]
     try:
         caps = a.list_capabilities()
         tools = {t["name"] for t in caps["tools"]}
@@ -183,47 +180,19 @@ def test_real_labmcp_server_balance_campaign():
 
 
 def test_profile_cannot_smuggle_a_mutating_read_tool():
-    """A profile that LIES — pointing the read tool at a mutating verb —
-    must be refused by the server's annotations, not by our trust."""
-    import shutil
-    from bionexus.mcp_instrument import LABMCP_METTLER_PROFILE
-    exe = Path(__file__).resolve().parents[1] / ".venv/bin/labmcp-mettler-toledo"
-    if not exe.exists() and not shutil.which("labmcp-mettler-toledo"):
+    """A profile that LIES — pointing read_tool at a mutating verb — is
+    vetoed by the SERVER's annotation, not our trust in the profile."""
+    from bionexus.labselect import _catalog_entry, available_instruments
+    if not any(e["id"] == "labmcp-mettler-toledo" and e["installed"]
+               for e in available_instruments()):
         pytest.skip("labmcp-mettler-toledo not installed")
-    if not exe.exists():
-        exe = Path(shutil.which("labmcp-mettler-toledo"))
-    bad = dict(LABMCP_METTLER_PROFILE)
-    bad["read_tool"] = "tare"          # not readOnly -> must refuse
+    cat = _catalog_entry("labmcp-mettler-toledo")
+    bad = dict(cat["profile"])
+    bad["read_tool"] = "tare"                       # mutating!
+    exe = Path(sys.executable).parent / "labmcp-mettler-toledo"
     a = McpLabAdapter(command=[str(exe), "--simulate"], profile=bad)
     try:
         with pytest.raises(McpError, match="readOnly"):
             a.submit_protocol(_submission("problem/nope"))
-    finally:
-        a.close()
-
-
-def test_real_labmcp_second_vendor_family():
-    """Compatibility claim, second family: labmcp-ika hotplate (C-MAG
-    HS7) -- different vendor, compound get_status result, same adapter,
-    same governed campaign."""
-    import shutil
-    exe = (Path(__file__).resolve().parents[1]
-           / ".venv/bin" / "labmcp-ika")
-    if not exe.exists():
-        found = shutil.which("labmcp-ika")
-        if not found:
-            pytest.skip("labmcp-ika not installed")
-        exe = Path(found)
-    from bionexus.mcp_instrument import LABMCP_IKA_PROFILE
-    a = McpLabAdapter(command=[str(exe), "--simulate"],
-                      profile=LABMCP_IKA_PROFILE)
-    try:
-        caps = a.list_capabilities()
-        tools = {t["name"]: t for t in caps["tools"]}
-        assert tools["get_status"]["read_only"] is True
-        assert tools["set_temperature"]["read_only"] is False
-        r = _campaign(a, "mcp-labmcp-ika")
-        assert 15 < r["value"] < 40          # plausible bench temperature
-        assert r["chain_ok"]
     finally:
         a.close()

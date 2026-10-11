@@ -408,7 +408,7 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
              model: Any = None, candidates: list[dict] | None = None,
              inbox: str = ".data/inbox-tree", autonomy: str = "act",
              rounds: int | None = None,
-             notify: Any = None) -> dict[str, str]:
+             notify: Any = None, labs: list | None = None) -> dict[str, str]:
     """Each leaf runs as its own budgeted campaign; the roll-up is recorded
     on the root branch. Resumable: achieved leaves are skipped."""
     from pathlib import Path
@@ -493,7 +493,7 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
             k=k_eff,
             rounds=(max(2, len(specs) // max(1, k_eff))
                     if not rounds else rounds),
-            autonomy=autonomy,
+            autonomy=autonomy, labs=labs,
             inbox=str(Path(inbox) / leaf.id), poll_secs=0.05,
             budget=budget)
         say(f"leaf {leaf.id}: '{leaf.objective[:50]}' — "

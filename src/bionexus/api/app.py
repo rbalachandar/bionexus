@@ -137,6 +137,14 @@ def approval_decide(aid: str, body: dict) -> dict:
 
 
 # ------------------------------------------------------------- programs
+@app.get("/api/instruments")
+def instruments() -> dict:
+    """The catalog + local availability: what the program form may fence."""
+    from bionexus.labselect import available_instruments, load_catalog
+    return {"catalog_version": load_catalog()["version"],
+            "instruments": available_instruments()}
+
+
 @app.get("/api/programs")
 def programs(include_archived: bool = False) -> dict:
     ws = get_ws()

@@ -375,3 +375,39 @@ def test_decomposed_launch_inherits_program_autonomy(tmp_path, monkeypatch):
     import bionexus.program as pcfg
     pcfg.delete_program("GateProgram-X")
     pcfg.delete_program("GateProgram-Y")
+
+
+def test_instruments_endpoint_lists_catalog(client):
+    r = client.get("/api/instruments")
+    assert r.status_code == 200
+    body = r.json()
+    ids = {e["id"] for e in body["instruments"]}
+    assert "bionexus-virtual-lab" in ids
+    for e in body["instruments"]:
+        assert isinstance(e["installed"], bool)
+        assert "simulated" in e
+
+
+def test_spawn_plan_forwards_program_fence(monkeypatch, tmp_path):
+    """The fence the creator ticked must reach the leaf campaigns."""
+    import bionexus.api.launch as L
+    seen = {}
+
+    class P:
+        pid = 1
+
+        def poll(self):
+            return None
+    monkeypatch.setattr(L.subprocess, "Popen",
+                        lambda cmd, **kw: seen.update(cmd=cmd) or P())
+    monkeypatch.setattr(L, "CAMPAIGN_DIR", tmp_path)
+    L._spawn_plan({"objective": "o", "autonomy": "gate",
+                   "labs": [{"instrument": "bionexus-virtual-lab"}]},
+                  "FenceTestProg")
+    assert "--labs-json" in seen["cmd"]
+    import json
+    i = seen["cmd"].index("--labs-json")
+    assert json.loads(seen["cmd"][i + 1])[0]["instrument"] == \
+        "bionexus-virtual-lab"
+    import bionexus.program as pcfg
+    pcfg.delete_program("FenceTestProg")

@@ -53,13 +53,12 @@ def test_capability_mismatch_refuses_with_reasons():
 
 
 def test_mcp_pool_member_matches_via_declared_tools():
-    exe = (Path(__file__).resolve().parents[1]
-           / ".venv/bin" / "labmcp-mettler-toledo")
-    if not exe.exists():
+    from bionexus.labselect import available_instruments
+    if not any(e["id"] == "labmcp-mettler-toledo" and e["installed"]
+               for e in available_instruments()):
         pytest.skip("labmcp-mettler-toledo not installed")
-    pool = build_pool([{"simulator": {"seed": 7}},
-                       {"mcp": {"command": [str(exe), "--simulate"],
-                                "profile": "mettler"}}])
+    pool = build_pool([{"instrument": "bionexus-virtual-lab"},
+                       {"instrument": "labmcp-mettler-toledo"}])
     try:
         sel, declined = select_lab(
             pool, LabRequirement.build({"readouts": ["read_weight"]}))

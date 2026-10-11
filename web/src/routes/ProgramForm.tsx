@@ -22,6 +22,11 @@ export default function ProgramForm({ onLaunched, onDone }: {
     queryFn: () => fetch('/api/system/modalities').then((r) => r.json()),
   })
   const packs: ModalityPack[] = packsQ.data?.packs ?? []
+  const instQ = useQuery({
+    queryKey: ['instruments'],
+    queryFn: () => fetch('/api/instruments').then((r) => r.json()),
+  })
+  const instruments: any[] = instQ.data?.instruments ?? []
   const packNames = [...packs.map((p: ModalityPack) => p.name), 'Other']
 
   const [name, setName] = useState('')
@@ -38,6 +43,7 @@ export default function ProgramForm({ onLaunched, onDone }: {
   const [rounds, setRounds] = useState(2)
   const [candidates, setCandidates] = useState('')
   const [decompose, setDecompose] = useState(true)
+  const [labs, setLabs] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -52,6 +58,7 @@ export default function ProgramForm({ onLaunched, onDone }: {
         program: name, objective, modality: effectiveModality, metric,
         unit, direction, gate_value: gateValue, mode, autonomy,
         k, rounds, candidates, decompose: decompose && mode === 'autonomous',
+        labs: labs.map((id) => ({ instrument: id })),
       }
       const r = await fetch('/api/programs', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -181,6 +188,37 @@ export default function ProgramForm({ onLaunched, onDone }: {
             <input value={candidates} onChange={(e) => setCandidates(e.target.value)}
               style={inputStyle} placeholder="gefitinib, erlotinib" />
           </label>
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+              Instrument fence — which instruments this program may use
+            </div>
+            <p className="muted" style={{ fontSize: 11, margin: '0 0 6px' }}>
+              Campaigns match capability WITHIN this list only; the
+              selection (and every refusal) is sealed on the branch.
+              Empty = the virtual lab, labeled as simulated.
+            </p>
+            {instruments.map((ins) => (
+              <label key={ins.id} style={{ display: 'flex', gap: 8,
+                alignItems: 'baseline', fontSize: 12, padding: '2px 0',
+                opacity: ins.installed ? 1 : 0.45 }}>
+                <input type="checkbox" disabled={!ins.installed}
+                  checked={labs.includes(ins.id)}
+                  onChange={(e) => setLabs((prev) => e.target.checked
+                    ? [...prev, ins.id]
+                    : prev.filter((x) => x !== ins.id))} />
+                <span>{ins.name}</span>
+                <span className="muted mono" style={{ fontSize: 10 }}>
+                  {ins.vendor}
+                </span>
+                {ins.simulated && <span className="chip"
+                  style={{ fontSize: 10 }}>simulated</span>}
+                {ins.requires_network && <span className="chip"
+                  style={{ fontSize: 10 }}>needs device</span>}
+                {!ins.installed && <span className="muted"
+                  style={{ fontSize: 10 }}>not installed</span>}
+              </label>
+            ))}
+          </div>
         </details>
 
         {error && <p className="chip failed">{error}</p>}

@@ -17,6 +17,9 @@ decision so the workbench can badge it.
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -126,38 +129,118 @@ def select_lab(pool: list, req: LabRequirement):
                    "declined": refusals}), refusals
 
 
+CATALOG_PATH = Path(__file__).parent / "instruments.json"
+
+
+def load_catalog() -> dict:
+    return json.loads(CATALOG_PATH.read_text())
+
+
+def _catalog_entry(instrument_id: str) -> dict:
+    for e in load_catalog()["instruments"]:
+        if e["id"] == instrument_id:
+            return e
+    known = ", ".join(x["id"] for x in load_catalog()["instruments"])
+    raise ValueError(f"unknown instrument {instrument_id!r}; "
+                     f"catalog ids: {known}")
+
+
+def available_instruments() -> list[dict]:
+    """The picker view: every catalog instrument, whether it is
+    installable/reachable HERE, and what it declares. Availability is an
+    INSTALL check; capability truth comes from the live handshake at
+    selection time — the list never overstates what an instrument is."""
+    import importlib.util
+    import shutil
+    out = []
+    for e in load_catalog()["instruments"]:
+        kind = e["kind"]
+        if kind == "simulator":
+            installed = True
+        elif kind == "mcp":
+            exe0 = e.get("availability_executable") or e["command"][0]
+            import sys as _s
+            installed = (exe0 == "{python}" or bool(shutil.which(exe0))
+                         or (Path(_s.executable).parent / exe0).exists())
+        else:
+            mod = e["adapter"].rsplit(":", 1)[0]
+            installed = importlib.util.find_spec(mod) is not None
+        out.append({**{k: e.get(k) for k in (
+                        "id", "kind", "name", "vendor",
+                        "hardware_validated", "assay_types", "readouts",
+                        "note", "homepage", "requires_network")},
+                    "simulated": bool(e.get("simulated")
+                                       or e.get("simulated_by_default")),
+                    "installed": bool(installed),
+                    "profile_read_tool": (e.get("profile") or {}).get(
+                        "read_tool")})
+    return out
+
+
+def _resolve_cmd(cmd: list[str]) -> list[str]:
+    """Executables ship next to the running interpreter (venv/bin) and
+    are not always on PATH in subprocess contexts."""
+    import shutil
+    import sys
+    from pathlib import Path
+    exe = cmd[0]
+    if shutil.which(exe):
+        return cmd
+    beside = Path(sys.executable).parent / exe
+    if beside.exists():
+        return [str(beside), *cmd[1:]]
+    return cmd
+
+
 def build_pool(entries: list[dict]) -> list:
-    """Operator-declared pool from config:
-      {"adapter": "pkg.mod:Class", "options": {...}}
-      {"simulator": {"seed": 42}}
-      {"mcp": {"command": [...], "profile": "ezo|mettler|ika" | {...}}}
+    """Operator-declared pool. The happy path references the catalog:
+      {"instrument": "<id>"}       (commands + profiles come from data)
+    Escape hatches for instruments not yet catalogued:
+      {"simulator": {...}} | {"adapter": "pkg:Class", "options": {...}}
+      {"mcp": {"command": [...], "profile": {<full profile dict>}}}
     """
+    import sys
     from bionexus.core.registry import import_string
     pool = []
     for i, e in enumerate(entries or []):
-        if "simulator" in e:
+        if "instrument" in e:
+            cat = _catalog_entry(e["instrument"])
+            opts = {**(cat.get("options") or {}), **(e.get("options") or {})}
+            if cat["kind"] == "simulator":
+                from bionexus.adapters.lab.simulator import SimulatorLab
+                pool.append((f"{cat['id']}-{i}", SimulatorLab(**opts)))
+            elif cat["kind"] == "mcp":
+                from bionexus.mcp_instrument import McpLabAdapter
+                cmd = _resolve_cmd([c.replace("{python}", sys.executable)
+                                    for c in cat["command"]])
+                cmd += [str(a) for a in (e.get("args") or [])]
+                pool.append((f"{cat['id']}-{i}",
+                             McpLabAdapter(command=cmd,
+                                           profile=dict(cat["profile"]))))
+            else:
+                cls = import_string(cat["adapter"])
+                pool.append((f"{cat['id']}-{i}", cls(**opts)))
+        elif "simulator" in e:
             from bionexus.adapters.lab.simulator import SimulatorLab
             opts = dict(e.get("options") or {})
-            opts.update({k: v for k, v in (e["simulator"] or {}).items()})
+            opts.update(e["simulator"] or {})
             pool.append((f"simulator-{i}", SimulatorLab(**opts)))
         elif "adapter" in e:
             cls = import_string(e["adapter"])
             name = e.get("name") or e["adapter"].rsplit(":", 1)[-1]
             pool.append((f"{name}-{i}", cls(**(e.get("options") or {}))))
         elif "mcp" in e:
-            from bionexus.mcp_instrument import (McpLabAdapter,
-                                                 LABMCP_IKA_PROFILE,
-                                                 LABMCP_METTLER_PROFILE,
-                                                 REFERENCE_EZO_PROFILE)
+            from bionexus.mcp_instrument import McpLabAdapter
             m = e["mcp"]
-            prof = m.get("profile")
-            prof = {"ezo": REFERENCE_EZO_PROFILE,
-                    "mettler": LABMCP_METTLER_PROFILE,
-                    "ika": LABMCP_IKA_PROFILE}.get(prof, prof or {})
+            if not isinstance(m.get("profile"), dict):
+                raise ValueError(
+                    "inline mcp entries need a full profile dict — named "
+                    "profiles live in instruments.json; add the instrument "
+                    "to the catalog (one data edit, then use its id)")
             label = str(m.get("command", ["mcp"])[0]).rsplit("/", 1)[-1]
             pool.append((f"{label}-{i}",
                          McpLabAdapter(command=list(m["command"]),
-                                       profile=prof or None)))
+                                       profile=m["profile"])))
         else:
             raise ValueError(f"unrecognized lab pool entry: {e!r}")
     return pool
