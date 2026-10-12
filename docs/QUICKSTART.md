@@ -77,5 +77,5 @@ at with `module:Class` can be an adapter.
 ## Next steps
 
 - Adapter authoring: [`docs/ADAPTERS.md`](ADAPTERS.md)
-- Safety rules and the LabGateway: [`docs/SAFETY.md`](SAFETY.md)
+- Safety and security — full mechanism table, rules, trust boundaries: [`docs/safety-and-security.md`](safety-and-security.md)
 - Architecture and build plan: [`PLAN.md`](PLAN.md)
