@@ -199,26 +199,9 @@ cells), Test adapters supply the assay, and Analyze reads the registered
 metric against its gate — small-molecule, biologic, agrochemical, or
 materials programs differ in adapters, not in the framework.
 
-### Choosing the instrument — declared fence, matched selection
 
-*Use case: you know what's physically in your lab; the campaign knows
-what each experiment needs.*
+### Use case: analyze an instrument export yourself
 
-Two decisions, two owners: the **program creator declares the fence** —
-a pool of permitted instruments (campaign config `labs:` referencing
-ids from the catalog `bionexus/instruments.json`, or inline
-adapter/MCP entries; the program form shows installed instruments as a
-tickable list with simulated/needs-device badges, plus per-instrument
-connection config) — and the **matcher selects within it** by each
-experiment's declared needs (assay types, readouts, BSL ceiling),
-preferring hardware-validated over simulated. Under gate autonomy, a
-genuine multi-instrument choice is confirmed by a human. The selection —
-including why each other instrument was declined — is sealed into the
-branch before any instrument acts; no capable instrument means refusal,
-never a silent fallback to simulation (`bionexus.labselect`).
-
-
-### As a daily analysis tool — reading lab instrument exports
 
 Point `bn read` at a plate-reader export. Long CSV/TSV/XLSX (any column
 order, any vendor header block), plate grids, **kinetic tables**
@@ -273,18 +256,22 @@ from a virtual-lab run):
 
 ![Dose–response curve](docs/images/dose-response.svg)
 
-### Solving a problem
+
+### Use case: run a reference round on the virtual lab
+
 
 ```sh
 bn sim                                    # reference round on the virtual lab
-python examples/iteration_loop.py         # the same, step by step (see notebooks/)
+python examples/demo_full_flow.py        # the same, end to end (all layers)
 ```
 
 A round runs: hypothesis tournament → safety-gated protocol → virtual wet lab →
 analysis → provenance. Every stage can also be driven from Python with the five
 core interfaces .
 
-### Autonomous — hand the loop to the agent
+
+### Use case: hand the full campaign to the agent
+
 
 To start the full flow without writing JSON, use a preset template:
 
@@ -335,7 +322,9 @@ bn auto campaign.json
 }
 ```
 
-### Device-aware — the agent notices results on its own
+
+### Use case: let the agent watch your instruments
+
 
 With `bn watch` monitoring an instrument outbox, there are no files to shuttle:
 when a reader exports a result, the agent reads it, updates open hypotheses
@@ -351,7 +340,30 @@ bn connect scan /path/to/reader_share
 #   → device: plate reader (auto-exporting to this share)
 ```
 
-### Choosing the level of agent automation
+
+### Use case: declare your instrument fence
+
+
+*Use case: you know what's physically in your lab; the campaign knows
+what each experiment needs.*
+
+Two decisions, two owners: the **program creator declares the fence** —
+a pool of permitted instruments (campaign config `labs:` referencing
+ids from the catalog `bionexus/instruments.json`, or inline
+adapter/MCP entries; the program form shows installed instruments as a
+tickable list with simulated/needs-device badges, plus per-instrument
+connection config) — and the **matcher selects within it** by each
+experiment's declared needs (assay types, readouts, BSL ceiling),
+preferring hardware-validated over simulated. Under gate autonomy, a
+genuine multi-instrument choice is confirmed by a human. The selection —
+including why each other instrument was declined — is sealed into the
+branch before any instrument acts; no capable instrument means refusal,
+never a silent fallback to simulation (`bionexus.labselect`).
+
+
+
+### Configure: agent authority and campaign limits
+
 
 | autonomy | agent behavior |
 |---|---|
