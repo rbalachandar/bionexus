@@ -199,17 +199,24 @@ cells), Test adapters supply the assay, and Analyze reads the registered
 metric against its gate — small-molecule, biologic, agrochemical, or
 materials programs differ in adapters, not in the framework.
 
-Which instrument runs an experiment is two decisions, never one: the
-**program creator declares the fence** — a pool of permitted instruments
-(campaign config `labs:` referencing instrument ids from the catalog
-`bionexus/instruments.json` — or inline adapter/MCP entries; the program
-form shows the available instruments as a tickable fence with
-simulated/needs-device badges) — and the **matcher selects within it** by the experiment's
-declared needs (assay types, readouts, BSL ceiling), preferring
-hardware-validated over simulated. The selection — including why each
-other instrument was declined — is sealed into the branch before any
-instrument acts; no capable instrument means refusal, never a silent
-fallback to simulation (`bionexus.labselect`).
+### Choosing the instrument — declared fence, matched selection
+
+*Use case: you know what's physically in your lab; the campaign knows
+what each experiment needs.*
+
+Two decisions, two owners: the **program creator declares the fence** —
+a pool of permitted instruments (campaign config `labs:` referencing
+ids from the catalog `bionexus/instruments.json`, or inline
+adapter/MCP entries; the program form shows installed instruments as a
+tickable list with simulated/needs-device badges, plus per-instrument
+connection config) — and the **matcher selects within it** by each
+experiment's declared needs (assay types, readouts, BSL ceiling),
+preferring hardware-validated over simulated. Under gate autonomy, a
+genuine multi-instrument choice is confirmed by a human. The selection —
+including why each other instrument was declined — is sealed into the
+branch before any instrument acts; no capable instrument means refusal,
+never a silent fallback to simulation (`bionexus.labselect`).
+
 
 ### As a daily analysis tool — reading lab instrument exports
 
