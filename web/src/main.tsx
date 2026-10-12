@@ -67,14 +67,6 @@ function Shell({ children }: { children: React.ReactNode }) {
           <span style={{ width: 5, height: 5, borderRadius: '50%',
             background: '#7dd3e8', boxShadow: '0 0 6px rgba(125,211,232,0.8)' }} />
           agents run the scientific method
-          {gov.data?.graded && (
-            <span title="graded offline by `bn eval` — full leaderboard: README + evals/leaderboard.md"
-              style={{ color: gov.data.graded.allPass ? '#6ee7a0' : '#fca5a5',
-                fontWeight: 700 }}>
-              {' '}· graded {gov.data.graded.mean?.toFixed(3)}
-              {' '}({gov.data.graded.tasks - gov.data.graded.failing}/{gov.data.graded.tasks} bar-pass)
-            </span>
-          )}
         </span>
         {(gov.data?.halted || (gov.data?.pending ?? 0) > 0) && (
           <Link to="/approvals" title="open Approvals & governance"
