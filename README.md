@@ -516,26 +516,36 @@ and auditable — the case studies above exercise this layer:
 
 ## The virtual lab
 
-BioNexus ships simulated devices so the entire loop runs offline, and so agent
-behavior is testable before hardware is involved:
+BioNexus ships simulated devices at three fidelity tiers, so the entire
+loop runs offline and every layer is testable before hardware is involved —
+and so hardware can be *added* later without changing the science code:
 
-- **SimulatorLab** — seeded dose–response ground truth, replicates,
-  counterscreen interference (PAINS-like artifacts), controls
-- **Biologics readout simulators** — DLS (Brownian + scattering physics,
-  polydisperse field-correlation sums), ELISA (4PL saturation curves),
-  DSF (two-state Boltzmann melts): seeded synthetic instrument exports
-  with known ground truth, roundtrip-tested against the analysis
-  adapters — pipeline validation without physical machines
-- **ImagingSimulatorLab** — a 96-well imaging plate reader: raw fluorescence
-  micrographs per well, an analysis pipeline that fits IC50s from the images,
-  Z'-factor QC, and per-well artifacts (pipetting spikes, bubbles, edge effects)
-- **Recording/playback** — real hardware sessions are recorded once and replay
-  identically in CI
+- **Assay simulators** — SimulatorLab: seeded dose–response ground truth,
+  replicates, counterscreen interference (PAINS-like artifacts), controls,
+  and a property-gate mode for dose-independent readouts; plus DLS
+  (Brownian + scattering physics), ELISA (4PL saturation curves), DSF
+  (two-state Boltzmann melts), imaging, synthesis-route and bioprocess
+  simulators — roundtrip-tested against the analysis adapters
+- **Wire-level device simulators** — instrument protocols simulated from
+  the manufacturer's published contract, with teeth: `ot2_sim` is a
+  spec-conformant Opentrons robot (400s header-less clients, 422s wrong
+  multipart fields, derives command evidence from the actually-uploaded
+  protocol source), and the EZO pH wire-sim reproduces datasheet grammar
+  (*OK/*ER, wake quirks) with calibration-state uncertainty that flows
+  into verdicts. Mocks that skip quirks teach lies; these don't
+- **Recording/playback** — real hardware sessions are recorded once and
+  replay identically in CI
+- **MCP practice mode** — external instrument servers (the LabMCP
+  catalog) run under `--simulate`, driven by the same `McpLabAdapter`
+  that will drive their hardware
 
-With a multimodal model, the agent can even read the plate visually:
-`demo_vision_readout.py` shows a vision-LLM estimating fluorescence from pixels
-alone and recovering the IC50 to the same order of magnitude as the analysis
-pipeline. See [`docs/virtual-lab.md`](docs/virtual-lab.md).
+Every simulator is labeled as such in its capabilities; adapters whose
+live modes don't exist refuse rather than serve synthetic readings as
+instrument data. With a multimodal model, the agent can even read a
+plate visually — `bionexus.vision` shows a vision-LLM estimating
+fluorescence from pixels alone, recovering the IC50 to the same order
+of magnitude as the analysis pipeline. See
+[`docs/virtual-lab.md`](docs/virtual-lab.md).
 
 ## Five core interfaces
 
