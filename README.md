@@ -7,11 +7,6 @@
 [![Python](https://img.shields.io/pypi/pyversions/bionexuslab)](https://pypi.org/project/bionexuslab/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-`bn demo` — a scripted campaign on the production machinery (simulated
-numbers): a borderline CI abstains, an orthogonal method refutes a
-plausible-looking hit, confirmation passes only on agreement, and the
-whole run lands in a verified hash chain.
-
 ![bn demo](assets/demo/bn-demo.gif)
 
 BioNexus is an open-source framework in which AI agents run the scientific
