@@ -124,6 +124,16 @@ honest line is: **EI is proven safe (no leakage, AD-honesty) and proven
 - [x] CS04 replay — done, offline, negative-leaning (above).
 - [x] `bn select` standalone what-would-run preview (same policy path, in-
       memory store, submits nothing; test-pinned to write no provenance).
+- [x] **Real GP posterior (optional provider).** `adapters/models/gp_policy.py`
+      + `models-botorch` extra, wired into `acq_replay.py`. **The measured
+      "why-not-default" proof:** GP uncertainty is NOT free — a naive config
+      gave 1σ coverage **0.06 / 0.00** (fiction), only ~0.33/0.64 after
+      tuning, and on this pool the existing **RF tree-sd was better
+      calibrated (0.72/0.89)**. Either way **EI still tied greedy and tracked
+      random on the flat surrogate** — swapping RF→GP changed the posterior's
+      honesty, never the policy's verdict. Correct posture: GP = opt-in, gated
+      on a held-out coverage check; also O(N³) forced a stated 800-pt
+      subsample of the 9.5k train pool.
 - [ ] A hard pool (sparse actives, surrogate uncertain near the gate) is
       the only thing that could show EI > greedy — needs data we don't have
       frozen; recorded, not chased.
