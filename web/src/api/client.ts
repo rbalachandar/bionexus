@@ -139,7 +139,13 @@ export interface ExperimentDetail {
   constraints: { name: string; description: string }[]
   success_metric: string | null
   counts: Record<string, number>
-  rounds: { round: number; candidates: string[]; verdicts: Record<string, string> }[]
+  rounds: { round: number; candidates: string[]; verdicts: Record<string, string>;
+    selection?: {
+      policy: string; policy_version?: number; target?: number | null
+      direction?: string; k?: number; note?: string
+      picks: { candidate: string; acquisition: number; mean: number;
+        sd: number | null; reason: string }[]
+      refusals: { candidate: string; reason: string }[] } | null }[]
   cards: PipelineCard[]
   eliminated?: { candidate: string; reason: string; score: number | null }[]
 }

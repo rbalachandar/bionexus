@@ -73,7 +73,11 @@ bn ingest legacy-eln.csv               # institutional memory: pre-BioNexus kill
 bn connect scan <share>                # detect instruments writing into a folder
 bn watch <outbox>                      # agent notices device outputs as they land
 bn templates                           # campaign presets — no JSON needed
-bn auto --template dose-response-screen --field compounds=C1,C2,C3
+ bn auto --template dose-response-screen --field compounds=C1,C2,C3
+ bn auto --template sar-exploration --acquisition bo-ei --dry-run \
+                                        # EI batch selection: shows the next
+                                        # batch + every refusal (AD vetoes,
+                                        # diversity, budget) — submits nothing
 make api                               # web app on :8000 (API + SPA)
 bn diary <branch>                      # campaign as a lab-notebook narrative
 bn prove <branch> --html out.html      # tamper-evident provenance + shareable report
@@ -130,8 +134,11 @@ offline, in CI. Scores below 1.0 are kept as reported: an honest abstention
 is graded down rather than counted as a pass. Example run:
 
 ```
-epistemics — mean 0.982 · 14/14 tasks pass
+epistemics — mean 0.974 · 15/15 tasks pass
   hit-recovery         0.917  honest abstains credited 0.5, not 1.0
+  acquisition-policy   0.875  EI batch beats gates+randomize on every pool
+                              (0.88 vs 0.29 hits/well) — and never picks an
+                              applicability-domain outsider
   adaptive-dose        0.875  3 wells beat 4 — a genuine negative result
   applicability-domain 1.000  far chemistry stamped extrapolation —
                       confident claims vetoed in BOTH directions
@@ -144,7 +151,7 @@ Full run: [`evals/leaderboard.md`](evals/leaderboard.md).
 
 | Tier | Covers | Tasks |
 |---|---|---|
-| **epistemics** | scientific reasoning under uncertainty | hit-recovery vs truth · verdict-honesty (abstains where the CI straddles) · confirmation-coverage · falsifiability-tiebreak · adaptive-dose-design · flywheel-memory |
+| **epistemics** | scientific reasoning under uncertainty | hit-recovery vs truth · verdict-honesty (abstains where the CI straddles) · confirmation-coverage · falsifiability-tiebreak · adaptive-dose-design · acquisition-policy (EI batch selection must beat gates+randomize and honour the AD gate) · flywheel-memory |
 | **models** | baseline quality | policy ladder on MoleculeNet (Lipophilicity, ESOL, HIV) plus TDC ADMET Group (Caco2, HIA, BBB) on canonical scaffold folds — frozen in-repo, no network; vs the random floor. Fold-relative sanity (small held-out folds swing AUC; these are not leaderboard claims), scaffold-split throughout |
 | **reproductions** | published-paper reruns | the blind paper studies (opt-in; frozen data fixtures) |
 | **agent** *(opt-in)* | end-to-end loop triage | DDB-shaped workflows with ONE verifiable answer — exact refusal map (safety + makeability gates), zero refused-compounds-tested, zero wrong-confirms vs seeded truth, and byte-exact reruns — all graded deterministically, no LLM judge (`bn eval --suite agent`) |
@@ -164,7 +171,7 @@ day, with the tier's waste counter as the permanent regression test.
 
 The `GET /api/evals` read-model serves these scores and flags every passing
 task below 1.0 as an `honest_deduction`; the workbench header carries the
-live `graded 0.954 · 24 tasks, all pass` badge on every page.
+live `graded 0.950 · 25 tasks, all pass` badge on every page.
 
 ### Trust mechanisms
 

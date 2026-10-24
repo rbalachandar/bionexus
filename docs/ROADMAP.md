@@ -695,6 +695,36 @@ LabRequirement (readiness still checks self-declared needs — the join
 now exists one level up), per-round re-selection, multi-instrument
 protocols (Make on rig X, Test on reader Y — a plan, not a choice).
 
+### S-T6 — Acquisition: selecting experiments, not running all of them
+- **Plan:** [`docs/ACQUISITION-IMPLEMENTATION-PLAN.md`](ACQUISITION-IMPLEMENTATION-PLAN.md)
+  (Decision, module map, eval definition, risks in full).
+- [x] **bo-ei batch selection wired through the real loop** (Oct 2026):
+  SHIPPED: `src/bionexus/acquisition.py` — closed-form EI over DECLARED
+  posteriors (mean + log-scale sd), AD gate cuts BOTH ways (a domain
+  outsider is refused, never "explored" — no infinite-exploration machine),
+  diversity cap, deterministic seed; `randomize_batch` spelled out so the
+  baseline comparison is honest. Campaigns: `CampaignConfig.acquisition=
+  "bo-ei"` selects every round from the posteriors, records the full
+  Selection (picks with EI arithmetic + reasons, refusals with their gate)
+  as `acquisition_selection` on the branch; CLI `--acquisition bo-ei
+  --dry-run` prints the batch and every refusal, submits nothing.
+  **The claim is graded:** eval task `acquisition-policy` — EI beats
+  gates+randomize on 3 seeded 24-compound pools (0.88 vs 0.29 hits/well,
+  recall 0.83) and zeroes the AD-outsider picks; pass requires STRICT
+  domination every pool. 19 unit/integration tests (incl. a real act-mode
+  campaign: best-mean AD1 vetoed, H1 confirmed, H2/H3 honestly refuted);
+  suite 444 green; evals 0.950 · 25 tasks all pass; epistemics 0.974.
+  Workbench: round rows expand "why this plate" (picked/refused + reasons).
+  HONEST LIMIT: the eval proves the mechanics on seeded pools; CS07/CS08
+  warn real rankers can lose to random — the real-data replay decides
+  whether bo-ei becomes a default.
+- [ ] CS04-replay acquisition study on the 26k-row EGFR corpus (network
+  day): bo-ei vs gates+randomize vs flywheel ordering, budget-matched,
+  published result whatever it says.
+- [ ] Program-form "Selection policy" picker + `_spawn_plan` forwarding
+  (after the replay verdict).
+- [ ] `bn select` standalone dry-run command (today: `bn auto --dry-run`).
+
 ## T0 — Uncertainty-aware verdicts (epistemic integrity)
 - [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap
   (deterministic seed), `labread.fit_ic50_ci`; CI stored on compounds as

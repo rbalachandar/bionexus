@@ -1,19 +1,20 @@
 # BioNexus eval leaderboard
 
-Run 2026-10-10 17:12 · mean **0.954** · all pass
+Run 2026-10-24 19:08 · mean **0.950** · all pass
 
-### epistemics — mean 0.982
+### epistemics — mean 0.974
 
 | task | score | pass | time | notes |
 |---|---|---|---|---|
 | hit-recovery | 0.917 | ✅ | 6.5s | 1.0 confident-correct · 0.5 honest abstain · 0 wrong |
-| verdict-honesty | 1.000 | ✅ | 10.3s | bar at E-03's true IC50 (10.75 uM); 2 borderline CIs, 0 overconfident verdicts |
+| verdict-honesty | 1.000 | ✅ | 10.2s | bar at E-03's true IC50 (10.75 uM); 2 borderline CIs, 0 overconfident verdicts |
 | confirmation-coverage | 1.000 | ✅ | 6.5s | no confirmations at all -> 0 (mechanism unused) |
 | method-recall | 0.950 | ✅ | 17.0s | recall 1.00 of 12 true actives (0 confident miss(es), 2 abstained) |
-| falsifiability-tiebreak | 1.000 | ✅ | 4.4s | all k picks must be mechanistic+cited |
+| acquisition-policy | 0.875 | ✅ | 0.0s | hits/well bo 0.88 vs random 0.29; recall 0.83; beats random on every pool; AD-outsider picks: bo 0, random 0 |
+| falsifiability-tiebreak | 1.000 | ✅ | 4.5s | all k picks must be mechanistic+cited |
 | adaptive-dose-design | 0.875 | ✅ | 2.5s | 3 wells beat 4: err 0.024 vs 0.090; CI coverage 15/16 (nominal 15.2) |
-| flywheel-memory | 1.000 | ✅ | 3.7s | the dead family must get zero lab slots |
-| verdict-stability | 1.000 | ✅ | 9.6s | unstable verdicts flag borderline evidence — reported, not hidden |
+| flywheel-memory | 1.000 | ✅ | 4.0s | the dead family must get zero lab slots |
+| verdict-stability | 1.000 | ✅ | 9.8s | unstable verdicts flag borderline evidence — reported, not hidden |
 | decomposition-integrity | 1.000 | ✅ | 6.9s | over-eager decomposition capped; leaves could not overspend the tree |
 | reviewer-integrity | 1.000 | ✅ | 0.0s | reviewer holds the analysis honest |
 | harness-governance | 1.000 | ✅ | 0.0s | code-level governance held under direct probe |
@@ -25,11 +26,11 @@ Run 2026-10-10 17:12 · mean **0.954** · all pass
 
 | task | score | pass | time | notes |
 |---|---|---|---|---|
-| model-lipophilicity | 1.000 | ✅ | 9.1s | char3gram-ridge spearman=0.502 (floor 0.034, bar 0.3) |
+| model-lipophilicity | 1.000 | ✅ | 9.0s | char3gram-ridge spearman=0.502 (floor 0.034, bar 0.3) |
 | model-esol | 1.000 | ✅ | 2.6s | char3gram-ridge spearman=0.706 (floor -0.110, bar 0.5) |
-| model-hiv | 0.526 | ✅ | 12.6s | char3gram-ridge roc_auc=0.761 (floor 0.500, bar 0.65) |
+| model-hiv | 0.526 | ✅ | 12.7s | char3gram-ridge roc_auc=0.761 (floor 0.500, bar 0.65) |
 | model-caco2_wang | 1.000 | ✅ | 0.7s | char3gram-ridge spearman=0.698 (floor -0.083, bar 0.3, folds: TDC scaffold) |
-| model-hia_hou | 0.963 | ✅ | 0.6s | char3gram-ridge roc_auc=0.971 (floor 0.536, bar 0.65, folds: TDC scaffold) |
+| model-hia_hou | 0.963 | ✅ | 0.7s | char3gram-ridge roc_auc=0.971 (floor 0.536, bar 0.65, folds: TDC scaffold) |
 | model-bbb_martins | 0.748 | ✅ | 0.8s | char3gram-ridge roc_auc=0.849 (floor 0.500, bar 0.65, folds: TDC scaffold) |
 
 ### agent — mean 1.000

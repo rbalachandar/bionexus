@@ -80,6 +80,11 @@ class CampaignConfig:
     policy: Any = None                  # assaybench-style ranker (e.g.
                                         # AssayLoopRanker): from round 2 it
                                         # picks the batch, gates still decide
+    acquisition: str = ""               # "bo-ei": EI batch selection every
+                                        # round, AD-gated (docs/ACQUISITION-
+                                        # IMPLEMENTATION-PLAN.md); "" = today's
+                                        # score/policy behaviour
+    seed: int | None = None             # acquisition determinism seed
     inbox: str | Path = ".data/inbox"
     flywheel: Any = None                # shared Flywheel (default: local db)
     synthesis_retries: int = 1      # extra Make attempts on a refused
@@ -418,12 +423,16 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         if not remaining:
             say(f"round {round_no}: no untested candidates remain — stopping")
             break
-        if cfg.policy is not None and round_no > 1:
+        k_round = (cfg.k_schedule[min(round_no - 1, len(cfg.k_schedule) - 1)]
+                   if cfg.k_schedule else cfg.k)
+        acq_sel = None
+        if cfg.acquisition == "bo-ei":
+            selected, acq_sel = _acquisition_select(
+                remaining, k_round, _crit, tracker, say, round_no,
+                seed=cfg.seed if cfg.seed is not None else round_no)
+        elif cfg.policy is not None and round_no > 1:
             selected = _policy_select(cfg, remaining, tracker, say)
         else:
-            k_round = (cfg.k_schedule[min(round_no - 1,
-                                          len(cfg.k_schedule) - 1)]
-                       if cfg.k_schedule else cfg.k)
             selected = tracker.select_portfolio(problem, remaining, score_fn,
                                                 k=k_round,
                                                 max_per_family=1)
@@ -453,6 +462,14 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             EventType.stage_transition, actor,
             decision={"kind": "round_start", "round": round_no,
                       "candidates": [h.candidate for h in selected]}))
+        if acq_sel is not None:
+            # "why this plate" rides the chain beside the round marker —
+            # picks with their EI arithmetic, refusals with their gate
+            store.append(record_for(
+                Envelope(experiment_branch_id=
+                         f"problem/{problem.problem_id or 'unnamed'}"),
+                EventType.hypotheses_filtered, actor,
+                decision=acq_sel.decision_payload()))
         if cfg.autonomy == "observe":
             say("observe-only: nothing submitted")
             return CampaignReport(problem_id=problem.problem_id,
@@ -749,6 +766,54 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                           recommendations=[m for m in messages
                                            if "recommendation" in m],
                           rounds_run=len(history), history=history)
+
+
+def _acquisition_select(remaining, k, crit, tracker, say, round_no, seed=0):
+    """BO-EI batch pick over the round's candidates. Posteriors are DECLARED
+    by whoever produced the hypotheses (predicted_value + optional
+    predicted_sd + AD stamp in metadata) — never fabricated here. Every
+    refusal (no posterior, AD gate, diversity, budget) is returned for the
+    provenance record, so 'why this plate' is answerable months later.
+
+    Returns (selected Hypotheses, Selection)."""
+    from bionexus.acquisition import Posterior, select_batch
+    by_cand = {h.candidate: h for h in remaining}
+    posteriors, no_post = [], []
+    for h in remaining:
+        if h.predicted_value is None:
+            no_post.append(h.candidate)
+            continue
+        meta = h.metadata or {}
+        posteriors.append(Posterior(
+            candidate=h.candidate, mean=float(h.predicted_value),
+            sd=meta.get("predicted_sd"), family=h.family,
+            in_domain=not meta.get("extrapolation", False),
+            ad_note=str(meta.get("ad_note", "")),
+            source=str(meta.get("predicted_source", "declared"))))
+    metric = crit.metric if crit is not None else "ic50_um"
+    direction = crit.direction if crit is not None else "min"
+    target = float(crit.threshold) if crit is not None else None
+    # observed best so far (log/µM handled by the acquisition axis)
+    obs = [h.observed_value for h in tracker.hypotheses.values()
+           if h.observed_value is not None]
+    best = (min(obs) if direction == "min" else max(obs)) if obs else None
+    sel = select_batch(posteriors, k=k, target=target, best_observed=best,
+                       direction=direction, metric_log=(metric == "ic50_um"),
+                       seed=seed, round_no=round_no, max_per_family=1)
+    for c in no_post:
+        sel.refusals.append(_refusal_obj(
+            c, "no declared posterior (predicted_value missing) — "
+               "acquisition needs a mean, never invents one"))
+    selected = [by_cand[p.candidate] for p in sel.picks if p.candidate in by_cand]
+    say(f"acquisition[{sel.policy}]: picked "
+        f"{[h.candidate for h in selected]} · refused {len(sel.refusals)} "
+        f"(AD-veto {sum(1 for r in sel.refusals if 'extrapolation' in r.reason)})")
+    return selected, sel
+
+
+def _refusal_obj(candidate, reason):
+    from bionexus.acquisition import Refusal
+    return Refusal(candidate=candidate, reason=reason)
 
 
 def _policy_select(cfg, remaining, tracker, say):

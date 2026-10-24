@@ -120,6 +120,81 @@ def _t_method_recall():
                       f"({wrong} confident miss(es), {abstained} abstained)")
 
 
+@register("acquisition-policy",
+          "Bayesian batch selection must beat gates+randomize on the same "
+          "seeded pools AND never pick an applicability-domain outsider "
+          "(the claim is graded, not asserted — CS07/CS08 taught us rankers "
+          "can lose to random)")
+def _t_acquisition():
+    from bionexus.acquisition import Posterior, randomize_batch, select_batch
+    from bionexus.evals.harness import TaskResult
+    import hashlib
+
+    def noise(seed, c, amp):
+        h = int(hashlib.sha256(f"{seed}:{c}".encode()).hexdigest()[:8], 16)
+        return amp * (((h % 2000) / 1000.0) - 1.0)
+
+    threshold = 20.0
+    k = 8
+    bo_prec, rnd_prec, recalls = [], [], []
+    ad_bo_violations, ad_rnd_violations = 0, 0
+    per_pool = []
+    for seed in (11, 42, 7):
+        from bionexus.adapters.lab.simulator import SimulatorLab
+        lab = SimulatorLab(seed=seed)
+        pool = [f"M-{i:02d}" for i in range(1, 25)]
+        truth = {c: lab.true_ic50_um("x", c) for c in pool}
+        actives = {c for c in pool if truth[c] <= threshold}
+        ad_out = {c for c in pool
+                  if int(hashlib.sha256(f"ad:{seed}:{c}".encode()).hexdigest(),
+                         16) % 24 < 3}
+        post = [Posterior(candidate=c,
+                          mean=round(truth[c] * (1 + noise(seed, c, 0.35)), 3),
+                          sd=0.15, in_domain=c not in ad_out,
+                          ad_note="declared nn-Tanimoto below floor"
+                          if c in ad_out else "")
+                for c in pool]
+        bo = select_batch(post, k=k, target=threshold, direction="min",
+                          seed=seed, metric_log=True)
+        rnd = randomize_batch(post, k=k, seed=seed, skip_out_of_domain=True)
+        bsel = {p.candidate for p in bo.picks}
+        rsel = {p.candidate for p in rnd.picks}
+        bo_hits = len(bsel & actives)
+        rnd_hits = len(rsel & actives)
+        ad_bo_violations += len(bsel & ad_out)
+        ad_rnd_violations += len(rsel & ad_out)
+        bo_prec.append(bo_hits / k)
+        rnd_prec.append(rnd_hits / k)
+        recalls.append(bo_hits / len(actives) if actives else 0.0)
+        per_pool.append({"seed": seed, "actives": len(actives),
+                         "bo_hits": bo_hits, "rnd_hits": rnd_hits,
+                         "bo_ad_picks": len(bsel & ad_out)})
+
+    mean_bo = round(sum(bo_prec) / len(bo_prec), 3)
+    mean_rnd = round(sum(rnd_prec) / len(rnd_prec), 3)
+    mean_recall = round(sum(recalls) / len(recalls), 3)
+    dominates = all(b > r for b, r in zip(bo_prec, rnd_prec))
+    # EI's whole reason to exist: it never spends a well outside the domain
+    ad_ok = ad_bo_violations == 0
+    score = mean_bo
+    passed = score >= PASS_THRESHOLD and dominates and ad_ok
+    notes = (f"hits/well bo {mean_bo:.2f} vs random {mean_rnd:.2f}; "
+             f"recall {mean_recall:.2f}; "
+             f"{'beats random on every pool' if dominates else 'DID NOT dominate'}; "
+             f"AD-outsider picks: bo {ad_bo_violations}, random "
+             f"{ad_rnd_violations}"
+             + ("" if ad_ok else " — AD GATE LEAKED"))
+    return TaskResult("acquisition-policy",
+                      "EI batch beats gates+randomize, respects the AD gate",
+                      score, passed,
+                      {"mean_bo_hits_per_well": mean_bo,
+                       "mean_random_hits_per_well": mean_rnd,
+                       "mean_recall": mean_recall,
+                       "dominates_random": dominates,
+                       "ad_violations": ad_bo_violations,
+                       "pools": per_pool}, notes)
+
+
 # ------------------------------------------------------------- models suite
 
 @register("model-lipophilicity", "policy ladder on MoleculeNet Lipophilicity",

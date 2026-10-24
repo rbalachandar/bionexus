@@ -602,22 +602,39 @@ def _sandbox_summary(recs) -> dict | None:
 
 def _rounds_with_verdicts(recs) -> list[dict]:
     """Rounds with tested candidates AND the round's verdict map (from
-    the round-N-complete stage markers)."""
+    the round-N-complete stage markers). When a round was chosen by a
+    batch-acquisition policy, its Selection rides along as `selection` —
+    the "why this plate" answer for the workbench."""
     rounds = [{"round": n, "candidates": c, "verdicts": {}}
               for n, c in round_markers(recs)]
+    by_round = {rd["round"]: rd for rd in rounds}
     for r in recs:
-        d = r.decision or {}
-        stage = str(d.get("stage", ""))
+        dec = r.decision or {}
+        stage = str(dec.get("stage", ""))
         if r.event_type.value == "stage_transition" \
-                and stage.startswith("round-") and d.get("verdicts"):
+                and stage.startswith("round-") and dec.get("verdicts"):
             try:
                 n = int(stage.split("-")[1])
             except (ValueError, IndexError):
                 continue
-            for rd in rounds:
-                if rd["round"] == n:
-                    rd["verdicts"] = {str(k): str(v) for k, v
-                                      in (d.get("verdicts") or {}).items()}
+            if n in by_round:
+                by_round[n]["verdicts"] = {str(k): str(v) for k, v
+                                           in (dec.get("verdicts") or {}).items()}
+        if dec.get("kind") == "acquisition_selection":
+            try:
+                n = int(dec.get("round", 0))
+            except (TypeError, ValueError):
+                continue
+            if n in by_round:
+                by_round[n]["selection"] = {
+                    "policy": dec.get("policy"),
+                    "policy_version": dec.get("policy_version"),
+                    "target": dec.get("target"),
+                    "direction": dec.get("direction"),
+                    "k": dec.get("k"),
+                    "picks": dec.get("picks") or [],
+                    "refusals": dec.get("refusals") or [],
+                    "note": dec.get("note", "")}
     return rounds
 
 

@@ -316,7 +316,7 @@ function PendingApprovals({ eid, active }: { eid: string; active: boolean }) {  
   )
 }
 
-function DmtaCounts({ counts, rounds, bare }: { counts: Record<string, number>; rounds: { round: number; candidates: string[]; verdicts: Record<string, string> }[]; bare?: boolean }) {
+function DmtaCounts({ counts, rounds, bare }: { counts: Record<string, number>; rounds: ExperimentDetail['rounds']; bare?: boolean }) {
   const chips: [string, number | string][] = [
     ['Design', `${counts.proposed ?? 0} proposed · ${counts.selected ?? 0} selected`],
     ['Make', `${counts.submitted ?? 0} submitted`],
@@ -391,6 +391,37 @@ function DmtaCounts({ counts, rounds, bare }: { counts: Record<string, number>; 
                   {r.candidates.length > 12
                     ? `${r.candidates.slice(0, 12).join(', ')} +${r.candidates.length - 12} more`
                     : r.candidates.join(', ')}
+                  {r.selection && (
+                    <details style={{ marginTop: 3 }}>
+                      <summary style={{ cursor: 'pointer', fontSize: 11 }}
+                        className="muted">
+                        why this plate — batch by {r.selection.policy}
+                        {r.selection.target != null
+                          ? ` (improve on gate ${r.selection.target})` : ''}
+                      </summary>
+                      <div style={{ fontSize: 11, marginTop: 4, display: 'grid', gap: 2 }}>
+                        {r.selection.picks.map((p) => (
+                          <div key={p.candidate}>
+                            <strong style={{ color: 'var(--ok)' }}>picked</strong>{' '}
+                            <strong>{p.candidate}</strong>
+                            <span className="mono muted"> EI {p.acquisition}</span>
+                            {' '}— {p.reason}
+                          </div>
+                        ))}
+                        {r.selection.refusals.map((x) => (
+                          <div key={x.candidate} className="muted">
+                            <strong style={{ color: 'var(--bad)' }}>refused</strong>{' '}
+                            <strong>{x.candidate}</strong> — {x.reason}
+                          </div>
+                        ))}
+                        {r.selection.note && (
+                          <div className="muted" style={{ fontStyle: 'italic' }}>
+                            {r.selection.note}
+                          </div>
+                        )}
+                      </div>
+                    </details>
+                  )}
                 </td>
                 <td>
                   {Object.entries(r.verdicts).map(([c, v]) => (

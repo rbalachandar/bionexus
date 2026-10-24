@@ -63,7 +63,7 @@
   "metrics": {
    "straddling_ci": 2,
    "violations": 0,
-   "duration_s": 10.3
+   "duration_s": 10.2
   },
   "notes": "bar at E-03's true IC50 (10.75 uM); 2 borderline CIs, 0 overconfident verdicts"
  },
@@ -109,6 +109,43 @@
   "notes": "recall 1.00 of 12 true actives (0 confident miss(es), 2 abstained)"
  },
  {
+  "task": "acquisition-policy",
+  "score": 0.875,
+  "passed": true,
+  "metrics": {
+   "mean_bo_hits_per_well": 0.875,
+   "mean_random_hits_per_well": 0.292,
+   "mean_recall": 0.833,
+   "dominates_random": true,
+   "ad_violations": 0,
+   "pools": [
+    {
+     "seed": 11,
+     "actives": 12,
+     "bo_hits": 8,
+     "rnd_hits": 3,
+     "bo_ad_picks": 0
+    },
+    {
+     "seed": 42,
+     "actives": 6,
+     "bo_hits": 5,
+     "rnd_hits": 1,
+     "bo_ad_picks": 0
+    },
+    {
+     "seed": 7,
+     "actives": 8,
+     "bo_hits": 8,
+     "rnd_hits": 3,
+     "bo_ad_picks": 0
+    }
+   ],
+   "duration_s": 0.0
+  },
+  "notes": "hits/well bo 0.88 vs random 0.29; recall 0.83; beats random on every pool; AD-outsider picks: bo 0, random 0"
+ },
+ {
   "task": "model-lipophilicity",
   "score": 1.0,
   "passed": true,
@@ -116,7 +153,7 @@
    "best_policy": "char3gram-ridge",
    "spearman": 0.5021,
    "floor_random": 0.0336,
-   "duration_s": 9.1
+   "duration_s": 9.0
   },
   "notes": "char3gram-ridge spearman=0.502 (floor 0.034, bar 0.3)"
  },
@@ -140,7 +177,7 @@
    "best_policy": "char3gram-ridge",
    "roc_auc": 0.7606,
    "floor_random": 0.5,
-   "duration_s": 12.6
+   "duration_s": 12.7
   },
   "notes": "char3gram-ridge roc_auc=0.761 (floor 0.500, bar 0.65)"
  },
@@ -180,7 +217,7 @@
    "n_train": 461,
    "n_test": 117,
    "splits": "TDC canonical scaffold (20% test)",
-   "duration_s": 0.6
+   "duration_s": 0.7
   },
   "notes": "char3gram-ridge roc_auc=0.971 (floor 0.536, bar 0.65, folds: TDC scaffold)"
  },
@@ -290,7 +327,7 @@
     "E-09",
     "E-11"
    ],
-   "duration_s": 4.4
+   "duration_s": 4.5
   },
   "notes": "all k picks must be mechanistic+cited"
  },
@@ -320,7 +357,7 @@
     "X-1"
    ],
    "family_A_prior": 0.5,
-   "duration_s": 3.7
+   "duration_s": 4.0
   },
   "notes": "the dead family must get zero lab slots"
  },
@@ -352,7 +389,7 @@
      "confirmed"
     ]
    },
-   "duration_s": 9.6
+   "duration_s": 9.8
   },
   "notes": "unstable verdicts flag borderline evidence \u2014 reported, not hidden"
  },

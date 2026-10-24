@@ -385,7 +385,9 @@ def _campaign_from_doc(cfg_doc: dict) -> "CampaignConfig":
                                          ["0.5uM", "2uM", "10uM", "40uM"])),
         max_families=cfg_doc.get("max_families", 3),
         max_variants_per_family=cfg_doc.get("max_variants_per_family", 3),
-        dose_design=cfg_doc.get("dose_design", "fixed"))
+        dose_design=cfg_doc.get("dose_design", "fixed"),
+        acquisition=cfg_doc.get("acquisition", ""),
+        seed=cfg_doc.get("seed"))
 
 
 def cmd_auto(args: argparse.Namespace) -> int:
@@ -422,6 +424,13 @@ def cmd_auto(args: argparse.Namespace) -> int:
             return 2
     if getattr(args, "dose_design", None):
         cfg_doc["dose_design"] = args.dose_design
+    if getattr(args, "acquisition", None):
+        cfg_doc["acquisition"] = args.acquisition
+    if getattr(args, "seed", None) is not None:
+        cfg_doc["seed"] = args.seed
+    if getattr(args, "dry_run", False):
+        cfg_doc["acquisition"] = cfg_doc.get("acquisition") or "bo-ei"
+        cfg_doc["autonomy"] = "observe"   # selects + explains, submits nothing
     cfg = _campaign_from_doc(cfg_doc)
     approver = None
     if cfg.autonomy == "gate":
@@ -964,6 +973,14 @@ def main(argv: list[str] | None = None) -> int:
     auto.add_argument("--field", action="append", metavar="KEY=VALUE",
                       help="template field, e.g. --field compounds=C1,C2")
     auto.add_argument("--autonomy", choices=["observe", "gate", "act"], default=None)
+    auto.add_argument("--acquisition", choices=("bo-ei",), default=None,
+                      help="batch policy: bo-ei = expected-improvement over "
+                           "declared posteriors, AD-gated (default: score/policy)")
+    auto.add_argument("--seed", type=int, default=None,
+                      help="acquisition determinism seed")
+    auto.add_argument("--dry-run", action="store_true",
+                      help="preview the batch (EI values + every refusal), "
+                           "submit nothing (forces bo-ei + observe)")
     auto.add_argument("--yes", action="store_true",
                       help="never prompt for template fields; fail instead")
     auto.add_argument("--db", default="bionexus.db",
