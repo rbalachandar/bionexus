@@ -113,6 +113,25 @@ def records_for(path: Path, cfg: PlateAssayConfig,
     return _read(path, cfg, layout_path).records
 
 
+def _wells(r, cfg: PlateAssayConfig) -> list[dict[str, Any]]:
+    """Compact well view for the plate map: identity, mapping coverage,
+    control CLASS (not just is-control), channel. Wells without geometry
+    (deposits) simply have no row."""
+    from bionexus import labread
+    overrides = _override_map(cfg)
+    out = []
+    for rec in r.records:
+        well = str(rec.get("well") or "")
+        if not well:
+            continue
+        sample = str(rec.get("sample", ""))
+        out.append({"well": well, "sample": sample,
+                    "conc_um": rec.get("conc_um"), "value": rec["value"],
+                    "control": labread.control_class(sample, overrides),
+                    "channel": rec.get("channel")})
+    return out
+
+
 def preview(source: Path, cfg: PlateAssayConfig,
             layout_path: Path | None = None) -> dict[str, Any]:
     """Parse-level interpretation ONLY: no fits published, no verdicts.
@@ -178,6 +197,7 @@ def preview(source: Path, cfg: PlateAssayConfig,
         "regime": dict(r.regime) if r.regime else None,
         "samples": sorted({str(rec.get("sample")) for rec in r.records
                            if not rec.get("control")}),
+        "wells": _wells(r, cfg),
         "has_doses": has_doses,
         "diagnostics": [d.model_dump() for d in diags],
         "needs_confirmation": ["control_classes"] if r.z_prime is None else [],
@@ -280,6 +300,7 @@ def analyze(source: Path, cfg: PlateAssayConfig,
         "shape_only": r.analysis.get("shape_only"),
         "engine_version": _engine_version(),
         "compounds": results,
+        "wells": _wells(r, cfg),
         "calls": [c.model_dump() for c in calls],
         "threshold_registered": cfg.threshold is not None,
         "metric": cfg.metric,

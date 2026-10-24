@@ -8,6 +8,7 @@ import type { ProgramLink, ProblemTreeOut, ProgramOut, TasteReport } from '../ap
 import { Badge, EmptyState, Skeleton } from '../components/ui'
 import { leafLabel, leafTitle, NO_LABEL_STATUS, VerdictTally } from '../components/program'
 import ProgramForm from './ProgramForm'
+import { STATE_LABEL } from './Analysis'
 
 function ArchiveButton({ label, confirmLabel, small, onConfirm }: {
   label: string
@@ -197,6 +198,37 @@ function TreeBlock({ tree }: { tree: ProblemTreeOut }) {
   return <div>{roots.map((r) => render(r.id, 0))}</div>
 }
 
+function AnalysesList() {
+  const anQ = useQuery({ queryKey: ['analyses'], queryFn: api.analyses,
+    refetchInterval: 15000 })
+  const items = anQ.data?.analyses ?? []
+  if (!items.length) return null
+  return (
+    <section className="card" style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10,
+        marginBottom: 4 }}>
+        <FileSpreadsheet size={15} color="var(--muted)" />
+        <strong style={{ fontSize: 13 }}>Recent analyses</strong>
+        <a href="/analyses/new" style={{ marginLeft: 'auto', fontSize: 12 }}>
+          Analyze data →
+        </a>
+      </div>
+      {items.map((a) => (
+        <div key={a.id}
+          style={{ display: 'flex', gap: 8, alignItems: 'baseline',
+            padding: '3px 0 3px 24px',
+            borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+          <a href={`/analyses/${a.id}`} className="mono">{a.id}</a>
+          <span className="chip meta">{STATE_LABEL[a.state] ?? a.state}</span>
+          <span className="muted" style={{ marginLeft: 'auto', fontSize: 11 }}>
+            {a.profile} · rev {a.revision}
+          </span>
+        </div>
+      ))}
+    </section>
+  )
+}
+
 export default function Workspace({ initialForm = false }: {
   initialForm?: boolean
 }) {
@@ -314,6 +346,9 @@ export default function Workspace({ initialForm = false }: {
             </button>
           } />
       )}
+
+      {/* analysis history — the standalone workflow's own ledger */}
+      <AnalysesList />
 
       {/* activity: free trees + groups */}
       {ws.trees.filter((t) => !t.is_linked).map((t) => (

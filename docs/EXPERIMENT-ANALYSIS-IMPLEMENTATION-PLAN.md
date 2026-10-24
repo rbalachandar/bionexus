@@ -1,11 +1,15 @@
 # Experiment Data Analysis — Implementation Plan
 
-**Status:** Phases 1–4 core SHIPPED (Oct 2026): generic lifecycle contracts,
-plate-assay profile, artifact store + `/api/analyses` lifecycle, workbench
-`Analyze data` flow, report + CSV export with chain verification.
-OPEN (recorded in docs/ROADMAP.md): plate-map visualization, analysis history
-list, channel/normalization UI fields, campaign handoff, browser tests,
-Phase 0/5 design-partner validation.  
+**Status:** Phases 1–4 SHIPPED (Oct 2026): generic lifecycle contracts,
+plate-assay profile, artifact store + `/api/analyses` lifecycle (preview →
+configure → run → review), workbench `Analyze data` flow with plate map,
+history list, control/normalization configuration, report + CSV export with
+chain verification, and campaign handoff with an explicit recorded
+proxy-evidence transition.
+OPEN: browser-level tests + accessibility verification (no browser-test
+infra in repo yet — needs a Playwright decision), Phase 0 named-scientist
+walkthrough and Phase 5 design-partner validation — the utility claim is
+unproven until those run.
 **Scope:** modality-neutral analysis workflow and evidence lifecycle, with plate-reader assay analysis as the first validated profile  
 **Product goal:** make BioNexus useful to a scientist who already has experimental data, without narrowing the framework's bio/chemical/material domain.
 

@@ -104,13 +104,22 @@ watches it handle their ugliest plate. Priority order below is adoption order.
   dividing None when the 3-param fit declined a 2-point curve (now honest
   censoring). 48 new tests; suite 420 green; evals unchanged 0.982; SPA
   tsc+vite clean.
-  REMAINING (each its own ticket-size job): plate-map visualization +
-  analysis history list (S-T0.5) · channel/normalization fields in the
-  configuration screen (threshold/direction/max-response only today) ·
-  campaign handoff + simulated/predicted → measured transition guard ·
-  browser-level tests + a11y verification · Phase 0 (named scientist) and
-  Phase 5 (design-partner validation) — the utility claim is UNPROVEN until
-  those run.
+  SHIPPED WAVE 2 (same month): plate-map visualization (well geometry +
+  mapping coverage; P/−/●/? glyphs + words, never color-only; per-cell
+  titles + aria) · Recent-analyses history list on the Workspace ·
+  configuration screen widened (kinetic endpoint, positive/negative control
+  ids driving real Z′, %inhibition normalization toggle) · normalization
+  REFUSAL now blocks fits instead of silently running on mislabeled raw
+  values · campaign handoff (`POST /api/analyses/{id}/handoff`, reviewed
+  only; creates the wizard session, links provenance on BOTH branches;
+  simulated/predicted/unknown origin requires an explicit
+  `accept_proxy_evidence` transition that is recorded, never a relabel) ·
+  wizard session resume (`/wizard?sid=`, the handoff lands on the guided
+  flow) · 5 more API tests; suite 425 green; SPA tsc+vite clean.
+  REMAINING: browser-level tests + accessibility verification (no
+  browser-test infra in the repo — needs a Playwright/CI decision, not more
+  unit mocks) · Phase 0 (named scientist) and Phase 5 (design-partner
+  validation) — the utility claim is UNPROVEN until those run.
 - [x] **Prospective real-data case study** (the missing proof-of-thesis):
   SHIPPED as `case-studies/04-prospective-hit2lead` — 26,322 real ChEMBL
   EGFR measurements, the seven documented successor drugs verified present

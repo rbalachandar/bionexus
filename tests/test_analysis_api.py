@@ -198,3 +198,84 @@ def test_provenance_recorded_on_analysis_branch(client, tmp_path):
 def test_missing_analysis_404(client):
     assert client.get("/api/analyses/an-nope").status_code == 404
     assert client.post("/api/analyses/an-nope/run").status_code == 404
+
+
+# ------------------------------------------------------------------ handoff
+
+def _to_reviewed(client, tmp_path, config=None):
+    doc = _upload(client, tmp_path, config=config).json()
+    aid = doc["id"]
+    cfg = config or {}
+    client.post(f"/api/analyses/{aid}/configure",
+                json={"config": {**GATE, **cfg}})
+    client.post(f"/api/analyses/{aid}/run")
+    client.post(f"/api/analyses/{aid}/review",
+                json={"action": "acknowledge", "reason": "looks right"})
+    return aid
+
+
+def test_handoff_requires_reviewed(client, tmp_path):
+    doc = _upload(client, tmp_path).json()
+    r = client.post(f"/api/analyses/{doc['id']}/handoff", json={
+        "objective": "Resupply the borderline hit and re-run at three doses"})
+    assert r.status_code == 409
+    assert "REVIEWED" in r.json()["detail"]
+
+
+def test_handoff_creates_linked_wizard_session(client, tmp_path):
+    aid = _to_reviewed(client, tmp_path)
+    r = client.post(f"/api/analyses/{aid}/handoff", json={
+        "objective": "Resupply the borderline hit and re-run at three doses"})
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["sid"].startswith("wsn-") and out["eid"]
+    assert out["origin"] == "measured"
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    s = SqliteProvenanceStore("bionexus.db")
+    kinds = [r.decision.get("kind") for r in
+             s.branch_records(f"wizard/{out['eid']}")]
+    assert "analysis_handoff" in kinds
+    hand = [r.decision for r in s.branch_records(f"wizard/{out['eid']}")
+            if r.decision.get("kind") == "analysis_handoff"][0]
+    assert hand["analysis_id"] == aid
+    assert hand["proxy_transition"] is False
+    off = [r.decision for r in s.branch_records(f"analysis/{aid}")
+           if r.decision.get("kind") == "campaign_handoff"]
+    assert off and off[0]["eid"] == out["eid"]
+
+
+def test_handoff_proxy_evidence_requires_explicit_transition(client, tmp_path):
+    aid = _to_reviewed(client, tmp_path, config={
+        "evidence_origin": "simulated"})
+    r = client.post(f"/api/analyses/{aid}/handoff", json={
+        "objective": "Confirm the simulated hit on real compound"})
+    assert r.status_code == 409
+    assert r.json()["detail"]["code"] == "proxy_evidence_transition"
+    r = client.post(f"/api/analyses/{aid}/handoff", json={
+        "objective": "Confirm the simulated hit on real compound",
+        "accept_proxy_evidence": True})
+    assert r.status_code == 200
+    assert r.json()["proxy_transition"] is True
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    hand = [x.decision for x in SqliteProvenanceStore("bionexus.db")
+            .branch_records(f"wizard/{r.json()['eid']}")
+            if x.decision.get("kind") == "analysis_handoff"][0]
+    assert hand["proxy_transition"] is True
+    assert hand["evidence_origin"] == "simulated"
+
+
+def test_handoff_rejects_vague_objective(client, tmp_path):
+    aid = _to_reviewed(client, tmp_path)
+    r = client.post(f"/api/analyses/{aid}/handoff", json={"objective": "more"})
+    assert r.status_code == 422
+
+
+def test_preview_and_result_carry_wells_for_the_plate_map(client, tmp_path):
+    doc = _upload(client, tmp_path).json()
+    assert doc["preview"]["wells"], "plate map data present"
+    aid = doc["id"]
+    client.post(f"/api/analyses/{aid}/configure", json={"config": GATE})
+    run = client.post(f"/api/analyses/{aid}/run").json()
+    assert run["result"]["wells"]
+    w0 = run["result"]["wells"][0]
+    assert set(w0) >= {"well", "sample", "conc_um", "control"}

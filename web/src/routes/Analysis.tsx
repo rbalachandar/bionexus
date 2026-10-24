@@ -2,13 +2,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { FileSpreadsheet, Upload } from 'lucide-react'
+import PlateMap from '../components/PlateMap'
 
 const ORIGIN_LABEL: Record<string, string> = {
   measured: 'measured', historical: 'historical deposit',
   simulated: 'simulated', predicted: 'predicted', unknown: 'origin unknown',
 }
 
-const STATE_LABEL: Record<string, string> = {
+export const STATE_LABEL: Record<string, string> = {
   uploaded: 'uploaded', preview_ready: 'preview ready — confirm the setup',
   configured: 'setup confirmed', analyzed: 'analyzed',
   reviewed: 'reviewed', unreadable: 'unreadable',
@@ -154,7 +155,7 @@ function ResultView({ result }: { result: any }) {
         </p>
       )}
       {result?.qc_hold && !result?.regime_refused && (
-        <p className="chip warning">QC hold — Z′ below the QC floor.</p>
+        <p className="chip inconclusive">QC hold — Z′ below the QC floor.</p>
       )}
       {result?.shape_only && Object.keys(result.shape_only).length > 0 && (
         <details>
@@ -236,6 +237,12 @@ function AnalysisDetail({ id }: { id: string }) {
   const client = useQueryClient()
   const [error, setError] = useState('')
   const [threshold, setThreshold] = useState<string | null>(null)
+  const [cycles, setCycles] = useState<string | null>(null)
+  const [normalize, setNormalize] = useState<boolean | null>(null)
+  const [posControls, setPosControls] = useState<string | null>(null)
+  const [negControls, setNegControls] = useState<string | null>(null)
+  const [objective, setObjective] = useState('')
+  const [acceptProxy, setAcceptProxy] = useState(false)
   const [reviewReason, setReviewReason] = useState('')
   const [reviewActor, setReviewActor] = useState('scientist')
 
@@ -246,6 +253,10 @@ function AnalysisDetail({ id }: { id: string }) {
   const result = doc.result
   const cfg = doc.config ?? {}
   const th = threshold ?? (cfg.threshold != null ? String(cfg.threshold) : '')
+  const cy = cycles ?? cfg.cycles ?? 'last'
+  const norm = normalize ?? cfg.normalize === 'pct_inhibition'
+  const pos = posControls ?? (cfg.positive_controls ?? []).join(', ')
+  const neg = negControls ?? (cfg.negative_controls ?? []).join(', ')
   const refresh = () => client.invalidateQueries({ queryKey: ['analysis', id] })
 
   async function act(fn: () => Promise<unknown>) {
@@ -294,6 +305,11 @@ function AnalysisDetail({ id }: { id: string }) {
                 .slice(0, 4).map(([k, v]) => `${k}: ${v}`).join(' · ')}
             </div>
           )}
+          {(preview.wells?.length ?? 0) > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <PlateMap wells={preview.wells} />
+            </div>
+          )}
         </div>
         {diag.length > 0 && (
           <div style={{ marginTop: 8, display: 'grid', gap: 3 }}>
@@ -312,7 +328,7 @@ function AnalysisDetail({ id }: { id: string }) {
         {(preview.needs_confirmation ?? []).length > 0 && (
           <div style={{ marginTop: 6 }}>
             {(preview.needs_confirmation as string[]).map((k) => (
-              <span key={k} className="chip warning" style={{ fontSize: 11 }}>
+              <span key={k} className="chip inconclusive" style={{ fontSize: 11 }}>
                 confirm {k.replace(/_/g, ' ')}
               </span>
             ))}
@@ -326,23 +342,61 @@ function AnalysisDetail({ id }: { id: string }) {
         || doc.state === 'qc_hold' || doc.state === 'unsupported_regime'
         || doc.state === 'needs_mapping') && (
         <section className="card" style={{ marginTop: 10, maxWidth: 760 }}>
-          <h3 style={{ margin: '0 0 6px', fontSize: 14 }}>Gate & re-run</h3>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap' }}>
-            <label style={{ fontSize: 12 }}>Threshold (blank = estimates only)
-              <input value={th} onChange={(e) => setThreshold(e.target.value)} style={inputStyle} />
+          <h3 style={{ margin: '0 0 6px', fontSize: 14 }}>Confirm the interpretation</h3>
+          <div style={{ display: 'grid', gap: 8, maxWidth: 520 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <label style={{ fontSize: 12, flex: 1, minWidth: 120 }}>
+                Threshold (blank = estimates only)
+                <input value={th} onChange={(e) => setThreshold(e.target.value)}
+                  style={inputStyle} />
+              </label>
+              <label style={{ fontSize: 12 }}>Endpoint (kinetic)
+                <select value={cy} onChange={(e) => setCycles(e.target.value)}
+                  style={inputStyle}>
+                  <option value="last">last read</option>
+                  <option value="first">first read</option>
+                  <option value="mean">mean of reads</option>
+                </select>
+              </label>
+            </div>
+            <label style={{ fontSize: 12 }}>
+              Positive-control sample ids (comma-separated — required for
+              real Z′ and %inhibition)
+              <input value={pos} onChange={(e) => setPosControls(e.target.value)}
+                style={inputStyle} placeholder="e.g. KILLED, posA, posB" />
             </label>
-            <button className="primary" onClick={() => act(() =>
-              post(`/api/analyses/${id}/configure`, {
-                config: { ...cfg, threshold: th.trim() === '' ? null : Number(th) },
-              }))}>
-              Confirm setup
-            </button>
-            <button className="primary" disabled={!RUNNABLE.includes(doc.state)}
-              title={RUNNABLE.includes(doc.state) ? '' : 'confirm the interpretation first'}
-              onClick={() => act(() =>
-                post(`/api/analyses/${id}/run`))}>
-              Run analysis
-            </button>
+            <label style={{ fontSize: 12 }}>
+              Blank / negative-control sample ids
+              <input value={neg} onChange={(e) => setNegControls(e.target.value)}
+                style={inputStyle} placeholder="e.g. VECTOR, DMSO" />
+            </label>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center',
+              fontSize: 12 }}>
+              <input type="checkbox" checked={norm}
+                onChange={(e) => setNormalize(e.target.checked)} />
+              Normalize raw signal to %inhibition vs this plate's controls
+            </label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="primary" onClick={() => act(() =>
+                post(`/api/analyses/${id}/configure`, {
+                  config: {
+                    ...cfg,
+                    threshold: th.trim() === '' ? null : Number(th),
+                    cycles: cy,
+                    normalize: norm ? 'pct_inhibition' : null,
+                    positive_controls: pos.split(',').map((s: string) => s.trim()).filter(Boolean),
+                    negative_controls: neg.split(',').map((s: string) => s.trim()).filter(Boolean),
+                  },
+                }))}>
+                Confirm setup
+              </button>
+              <button className="primary" disabled={!RUNNABLE.includes(doc.state)}
+                title={RUNNABLE.includes(doc.state) ? '' : 'confirm the interpretation first'}
+                onClick={() => act(() =>
+                  post(`/api/analyses/${id}/run`))}>
+                Run analysis
+              </button>
+            </div>
           </div>
         </section>
       )}
@@ -401,6 +455,63 @@ function AnalysisDetail({ id }: { id: string }) {
               </button>
             </div>
           )}
+        </section>
+      )}
+
+      {/* campaign handoff: reviewed analysis -> guided campaign, context only */}
+      {doc.state === 'reviewed' && result && (
+        <section className="card" style={{ marginTop: 10, maxWidth: 760 }}>
+          <h3 style={{ margin: '0 0 6px', fontSize: 14 }}>
+            Continue as a guided campaign
+          </h3>
+          <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>
+            The campaign registers its own objective and gate — nothing is
+            inherited silently. This analysis travels as context: source
+            digest, confirmed settings, evidence origin.{' '}
+            <span className="mono">origin: {result.evidence_origin ?? 'unknown'}</span>
+          </p>
+          <div style={{ display: 'grid', gap: 8, maxWidth: 520 }}>
+            <label style={{ fontSize: 12 }}>
+              Campaign objective (registered separately)
+              <textarea rows={2} value={objective}
+                onChange={(e) => setObjective(e.target.value)} style={inputStyle}
+                placeholder="Which follow-up question does this plate leave open?" />
+            </label>
+            {['simulated', 'predicted', 'unknown'].includes(
+              result.evidence_origin ?? 'unknown') && (
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center',
+                fontSize: 12 }}>
+                <input type="checkbox" checked={acceptProxy}
+                  onChange={(e) => setAcceptProxy(e.target.checked)} />
+                Accept the proxy-evidence transition ({result.evidence_origin})
+                — recorded on both branches; it never relabels the evidence measured
+              </label>
+            )}
+            <div>
+              <button className="primary"
+                disabled={objective.trim().length < 15
+                  || (['simulated', 'predicted', 'unknown'].includes(
+                    result.evidence_origin ?? 'unknown') && !acceptProxy)}
+                onClick={() => act(async () => {
+                  const r = await fetch(`/api/analyses/${id}/handoff`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ objective,
+                      accept_proxy_evidence: acceptProxy }),
+                  })
+                  if (!r.ok) {
+                    const b = await r.json().catch(() => ({}))
+                    const d = b.detail
+                    throw new Error(typeof d === 'object'
+                      ? `${d.code}: ${d.detail}` : (d ?? `${r.status}`))
+                  }
+                  const out = await r.json()
+                  nav(`/wizard?sid=${out.sid}`)
+                })}>
+                Create campaign session →
+              </button>
+            </div>
+          </div>
         </section>
       )}
     </main>

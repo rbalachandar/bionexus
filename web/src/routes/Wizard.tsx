@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSearchParams } from 'react-router-dom'
 
@@ -42,6 +42,31 @@ export default function Wizard() {
   const [plate, setPlate] = useState<any>(null)
   const [selected, setSelected] = useState<string[]>([])
   const [error, setError] = useState('')
+
+  const resumeSid = params.get('sid') ?? ''
+  useEffect(() => {
+    if (!resumeSid || sid) return
+    fetch(`/api/wizard/sessions/${resumeSid}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) { setError('session not found'); return }
+        setSid(d.sid); setEid(d.eid); setStep(d.step ?? 2)
+        setQuestion(d.question ?? ''); setTarget(d.target ?? '')
+        setClaim(d.claim ?? 'causal_modification')
+        setControls((d.controls ?? []).join('\n'))
+        setMechanism(d.mechanism ?? '')
+        setRefutation(d.refutation ?? '')
+        setCitation(d.citation ?? '')
+        if (d.readiness) setReadiness(d.readiness)
+        if (d.plate) setPlate(d.plate)
+        setSelected(d.selected ?? [])
+        if (typeof d.site === 'string') setSite(d.site)
+        if (d.half_life) setHalfLife(d.half_life)
+        if (typeof d.edited_frac === 'boolean') setEditedFrac(d.edited_frac)
+        if (typeof d.mimetic === 'boolean') setMimetic(d.mimetic)
+      })
+      .catch(() => setError('session not found'))
+  }, [resumeSid, sid])
 
   async function call(path: string, body?: any, file?: File) {
     setError('')

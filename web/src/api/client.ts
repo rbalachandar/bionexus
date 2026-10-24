@@ -170,8 +170,14 @@ async function post<T>(path: string): Promise<T> {
   return r.json()
 }
 
+export interface AnalysisSummary {
+  id: string; profile: string; state: string; revision: number
+  updated_at: number
+}
+
 export const api = {
   workspace: () => get<Workspace>('/api/programs?include_archived=1'),
+  analyses: () => get<{ analyses: AnalysisSummary[] }>('/api/analyses'),
   program: (slug: string) => get<ProgramOut>(`/api/programs/${slug}`),
   brief: (slug: string) =>
     post<{ narrative: string }>(`/api/programs/${slug}/brief`),

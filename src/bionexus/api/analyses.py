@@ -213,6 +213,64 @@ class ReviewBody(BaseModel):
     actor: str = "scientist"
 
 
+@router.post("/{aid}/handoff")
+def analysis_handoff(aid: str, body: dict) -> dict:
+    """Continue a REVIEWED analysis as a guided campaign. The analysis
+    travels as CONTEXT (digest, origin, settings); the campaign's
+    objective and gate are registered separately here — never inherited
+    silently. Simulated/predicted evidence may only hand off through an
+    EXPLICIT recorded transition: proxy evidence is never laundered into
+    a 'measured' campaign result.
+    """
+    try:
+        doc = store.get(aid)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    if doc["state"] != AnalysisState.reviewed.value:
+        raise HTTPException(409, "only a REVIEWED analysis can hand off — "
+                                 "run it and record your disposition first")
+    result = doc.get("result") or {}
+    origin = str(result.get("evidence_origin") or doc.get("config", {})
+                 .get("evidence_origin") or "unknown")
+    proxy = origin in ("simulated", "predicted", "unknown")
+    if proxy and not body.get("accept_proxy_evidence"):
+        raise HTTPException(409, {
+            "code": "proxy_evidence_transition",
+            "detail": f"evidence origin is '{origin}' — handing it to a "
+                      "campaign requires an explicit accepted transition "
+                      "(accept_proxy_evidence=true), recorded on both "
+                      "branches",
+        })
+    objective = (body.get("objective") or "").strip()
+    if len(objective) < 15:
+        raise HTTPException(422, {"code": "invalid_objective",
+                                  "detail": "state the campaign objective "
+                                            "you want to register (≥15 chars)"})
+    from bionexus.api import wizard_sessions
+    from bionexus.wizard_chain import record_wizard_event
+    sess = wizard_sessions.create_session(
+        objective, body.get("target") or "user-target",
+        body.get("claim") or "causal_modification",
+        program=body.get("program") or None)
+    src = (doc.get("artifacts") or {}).get("source") or {}
+    record_wizard_event(sess["eid"], EventType.gate_decision, {
+        "kind": "analysis_handoff", "analysis_id": aid,
+        "analysis_revision": doc.get("revision"),
+        "source_sha256": src.get("sha256"), "evidence_origin": origin,
+        "proxy_transition": bool(proxy),
+        "analysis_config": doc.get("config"),
+        "note": "campaign inherits analysis CONTEXT only; its objective "
+                "and gate are registered separately in this session"
+                + (" — proxy evidence explicitly transitioned by the "
+                   "scientist" if proxy else "")})
+    _record(aid, EventType.stage_transition, {
+        "kind": "campaign_handoff", "eid": sess["eid"], "sid": sess["sid"],
+        "objective": objective, "evidence_origin": origin,
+        "proxy_transition": bool(proxy)})
+    return {"eid": sess["eid"], "sid": sess["sid"], "origin": origin,
+            "proxy_transition": bool(proxy)}
+
+
 def _chain_status(aid: str) -> str:
     """Verify the analysis branch before any report claims 'intact'. A
     tampered chain REFUSES the report (the honest limit stands: a
