@@ -98,3 +98,63 @@ def test_views_round_attaches_selection(tmp_path):
     assert sel and sel["policy"] == "bo-ei"
     assert {p["candidate"] for p in sel["picks"]} == {"H1", "H2", "H3"}
     assert any(r["candidate"] == "AD1" for r in sel["refusals"])
+
+
+def test_real_campaign_uses_log_axis_for_fold_sd(tmp_path):
+    # regression: the constraint is NAMED "potency" (not ic50_um); a
+    # dose-response campaign MUST still rank on the log axis so predicted_sd
+    # reads as a multiplicative fold, not absolute µM.
+    import math
+    from bionexus.acquisition import Posterior, select_batch
+    specs = [{"statement": f"{c} binds", "candidate": c,
+              "assay_type": "binding",            # dose-response
+              "predicted": f"{pv} uM", "predicted_value": pv,
+              "metadata": {"predicted_sd": 1.6}}  # a FOLD, not ±1.6 µM
+             for c, pv in [("P1", 4.0), ("P2", 6.0), ("P3", 9.0)]]
+    problem = ProblemStatement(
+        objective="potent", constraints=[
+            Constraint(name="potency", description="low IC50", kind="hard",
+                       limit=20.0, unit="uM")])   # metric name = "potency"
+    cfg = CampaignConfig(problem=problem, hypotheses=specs, k=2, rounds=1,
+                         autonomy="observe", inbox=str(tmp_path),
+                         acquisition="bo-ei", seed=5,
+                         flywheel=Flywheel(":memory:"))
+    store = SqliteProvenanceStore()
+    report = run_campaign(cfg, SimulatorLab(seed=3), store)
+    rec = _acq_record(store, report)
+    got = {p["candidate"]: p["acquisition"] for p in rec["picks"]}
+    pool = [Posterior(candidate=c, mean=mv, sd=1.6)
+            for c, mv in [("P1", 4.0), ("P2", 6.0), ("P3", 9.0)]]
+    log_acq = {p.candidate: p.acquisition for p in
+               select_batch(pool, k=2, target=20.0, metric_log=True).picks}
+    lin_acq = {p.candidate: p.acquisition for p in
+               select_batch(pool, k=2, target=20.0, metric_log=False).picks}
+    assert log_acq != lin_acq      # the two axes must be distinguishable here
+    for c in got:
+        assert math.isclose(got[c], log_acq[c], rel_tol=1e-6), (c, got[c])
+
+
+def test_empty_batch_still_records_refusals(tmp_path):
+    # every candidate AD-vetoed → nothing selected, but the refusals must
+    # reach the chain (they are the answer to 'why no plate ran')
+    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    specs = [{"statement": f"{c} binds", "candidate": c,
+              "assay_type": "binding", "predicted": "1 uM",
+              "predicted_value": 1.0,
+              "metadata": {"predicted_sd": 0.2, "extrapolation": True,
+                           "ad_note": "outside domain"}}
+             for c in ("Q1", "Q2")]
+    problem = ProblemStatement(
+        objective="find hits", constraints=[
+            Constraint(name="potency", description="low", kind="hard",
+                       limit=20.0, unit="uM")])
+    cfg = CampaignConfig(problem=problem, hypotheses=specs, k=2, rounds=1,
+                         autonomy="act", inbox=str(tmp_path),
+                         acquisition="bo-ei", seed=1,
+                         flywheel=Flywheel(":memory:"))
+    store = SqliteProvenanceStore()
+    report = run_campaign(cfg, SimulatorLab(seed=3), store)
+    assert report.selected == []
+    rec = _acq_record(store, report)
+    assert rec is not None and rec["picks"] == []
+    assert all("extrapolation-veto" in r["reason"] for r in rec["refusals"])

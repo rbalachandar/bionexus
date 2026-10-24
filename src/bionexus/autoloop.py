@@ -359,6 +359,14 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                 lab.set_property_gate(_crit.metric, _crit.direction,
                                       _crit.threshold)
 
+    # acquisition axis: in a dose-response campaign the declared µM values
+    # live on the LOG scale (predicted_sd is a fold uncertainty, not µM) —
+    # the constraint NAME ("potency") tells you nothing about the scale,
+    # the assay type does. Property campaigns rank linearly.
+    from bionexus.adapters.lab.simulator import DOSE_RESPONSE_ASSAYS as _DRA
+    _acq_log = (any((h.assay_type or "binding") in _DRA for h in portfolio)
+                or (_crit is not None and _crit.metric == "ic50_um"))
+
     # announce the branch for live streaming: the API watcher maps the
     # campaign id to this problem branch the moment it exists, so the
     # workbench streams records incrementally instead of at the end
@@ -429,7 +437,8 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         if cfg.acquisition == "bo-ei":
             selected, acq_sel = _acquisition_select(
                 remaining, k_round, _crit, tracker, say, round_no,
-                seed=cfg.seed if cfg.seed is not None else round_no)
+                seed=cfg.seed if cfg.seed is not None else round_no,
+                metric_log=_acq_log)
         elif cfg.policy is not None and round_no > 1:
             selected = _policy_select(cfg, remaining, tracker, say)
         else:
@@ -438,6 +447,14 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                                                 max_per_family=1)
         remaining = [h for h in remaining if h not in selected]
         if not selected:
+            # even an empty batch is an honest outcome — record WHY before
+            # stopping, so the refusals are on the chain, not just in stdout
+            if acq_sel is not None:
+                store.append(record_for(
+                    Envelope(experiment_branch_id=
+                             f"problem/{problem.problem_id or 'unnamed'}"),
+                    EventType.hypotheses_filtered, actor,
+                    decision=acq_sel.decision_payload()))
             say(f"round {round_no}: nothing selected — stopping")
             break
         if _crit is not None:
@@ -768,12 +785,17 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                           rounds_run=len(history), history=history)
 
 
-def _acquisition_select(remaining, k, crit, tracker, say, round_no, seed=0):
+def _acquisition_select(remaining, k, crit, tracker, say, round_no, seed=0,
+                        metric_log=False):
     """BO-EI batch pick over the round's candidates. Posteriors are DECLARED
     by whoever produced the hypotheses (predicted_value + optional
     predicted_sd + AD stamp in metadata) — never fabricated here. Every
     refusal (no posterior, AD gate, diversity, budget) is returned for the
     provenance record, so 'why this plate' is answerable months later.
+
+    metric_log: True in dose-response campaigns — µM values live on the log
+    scale and predicted_sd is a FOLD uncertainty, not an absolute µM
+    spread. The constraint NAME never determines this; the assay type does.
 
     Returns (selected Hypotheses, Selection)."""
     from bionexus.acquisition import Posterior, select_batch
@@ -793,12 +815,14 @@ def _acquisition_select(remaining, k, crit, tracker, say, round_no, seed=0):
     metric = crit.metric if crit is not None else "ic50_um"
     direction = crit.direction if crit is not None else "min"
     target = float(crit.threshold) if crit is not None else None
-    # observed best so far (log/µM handled by the acquisition axis)
+    # reference point = best CONFIRMED hit (never a QC-failed/inconclusive
+    # number: 'improve on best' means the best result we actually trust)
     obs = [h.observed_value for h in tracker.hypotheses.values()
-           if h.observed_value is not None]
+           if h.observed_value is not None
+           and h.status in ("validated", "confirmed")]
     best = (min(obs) if direction == "min" else max(obs)) if obs else None
     sel = select_batch(posteriors, k=k, target=target, best_observed=best,
-                       direction=direction, metric_log=(metric == "ic50_um"),
+                       direction=direction, metric_log=metric_log,
                        seed=seed, round_no=round_no, max_per_family=1)
     for c in no_post:
         sel.refusals.append(_refusal_obj(

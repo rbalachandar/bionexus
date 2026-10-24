@@ -107,10 +107,6 @@ def expected_improvement(mean: float, sd: float | None, target: float,
     return max(0.0, imp * _cdf(z) + sd * _normal_pdf(z))
 
 
-def _log_safe(v: float) -> float:
-    return math.log10(v) if v > 0 else -6.0
-
-
 def select_batch(posteriors: list[Posterior], k: int,
                  target: float | None = None,
                  best_observed: float | None = None,
@@ -126,6 +122,11 @@ def select_batch(posteriors: list[Posterior], k: int,
 
     target: the decision gate a scientist registered. If absent, the
     acquisition improves on best_observed (the classic BO reference).
+    A non-positive mean on a log-scale metric is a REFUSED invalid
+    posterior, never a floor-substituted super-hit.
+    Ties break by sha256(seed:candidate) — the seed is a real
+    reproducibility nonce, so candidate-name ordering can't bias the
+    batch; identical inputs still give identical Selections.
     """
     log = direction == "min" and metric_log
     ref: float | None = None
@@ -144,15 +145,12 @@ def select_batch(posteriors: list[Posterior], k: int,
         """project a raw metric value onto the good-is-LARGER axis: log10
         for span metrics (so IC50 sd reads as multiplicative fold), sign
         flipped so a LOWER IC50 (direction=min) is a LARGER axis value."""
-        v = _log_safe(value) if log else value
+        v = math.log10(value) if log else value
         return v if direction == "max" else -v
 
-    def _to_axis_post(p: Posterior) -> tuple[float, float | None]:
-        m = _to_axis(p.mean)
-        s = p.sd if (p.sd is not None and p.sd > 0) else None
-        return m, s
+    def _tie_key(candidate: str) -> str:
+        return hashlib.sha256(f"{seed}:{candidate}".encode()).hexdigest()
 
-    axis_ref = None if ref is None else _to_axis(ref)
     scored: list[tuple[float, Posterior, float, float | None]] = []
     for p in posteriors:
         if not p.in_domain:
@@ -162,16 +160,24 @@ def select_batch(posteriors: list[Posterior], k: int,
                         f"surrogate's domain is refused exploration"
                         + (f" — {p.ad_note}" if p.ad_note else ""))))
             continue
-        m, s = _to_axis_post(p)
-        if axis_ref is None:
+        if log and p.mean <= 0:
+            sel.refusals.append(Refusal(
+                candidate=p.candidate,
+                reason=(f"invalid posterior on a log-scale metric: "
+                        f"mean={p.mean} is not a positive value — refused "
+                        f"rather than floored into a fake super-hit")))
+            continue
+        m = _to_axis(p.mean)
+        s = p.sd if (p.sd is not None and p.sd > 0) else None
+        if ref is None:
             val = m + explore_weight * (s or 0.0)
         else:
             # on the good-is-larger axis, improvement over target is "max"
-            ei = expected_improvement(m, s, axis_ref, direction="max")
+            ei = expected_improvement(m, s, _to_axis(ref), direction="max")
             val = ei + explore_weight * (s or 0.0)
         scored.append((val, p, m, s))
-    # stable, deterministic ordering: value desc, then candidate asc
-    scored.sort(key=lambda t: (-round(t[0], 9), t[1].candidate))
+    # stable, deterministic ordering: value desc, then the seed hash
+    scored.sort(key=lambda t: (-round(t[0], 9), _tie_key(t[1].candidate)))
 
     fam_counts: dict[str, int] = {}
     for val, p, m, s in scored:
