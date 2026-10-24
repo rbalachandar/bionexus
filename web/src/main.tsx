@@ -8,6 +8,7 @@ import Workspace from './routes/Workspace'
 import Program from './routes/Program'
 import ProgramForm from './routes/ProgramForm'
 import Wizard from './routes/Wizard'
+import Analysis from './routes/Analysis'
 import Approvals, { HaltBanner } from './routes/Approvals'
 import Experiment from './routes/Experiment'
 
@@ -100,6 +101,8 @@ export default function App() {
             <Route path="/programs/new" element={<Workspace initialForm />} />
             <Route path="/programs/:slug" element={<Program />} />
             <Route path="/wizard" element={<Wizard />} />
+            <Route path="/analyses/new" element={<Analysis />} />
+            <Route path="/analyses/:id" element={<Analysis />} />
             <Route path="/approvals" element={<Approvals />} />
                         <Route path="/experiments/:eid" element={<Experiment />} />
           </Routes>

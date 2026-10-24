@@ -78,9 +78,16 @@ def is_control(sample_id: str) -> bool:
     return control_class(sample_id) is not None
 
 
-def control_class(sample_id: str) -> str | None:
+def control_class(sample_id: str, overrides: dict[str, str] | None = None
+                  ) -> str | None:
     """'pos' | 'neg' | None. A real Z' needs BOTH classes; conflating them
-    would print a QC number that means nothing."""
+    would print a QC number that means nothing. `overrides` maps explicit
+    sample ids to classes — a scientist-confirmed classification wins over
+    label sniffing."""
+    if overrides:
+        o = overrides.get(str(sample_id).strip())
+        if o in ("pos", "neg"):
+            return o
     s = sample_id.strip().lower().replace(" ", "_")
     if any(s.startswith(c) or s == c for c in POS_CONTROL_IDS):
         return "pos"
@@ -803,8 +810,8 @@ def fit_ic50(points: list[tuple[float, float]], max_response: float = 100.0) -> 
     hill = _hill_fit_ic50(pts, max_response)
     if hill is not None and len(pts) >= 3:
         return round(hill, 3)
-    if max_response is None and len(pts) >= 3:
-        return None  # 3-param declined to fit -> honest censoring, not a guess
+    if max_response is None:
+        return None  # 3-param declined (or too few points) -> honest censoring
     target = max_response / 2.0
     for (c0, v0), (c1, v1) in zip(pts, pts[1:]):
         if min(v0, v1) <= target <= max(v0, v1):
@@ -931,16 +938,17 @@ def _layout_qc(records: list[dict[str, Any]]) -> dict[str, Any] | None:
     return qcs
 
 
-def to_pct_inhibition(records: list[dict[str, Any]]) -> bool:
+def to_pct_inhibition(records: list[dict[str, Any]],
+                      control_classes: dict[str, str] | None = None) -> bool:
     """Normalize non-control values to % inhibition against BOTH control
     classes: %I = 100*(blank - v)/(blank - positive). Requires >=2 wells of
     each class and the right orientation; otherwise REFUSES (returns False,
     values untouched) — a fabricated normalized unit is worse than raw RFU.
     Keeps r['value_raw'] alongside the transformed r['value']."""
     neg = [r["value"] for r in records if r.get("control")
-           and control_class(r["sample"]) == "neg"]
+           and control_class(r["sample"], control_classes) == "neg"]
     pos = [r["value"] for r in records if r.get("control")
-           and control_class(r["sample"]) == "pos"]
+           and control_class(r["sample"], control_classes) == "pos"]
     if len(neg) < 2 or len(pos) < 2:
         return False
     b = sum(neg) / len(neg)
@@ -956,8 +964,11 @@ def to_pct_inhibition(records: list[dict[str, Any]]) -> bool:
 
 
 def analyze_records(records: list[dict[str, Any]],
-                    max_response: float | None = None) -> dict[str, Any]:
-    """Compound IC50 table + Z' factor. Controls drive Z'; compounds get fits."""
+                    max_response: float | None = None,
+                    control_classes: dict[str, str] | None = None) -> dict[str, Any]:
+    """Compound IC50 table + Z' factor. Controls drive Z'; compounds get fits.
+    `control_classes`: explicit scientist-confirmed sample->class overrides
+    (win over name sniffing)."""
     import math
 
     by_sample: dict[str, list[tuple[float | None, float]]] = {}
@@ -966,9 +977,9 @@ def analyze_records(records: list[dict[str, Any]],
 
     ctrl_wells = [r for r in records if r["control"]]
     neg_vals = [r["value"] for r in ctrl_wells
-                if control_class(r["sample"]) == "neg"]
+                if control_class(r["sample"], control_classes) == "neg"]
     pos_vals = [r["value"] for r in ctrl_wells
-                if control_class(r["sample"]) == "pos"]
+                if control_class(r["sample"], control_classes) == "pos"]
     all_vals = [r["value"] for r in records]
 
     def _std(v):
@@ -994,7 +1005,7 @@ def analyze_records(records: list[dict[str, Any]],
     GRID_FLOOR_UM = 10 ** -3    # mirrors _hill_fit_ic50's lower grid bound
     compounds: dict[str, Any] = {}
     for sample, vals in by_sample.items():
-        if is_control(sample):
+        if control_class(sample, control_classes) is not None:
             continue
         pts = [(c, v) for c, v in vals if c is not None]
         flagged = max_response is None

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Activity, ChevronRight, FlaskConical, Plus, Target, Trash2, Users } from 'lucide-react'
+import { Activity, ChevronRight, FileSpreadsheet, FlaskConical, Plus, Target, Trash2, Users } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWorkspaceEvents } from '../api/useEvents'
@@ -252,6 +252,11 @@ export default function Workspace({ initialForm = false }: {
             {' · '}{runningTotal} running{' · '}{verdictTotal} experiment{verdictTotal === 1 ? '' : 's'}
           </span>
         </div>
+        <button style={{ display: 'inline-flex', gap: 6, alignItems: 'center',
+          flex: 'none' }}
+          onClick={() => nav('/analyses/new')}>
+          <FileSpreadsheet size={15} /> Analyze data
+        </button>
         <button className="primary" style={{ display: 'inline-flex', gap: 6,
           alignItems: 'center', flex: 'none' }}
           onClick={() => setShowForm((s) => !s)}>

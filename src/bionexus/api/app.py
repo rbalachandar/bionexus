@@ -27,6 +27,11 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["http://localhost:5173"],
     allow_methods=["*"], allow_headers=["*"])
 
+# generic analysis lifecycle (upload -> preview -> configure -> analyze ->
+# review), modality-neutral; the plate assay is the first profile
+from bionexus.api.analyses import router as analyses_router  # noqa: E402
+app.include_router(analyses_router)
+
 # ------------------------------------------------------------- SSE broker
 _subscribers: set[asyncio.Queue] = set()
 _broker: asyncio.Queue = asyncio.Queue()
