@@ -294,9 +294,29 @@ def fence_info(labs_entries: list | None) -> list[dict]:
                                           or cat.get("simulated_by_default")),
                         "hardware_validated":
                             bool(cat.get("hardware_validated", False)),
-                        "installed": installed})
+                        "installed": installed,
+                        # operator-declared identity patterns (upload
+                        # enforcement): part of the fence, not the catalog
+                        "match": e.get("match") or []})
         elif "simulator" in e:
             out.append({"id": "bionexus-virtual-lab",
                         "name": "Virtual lab (simulator)",
                         "simulated": True, "installed": True})
     return out
+
+
+def fence_declared_caps(labs_entries: list | None) -> dict[str, set]:
+    """Union of the capability vocabulary DECLARED by a program's fence
+    instruments (from the catalog). Vocabulary-agnostic: the readiness
+    check treats unmet declared readouts as blockers — failing closed."""
+    ids = [e.get("instrument") for e in labs_entries or []
+           if e.get("instrument")]
+    readouts, assay_types = set(), set()
+    for iid in ids:
+        try:
+            cat = _catalog_entry(iid)
+        except ValueError:
+            continue
+        readouts |= {str(r) for r in cat.get("readouts") or []}
+        assay_types |= {str(a) for a in cat.get("assay_types") or []}
+    return {"readouts": readouts, "assay_types": assay_types}

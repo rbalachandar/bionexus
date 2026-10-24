@@ -79,7 +79,8 @@ _AUTHENTIC_MODIFICATION_CLAIMS = {
 }
 
 
-def review_experiment(defn: ExperimentDefinition) -> ExperimentReadinessReview:
+def review_experiment(defn: ExperimentDefinition,
+                  available_caps: dict | None = None) -> ExperimentReadinessReview:
     findings: list[ReadinessFinding] = []
 
     def add(check: str, ok: bool, warning_only: bool, message: str) -> None:
@@ -193,6 +194,18 @@ def review_experiment(defn: ExperimentDefinition) -> ExperimentReadinessReview:
             "detection/pulldown claim requires at least signal detection")
     else:
         add("readout_capability", True, True, "readout capabilities adequate")
+    # 8b. fence: do the PERMITTED instruments declare these capabilities?
+    # (available_caps = union of the program fence's declared readouts;
+    #  absent -> no fence check, nothing inferred)
+    if available_caps is not None:
+        declared = {c.value if hasattr(c, "value") else str(c)
+                    for c in defn.readout.capabilities}
+        unmet = sorted(declared - set(available_caps.get("readouts") or []))
+        add("fence_capability", not unmet, False,
+            ("fence: permitted instruments declare the needed readout"
+             if not unmet else
+             "fence: no permitted instrument declares readout capability: "
+             + ", ".join(unmet)))
 
     # 9. synthesis feasibility (if the intervention produces a compound)
     meta = defn.metadata or {}

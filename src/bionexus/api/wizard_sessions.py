@@ -141,7 +141,14 @@ def design(sid: str, site: str | None, half_life: int, edited_frac: bool,
                             measures_edited_fraction=edited_frac,
                             distinguishes_modified_from_mimetic=mimetic),
         controls=controls)
-    review = review_experiment(exp)
+    fence_caps = None
+    if doc.get("fence"):
+        try:
+            from bionexus.labselect import fence_declared_caps
+            fence_caps = fence_declared_caps(doc.get("fence"))
+        except Exception:
+            fence_caps = None
+    review = review_experiment(exp, available_caps=fence_caps)
     extras: dict[str, Any] = {"mechanism": mechanism,
                               "refutation_condition": refutation,
                               "citation": citation}
@@ -187,6 +194,21 @@ def upload(sid: str, filename: str, content: bytes) -> dict:
     path.write_bytes(content)
     from bionexus.labread import read_plate
     r = read_plate(path)
+    fence = doc.get("fence") or []
+    if fence:
+        ident = getattr(r, "instrument", None) or {}
+        identity = " ".join(str(v) for v in ident.values()).strip()
+        if not identity:
+            raise ValueError(
+                "fenced program: this export carries no device identity "
+                "(reader/serial metadata) — uploads must come from an "
+                "identified instrument")
+        declared = [str(p).lower() for f in fence
+                    for p in (f.get("match") or [])]
+        if declared and not any(p in identity.lower() for p in declared):
+            raise ValueError(
+                f"fenced program: device '{identity[:60]}' does not match "
+                f"the program's declared instruments {declared}")
     doc["plate"] = {"path": str(path), "format": r.format,
                     "n_wells": len(r.records), "z_prime": r.z_prime,
                     "samples": list(r.analysis["compounds"]),
@@ -201,6 +223,7 @@ def upload(sid: str, filename: str, content: bytes) -> dict:
     from bionexus.wizard_chain import record_wizard_event
     record_wizard_event(doc["eid"], EventType.evaluation, {
         "artifact": "uploaded instrument export", "format": r.format,
+        "instrument": getattr(r, "instrument", None) or {},
         "n_wells": len(r.records), "z_prime": r.z_prime,
         "fits": {c: dd.get("ic50_um")
                  for c, dd in r.analysis["compounds"].items()}})
