@@ -78,6 +78,9 @@ bn templates                           # campaign presets — no JSON needed
                                         # EI batch selection: shows the next
                                         # batch + every refusal (AD vetoes,
                                         # diversity, budget) — submits nothing
+ bn select campaign.json                  # what-would-run preview of the EI
+                                        # batch (picks + refusals), same path,
+                                        # no state written, no submissions
 make api                               # web app on :8000 (API + SPA)
 bn diary <branch>                      # campaign as a lab-notebook narrative
 bn prove <branch> --html out.html      # tamper-evident provenance + shareable report

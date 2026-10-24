@@ -718,12 +718,26 @@ protocols (Make on rig X, Test on reader Y — a plan, not a choice).
   HONEST LIMIT: the eval proves the mechanics on seeded pools; CS07/CS08
   warn real rankers can lose to random — the real-data replay decides
   whether bo-ei becomes a default.
-- [ ] CS04-replay acquisition study on the 26k-row EGFR corpus (network
-  day): bo-ei vs gates+randomize vs flywheel ordering, budget-matched,
-  published result whatever it says.
-- [ ] Program-form "Selection policy" picker + `_spawn_plan` forwarding
-  (after the replay verdict).
-- [ ] `bn select` standalone dry-run command (today: `bn auto --dry-run`).
+- [x] **CS04-scale replay** (Oct 2026, OFFLINE — the frozen EGFR corpus was
+  already in-repo; "network day" was wrong): `acq_replay.py` runs bo-ei vs
+  **greedy** (best-predicted-first) vs gates+randomize on the 36-compound
+  blinded library, RF forest-std as the real sd. **Result: EI ties naive
+  greedy at every budget (both perfect; random 7.23/12), and on a FLAT
+  surrogate bo-ei tracks random (7.41 vs 7.23) — no leakage.** Verdict:
+  **bo-ei does NOT earn the default** — its edge over random is inherited
+  from "use the surrogate + respect the AD," which greedy+AD also gives;
+  CS04's pool (61% actives, strong surrogate) can't stress the one case
+  where EI should beat greedy. Kept OPT-IN. Full numbers + reasoning in
+  `docs/ACQUISITION-IMPLEMENTATION-PLAN.md`; artifacts
+  `case-studies/04-prospective-hit2lead/acq_replay_results.json`.
+- [x] `bn select` — standalone what-would-run preview (same policy path,
+  in-memory store, submits nothing, writes no provenance — test-pinned).
+- [ ] A sparse-actives / surrogate-uncertain-near-gate pool — the only data
+  that could show EI > greedy. Not constructible offline here; recorded,
+  deliberately not chased.
+- [ ] Program-form picker: **deferred** until a > greedy result exists —
+  making bo-ei a UI default would oversell it (the whole point of the
+  culture).
 
 ## T0 — Uncertainty-aware verdicts (epistemic integrity)
 - [x] Fit IC50 with a confidence interval — Hill grid fit + residual bootstrap

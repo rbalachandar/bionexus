@@ -390,25 +390,85 @@ def _campaign_from_doc(cfg_doc: dict) -> "CampaignConfig":
         seed=cfg_doc.get("seed"))
 
 
+def _campaign_doc_from_args(args) -> dict | None:
+    """Load a campaign config from --template or a config path (shared by
+    `bn auto` and `bn select` so the two never drift on how a campaign is
+    specified). Returns None if neither source was given."""
+    if getattr(args, "template", None):
+        from bionexus.templates import build_campaign, fill, load_template
+        fields = dict(f.split("=", 1) for f in (args.field or []))
+        return build_campaign(fill(load_template(args.template), fields,
+                                    prompt_missing=not getattr(args, "yes",
+                                                                False)))
+    if getattr(args, "config", None):
+        raw = Path(args.config).read_text()
+        try:
+            import yaml
+            return yaml.safe_load(raw)
+        except ImportError:
+            return json.loads(raw)
+    return None
+
+
+def cmd_select(args) -> int:
+    """Preview the EI batch WITHOUT submitting anything: the same observe
+    path a real campaign runs through, so 'what would run' is the real
+    policy answer — every pick with its acquisition arithmetic, every
+    refusal with the named gate. `--acquisition bo-ei` (default) is the
+    policy under review."""
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.autoloop import run_campaign
+
+    cfg_doc = _campaign_doc_from_args(args)
+    if cfg_doc is None:
+        print("bn select: pass a config file or --template NAME",
+              file=sys.stderr)
+        return 2
+    cfg_doc["acquisition"] = args.acquisition or "bo-ei"
+    cfg_doc["autonomy"] = "observe"           # selects + explains, submits zero
+    if getattr(args, "seed", None) is not None:
+        cfg_doc["seed"] = args.seed
+    cfg = _campaign_from_doc(cfg_doc)
+    store = SqliteProvenanceStore()           # in-memory: preview leaves no state
+    # silence the campaign's own narration: select is a clean preview, the
+    # policy's picks/refusals are printed below from the sealed record
+    run_campaign(cfg, SimulatorLab(seed=args.seed if args.seed is not None else 42),
+                 store, notify=lambda *a: None)
+    branch = f"problem/{cfg.problem.problem_id or 'auto'}"
+    sel = next(((r.decision or {}) for r in store.branch_records(branch)
+                if (r.decision or {}).get("kind") == "acquisition_selection"),
+               None)
+    if not sel:
+        print("select: no acquisition_selection produced (empty portfolio or "
+              "the policy is off?)", file=sys.stderr)
+        return 1
+    print(f"acquisition[{sel['policy']} v{sel.get('policy_version')}] "
+          f"· k={sel.get('k')} · target={sel.get('target')} "
+          f"{sel.get('direction','')} · seed={sel.get('seed')}")
+    print("\nPicks (this is the batch that WOULD run):")
+    for p in sel.get("picks") or []:
+        print(f"  + {p['candidate']:10s} EI={p['acquisition']:<9} {p['reason']}")
+    refusals = sel.get("refusals") or []
+    if refusals:
+        print(f"\nRefused ({len(refusals)}) — why they did NOT make the plate:")
+        for x in refusals:
+            print(f"  - {x['candidate']:10s} {x['reason']}")
+    if sel.get("note"):
+        print(f"\n  note: {sel['note']}")
+    print("\n(nothing was submitted; a real campaign applies the safety, "
+          "budget and approval gates on top of this batch)")
+    return 0
+
+
 def cmd_auto(args: argparse.Namespace) -> int:
-    import json
+    import json  # noqa: F401  (used below for report serialization)
     from bionexus.autoloop import run_campaign
     from bionexus.adapters.lab.simulator import SimulatorLab
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
 
-    if args.template:
-        from bionexus.templates import build_campaign, fill, load_template
-        fields = dict(f.split("=", 1) for f in (args.field or []))
-        cfg_doc = build_campaign(fill(load_template(args.template), fields,
-                                      prompt_missing=not getattr(args, "yes", False)))
-    elif args.config:
-        raw = Path(args.config).read_text()
-        try:
-            import yaml
-            cfg_doc = yaml.safe_load(raw)
-        except ImportError:
-            cfg_doc = json.loads(raw)
-    else:
+    cfg_doc = _campaign_doc_from_args(args)
+    if cfg_doc is None:
         print("bn auto: pass a config file or --template NAME", file=sys.stderr)
         return 2
     if args.autonomy:
@@ -988,6 +1048,23 @@ def main(argv: list[str] | None = None) -> int:
     auto.add_argument("--inbox", default=None,
                       help="approval inbox file for gate mode (default .data/approvals.jsonl)")
     auto.set_defaults(func=cmd_auto)
+
+    sel = sub.add_parser(
+        "select",
+        help="preview the EI batch (picks + every refusal) without "
+             "submitting anything — the what-would-run probe for "
+             "acquisition policies")
+    sel.add_argument("config", nargs="?", default=None)
+    sel.add_argument("--template", default=None, help="preset template name")
+    sel.add_argument("--field", action="append", metavar="KEY=VALUE",
+                     help="template field, e.g. --field compounds=C1,C2")
+    sel.add_argument("--acquisition", choices=("bo-ei",), default="bo-ei",
+                     help="policy to preview (default: bo-ei)")
+    sel.add_argument("--seed", type=int, default=None,
+                     help="acquisition determinism seed")
+    sel.add_argument("--yes", action="store_true",
+                     help="never prompt for template fields; fail instead")
+    sel.set_defaults(func=cmd_select)
 
     fx = sub.add_parser("fixtures", help="case-study data fixtures: verify / materialize")
     fxsub = fx.add_subparsers(dest="command", required=True)
