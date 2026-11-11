@@ -10,49 +10,35 @@ from bionexus.views import ids as _ids
 
 
 # --------------------------------------------- experiment/workspace detail
-def experiment_detail(eid: str, wizard_store,
-          provenance_db: str | Path | None = None) -> dict | None:
-    provenance_db = provenance_db or _ids.PROVENANCE_DB
-    """Full experiment read-model: registry row + campaign spec + program
-    relation + provenance merge. Precedence: provenance problem_defined
-    overrides campaign_specs for objective/constraints; the spec always
-    supplies k/rounds/autonomy/candidate policy."""
-    row = wizard_store.get(eid)
-    if not row:
-        return None
-    payload = row["payload"] or {}
-    ag = payload.get("agent") or {}
-    spec = wizard_store.get_campaign_spec(eid)
+def _problem_id(eid: str, ag: dict) -> str | None:
+    """The campaign's problem id: log > registry payload > a campaign-root
+    program link (relational fallback when the row carries neither)."""
     logf = Path(ag["log"]) if ag.get("log") else None
     problem_id = ag.get("problem_id")
     if logf is not None:
         problem_id = resolve_problem(ag, logf) or problem_id
-    # relational fallback: a campaign root link names the branch even
-    # when the registry row carries no log/payload problem id
     if not problem_id:
         from bionexus import program as program_cfg
         for p in program_cfg.list_programs():
             for l in program_cfg.links_for(p["slug"]):
                 if l["eid"] == eid and l.get("campaign_root"):
-                    problem_id = l["campaign_root"]
-                    break
-            if problem_id:
-                break
+                    return l["campaign_root"]
+    return problem_id
 
-    recs = []
-    branch = f"problem/{problem_id}" if problem_id else None
-    if branch and Path(provenance_db).exists():
-        from bionexus.adapters.store.sqlite import get_store
-        try:
-            recs = get_store(str(provenance_db)) \
-                .branch_records(branch)
-        except Exception:
-            recs = []
-    pdef = next((r.decision for r in recs
-                 if r.event_type.value == "problem_defined"), None)
 
-    # graveyard: hypotheses the portfolio filter rejected, with reasons —
-    # elimination is evidence too, and the scientist should audit it
+def _branch_records(branch: str | None, provenance_db) -> list:
+    if not (branch and Path(provenance_db).exists()):
+        return []
+    from bionexus.adapters.store.sqlite import get_store
+    try:
+        return get_store(str(provenance_db)).branch_records(branch)
+    except Exception:
+        return []
+
+
+def _eliminated(recs) -> list[dict]:
+    """Graveyard: hypotheses the portfolio filter rejected, with reasons —
+    elimination is evidence too, and the scientist should audit it."""
     id2cand: dict[str, str] = {}
     for r in recs:
         if r.event_type.value == "hypothesis_proposed" and r.artifact:
@@ -72,42 +58,65 @@ def experiment_detail(eid: str, wizard_store,
                 "candidate": cand,
                 "reason": dec.get("reason") or "not selected",
                 "score": dec.get("score")}
-    eliminated = list(eliminated.values())
+    return list(eliminated.values())
 
+
+def _program_relation(eid: str, spec: dict | None) -> dict | None:
+    """Which program links this experiment (None when none / unreadable)."""
+    try:
+        from bionexus import program as program_cfg
+        slug = (spec or {}).get("program_slug")
+        if not slug:
+            for p in program_cfg.list_programs():
+                if any(a.get("eid") == eid
+                       for a in p.get("attachments", [])):
+                    slug = p["slug"]
+                    break
+        if not slug:
+            return None
+        prow = next((p for p in program_cfg.list_programs()
+                     if p["slug"] == slug), None)
+        if not prow:
+            return None
+        pd = prow.get("program") or {}
+        return {"slug": slug, "name": prow["name"],
+                "gate": {"metric": pd.get("metric"),
+                         "direction": pd.get("direction"),
+                         "value": pd.get("gate_value"),
+                         "unit": pd.get("unit"),
+                         "symbol": program_cfg.gate_symbol(pd)},
+                "modality": pd.get("modality"),
+                "mode": pd.get("mode")}
+    except Exception:
+        return None
+
+
+def experiment_detail(eid: str, wizard_store,
+                      provenance_db: str | Path | None = None) -> dict | None:
+    """Full experiment read-model: registry row + campaign spec + program
+    relation + provenance merge. Precedence: provenance problem_defined
+    overrides campaign_specs for objective/constraints; the spec always
+    supplies k/rounds/autonomy/candidate policy."""
+    provenance_db = provenance_db or _ids.PROVENANCE_DB
+    row = wizard_store.get(eid)
+    if not row:
+        return None
+    payload = row["payload"] or {}
+    ag = payload.get("agent") or {}
+    spec = wizard_store.get_campaign_spec(eid)
+    problem_id = _problem_id(eid, ag)
+    branch = f"problem/{problem_id}" if problem_id else None
+    recs = _branch_records(branch, provenance_db)
+    pdef = next((r.decision for r in recs
+                 if r.event_type.value == "problem_defined"), None)
+    eliminated = _eliminated(recs)
     objective = (pdef or {}).get("objective") \
         or (spec or {}).get("objective") \
         or row.get("question")
     constraints = (pdef or {}).get("constraints") \
         if pdef and pdef.get("constraints") else \
         ((spec or {}).get("constraints") or [])
-
-    # program relation: which program links this experiment
-    program = None
-    try:
-        from bionexus import program as program_cfg
-        _slug = (spec or {}).get("program_slug")
-        if not _slug:
-            for p in program_cfg.list_programs():
-                if any(a.get("eid") == eid
-                       for a in p.get("attachments", [])):
-                    _slug = p["slug"]
-                    break
-        if _slug:
-            _prow = next((p for p in program_cfg.list_programs()
-                          if p["slug"] == _slug), None)
-            if _prow:
-                _pd = _prow.get("program") or {}
-                program = {
-                    "slug": _slug, "name": _prow["name"],
-                    "gate": {"metric": _pd.get("metric"),
-                             "direction": _pd.get("direction"),
-                             "value": _pd.get("gate_value"),
-                             "unit": _pd.get("unit"),
-                             "symbol": program_cfg.gate_symbol(_pd)},
-                    "modality": _pd.get("modality"),
-                    "mode": _pd.get("mode")}
-    except Exception:
-        program = None
+    program = _program_relation(eid, spec)
 
     cards = pipeline_cards(recs) if recs else []
     return {
