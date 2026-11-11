@@ -5,33 +5,28 @@ from pathlib import Path
 from typing import Any
 
 
-# --------------------------------------------------------- narrative data
-def narrative_data(recs, log_lines=(), data_dir=".data") -> dict:
-    """Read-model for 'The record of this run'. Port of narrative.render:
-    portfolio, gates, make, test, evidence, verdicts, reviewer, trust.
-    Sections with no data come back as None so the FE can skip them."""
-    def _proposed():
-        return [r for r in recs
-                if r.event_type.value == "hypothesis_proposed"
-                and r.decision]
+def _proposed(recs):
+    return [r for r in recs
+            if r.event_type.value == "hypothesis_proposed" and r.decision]
 
-    def _candidate(r):
-        d = r.decision or {}
-        cand = d.get("candidate")
-        if cand:
-            return str(cand)
-        if r.artifact:
-            return str((r.artifact.metadata or {}).get("candidate") or "")
-        return ""
 
-    out: dict[str, Any] = {"title": "The record of this run"}
+def _candidate(r):
+    d = r.decision or {}
+    cand = d.get("candidate")
+    if cand:
+        return str(cand)
+    if r.artifact:
+        return str((r.artifact.metadata or {}).get("candidate") or "")
+    return ""
 
+
+def _portfolio(recs, out) -> None:
     # portfolio scores
     filt = next((r for r in recs
                  if r.event_type.value == "hypotheses_filtered"), None)
     if filt:
         id2cand = {}
-        for r in _proposed():
+        for r in _proposed(recs):
             hid = (r.decision or {}).get("hypothesis_id")
             if hid:
                 id2cand[hid] = _candidate(r)
@@ -45,6 +40,8 @@ def narrative_data(recs, log_lines=(), data_dir=".data") -> dict:
             "reason": d.get("reason", "")}
             for d in (filt.decision or {}).get("decisions", [])]
 
+
+def _gates(recs, log_lines, out):
     # gates / refusals
     refusals = [l for l in log_lines if "rejected" in l]
     advs = [r for r in recs
@@ -64,7 +61,10 @@ def narrative_data(recs, log_lines=(), data_dir=".data") -> dict:
                 for a in advs],
             "durc": [", ".join((d.decision or {}).get("agents", []))
                      for d in durc]}
+    return advs, durc
 
+
+def _make(recs, out) -> None:
     # make / test
     runs = [r for r in recs if r.event_type.value == "lab_run"
             and (r.decision or {}).get("run_id")]
@@ -124,6 +124,10 @@ def narrative_data(recs, log_lines=(), data_dir=".data") -> dict:
             make["refused_count"] = len(make_refusals)
         out["make"] = make
 
+
+def _verdicts(recs, out) -> dict:
+    """Verdict rows (last per candidate) + derivation descriptions; returns
+    the last-verdict map the trust and evidence sections reuse."""
     # verdicts (last per candidate) + derivation descriptions
     last: dict[str, dict] = {}
     for r in recs:
@@ -165,7 +169,10 @@ def narrative_data(recs, log_lines=(), data_dir=".data") -> dict:
             "abstained": sum(1 for d in last.values()
                              if d.get("verdict") in ("inconclusive",
                                                      "proposed"))}
+    return last
 
+
+def _reviewer(recs, out) -> None:
     # reviewer
     reviews = [r for r in recs
                if r.event_type.value == "stage_transition"
@@ -197,9 +204,11 @@ def narrative_data(recs, log_lines=(), data_dir=".data") -> dict:
                           for f in (ld.get("flags") or [])]}
         out["reviewer"] = reviewer
 
+
+def _trust(recs, out, advs, durc, last) -> None:
     # trust checks
     cstates = [(r.decision or {}).get("citation_status")
-               for r in _proposed() if (r.decision or {}).get("citation")]
+               for r in _proposed(recs) if (r.decision or {}).get("citation")]
     n_flags = sum(len((a.decision or {}).get("flags", [])) for a in advs)
     checks = []
     if cstates:
@@ -220,6 +229,8 @@ def narrative_data(recs, log_lines=(), data_dir=".data") -> dict:
     checks.append(f"safety rules: {RULES_VERSION}")
     out["trust"] = {"checks": checks}
 
+
+def _evidence(recs, out, last, data_dir) -> None:
     # evidence: recorded plate files for this branch's runs
     run_ids = {d.get("run_id") for r in recs
                if (d := r.decision or {})
@@ -259,4 +270,19 @@ def narrative_data(recs, log_lines=(), data_dir=".data") -> dict:
         "empty_note": None if items else
         "No recorded plate files found for these runs — evidence "
         "curves unavailable (honestly shown, not simulated)."}
+
+
+# --------------------------------------------------------- narrative data
+def narrative_data(recs, log_lines=(), data_dir=".data") -> dict:
+    """Read-model for 'The record of this run'. Port of narrative.render:
+    portfolio, gates, make, test, evidence, verdicts, reviewer, trust.
+    Sections with no data come back as None so the FE can skip them."""
+    out: dict[str, Any] = {"title": "The record of this run"}
+    _portfolio(recs, out)
+    advs, durc = _gates(recs, log_lines, out)
+    _make(recs, out)
+    last = _verdicts(recs, out)
+    _reviewer(recs, out)
+    _trust(recs, out, advs, durc, last)
+    _evidence(recs, out, last, data_dir)
     return out

@@ -1014,6 +1014,351 @@
     }
    ]
   ],
+  "narrative": {
+   "evidence": {
+    "curves": [
+     {
+      "candidate": "AD1",
+      "verdict": "inconclusive"
+     },
+     {
+      "candidate": "H1",
+      "verdict": "confirmed"
+     },
+     {
+      "candidate": "H2",
+      "verdict": "invalidated"
+     },
+     {
+      "candidate": "AD1",
+      "verdict": "inconclusive"
+     },
+     {
+      "candidate": "H2",
+      "verdict": "invalidated"
+     },
+     {
+      "candidate": "H1",
+      "verdict": "confirmed"
+     },
+     {
+      "candidate": "H3",
+      "verdict": "invalidated"
+     },
+     {
+      "candidate": "M1",
+      "verdict": "confirmed"
+     },
+     {
+      "candidate": "H3",
+      "verdict": "invalidated"
+     },
+     {
+      "candidate": "M1",
+      "verdict": "confirmed"
+     }
+    ],
+    "empty_note": null,
+    "svg_fallback": true
+   },
+   "make": {
+    "no_synthesis_note": false,
+    "protocol_summary": "dispense 4 sample well(s) at 3 replicates per concentration (0.5, 2.0, 10.0, 40.0 \u00b5M) plus 2 controls, incubate, then read on simulator",
+    "runs": [
+     {
+      "assay": "binding",
+      "concentrations": [
+       0.5,
+       2.0,
+       10.0,
+       40.0
+      ],
+      "instrument": "simulator",
+      "instrument_version": "sim-v1",
+      "n_controls": 2,
+      "n_samples": 4,
+      "replicates": 3,
+      "title": "test-AD1"
+     },
+     {
+      "assay": "binding",
+      "concentrations": [
+       0.5,
+       2.0,
+       10.0,
+       40.0
+      ],
+      "instrument": "simulator",
+      "instrument_version": "sim-v1",
+      "n_controls": 2,
+      "n_samples": 4,
+      "replicates": 3,
+      "title": "test-H1"
+     },
+     {
+      "assay": "binding",
+      "concentrations": [
+       0.5,
+       2.0,
+       10.0,
+       40.0
+      ],
+      "instrument": "simulator",
+      "instrument_version": "sim-v1",
+      "n_controls": 2,
+      "n_samples": 4,
+      "replicates": 3,
+      "title": "test-H2"
+     },
+     {
+      "assay": "enzymatic",
+      "concentrations": [
+       10.0
+      ],
+      "instrument": "simulator",
+      "instrument_version": "sim-v1",
+      "n_controls": 1,
+      "n_samples": 1,
+      "replicates": 3,
+      "title": "auto-confirmation-AD1"
+     },
+     {
+      "assay": "enzymatic",
+      "concentrations": [
+       10.0
+      ],
+      "instrument": "simulator",
+      "instrument_version": "sim-v1",
+      "n_controls": 1,
+      "n_samples": 1,
+      "replicates": 3,
+      "title": "auto-confirmation-H2"
+     },
+     {
+      "assay": "enzymatic",
+      "concentrations": [
+       10.0
+      ],
+      "instrument": "simulator",
+      "instrument_version": "sim-v1",
+      "n_controls": 1,
+      "n_samples": 1,
+      "replicates": 3,
+      "title": "auto-confirmation-H1"
+     },
+     {
+      "assay": "binding",
+      "concentrations": [
+       0.5,
+       2.0,
+       10.0,
+       40.0
+      ],
+      "instrument": "simulator",
+      "instrument_version": "sim-v1",
+      "n_controls": 2,
+      "n_samples": 4,
+      "replicates": 3,
+      "title": "test-H3"
+     },
+     {
+      "assay": "binding",
+      "concentrations": [
+       0.5,
+       2.0,
+       10.0,
+       40.0
+      ],
+      "instrument": "simulator",
+      "instrument_version": "sim-v1",
+      "n_controls": 2,
+      "n_samples": 4,
+      "replicates": 3,
+      "title": "test-M1"
+     },
+     {
+      "assay": "enzymatic",
+      "concentrations": [
+       10.0
+      ],
+      "instrument": "simulator",
+      "instrument_version": "sim-v1",
+      "n_controls": 1,
+      "n_samples": 1,
+      "replicates": 3,
+      "title": "auto-confirmation-H3"
+     },
+     {
+      "assay": "enzymatic",
+      "concentrations": [
+       10.0
+      ],
+      "instrument": "simulator",
+      "instrument_version": "sim-v1",
+      "n_controls": 1,
+      "n_samples": 1,
+      "replicates": 3,
+      "title": "auto-confirmation-M1"
+     }
+    ],
+    "synthesis": [
+     {
+      "candidate": "AD1",
+      "lot": "lot-1a00eaf2",
+      "passed": true,
+      "purity": 98.3,
+      "yield_pct": 65.9
+     },
+     {
+      "candidate": "H1",
+      "lot": "lot-c9e92f7c",
+      "passed": true,
+      "purity": 92.0,
+      "yield_pct": 94.8
+     },
+     {
+      "candidate": "H2",
+      "lot": "lot-3693adb4",
+      "passed": true,
+      "purity": 96.7,
+      "yield_pct": 60.1
+     },
+     {
+      "candidate": "H3",
+      "lot": "lot-07482940",
+      "passed": true,
+      "purity": 97.4,
+      "yield_pct": 80.5
+     },
+     {
+      "candidate": "M1",
+      "lot": "lot-a1ca2c64",
+      "passed": true,
+      "purity": 96.4,
+      "yield_pct": 66.1
+     }
+    ]
+   },
+   "portfolio": [
+    {
+     "hypothesis": "AD1",
+     "reason": "top-k by score",
+     "score": 0.333,
+     "selected": true
+    },
+    {
+     "hypothesis": "H1",
+     "reason": "top-k by score",
+     "score": 0.167,
+     "selected": true
+    },
+    {
+     "hypothesis": "H2",
+     "reason": "top-k by score",
+     "score": 0.111,
+     "selected": true
+    },
+    {
+     "hypothesis": "H3",
+     "reason": "top-k by score",
+     "score": 0.083,
+     "selected": false
+    },
+    {
+     "hypothesis": "M1",
+     "reason": "top-k by score",
+     "score": 0.011,
+     "selected": false
+    }
+   ],
+   "reviewer": {
+    "critical": 0,
+    "findings": [],
+    "review": "reviewer-v1",
+    "verdicts_reviewed": 5,
+    "warnings": 0
+   },
+   "title": "The record of this run",
+   "trust": {
+    "checks": [
+     "1 verdict(s) abstained \u2014 CI straddled the gate; abstention is reported, not hidden",
+     "safety rules: safety-rules-v1"
+    ]
+   },
+   "verdicts": {
+    "abstained": 1,
+    "claimed": 2,
+    "derivations": [
+     {
+      "candidate": "AD1",
+      "description": "measured RFU 14 wells on simulator (sim-v1)  \u2192  IC50 (\u00b5M) by hill-bootstrap, residual bootstrap 95%  \u2192  gate: IC50 (\u00b5M) \u2264 20"
+     },
+     {
+      "candidate": "H1",
+      "description": "measured RFU 14 wells on simulator (sim-v1)  \u2192  IC50 (\u00b5M) by orthogonal re-measurement + fit, residual bootstrap 95%  \u2192  gate: IC50 (\u00b5M) \u2264 20"
+     },
+     {
+      "candidate": "H2",
+      "description": "measured RFU 14 wells on simulator (sim-v1)  \u2192  IC50 (\u00b5M) by hill-bootstrap, residual bootstrap 95%  \u2192  gate: IC50 (\u00b5M) \u2264 20"
+     },
+     {
+      "candidate": "H3",
+      "description": "measured RFU 14 wells on simulator (sim-v1)  \u2192  IC50 (\u00b5M) by hill-bootstrap, residual bootstrap 95%  \u2192  gate: IC50 (\u00b5M) \u2264 20"
+     },
+     {
+      "candidate": "M1",
+      "description": "measured RFU 14 wells on simulator (sim-v1)  \u2192  IC50 (\u00b5M) by orthogonal re-measurement + fit, residual bootstrap 95%  \u2192  gate: IC50 (\u00b5M) \u2264 20"
+     }
+    ],
+    "rows": [
+     {
+      "candidate": "AD1",
+      "ci95": "17.825\u201341.468",
+      "estimated": 20.883,
+      "estimated_label": "estimated IC50 (\u00b5M)",
+      "evidence_run": "sim-3-001",
+      "gate": "IC50 (\u00b5M) 20",
+      "verdict": "inconclusive"
+     },
+     {
+      "candidate": "H1",
+      "ci95": "2.598\u20134.642",
+      "estimated": 4.642,
+      "estimated_label": "estimated IC50 (\u00b5M)",
+      "evidence_run": "sim-3-006",
+      "gate": "IC50 (\u00b5M) 20",
+      "verdict": "confirmed"
+     },
+     {
+      "candidate": "H2",
+      "ci95": "55.431\u201380.199",
+      "estimated": 61.6,
+      "estimated_label": "estimated IC50 (\u00b5M)",
+      "evidence_run": "sim-3-003",
+      "gate": "IC50 (\u00b5M) 20",
+      "verdict": "invalidated"
+     },
+     {
+      "candidate": "H3",
+      "ci95": "27.188\u201366.674",
+      "estimated": 49.879,
+      "estimated_label": "estimated IC50 (\u00b5M)",
+      "evidence_run": "sim-3-007",
+      "gate": "IC50 (\u00b5M) 20",
+      "verdict": "invalidated"
+     },
+     {
+      "candidate": "M1",
+      "ci95": "1.241\u20131.795",
+      "estimated": 1.574,
+      "estimated_label": "estimated IC50 (\u00b5M)",
+      "evidence_run": "sim-3-010",
+      "gate": "IC50 (\u00b5M) 20",
+      "verdict": "confirmed"
+     }
+    ]
+   }
+  },
   "report": {
    "recommendations": [
     "recommendation: best binder so far is AD1 (IC50 20.883 uM) \u2014 next: confirm with orthogonal assay",
@@ -1420,6 +1765,20 @@
     }
    ]
   ],
+  "narrative": {
+   "evidence": {
+    "curves": [],
+    "empty_note": "No recorded plate files found for these runs \u2014 evidence curves unavailable (honestly shown, not simulated).",
+    "svg_fallback": false
+   },
+   "portfolio": [],
+   "title": "The record of this run",
+   "trust": {
+    "checks": [
+     "safety rules: safety-rules-v1"
+    ]
+   }
+  },
   "report": {
    "recommendations": [],
    "rounds_run": 1,

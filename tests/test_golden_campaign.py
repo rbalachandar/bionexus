@@ -63,6 +63,7 @@ def _scenario(tmp_path, autonomy, acquisition, seed):
         "events": [[r.event_type.value, _norm(r.decision)] for r in recs],
         "tally": _norm(views.verdict_tally(recs)),
         "cards": _norm(views.pipeline_cards(recs)),
+        "narrative": _norm(views.narrative_data(recs, data_dir=str(tmp_path))),
     }
 
 
