@@ -572,9 +572,25 @@ class AutoAnalysisAgent:
         primary = conf["primary_ic50"]
         primary_ci = conf.get("primary_ci")
         crit = hyp.criteria if hyp else None
-        pri_status = hyp.status if hyp else "tested"
         property_metric = bool(crit
                                and crit.metric not in ("ic50_um", "value"))
+        status, agreed = self._confirmation_status(
+            hyp, crit, cand, primary, primary_ci, secondary, secondary_ci,
+            agreed, qc_ok, force_status, property_metric)
+        self._notify_confirmation(cand, crit, property_metric, primary,
+                                  secondary, ratio, rule, status, result)
+        self._record_confirmation(event, cand, crit, property_metric,
+                                  primary, primary_ci, secondary,
+                                  secondary_ci, ratio, agreed, rule, qc_ok,
+                                  status, result)
+        return {"confirmation": status, "candidate": cand,
+                "primary": primary, "secondary": secondary, "ratio": ratio}
+
+    def _confirmation_status(self, hyp, crit, cand, primary, primary_ci,
+                             secondary, secondary_ci, agreed, qc_ok,
+                             force_status, property_metric):
+        """The confirmation status machine -> (status, agreed)."""
+        pri_status = hyp.status if hyp else "tested"
         status = force_status
         if status is None and (not qc_ok or secondary is None):
             status = "inconclusive"
@@ -615,7 +631,10 @@ class AutoAnalysisAgent:
                 status = "confirmed" if cls == "validated" else "refuted"
             else:
                 status = "refuted" if cls == "invalidated" else "confirmed"
+        return status, agreed
 
+    def _notify_confirmation(self, cand, crit, property_metric, primary,
+                             secondary, ratio, rule, status, result) -> None:
         if property_metric:
             unit = next((r.get("unit", "") for r in
                          (m if isinstance(m, dict) else m.model_dump()
@@ -634,6 +653,12 @@ class AutoAnalysisAgent:
             self.notify(f"orthogonal confirmation for {cand}: no usable "
                         f"secondary fit -> {status.upper()}")
 
+    def _record_confirmation(self, event, cand, crit, property_metric,
+                             primary, primary_ci, secondary, secondary_ci,
+                             ratio, agreed, rule, qc_ok, status,
+                             result) -> None:
+        """Write the verdict + its derivation onto the matching hypothesis
+        and into provenance."""
         if self.tracker:
             for h in self.tracker.hypotheses.values():
                 if h.candidate != cand:
@@ -683,8 +708,6 @@ class AutoAnalysisAgent:
                         else status == "confirmed",
                         "rule": rule}})
                 break
-        return {"confirmation": status, "candidate": cand,
-                "primary": primary, "secondary": secondary, "ratio": ratio}
 
     def _submit_confirmation(self, candidate: str, ic50: float) -> str | None:
         """Close the loop: design + safety-submit the orthogonal confirmation.
