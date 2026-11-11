@@ -123,101 +123,61 @@ def labselect_fence(labs_entries) -> list[dict]:
         return []
 
 
-def workspace(wizard_store,
-              provenance_db: str | Path | None = None,
-              include_archived: bool = False) -> dict:
-    provenance_db = provenance_db or _ids.PROVENANCE_DB
-    """Workspace read-model: programs (with links + status tallies),
-    campaign groups for unlinked rows, archived expander list."""
-    from bionexus import program as program_cfg
-    rows = wizard_store.ongoing() + wizard_store.finished(500)
-    archived = [e for e in rows if (e["payload"] or {}).get("archived")]
-    live = [e for e in rows if not (e["payload"] or {}).get("archived")]
-    rows_by_eid = {e["id"]: e for e in live}
-    trees, leaf_pids = problem_trees(provenance_db)
+class _LinkStats:
+    """Per-link execution stats, cached per experiment and per branch.
+    Branch resolution mirrors the SSE watcher (campaign announcement ->
+    payload -> program relation -> agent log); record reads are cached per
+    branch in `recs_by_branch`."""
 
-    # retired-tree filter (as the workbench had it): a tree whose every
-    # leaf lost its registry row leaves the workspace — provenance and
-    # the Archived section still hold the history
-    live_leaf_pids = set()
-    for e in live:
-        pid = (e["payload"].get("agent") or {}).get("problem_id")
-        if pid:
-            live_leaf_pids.add(pid)
-    def _leaves(t):
-        parents = {n["parent"] for n in t["nodes"] if n["parent"]}
-        return [n for n in t["nodes"] if n["id"] not in parents]
-    trees = [t for t in trees if not _leaves(t) or any(
-        leaf_pid(t["root_id"], leaf["id"]) in live_leaf_pids
-        for leaf in _leaves(t))]
-
-    # map leaf -> experiment eid so the FE can link sub-problems
-    pid_to_eid = {}
-    for e in live:
-        pid = (e["payload"].get("agent") or {}).get("problem_id")
-        if pid:
-            pid_to_eid[pid] = e["id"]
-    for t in trees:
-        for leaf in _leaves(t):
-            for pid in [f'{t["root_id"]}-{leaf["id"]}',
-                        f'{t["root_id"]}-{leaf["id"]}-{leaf["id"]}']:
-                if pid in pid_to_eid:
-                    t.setdefault("leaf_stats", {}).setdefault(
-                        leaf["id"], {})["eid"] = pid_to_eid[pid]
-
-    programs = []
-    linked_eids: set = set()
-    prog_roots: dict[str, set] = {}
-    # per-link execution stats: branch resolution mirrors the SSE watcher
-    # (campaign announcement -> payload -> program relation -> agent log),
-    # record reads are cached per branch
-    prov = None
-    if Path(provenance_db).exists():
+    def __init__(self, wizard_store, provenance_db):
+        self.ws = wizard_store
+        self.prov = None
+        if Path(provenance_db).exists():
+            try:
+                from bionexus.adapters.store.sqlite import get_store
+                self.prov = get_store(str(provenance_db))
+            except Exception:
+                self.prov = None
         try:
-            from bionexus.adapters.store.sqlite import get_store
-            prov = get_store(str(provenance_db))
+            from bionexus.autoloop import announced_branches
+            self.branch_map = announced_branches()
         except Exception:
-            prov = None
-    try:
-        from bionexus.autoloop import announced_branches
-        branch_map = announced_branches()
-    except Exception:
-        branch_map = {}
-    stats_cache: dict[str, dict] = {}
-    recs_by_branch: dict[str, list] = {}
+            self.branch_map = {}
+        self.cache: dict[str, dict] = {}
+        self.recs_by_branch: dict[str, list] = {}
 
-    def link_stats(eid, e, l) -> dict:
-        if eid in stats_cache:
-            return stats_cache[eid]
+    def __call__(self, eid, e, l) -> dict:
+        if eid in self.cache:
+            return self.cache[eid]
         out = {"runs": 0, "rounds_done": 0, "rounds_planned": None,
                "verdicts": {"confirmed": 0, "preliminary": 0,
                             "refuted": 0, "inconclusive": 0},
                "candidates": [], "branch": None}
         try:
-            spec = wizard_store.get_campaign_spec(eid)
+            spec = self.ws.get_campaign_spec(eid)
             out["rounds_planned"] = (spec or {}).get("rounds")
         except Exception:
             pass
         payload = (e or {}).get("payload") or {}
         ag = payload.get("agent") or {}
-        pid = branch_map.get(eid) or ag.get("problem_id") \
+        pid = self.branch_map.get(eid) or ag.get("problem_id") \
             or l.get("campaign_root")
         if not pid and ag.get("log") and Path(ag["log"]).is_file():
             pid = resolve_problem({}, Path(ag["log"]))
-        if prov is not None and pid:
+        if self.prov is not None and pid:
             key = f"problem/{pid}"
-            if key not in stats_cache:
+            if key not in self.cache:
                 try:
-                    recs = prov.branch_records(key)
+                    recs = self.prov.branch_records(key)
                 except Exception:
                     recs = []
-                recs_by_branch[key] = recs
+                self.recs_by_branch[key] = recs
                 cands: list[str] = []
                 for _n, cs in round_markers(recs):
                     for c in cs:
                         if str(c) not in cands:
                             cands.append(str(c))
-                stats_cache[key] = {
+                self.cache[key] = {
                     "runs": sum(1 for r in recs
                                 if r.event_type.value == "lab_run"
                                 and (r.decision or {}).get("run_id")),
@@ -227,10 +187,65 @@ def workspace(wizard_store,
                     "candidates": cands,
                     "branch": pid,
                 }
-            out = {**out, **stats_cache[key]}
-        stats_cache[eid] = out
+            out = {**out, **self.cache[key]}
+        self.cache[eid] = out
         return out
 
+
+def _tree_leaves(t) -> list:
+    parents = {n["parent"] for n in t["nodes"] if n["parent"]}
+    return [n for n in t["nodes"] if n["id"] not in parents]
+
+
+def _live_trees(trees: list, live: list) -> list:
+    """Drop retired trees (every leaf lost its registry row — provenance and
+    the Archived section still hold the history) and link each remaining
+    leaf to its experiment eid so the FE can open sub-problems."""
+    pid_to_eid = {}
+    for e in live:
+        pid = (e["payload"].get("agent") or {}).get("problem_id")
+        if pid:
+            pid_to_eid[pid] = e["id"]
+    trees = [t for t in trees if not _tree_leaves(t) or any(
+        leaf_pid(t["root_id"], leaf["id"]) in pid_to_eid
+        for leaf in _tree_leaves(t))]
+    for t in trees:
+        for leaf in _tree_leaves(t):
+            for pid in [f'{t["root_id"]}-{leaf["id"]}',
+                        f'{t["root_id"]}-{leaf["id"]}-{leaf["id"]}']:
+                if pid in pid_to_eid:
+                    t.setdefault("leaf_stats", {}).setdefault(
+                        leaf["id"], {})["eid"] = pid_to_eid[pid]
+    return trees
+
+
+def _program_taste(atts: list, recs_by_branch: dict) -> dict:
+    """Per-program taste: accept-rate deltas over this program's own
+    portfolio decisions (advisory, read-only)."""
+    try:
+        from bionexus.taste import _features, fold_taste
+        feats_all: dict[str, dict] = {}
+        decisions_all: list[dict] = []
+        for a in atts:
+            recs = recs_by_branch.get(f"problem/{a.get('branch')}")
+            if not recs:
+                continue
+            f, d = _features(recs)
+            feats_all.update(f)
+            decisions_all.extend(d)
+        return fold_taste(feats_all, decisions_all)
+    except Exception:
+        return {"n": 0, "accepted": 0, "overall_rate": 0.0,
+                "by_feature": {}, "families": {}, "amendments": []}
+
+
+def _program_cards(wizard_store, rows_by_eid, link_stats):
+    """One card per program (links + tallies); also returns the linked
+    experiment ids and each program's campaign roots."""
+    from bionexus import program as program_cfg
+    programs = []
+    linked_eids: set = set()
+    prog_roots: dict[str, set] = {}
     for p in program_cfg.list_programs():
         links = program_cfg.links_for(p["slug"])
         # campaign-root links nest trees under the program — kept out of
@@ -256,23 +271,6 @@ def workspace(wizard_store,
                          "live": e is not None,
                          **link_stats(l["eid"], e, l)})
         doc = p.get("program") or {}
-        # per-program taste: accept-rate deltas over this program's own
-        # portfolio decisions (advisory read-only)
-        try:
-            from bionexus.taste import _features, fold_taste
-            feats_all: dict[str, dict] = {}
-            decisions_all: list[dict] = []
-            for a in atts:
-                recs = recs_by_branch.get(f"problem/{a.get('branch')}")
-                if not recs:
-                    continue
-                f, d = _features(recs)
-                feats_all.update(f)
-                decisions_all.extend(d)
-            taste = fold_taste(feats_all, decisions_all)
-        except Exception:
-            taste = {"n": 0, "accepted": 0, "overall_rate": 0.0,
-                     "by_feature": {}, "families": {}, "amendments": []}
         programs.append({
             "slug": p["slug"], "name": p["name"],
             "pid": doc.get("program_id", p["slug"]),
@@ -283,13 +281,17 @@ def workspace(wizard_store,
             "fence": labselect_fence(doc.get("labs")),
             "links": atts,
             "tally": tally,
-            "taste": taste,
+            "taste": _program_taste(atts, link_stats.recs_by_branch),
             # program doc snapshot — used later for brief/policy; carrying
             # it on the view dict prevents stale-doc leakage across the
             # loop iterations (the brief shown on the wrong program)
             "_doc": doc})
+    return programs, linked_eids, prog_roots
 
-    # trees not linked to any program render at top level
+
+def _attach_trees(programs, trees, prog_roots, rows_by_eid) -> None:
+    """Trees not linked to any program render at top level; programs whose
+    launch decomposed render their problem tree(s) inside the card."""
     linked_roots = {r for roots in prog_roots.values() for r in roots}
     for t in trees:
         t["linked_program"] = next(
@@ -297,10 +299,6 @@ def workspace(wizard_store,
              if t["root_id"] in roots), None)
         t["is_linked"] = bool(t["linked_program"]) or \
             t["root_id"] in linked_roots
-
-    # programs whose launch decomposed render their problem tree(s) inside
-    # the card (sub-problems as sub-trees, leaves as experiment rows);
-    # multiple decomposed launches -> multiple trees
     for p in programs:
         roots = {a["campaign_root"] for a in p["links"]
                  if a.get("campaign_root")}
@@ -319,6 +317,25 @@ def workspace(wizard_store,
                     else "running")
                 for i, e in br["launched"].items()}}
         p["brief"] = br
+
+
+def workspace(wizard_store,
+              provenance_db: str | Path | None = None,
+              include_archived: bool = False) -> dict:
+    """Workspace read-model: programs (with links + status tallies),
+    campaign groups for unlinked rows, archived expander list."""
+    provenance_db = provenance_db or _ids.PROVENANCE_DB
+    rows = wizard_store.ongoing() + wizard_store.finished(500)
+    archived = [e for e in rows if (e["payload"] or {}).get("archived")]
+    live = [e for e in rows if not (e["payload"] or {}).get("archived")]
+    rows_by_eid = {e["id"]: e for e in live}
+    trees, leaf_pids = problem_trees(provenance_db)
+    trees = _live_trees(trees, live)
+
+    link_stats = _LinkStats(wizard_store, provenance_db)
+    programs, linked_eids, prog_roots = _program_cards(
+        wizard_store, rows_by_eid, link_stats)
+    _attach_trees(programs, trees, prog_roots, rows_by_eid)
 
     standalone = [e for e in live
                   if (e["payload"].get("agent") or {}).get("problem_id")
