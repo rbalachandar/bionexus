@@ -14,6 +14,7 @@ autonomy levels:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 from dataclasses import dataclass, field
@@ -35,6 +36,9 @@ from bionexus.watch import AutoAnalysisAgent, DeviceMonitor
 Autonomy = str  # "act" | "gate" | "observe"
 
 
+_log = logging.getLogger(__name__)
+
+
 @dataclass
 class ResourceBudget:
     """Hard caps on what a campaign may consume. Enforced at submission time
@@ -46,10 +50,9 @@ class ResourceBudget:
     wall_clock_secs: float | None = None
 
     def lab_runs_used(self, store: ProvenanceStore, problem_id: str) -> int:
-        try:
-            recs = store.branch_records(f"problem/{problem_id}")
-        except Exception:
-            return 0
+        # fail CLOSED: if the store cannot be read the budget must not
+        # quietly report "0 runs used" and let a campaign overspend
+        recs = store.branch_records(f"problem/{problem_id}")
         return sum(1 for r in recs if r.event_type.value == "lab_run")
 
 
@@ -132,13 +135,15 @@ def announce_branch(eid: str, problem_id: str) -> None:
             try:
                 m = json.loads(f.read_text())
             except Exception:
+                _log.warning("branch-map unreadable; rebuilding", exc_info=True)
                 m = {}
         if m.get(eid) == problem_id:
             return
         m[eid] = problem_id
         f.write_text(json.dumps(m))
     except Exception:
-        pass
+        _log.warning("could not announce branch %s -> %s", eid, problem_id,
+                     exc_info=True)
 
 
 def announced_branches() -> dict:
@@ -148,6 +153,7 @@ def announced_branches() -> dict:
         f = CAMPAIGN_DIR / "branch-map.json"
         return json.loads(f.read_text()) if f.exists() else {}
     except Exception:
+        _log.warning("branch-map unreadable", exc_info=True)
         return {}
 
 
@@ -812,7 +818,6 @@ def _acquisition_select(remaining, k, crit, tracker, say, round_no, seed=0,
             in_domain=not meta.get("extrapolation", False),
             ad_note=str(meta.get("ad_note", "")),
             source=str(meta.get("predicted_source", "declared"))))
-    metric = crit.metric if crit is not None else "ic50_um"
     direction = crit.direction if crit is not None else "min"
     target = float(crit.threshold) if crit is not None else None
     # reference point = best CONFIRMED hit (never a QC-failed/inconclusive

@@ -6,6 +6,8 @@
 """
 from __future__ import annotations
 
+from bionexus.paths import APPROVALS_FILE
+
 import argparse
 import json
 import sys
@@ -495,7 +497,7 @@ def cmd_auto(args: argparse.Namespace) -> int:
     approver = None
     if cfg.autonomy == "gate":
         from bionexus.approvals import web_approver
-        approver = web_approver(inbox=args.inbox or ".data/approvals.jsonl",
+        approver = web_approver(inbox=args.inbox or str(APPROVALS_FILE),
                                 notify=lambda m: print(f"[campaign] {m}"))
     if cfg_doc.get("lab") and "adapter" in (cfg_doc.get("lab") or {}):
         lab = _load_adapter(cfg_doc["lab"]["adapter"],
@@ -1016,7 +1018,7 @@ def main(argv: list[str] | None = None) -> int:
 
     srv = sub.add_parser("serve", help="scientist cockpit: approval inbox + campaign dashboard")
     srv.add_argument("--port", type=int, default=8080)
-    srv.add_argument("--inbox", default=".data/approvals.jsonl")
+    srv.add_argument("--inbox", default=str(APPROVALS_FILE))
     srv.add_argument("--db", default=None, help="provenance DB to show recent events from")
     srv.set_defaults(func=cmd_serve)
 
@@ -1046,7 +1048,7 @@ def main(argv: list[str] | None = None) -> int:
     auto.add_argument("--db", default="bionexus.db",
                       help="provenance DB (shown by bn serve)")
     auto.add_argument("--inbox", default=None,
-                      help="approval inbox file for gate mode (default .data/approvals.jsonl)")
+                      help="approval inbox file for gate mode (default <data dir>/approvals.jsonl)")
     auto.set_defaults(func=cmd_auto)
 
     sel = sub.add_parser(

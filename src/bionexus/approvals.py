@@ -13,7 +13,9 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable
 
-DEFAULT_INBOX = ".data/approvals.jsonl"
+from bionexus.paths import APPROVALS_FILE
+
+DEFAULT_INBOX = str(APPROVALS_FILE)
 
 
 class ApprovalInbox:

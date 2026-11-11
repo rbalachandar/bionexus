@@ -46,8 +46,8 @@ def has_doubled_branch(root_id: str,
     no provenance exists yet."""
     if not Path(db_path).exists():
         return True
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    return bool(SqliteProvenanceStore(str(db_path)).branch_records(
+    from bionexus.adapters.store.sqlite import get_store
+    return bool(get_store(str(db_path)).branch_records(
         f"problem/{root_id}-{root_id}"))
 
 

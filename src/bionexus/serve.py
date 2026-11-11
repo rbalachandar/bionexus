@@ -117,8 +117,8 @@ def page_home(inbox: ApprovalInbox, db_path: str | None) -> str:
     recent = ""
     if db_path and Path(db_path).exists():
         try:
-            from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-            ev = SqliteProvenanceStore(db_path).recent_records(10)
+            from bionexus.adapters.store.sqlite import get_store
+            ev = get_store(db_path).recent_records(10)
             recent = "".join(
                 f"<tr><td class='mono'>{_esc(r.event_type.value)}</td>"
                 f"<td class='mono'>{_esc(json.dumps(r.decision)[:80] if r.decision else '')}</td></tr>"

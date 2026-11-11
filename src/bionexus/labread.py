@@ -45,18 +45,33 @@ WELL_RE = re.compile(r"^([A-P])(\d{1,2})$", re.IGNORECASE)
 QC_ZPRIME_FLOOR = 0.5
 
 
+# two-sided 95% Student-t critical values, indexed by degrees of freedom
+_T975 = {2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365,
+         8: 2.306}
+
+
 def replicate_ci(values: list[float | None], seed: int = 7,
                  n_boot: int = 200) -> tuple[float, float] | None:
     """Bootstrap CI (95%) of the MEAN over replicate well readings at one
     dose. This is how a property metric (potency_pct, tensile MPa, t_half)
     gets an interval: well-level variance, same abstention rule as the
     Hill IC50. Returns None below 3 usable wells — a single reading has
-    no measurable spread, and inventing one is not honesty."""
+    no measurable spread, and inventing one is not honesty. Below 10
+    wells the interval is a Student-t one (the bootstrap under-covers)."""
     vals = [v for v in values if isinstance(v, (int, float))]
     if len(vals) < 3:
         return None
+    xs = [float(v) for v in vals]
+    if len(xs) < 10:
+        # small n: a percentile bootstrap badly under-covers (n=3 has only
+        # 10 distinct resamples) -> Student-t interval of the mean instead
+        n = len(xs)
+        mean = sum(xs) / n
+        sd = (sum((x - mean) ** 2 for x in xs) / (n - 1)) ** 0.5
+        half = _T975[n - 1] * sd / n ** 0.5
+        return (round(mean - half, 4), round(mean + half, 4))
     from bionexus.benchmark import bootstrap_ci
-    lo, hi = bootstrap_ci([float(v) for v in vals], n_boot=n_boot, seed=seed)
+    lo, hi = bootstrap_ci(xs, n_boot=n_boot, seed=seed)
     return (lo, hi)
 
 SYNONYMS: dict[str, list[str]] = {
@@ -849,7 +864,11 @@ def fit_ic50_ci(points: list[tuple[float, float]], max_response: float = 100.0,
         fitted = [top * best_m / (1.0 + base / max(c, 1e-9)) for c, _ in pts]
     else:
         fitted = [max_response / (1.0 + base / max(c, 1e-9)) for c, _ in pts]
-    residuals = [v - f for (_, v), f in zip(pts, fitted)]
+    # df-corrected residuals: raw residuals of a fitted curve understate the
+    # noise by sqrt((n-p)/n); with 3-5 points that is a large optimism
+    n_par = 1 if max_response is not None else 2
+    scale = (len(pts) / max(1, len(pts) - n_par)) ** 0.5
+    residuals = [(v - f) * scale for (_, v), f in zip(pts, fitted)]
     for _ in range(n_boot):
         sample = [(c, max(0.0, f + rng.choice(residuals)))
                   for (c, _v), f in zip(pts, fitted)]
@@ -1003,6 +1022,7 @@ def analyze_records(records: list[dict[str, Any]],
         zp_kind = "heuristic"
 
     GRID_FLOOR_UM = 10 ** -3    # mirrors _hill_fit_ic50's lower grid bound
+    GRID_CEIL_UM = 10 ** 2.5    # mirrors its upper bound (~316 uM)
     compounds: dict[str, Any] = {}
     for sample, vals in by_sample.items():
         if control_class(sample, control_classes) is not None:
@@ -1020,13 +1040,19 @@ def analyze_records(records: list[dict[str, Any]],
             ic50 <= GRID_FLOOR_UM * 1.05
             or bool(ci and ci.get("ci_low") is not None
                     and ci["ci_low"] <= GRID_FLOOR_UM * 1.05))
+        # RIGHT-censoring at the grid ceiling: an estimate (or CI top)
+        # pinned at the search-grid edge is "> range", not a measured IC50.
+        at_ceiling = bool(ic50 is not None and pts) and (
+            ic50 >= GRID_CEIL_UM * 0.95
+            or bool(ci and ci.get("ci_high") is not None
+                    and ci["ci_high"] >= GRID_CEIL_UM * 0.95))
         compounds[sample] = {
             "ic50_um": ic50,
             "ic50_ci": (ci["ci_low"], ci["ci_high"]) if ci and ci.get("ci_low")
                         is not None else None,
             "fit_method": (ci or {}).get("method", "linear-interp"),
             "n_points": len(pts) or len(vals),
-            "right_censored": pts and ic50 is None,
+            "right_censored": bool(pts) and (ic50 is None or at_ceiling),
             "left_censored": left_censored,
             "fit_quality": "known-max" if max_response else ("observed-max" if pts else "n/a"),
             "flagged_single_dose": not pts,

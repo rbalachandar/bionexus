@@ -39,11 +39,22 @@ def test_anchor_roundtrip(tmp_path, monkeypatch):
     assert entry["records"] == 5
     res = A.verify(db)
     assert res["match"]
-    # tamper: append a record -> root changes, verify fails
+    # a legitimate later append must NOT look like tampering
     store = SqliteProvenanceStore(db)
     store.append(record_for(Envelope(experiment_branch_id="problem/p1"),
                             EventType.stage_transition, system_actor()))
-    assert not A.verify(db)["match"]
+    res = A.verify(db)
+    assert res["match"] and res["appended_since_anchor"] == 1
+    # real tamper: rewrite an anchored record's payload (bypassing the
+    # append-only triggers, as an attacker with file access could)
+    import sqlite3
+    conn = sqlite3.connect(db)
+    conn.execute("DROP TRIGGER provenance_no_update")
+    conn.execute("UPDATE provenance SET payload = replace(payload, "
+                 "'validated', 'invalidated') WHERE rowid = 1")
+    conn.commit(); conn.close()
+    res = A.verify(db)
+    assert not res["match"] and res["content_tampered"]
 
 
 def test_eln_export(tmp_path):

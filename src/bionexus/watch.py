@@ -17,6 +17,7 @@ lowest-common-denominator that works with every existing instrument.
 """
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -357,7 +358,8 @@ class AutoAnalysisAgent:
                           "file": getattr(event.path, "name", "?"),
                           **verdict}))
         except Exception:
-            pass
+            logging.getLogger(__name__).warning(
+                "could not record failure-mode provenance", exc_info=True)
 
     def _instrument(self) -> tuple[str | None, str | None]:
         lab = getattr(self.gateway, "lab", None) or \

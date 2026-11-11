@@ -8,6 +8,7 @@ auditable end to end.
 from __future__ import annotations
 
 import hashlib
+import logging
 import uuid
 from typing import Any, Callable
 
@@ -24,6 +25,8 @@ from bionexus.core.contracts import (
     ProvenanceRecord,
 )
 from bionexus.core.interfaces import ProvenanceStore, record_for
+
+log = logging.getLogger(__name__)
 
 
 __all__ = [
@@ -514,39 +517,39 @@ class HypothesisTracker:
                 threshold: float | None = None) -> Hypothesis:
         """Assess against the pre-declared criteria. QC-failed or missing-evidence
         runs yield 'inconclusive', never a silent invalidate."""
+        preregistered = h.criteria is not None
         if threshold is not None and h.criteria is None:
             h.criteria = SuccessCriteria(metric="ic50_um", threshold=threshold)
         criteria = h.criteria or SuccessCriteria(metric="value", threshold=threshold or 0.0)
         qc_ok = getattr(result.qc, "controls_passed", True)
-        value = next(
-            (m.value for m in result.measurements
-             if m.sample_id == h.candidate
-             and (criteria.metric == "value" or criteria.metric in m.derived_metrics
-                  or m.unit == criteria.metric)),
-            None,
-        )
-        if value is None and criteria.metric not in ("ic50_um", "value"):
+        rows = [m for m in result.measurements if m.sample_id == h.candidate]
+        src = next((m for m in rows
+                    if criteria.metric == "value"
+                    or criteria.metric in m.derived_metrics
+                    or m.unit == criteria.metric), None)
+        if src is None and criteria.metric not in ("ic50_um", "value"):
             # property metric: read the recorded value at the HIGHEST
             # dose (dose ladders carry conc_um in derived metrics)
-            doses = [(m.derived_metrics.get("conc_um"), m.value)
-                     for m in result.measurements
-                     if m.sample_id == h.candidate
-                     and isinstance(m.derived_metrics.get("conc_um"), (int, float))]
-            if doses:
-                value = max(doses)[1]
-            else:
-                value = next((m.value for m in result.measurements
-                              if m.sample_id == h.candidate), None)
+            doses = [m for m in rows if isinstance(
+                m.derived_metrics.get("conc_um"), (int, float))]
+            src = (max(doses, key=lambda m: (m.derived_metrics["conc_um"],
+                                             m.value))
+                   if doses else (rows[0] if rows else None))
+        value = src.value if src is not None else None
         h.observed_value = value
         h.qc_passed = qc_ok
         h.evidence_run_id = result.run_id
+        # the CI must come from the SAME row as the value, under the metric's
+        # own keys ("<metric>_ci_low") with the legacy IC50 keys as fallback
         ci = None
-        for m in result.measurements:
-            if m.sample_id == h.candidate:
-                low = m.derived_metrics.get("ic50_ci_low")
-                high = m.derived_metrics.get("ic50_ci_high")
+        if src is not None:
+            dm = src.derived_metrics
+            stem = criteria.metric.removesuffix("_um")
+            for prefix in dict.fromkeys((criteria.metric, stem)):
+                low, high = dm.get(f"{prefix}_ci_low"), dm.get(f"{prefix}_ci_high")
                 if low is not None and high is not None:
                     ci = (low, high)
+                    break
         h.observed_ci = ci
         if not qc_ok:
             h.status = "inconclusive"
@@ -571,6 +574,7 @@ class HypothesisTracker:
             "qc_passed": qc_ok,
             "evidence_run_id": result.run_id,
             "verdict": h.status,
+            "criteria_preregistered": preregistered,
             "evidence": criteria.evidence(),
             "derivation": build(
                 instrument=(inst.adapter if inst else None),
@@ -586,12 +590,20 @@ class HypothesisTracker:
                 criteria_direction=criteria.direction,
                 criteria_threshold=criteria.threshold),
         }))
-        if self.on_verdict is not None:
-            try:
-                self.on_verdict(h)
-            except Exception:
-                pass                       # the flywheel must never break a run
+        self._fire_on_verdict(h)
         return h
+
+    def _fire_on_verdict(self, h: Hypothesis) -> None:
+        """The flywheel must never break a run — but a broken flywheel must
+        not be invisible either: log it (negative results stop compounding)."""
+        if self.on_verdict is None:
+            return
+        try:
+            self.on_verdict(h)
+        except Exception:
+            log.warning("on_verdict hook failed for hypothesis %s; "
+                        "this verdict was NOT fed to the flywheel",
+                        h.hypothesis_id, exc_info=True)
 
     def _artifact(self, h: Hypothesis) -> Artifact:
         return Artifact(
@@ -636,11 +648,7 @@ class HypothesisTracker:
         if extra:
             decision.update(extra)
         self.store.append(self._record(env, event, h, decision=decision))
-        if self.on_verdict is not None:
-            try:
-                self.on_verdict(h)
-            except Exception:
-                pass                       # the flywheel must never break a run
+        self._fire_on_verdict(h)
         return h
 
     def _record(self, env: Envelope, event: EventType, h: Any,

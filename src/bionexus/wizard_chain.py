@@ -7,7 +7,7 @@ exactly like an agent-driven one.
 """
 from __future__ import annotations
 
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+from bionexus.adapters.store.sqlite import get_store
 from bionexus.core.contracts import Envelope, EventType
 from bionexus.core.interfaces import record_for, system_actor
 
@@ -20,6 +20,6 @@ def wizard_branch(eid: str) -> str:
 
 def record_wizard_event(eid: str, event: EventType, decision: dict,
                         db_path: str = "bionexus.db"):
-    store = SqliteProvenanceStore(db_path)
+    store = get_store(db_path)
     env = Envelope(experiment_branch_id=wizard_branch(eid))
     return store.append(record_for(env, event, ACTOR, decision=decision))

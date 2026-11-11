@@ -9,6 +9,7 @@ from pathlib import Path
 DATA_DIR = Path(os.environ.get("BIONEXUS_DATA_DIR", ".data"))
 CAMPAIGN_DIR = DATA_DIR / "campaigns"
 EXPORT_DIR = DATA_DIR / "exports"
+APPROVALS_FILE = DATA_DIR / "approvals.jsonl"   # gate-mode inbox, one place
 
 
 def ensure_dirs() -> None:

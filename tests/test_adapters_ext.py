@@ -1766,8 +1766,8 @@ def test_confirmation_verifies_direction_not_relabels(tmp_path):
             if not f.exists():
                 f.write_text("Well ID,Compound,Conc (uM),RFU\n"
                              "A1,ctrl,10,100\nA2,ctrl,10,104\n"
-                             "A3,C,0.5,7\nA4,C,2,26\nA5,C,10,111\n"
-                             "A6,C,40,267\n")
+                             "A3,C,0.5,3\nA4,C,2,10\nA5,C,10,45\n"
+                             "A6,C,40,150\n")
             return f
         path = _path()
 
@@ -1778,8 +1778,8 @@ def test_confirmation_verifies_direction_not_relabels(tmp_path):
     agent = AutoAnalysisAgent(tracker=tracker, gateway=FakeGateway(),
                               branch_id="problem/p", notify=lambda m: None,
                               auto_confirm=True)
-    agent._confirmations["sim-x"] = {"candidate": "C", "primary_ic50": 23.2,
-                                     "primary_ci": (20.3, 31.0)}
+    agent._confirmations["sim-x"] = {"candidate": "C", "primary_ic50": 100.0,
+                                     "primary_ci": (90.0, 125.0)}
     agent.handle(FakeEvent())
     assert h.status == "refuted", h.status   # NOT "confirmed"
 

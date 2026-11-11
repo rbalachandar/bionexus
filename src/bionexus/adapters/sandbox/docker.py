@@ -73,7 +73,8 @@ class DockerSandbox:
                  network: str = "none",
                  memory: str = "512m",
                  cpus: str = "1.0",
-                 pids_limit: int = 128):
+                 pids_limit: int = 128,
+                 read_only: bool = False):
         """Egress is closed by default (network='none'); caps dropped,
         memory/CPU/pid ceilings applied. An operator who needs outbound
         traffic must say so explicitly (network='bridge')."""
@@ -81,6 +82,7 @@ class DockerSandbox:
         self.image = image
         self.network, self.memory, self.cpus, self.pids_limit = \
             network, memory, cpus, pids_limit
+        self.read_only = read_only      # opt-in: read-only rootfs + tmpfs /tmp
         self.branch_id = branch_id or f"docker-{uuid.uuid4().hex[:8]}"
         self.parent_branch_id = parent_branch_id
         self.store = store
@@ -110,11 +112,14 @@ class DockerSandbox:
                 "--cpus", self.cpus,
                 "--pids-limit", str(self.pids_limit),
                 "--cap-drop", "ALL",
-                "--security-opt", "no-new-privileges",
-                image]
+                "--security-opt", "no-new-privileges"]
+        if self.read_only:
+            args += ["--read-only", "--tmpfs", "/tmp"]
+        # options MUST precede the image: anything after it is the container
+        # command, which silently swallowed (or broke) env injection
         for k, v in self.env.items():
             args += ["-e", f"{k}={v}"]
-        return args
+        return args + [image]
 
     # -- Sandbox protocol ------------------------------------------------------
 

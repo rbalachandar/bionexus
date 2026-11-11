@@ -3,6 +3,8 @@ Launch-program flow. Builds the campaign cfg from the program doc,
 spawns the bn-auto subprocess, and records the relational links."""
 from __future__ import annotations
 
+from bionexus.paths import APPROVALS_FILE
+
 import json
 import subprocess
 import sys
@@ -75,7 +77,7 @@ def spawn_campaign(doc: dict, program_name: str) -> str | None:
            "BN_CAMPAIGN_ID": cid}
     proc = subprocess.Popen(
         [sys.executable, "-u", "-m", "bionexus.cli", "auto", str(cfgpath),
-         "--db", "bionexus.db", "--inbox", ".data/approvals.jsonl",
+         "--db", "bionexus.db", "--inbox", str(APPROVALS_FILE),
          "--yes"],
         stdout=open(logf, "ab", buffering=0), stderr=subprocess.STDOUT,
         cwd=str(Path.cwd()), env=env)

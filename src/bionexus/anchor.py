@@ -48,7 +48,7 @@ def store_hashes(db_path: str) -> list[str]:
     conn = sqlite3.connect(db_path)
     try:
         return [row[0] for row in conn.execute(
-            "SELECT record_hash FROM provenance ORDER BY created_at, rowid"
+            "SELECT record_hash FROM provenance ORDER BY rowid"
         ).fetchall() if row[0]]
     finally:
         conn.close()
@@ -64,7 +64,7 @@ def recomputed_hashes(db_path: str) -> tuple[list[str], list[dict]]:
     try:
         rows = conn.execute(
             "SELECT record_id, branch_id, record_hash, payload "
-            "FROM provenance ORDER BY created_at, rowid").fetchall()
+            "FROM provenance ORDER BY rowid").fetchall()
     finally:
         conn.close()
     hashes, problems = [], []
@@ -116,9 +116,20 @@ def verify(db_path: str = "bionexus.db", root: str | None = None) -> dict:
     stored_root = merkle_root(hashes)
     anchors = json.loads(ANCHORS.read_text()) if ANCHORS.exists() else []
     target = root or (anchors[-1]["merkle_root"] if anchors else None)
+    entry = next((a for a in reversed(anchors)
+                  if a.get("merkle_root") == target), None)
+    # the anchor commits to the FIRST n records; appends after anchoring are
+    # legitimate, so compare the anchored PREFIX, not the whole store
+    n = entry.get("records") if entry else None
+    if isinstance(n, int) and 0 <= n <= len(recomputed):
+        prefix_root = merkle_root(recomputed[:n])
+        appended = len(recomputed) - n
+    else:
+        prefix_root, appended = current, 0
     return {"current_root": current, "anchored_root": target,
             "records": len(recomputed),
+            "appended_since_anchor": appended,
             "stored_root": stored_root,
             "content_tampered": stored_root != current or bool(problems),
             "problems": problems[:10],
-            "match": target is not None and current == target}
+            "match": target is not None and prefix_root == target}
