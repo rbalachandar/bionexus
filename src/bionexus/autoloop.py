@@ -697,13 +697,16 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     gov = {"matrix": AuthorizationMatrix(), "halt": HaltSwitch()}
     say = notify or (lambda m: print(f"[campaign] {m}"))
 
+    # resolve the branch name FIRST: lab selection (below) already writes
+    # records onto problem/<id>, which would otherwise make every campaign
+    # with a lab pool look like a re-run of itself and get a '-2' suffix
+    _unique_branch(cfg, store, say)
     lab = _select_lab(cfg, lab, store, actor, approver, say)
 
     gateway = _build_gateway(cfg, lab, safety, store, actor, approver, say, gov)
 
     # 0. problem + portfolio + filter
     _durc_gate(cfg, store, actor)
-    _unique_branch(cfg, store, say)
     if sandbox is not None:
         from bionexus.sandbox_session import SandboxedLab
         sandbox.start(f"problem/{cfg.problem.problem_id}")

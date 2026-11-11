@@ -256,3 +256,33 @@ def test_approval_identity_comes_from_the_token_not_the_body(monkeypatch):
     dec = [e for e in events if e.get("event") == "decision"
            and e.get("id") == aid]
     assert dec and dec[-1]["by"] == "bob"                   # not "mallory"
+
+
+def test_lab_pool_campaign_keeps_its_own_branch_name(tmp_path):
+    """Lab selection used to write to problem/<id> before the unique-branch
+    check, so every pooled campaign looked like a re-run and got '-2'."""
+    from bionexus.adapters.lab.simulator import SimulatorLab
+    from bionexus.autoloop import CampaignConfig, run_campaign
+    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    store = SqliteProvenanceStore()
+    problem = ProblemStatement(objective="find IC50<=20", problem_id="prob-x",
+                               constraints=[Constraint(
+                                   name="potency", description="IC50",
+                                   kind="hard", limit=20.0, unit="uM")])
+    cfg = CampaignConfig(
+        problem=problem, hypotheses=[{"statement": "A binds", "candidate": "A",
+                                      "assay_type": "binding",
+                                      "predicted": "5 uM",
+                                      "predicted_value": 5.0}],
+        k=1, rounds=1, autonomy="observe", inbox=str(tmp_path),
+        poll_secs=0.05, labs=[{"simulator": {"seed": 3}}])
+    report = run_campaign(cfg, SimulatorLab(seed=3), store)
+    assert report.problem_id == "prob-x"
+    cfg2 = CampaignConfig(
+        problem=ProblemStatement(objective="find IC50<=20",
+                                 problem_id="prob-x",
+                                 constraints=problem.constraints),
+        hypotheses=cfg.hypotheses, k=1, rounds=1, autonomy="observe",
+        inbox=str(tmp_path), poll_secs=0.05, labs=cfg.labs)
+    assert run_campaign(cfg2, SimulatorLab(seed=3), store
+                        ).problem_id == "prob-x-2"      # a real re-run
