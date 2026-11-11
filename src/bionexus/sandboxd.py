@@ -16,12 +16,24 @@ import json
 import sys
 
 
-def _build_registry():
-    from bionexus.core.registry import Registry
+def _build_registry(tool_paths: list[str] | None = None):
+    """Entry-point tools + the descriptor tool + whatever tool classes the
+    host says it has registered (so sandboxed and in-process runs see the
+    same tools). A path that cannot be built here is skipped; the invoke
+    then fails loudly as 'no tool registered'."""
+    from bionexus.core.registry import Registry, import_string
     reg = Registry()
     reg.load_entry_points()
     from bionexus.adapters.bio.rdkit_ops import MoleculeDescriptors
     reg.register_tool(MoleculeDescriptors())
+    have = set(reg.tool_paths())
+    for path in tool_paths or []:
+        if path in have:
+            continue
+        try:
+            reg.register_tool(import_string(path)())
+        except Exception:
+            continue
     return reg
 
 
@@ -72,7 +84,7 @@ def run(request_json: str) -> str:
         from bionexus.core.contracts import ToolInvocation, ToolResult
         inv = ToolInvocation.model_validate(req["invocation"])
         try:
-            result = _build_registry().invoke(inv)
+            result = _build_registry(req.get("tools")).invoke(inv)
         except LookupError as e:
             result = ToolResult(envelope=inv.envelope,
                                 invocation_id=inv.invocation_id,

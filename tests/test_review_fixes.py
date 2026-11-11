@@ -220,3 +220,16 @@ def test_docker_user_is_opt_in_flag():
     r = R()
     DockerSandbox(image="img:1", runner=r, user="65534:65534")
     assert r.args[r.args.index("--user") + 1] == "65534:65534"
+
+
+def test_sandbox_worker_rebuilds_the_hosts_tool_set():
+    from bionexus.core.registry import Registry
+    from bionexus.sandboxd import _build_registry
+    from bionexus.adapters.bio.structure_score import StructureScorer
+    host = Registry()
+    host.register_tool(StructureScorer())
+    paths = host.tool_paths()
+    assert paths == ["bionexus.adapters.bio.structure_score:StructureScorer"]
+    worker = _build_registry(paths)
+    assert "bionexus.adapters.bio.structure_score:StructureScorer" in \
+        worker.tool_paths()

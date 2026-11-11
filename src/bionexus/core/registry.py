@@ -47,6 +47,16 @@ class Registry:
                         tool, len(tools), type(ranked[0]).__name__)
         return ranked[0]
 
+    def tool_paths(self) -> list[str]:
+        """'module:Class' of every registered tool, so a sandbox worker can
+        rebuild the SAME tool set (tools registered in code, not just entry
+        points, would otherwise vanish inside the sandbox)."""
+        seen: dict[str, None] = {}
+        for tools in self._tools.values():
+            for t in tools:
+                seen[f"{type(t).__module__}:{type(t).__qualname__}"] = None
+        return list(seen)
+
     def invoke(self, invocation: ToolInvocation) -> ToolResult:
         tool = self.resolve(invocation.tool)
         return tool.invoke(invocation)

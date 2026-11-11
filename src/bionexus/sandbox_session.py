@@ -79,16 +79,19 @@ class SandboxSession:
             def invoke(self, invocation):
                 if session.sandbox is None:
                     return inner.invoke(invocation)
-                return session.invoke(invocation)
+                return session.invoke(invocation,
+                                      tools=inner.tool_paths())
 
             def __getattr__(self, item):
                 return getattr(inner, item)
 
         return _SessionRegistry()
 
-    def invoke(self, invocation) -> ToolResult:
-        data = self.call({"invocation": invocation.model_dump(mode="json")},
-                         timeout=invocation.timeout_secs + 15)
+    def invoke(self, invocation, tools: list[str] | None = None) -> ToolResult:
+        req: dict = {"invocation": invocation.model_dump(mode="json")}
+        if tools:
+            req["tools"] = tools       # the host's tool set, rebuilt in-sandbox
+        data = self.call(req, timeout=invocation.timeout_secs + 15)
         if "error" in data:
             return ToolResult(
                 envelope=invocation.envelope,
