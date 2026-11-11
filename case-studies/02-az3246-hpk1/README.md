@@ -10,15 +10,15 @@ was published **after the agent model's training cutoff**. Probes recorded in
 provenance (step 0) confirm the model has no knowledge of the paper or of
 AZ3246. The agent nevertheless derived the paper's optimization hypothesis from
 45 structures alone, and its blinded potency ranking agreed with the paper's
-measurements — **outperforming a Random Forest trained on ~25,600 other HPK1
-measurements**.
+measurements — **outperforming a Random Forest trained on ~7,100 other HPK1
+measurements** (see the 2026-11-11 correction below).
 
 **Verdict: both pre-registered reproduction checks PASSED, contamination-free.**
 
 | Question | Result |
 |---|---|
 | Q1 — Does the agent derive the paper's optimization hypothesis (pyrazine-carboxamide core) from structures alone? | **PASS** — agent named the carboxamide core and the aminopyrimidine/pyrazine hinge-binder family; the paper series was confirmed to contain the pyrazine ring by substructure search |
-| Q2 — Are blinded potency scores consistent with the published values? | **PASS** — agent ranking ρ = +0.42 (best compound rank 2/21); trained RF ρ = +0.08 |
+| Q2 — Are blinded potency scores consistent with the published values? | **PASS** — agent ranking ρ = +0.42 (best compound rank 2/21); trained RF ρ = +0.125 (deduplicated pool; was +0.08) |
 
 ## The held-out paper
 
@@ -45,8 +45,8 @@ part of the audit trail, not an assertion.
 ## Method
 
 1. **Held out:** all 109 measured values from the paper (21 unique compounds).
-2. **Trained model:** Morgan fingerprints + Random Forest on **25,637 other
-   HPK1 binding measurements** from ChEMBL (excluding the paper's document).
+2. **Trained model:** Morgan fingerprints + Random Forest on **7,078 other
+   (deduplicated) HPK1 binding measurements** from ChEMBL (excluding the paper's document).
 3. **Blind agent task:** 45 structures sampled across the potency range;
    the agent stated binding-hypothesis families and scored every compound
    0–100. It saw no values.
@@ -72,7 +72,7 @@ The agent's top hypothesis (confidence 0.8):
 | Ranking source | Spearman ρ vs published pIC50 | Rank of the paper's most potent compound |
 |---|---|---|
 | Agent's blinded scores | **+0.42** | 2 of 21 |
-| Trained RF (25.6k HPK1 values) | +0.08 | 1 of 21 |
+| Trained RF (7,078 deduplicated HPK1 values) | +0.125 | 6 of 21 |
 
 **The LLM agent's transferable reasoning outperformed the trained model's
 calibrated predictions on this paper** — a measured finding the BioNexus
@@ -108,9 +108,32 @@ Requires network (ChEMBL) and `BIONEXUS_LLM_*` / `ANTHROPIC_*` env for the
 agent. Artifacts: `case_study.db` — inspect with
 `bn prove case-study-02 --db case_study.db --html report.html`.
 
-## Reproducibility (trust-audit label, Oct 10)
+## Correction (2026-11-11): RF baseline recomputed on the deduplicated pool
 
-Post-cutoff study: needs network + LLM; the sealed chain (case_study.db,
-local-only) carries the contamination probes and verdicts. The ρ values
-were produced in that run; an offline re-rank of the frozen training pool
-is queued in the ROADMAP — treat the number as recorded, not reproducible.
+The original figures (RF ρ = +0.08, rank 1 of 21, "25,637 measurements") were
+computed on a training pool inflated by an offset-pagination bug: the cursor
+was mangled, repeated pages returned the same rows, and duplicates were
+counted as independent measurements. The pool is now fetched correctly
+(30 pages, **7,078 unique measurements**), frozen in `fixtures/`, and the RF
+comparator is recomputed offline by `rf_baseline.py`:
+
+| | original (duplicate-inflated) | corrected |
+|---|---|---|
+| training rows | 25,637 | **7,078** |
+| RF Spearman ρ vs the paper | +0.08 | **+0.125** |
+| rank of the most potent compound | 1 of 21 | **6 of 21** |
+| RF after removing training rows that share a Murcko scaffold with the paper series | — | +0.03 |
+
+The agent's numbers (ρ = +0.42, best compound rank 2/21) are **unchanged**:
+the agent never sees the training pool, and the LLM run was not repeated (it
+needs a network and an API key). The qualitative result holds — the agent's
+blinded ranking is better than the RF's — but the RF is a little better and
+the margin smaller than first reported (+0.42 vs +0.125, not +0.42 vs +0.08).
+
+## Reproducibility (trust-audit label, Oct 10; updated Nov 11)
+
+The RF comparator is now reproducible offline from the frozen fixtures
+(`python case-studies/02-az3246-hpk1/rf_baseline.py`). The agent half is a
+post-cutoff study that needs network + an LLM; the sealed chain
+(`case_study.db`, local-only) carries the contamination probes and verdicts.
+Treat the agent's ρ as recorded, not reproducible.

@@ -162,7 +162,7 @@ def main() -> None:
                         seen_rows.add(row)       # rows; dedupe honestly
                         train.append(row)
         nxt = (d.get("page_meta") or {}).get("next") or ""
-        url = nxt.replace("https://www.ebi.ac.uk", "") or ""
+        url = nxt.replace("https://www.ebi.ac.uk", "").replace("/chembl/api/data", "", 1) or ""
         if not d.get("activities"):
             break
     print(f"    training values: {len(train)}")

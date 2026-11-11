@@ -85,7 +85,7 @@ def fetch_doc_activities(doc_id: str) -> list[dict]:
         d = chembl(p)
         out += d.get("activities", [])
         nxt = d.get("page_meta", {}).get("next") or ""
-        p = nxt.replace("https://www.ebi.ac.uk", "")
+        p = nxt.replace("https://www.ebi.ac.uk", "").replace("/chembl/api/data", "", 1)
         if not p or not d.get("activities"):
             break
     f.write_text(json.dumps(out))
@@ -114,7 +114,7 @@ def fetch_target_pool(target_id: str, exclude_doc: str, cap: int = 20000) -> lis
                     if 0 < v < 1e5:
                         rows.append([smi, -math.log10(v * 1e-9)])
             nxt = d.get("page_meta", {}).get("next") or ""
-            p = nxt.replace("https://www.ebi.ac.uk", "")
+            p = nxt.replace("https://www.ebi.ac.uk", "").replace("/chembl/api/data", "", 1)
             if not p or not d.get("activities"):
                 break
         f.write_text(json.dumps(rows))

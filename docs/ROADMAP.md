@@ -780,9 +780,12 @@ protocols (Make on rig X, Test on reader Y — a plan, not a choice).
   `materialize()` restores caches byte-identically, `bn fixtures verify` in
   CI (`fixtures` job). Pagination bug (offset-`next` mangled into a bogus
   cursor -> duplicate training rows) fixed in CS02/CS03 during freezing.
-  [ ] CS02 training-pool freeze INCOMPLETE — EBI 500s on offset pages;
-  re-warm + re-freeze when it recovers, then re-run CS02 artifacts (its
-  published numbers were computed on the duplicate-inflated training set).
+  [x] CS02 training pool re-fetched and frozen (Nov 11: the 'EBI 500s' were
+  really a cursor bug — `next` is a relative path, the host-strip left a doubled
+  `/chembl/api/data` prefix -> 404; fixed in CS02/CS03 runners). RF baseline
+  recomputed offline (`rf_baseline.py`): rho +0.125 on 7,078 unique rows (was
+  +0.08 on a duplicate-inflated 25.6k); the agent's numbers need an LLM run and
+  are unchanged.
 - [x] CS03 `--llm` sweep COMPLETED 2026-09-10 (reuse fast-path + glm-4.5-air):
   blind chemotype ID 4/4, variant probe flagged 1 leakage-suspect that the
   self-report missed, agent-vs-RF mixed rankings reported honestly.
