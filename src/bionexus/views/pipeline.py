@@ -142,6 +142,93 @@ def _ci_margin(ci, threshold) -> str:
     return ""
 
 
+def _tested_by_candidate(tested: dict) -> dict:
+    """Latest tested record per candidate (highest seq wins)."""
+    out: dict = {}
+    for v in tested.values():
+        c = v.get("candidate")
+        if not c:
+            continue
+        cur = out.get(c)
+        if not cur or v.get("seq", 0) >= cur.get("seq", 0):
+            out[c] = v
+    return out
+
+
+def _merge_verdict(verd: dict, verd_c: dict) -> dict:
+    """Whichever record is MORE RECENT wins on status — the candidate-keyed
+    round roll-up may postdate the hid-keyed readout, and vice versa (a
+    confirmation record is hid-keyed and terminal). The terminal verdict
+    wins on STATUS; the preliminary readout's observed/CI is kept when the
+    terminal record carries none (round roll-ups don't repeat the number)."""
+    if not (verd_c.get("verdict")
+            and verd_c.get("seq", 0) >= verd.get("seq", 0)):
+        return verd
+    return {**verd, **verd_c,
+            "observed": verd_c.get("observed")
+            if verd_c.get("observed") is not None else verd.get("observed"),
+            "ci": verd_c.get("ci") or verd.get("ci"),
+            "evidence": verd_c.get("evidence") or verd.get("evidence"),
+            "derivation": verd_c.get("derivation") or verd.get("derivation"),
+            "proxy_evidence": verd_c.get("proxy_evidence")
+            or verd.get("proxy_evidence"),
+            "extrapolation": verd_c.get("extrapolation")
+            or verd.get("extrapolation")}
+
+
+def _card_state(v, *, hid, cand, sel, refused, run_map, unit_lbl, observed,
+                ci_txt, margin, ad_chip) -> tuple[str, str]:
+    """(state, stage text) for one card — the pipeline state machine."""
+    obs_txt = (f" — {unit_lbl} {observed}{ci_txt}"
+               if observed is not None else "")
+    paren = (f" ({unit_lbl} {observed}{ci_txt})"
+             if observed is not None else "")
+    if v == "confirmed":
+        return "confirmed", "confirmed by orthogonal assay" + obs_txt + margin
+    if v == "validated":
+        return "validated", "validated (preliminary)" + obs_txt + margin
+    if v == "inconclusive":
+        return "inconclusive", ("inconclusive — CI straddles the threshold"
+                                + paren + ad_chip)
+    if v in ("refuted", "invalidated"):
+        return "refuted", "refuted" + paren + margin
+    if refused.get(str(cand)):
+        return "refused", "refused by gate — " + refused[str(cand)][:70]
+    if run_map.get(hid):
+        return "in_lab", "in lab"
+    if sel and sel.get("selected"):
+        return "selected", "selected — awaiting submission"
+    if sel:
+        return "not_selected", "not selected"
+    return "proposed", "proposed"
+
+
+def _gate_label(hp: dict, verd: dict):
+    from bionexus.derivation import criteria_label
+    crit = hp.get("criteria") or {}
+    gate_lbl = (criteria_label(crit.get("metric"), crit.get("direction"),
+                               crit["threshold"])
+                if crit.get("threshold") is not None else None)
+    evd = (verd or {}).get("proxy_evidence")
+    if gate_lbl and isinstance(evd, dict) and evd.get("resolved"):
+        n = evd["rungs"]
+        gate_lbl += (f" · {n} proxy rung{'s' if n != 1 else ''} "
+                     "from clinical")
+    elif gate_lbl and isinstance(evd, dict) and not evd.get("resolved"):
+        gate_lbl += " · proxy chain unresolved (distance unknown)"
+    return gate_lbl, evd
+
+
+def _card_statement(hp: dict, head) -> str:
+    stmt = str(hp.get("statement", ""))
+    # the label is often a truncation of the statement itself —
+    # strip any leading duplication before cosmetics
+    if stmt.startswith(str(head)):
+        stmt = stmt[len(str(head)):].strip(" —-·:")
+    return re.sub(rf"^{re.escape(str(head))}\s*(\([^)]*\))?\s*[—-]\s*",
+                  "", stmt) or head   # statement was the label itself
+
+
 def pipeline_cards(recs) -> list[dict]:
     """Card dicts for the Hypothesis Pipeline, in proposed order.
     State machine: confirmed/validated/inconclusive/refuted/refused/
@@ -153,49 +240,15 @@ def pipeline_cards(recs) -> list[dict]:
     run_map = data["run_map"]
     cand2round = {cand: rnd for rnd, cands in round_markers(recs)
                   for cand in cands}
-    tested_by_cand: dict = {}
-    for _v in tested.values():
-        _c = _v.get("candidate")
-        if not _c:
-            continue
-        _cur = tested_by_cand.get(_c)
-        if not _cur or _v.get("seq", 0) >= _cur.get("seq", 0):
-            tested_by_cand[_c] = _v
-    from bionexus.derivation import criteria_label, metric_label
+    tested_by_cand = _tested_by_candidate(tested)
+    from bionexus.derivation import metric_label
     cards = []
     for hid, hp in proposed.items():
         sel = filtered.get(hid)
         cand = hp.get("candidate")
         head = cand or hid
-        stmt = str(hp.get("statement", ""))
-        # the label is often a truncation of the statement itself —
-        # strip any leading duplication before cosmetics
-        if stmt.startswith(str(head)):
-            stmt = stmt[len(str(head)):].strip(" \u2014-·:")
-        stmt = re.sub(rf"^{re.escape(str(head))}\s*(\([^)]*\))?\s*[—-]\s*",
-                      "", stmt) or head   # statement was the label itself
-        verd = tested.get(hid) or {}
-        verd_c = tested_by_cand.get(str(cand), {})
-        # whichever record is MORE RECENT wins on status — the candidate-
-        # keyed round roll-up may postdate the hid-keyed readout, and vice
-        # versa (a confirmation record is hid-keyed and terminal)
-        if verd_c.get("verdict") and verd_c.get("seq", 0) >= verd.get("seq", 0):
-            # terminal candidate verdict wins on STATUS; keep the
-            # preliminary readout's observed/CI when the terminal record
-            # carries none (round roll-ups don't repeat the number)
-            verd = {**verd, **verd_c,
-                    "observed": verd_c.get("observed")
-                    if verd_c.get("observed") is not None
-                    else verd.get("observed"),
-                    "ci": verd_c.get("ci") or verd.get("ci"),
-                    "evidence": verd_c.get("evidence")
-                    or verd.get("evidence"),
-                    "derivation": verd_c.get("derivation")
-                    or verd.get("derivation"),
-                    "proxy_evidence": verd_c.get("proxy_evidence")
-                    or verd.get("proxy_evidence"),
-                    "extrapolation": verd_c.get("extrapolation")
-                    or verd.get("extrapolation")}
+        verd = _merge_verdict(tested.get(hid) or {},
+                              tested_by_cand.get(str(cand), {}))
         v = (verd.get("verdict") or "").lower()
         ci = verd.get("ci")
         ci_txt = (f" (95% CI {ci[0]}–{ci[1]})" if ci else "")
@@ -210,62 +263,22 @@ def pipeline_cards(recs) -> list[dict]:
                        "beyond its applicability domain")
             margin += ad_chip
         observed = verd.get("observed")
-        obs_txt = (f" — {unit_lbl} {observed}{ci_txt}"
-                   if observed is not None else "")
-        if v == "confirmed":
-            state = "confirmed"
-            stage = "confirmed by orthogonal assay" + obs_txt + margin
-        elif v == "validated":
-            state = "validated"
-            stage = "validated (preliminary)" + obs_txt + margin
-        elif v == "inconclusive":
-            state = "inconclusive"
-            stage = ("inconclusive — CI straddles the threshold"
-                     + (f" ({unit_lbl} {observed}{ci_txt})"
-                        if observed is not None else "") + ad_chip)
-        elif v in ("refuted", "invalidated"):
-            state = "refuted"
-            stage = "refuted" + f" ({unit_lbl} {observed}{ci_txt})" \
-                if observed is not None else "refuted"
-            stage = "refuted" + (f" ({unit_lbl} {observed}{ci_txt})"
-                                 if observed is not None else "") + margin
-        elif refused.get(str(cand)):
-            state = "refused"
-            stage = ("refused by gate — "
-                     + refused[str(cand)][:70])
-        elif run_map.get(hid):
-            state = "in_lab"
-            stage = "in lab"
-        elif sel and sel.get("selected"):
-            state = "selected"
-            stage = "selected — awaiting submission"
-        elif sel:
-            state = "not_selected"
-            stage = "not selected"
-        else:
-            state = "proposed"
-            stage = "proposed"
+        state, stage = _card_state(
+            v, hid=hid, cand=cand, sel=sel, refused=refused, run_map=run_map,
+            unit_lbl=unit_lbl, observed=observed, ci_txt=ci_txt,
+            margin=margin, ad_chip=ad_chip)
         crit = hp.get("criteria") or {}
         _pb = hp.get("predicted_by")
         if isinstance(_pb, dict) and (_pb.get("ad") or {}).get("extrapolation"):
             _pb = {**_pb, "note": ("prediction came from a model OUTSIDE its "
                                    "applicability domain — treated as a "
                                    "question to test, never as evidence")}
-        gate_lbl = (criteria_label(crit.get("metric"), crit.get("direction"),
-                                   crit["threshold"])
-                    if crit.get("threshold") is not None else None)
-        _evd = (verd or {}).get("proxy_evidence")
-        if gate_lbl and isinstance(_evd, dict) and _evd.get("resolved"):
-            _n = _evd["rungs"]
-            gate_lbl += (f" · {_n} proxy rung{'s' if _n != 1 else ''} "
-                         "from clinical")
-        elif gate_lbl and isinstance(_evd, dict) and not _evd.get("resolved"):
-            gate_lbl += " · proxy chain unresolved (distance unknown)"
+        gate_lbl, _evd = _gate_label(hp, verd)
         cards.append({
             "key": hid,
             "candidate": cand,
             "head": str(head),
-            "statement": stmt,
+            "statement": _card_statement(hp, head),
             "rationale": hp.get("rationale"),
             "predicted": hp.get("predicted"),
             "predicted_by": _pb,
