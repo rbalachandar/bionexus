@@ -77,6 +77,13 @@ class DeviceMonitor:
             time.sleep(self.poll_secs)
 
 
+def _as_dicts(records):
+    """Records may be dicts (labread) or Measurement models (simulator);
+    read both shapes uniformly."""
+    for m in records:
+        yield m if isinstance(m, dict) else m.model_dump()
+
+
 class AutoAnalysisAgent:
     """Reacts to lab events: reads results, updates hypotheses, records decisions.
 
@@ -114,223 +121,215 @@ class AutoAnalysisAgent:
         self._confirmations: dict[str, dict] = {}   # run_id -> confirmation task
         self._confirm_submitted: set[str] = set()   # candidates already confirmed
 
+    _OPEN = ("proposed", "designed", "tested")
+
     def handle(self, event: LabEvent) -> dict[str, Any] | None:
         if event.kind != "plate_ready" or event.path is None:
             return None
-        from bionexus.labread import QC_ZPRIME_FLOOR, read_plate, replicate_ci
-
         try:
             if self.adaptive:
                 return self._handle_adaptive(event)
             conf = self._confirmations.get(event.path.stem)
             if conf:
                 return self._handle_confirmation(event, conf)
-            self.notify(f"reading instrument output {event.path.name} "
-                        "(device finished the measurement)")
-            result = read_plate(event.path, max_response=self.max_response)
-            from bionexus.physfail import classify as _fm
-            _phys = _fm([r["value"] for r in result.records])
-            if _phys["kind"] == "physical":
-                self.notify(f"⚠ PHYSICAL failure mode "
-                            f"({event.path.name}): {_phys['evidence']} — "
-                            f"{_phys['action']}; no verdicts derived")
-                self._record_failure_mode(event, _phys)
-                return {"failure_mode": _phys, "file": event.path.name}
+            result, early = self._read_checked(event)
+            if early is not None:
+                return early
         except Exception as exc:
-            # classify BEFORE the retry reflex: physical failures must not be
-            # treated as software hiccups (the foam/retry trap)
-            from bionexus.physfail import classify as _fm
-            verdict = _fm([], error=str(exc))
-            if verdict["kind"] == "physical":
-                self.notify(f"⚠ PHYSICAL failure mode "
-                            f"({event.path.name}): {verdict['evidence']} — "
-                            f"{verdict['action']}")
-                self._record_failure_mode(event, verdict)
-                return {"error": str(exc)[:200], "file": event.path.name,
-                        "failure_mode": verdict}
+            return self._unreadable(event, exc)
+        self.notify(f"analyzed: {len(result.analysis['compounds'])} compound(s), "
+                    f"Z'~{result.z_prime} (heuristic)")
+        verdicts = self._update_hypotheses(event, result) if self.tracker else []
+        self._recommend(result)
+        return {"compounds": len(result.analysis["compounds"]),
+                "z_prime": result.z_prime, "verdicts": verdicts}
+
+    # ---- reading ----------------------------------------------------------
+
+    def _read_checked(self, event: LabEvent):
+        """Read the export and screen it for PHYSICAL failure modes first.
+        Returns (result, None) or (None, early_summary)."""
+        from bionexus.labread import read_plate
+        from bionexus.physfail import classify as _fm
+        self.notify(f"reading instrument output {event.path.name} "
+                    "(device finished the measurement)")
+        result = read_plate(event.path, max_response=self.max_response)
+        phys = _fm([r["value"] for r in result.records])
+        if phys["kind"] == "physical":
+            self.notify(f"⚠ PHYSICAL failure mode "
+                        f"({event.path.name}): {phys['evidence']} — "
+                        f"{phys['action']}; no verdicts derived")
+            self._record_failure_mode(event, phys)
+            return None, {"failure_mode": phys, "file": event.path.name}
+        return result, None
+
+    def _unreadable(self, event: LabEvent, exc: Exception) -> dict[str, Any]:
+        # classify BEFORE the retry reflex: physical failures must not be
+        # treated as software hiccups (the foam/retry trap)
+        from bionexus.physfail import classify as _fm
+        verdict = _fm([], error=str(exc))
+        if verdict["kind"] == "physical":
+            self.notify(f"⚠ PHYSICAL failure mode "
+                        f"({event.path.name}): {verdict['evidence']} — "
+                        f"{verdict['action']}")
+            self._record_failure_mode(event, verdict)
+        else:
             self.notify(f"⚠ instrument output unreadable ({event.path.name}): "
                         f"{str(exc)[:120]} — flagged for review, no verdicts "
                         f"changed")
-            return {"error": str(exc)[:200], "file": event.path.name,
-                    "failure_mode": verdict}
-        self.notify(f"analyzed: {len(result.analysis['compounds'])} compound(s), "
-                    f"Z'~{result.z_prime} (heuristic)")
+        return {"error": str(exc)[:200], "file": event.path.name,
+                "failure_mode": verdict}
 
-        # auto-update hypotheses whose candidate appears in this plate
-        verdicts = []
-        if self.tracker:
-            for hyp in self.tracker.hypotheses.values():
-                match = result.analysis["compounds"].get(hyp.candidate)
-                crit = hyp.criteria
-                # property metrics (potency_pct, tensile, ...) read the
-                # recorded value at the HIGHEST dose directly; only
-                # IC50-style metrics use the Hill fit
-                prop_value = None
-                if crit and crit.metric not in ("ic50_um", "value"):
-                    # records may be dicts (labread) or Measurement
-                    # models (simulator); read both shapes uniformly
-                    def _recs():
-                        for m in result.records:
-                            if isinstance(m, dict):
-                                yield m
-                            else:
-                                yield m.model_dump()
-                    cand_vals = []
-                    any_val = None
-                    for rec in _recs():
-                        if rec.get("sample") != hyp.candidate:
-                            continue
-                        if rec.get("control"):
-                            continue
-                        if any_val is None:
-                            any_val = rec.get("value")
-                        conc = rec.get("conc_um")
-                        val = rec.get("value")
-                        if isinstance(conc, (int, float)) and \
-                                isinstance(val, (int, float)):
-                            cand_vals.append((conc, val))
-                    if cand_vals:
-                        # replicate-mean at the top dose + well-level
-                        # bootstrap CI: property metrics get the SAME
-                        # abstention machinery as IC50 fits
-                        top_conc = max(c for c, _ in cand_vals)
-                        top_vals = [v for c, v in cand_vals if c == top_conc]
-                        prop_value = sum(top_vals) / len(top_vals)
-                        prop_ci = replicate_ci(top_vals)
-                    elif any_val is not None:
-                        prop_value = any_val
-                        prop_ci = None
-                    else:
-                        prop_value = None
-                        prop_ci = None
-                if prop_value is not None and hyp.status in (
-                        "proposed", "designed", "tested"):
-                    hyp.observed_value = prop_value
-                    hyp.observed_ci = prop_ci
-                    hyp.evidence_run_id = event.path.stem
-                    hyp.qc_passed = (result.z_prime or 0) >= QC_ZPRIME_FLOOR
-                    if crit:
-                        hyp.status = crit.classify(prop_value, prop_ci)
-                    if hasattr(self.tracker, "record_outcome"):
-                        from bionexus.derivation import build
-                        inst, ver = self._instrument()
-                        self.tracker.record_outcome(hyp, extra={
-                            "derivation": build(
-                                instrument=inst, version=ver,
-                                quantity=crit.metric,
-                                counts={"wells": len(result.records),
-                                        "replicates_at_gate_dose":
-                                            len(top_vals) if cand_vals else 1},
-                                metric=crit.metric,
-                                method="property readout: replicate mean "
-                                       "at top dose" if prop_ci else
-                                       "property readout at highest dose "
-                                       "(single reading — no variance "
-                                       "estimate)",
-                                ci="replicate bootstrap 95%" if prop_ci
-                                   else None,
-                                criteria_metric=crit.metric,
-                                criteria_direction=crit.direction,
-                                criteria_threshold=crit.threshold),
-                            "direction": crit.direction})
-                    verdicts.append((hyp.hypothesis_id, hyp.candidate,
-                                     hyp.status, prop_value))
-                    unit = ""
-                    for rec in result.records:
-                        d_ = rec if isinstance(rec, dict) else rec.model_dump()
-                        if d_.get("sample") == hyp.candidate:
-                            unit = d_.get("unit", "")
-                            break
-                    self.notify(f"hypothesis {hyp.hypothesis_id} "
-                                f"({hyp.candidate}): {hyp.status.upper()} — "
-                                f"{crit.metric} {prop_value} {unit} vs "
-                                f"threshold {crit.threshold}")
-                    continue
-                if (match and hyp.status in ("proposed", "designed", "tested")
-                        and (not match["ic50_um"]
-                             or match.get("right_censored")
-                             or match.get("left_censored"))):
-                    # CENSORED = unmeasurable on this ladder: transition above
-                    # the top (weaker than measurable) or a saturated plateau
-                    # at the fit-grid floor (stronger than measurable). The
-                    # fit refuses a number — honest — but a hypothesis left
-                    # silently 'tested' is an implicit claim. ABSTAIN
-                    # explicitly, with the censoring recorded as the reason.
-                    hyp.observed_value = None
-                    hyp.observed_ci = None
-                    hyp.evidence_run_id = event.path.stem
-                    hyp.qc_passed = (result.z_prime or 0) >= QC_ZPRIME_FLOOR
-                    hyp.status = "inconclusive"
-                    _why = ("left-censored at the fit-grid floor: true IC50 "
-                            "is below the measurable window (range "
-                            "statement, not an IC50)"
-                            if match.get("left_censored")
-                            else "right-censored: no measurable transition "
-                                 "below the top dose (weaker than this "
-                                 "ladder resolves)")
-                    if hasattr(self.tracker, "record_outcome"):
-                        from bionexus.derivation import build
-                        inst, ver = self._instrument()
-                        self.tracker.record_outcome(hyp, extra={
-                            "derivation": build(
-                                instrument=inst, version=ver,
-                                quantity=getattr(result, "response_unit", None),
-                                counts={"wells": len(result.records)},
-                                metric=hyp.criteria.metric if hyp.criteria else None,
-                                method=_why,
-                                ci=None,
-                                criteria_metric=hyp.criteria.metric if hyp.criteria else None,
-                                criteria_direction=hyp.criteria.direction if hyp.criteria else None,
-                                criteria_threshold=hyp.criteria.threshold if hyp.criteria else None)})
-                    verdicts.append((hyp.hypothesis_id, hyp.candidate,
-                                     hyp.status, None))
-                    self.notify(f"hypothesis {hyp.hypothesis_id} "
-                                f"({hyp.candidate}): INCONCLUSIVE — {_why}; "
-                                f"no claim either way")
-                elif match and hyp.status in ("proposed", "designed", "tested") and match["ic50_um"]:
-                    # attach evidence directly (measurement already fitted)
-                    hyp.observed_value = match["ic50_um"]
-                    hyp.observed_ci = match.get("ic50_ci")
-                    hyp.evidence_run_id = event.path.stem  # run ↔ verdict link
-                    hyp.qc_passed = (result.z_prime or 0) >= QC_ZPRIME_FLOOR
-                    if hyp.criteria:
-                        if not match.get("ic50_ci"):
-                            # NO-USABLE-CI RULE: a fit whose residual bootstrap
-                            # collapsed (hill-no-ci) or that leans on a
-                            # 2-point interpolation carries unknown
-                            # uncertainty — exactly when a binary call is
-                            # least defensible. Abstain, don't guess.
-                            hyp.status = "inconclusive"
-                        else:
-                            hyp.status = hyp.criteria.classify(
-                                match["ic50_um"], match["ic50_ci"])
-                    if hasattr(self.tracker, "record_outcome"):
-                        from bionexus.derivation import build
-                        inst, ver = self._instrument()
-                        crit = hyp.criteria
-                        self.tracker.record_outcome(hyp, extra={
-                            "derivation": build(
-                                instrument=inst, version=ver,
-                                quantity=getattr(result, "response_unit", None),
-                                counts={"wells": len(result.records)},
-                                metric=crit.metric if crit else None,
-                                method=match.get("fit_method"),
-                                ci="residual bootstrap 95%"
-                                   if match.get("ic50_ci") else None,
-                                criteria_metric=crit.metric if crit else None,
-                                criteria_direction=crit.direction if crit else None,
-                                criteria_threshold=crit.threshold if crit else None)})
-                    verdicts.append((hyp.hypothesis_id, hyp.candidate, hyp.status,
-                                     match["ic50_um"]))
-                    ci_txt = (f" (95% CI {match['ic50_ci'][0]}–{match['ic50_ci'][1]})"
-                              if match.get("ic50_ci") else "")
-                    self.notify(f"hypothesis {hyp.hypothesis_id} ({hyp.candidate}): "
-                                f"{hyp.status.upper()} (preliminary — pending "
-                                f"orthogonal confirmation) — IC50 {match['ic50_um']} uM"
-                                f"{ci_txt} vs threshold "
-                                f"{hyp.criteria.threshold if hyp.criteria else '?'}")
-        # scientist-facing diary line
-        best = sorted(((c, r["ic50_um"]) for c, r in result.analysis["compounds"].items()
+    # ---- hypotheses -------------------------------------------------------
+
+    def _update_hypotheses(self, event: LabEvent, result) -> list[tuple]:
+        """Auto-update hypotheses whose candidate appears in this plate."""
+        verdicts: list[tuple] = []
+        for hyp in self.tracker.hypotheses.values():
+            match = result.analysis["compounds"].get(hyp.candidate)
+            crit = hyp.criteria
+            is_open = hyp.status in self._OPEN
+            # property metrics (potency_pct, tensile, ...) read the recorded
+            # value at the HIGHEST dose directly; only IC50-style metrics
+            # use the Hill fit
+            readout = None
+            if crit and crit.metric not in ("ic50_um", "value"):
+                readout = self._property_readout(hyp, result)
+            if readout is not None and readout[0] is not None and is_open:
+                verdicts.append(self._verdict_property(event, result, hyp,
+                                                       *readout))
+            elif match and is_open and (not match["ic50_um"]
+                                        or match.get("right_censored")
+                                        or match.get("left_censored")):
+                verdicts.append(self._verdict_censored(event, result, hyp,
+                                                       match))
+            elif match and is_open and match["ic50_um"]:
+                verdicts.append(self._verdict_fitted(event, result, hyp, match))
+        return verdicts
+
+    @staticmethod
+    def _property_readout(hyp, result):
+        """(value, ci, n_replicates_at_top_dose, had_dose_series) for a
+        property metric; value None when the plate has no reading."""
+        from bionexus.labread import replicate_ci
+        cand_vals = []
+        any_val = None
+        for rec in _as_dicts(result.records):
+            if rec.get("sample") != hyp.candidate or rec.get("control"):
+                continue
+            if any_val is None:
+                any_val = rec.get("value")
+            conc, val = rec.get("conc_um"), rec.get("value")
+            if isinstance(conc, (int, float)) and isinstance(val, (int, float)):
+                cand_vals.append((conc, val))
+        if cand_vals:
+            # replicate-mean at the top dose + well-level CI: property
+            # metrics get the SAME abstention machinery as IC50 fits
+            top_conc = max(c for c, _ in cand_vals)
+            top_vals = [v for c, v in cand_vals if c == top_conc]
+            return (sum(top_vals) / len(top_vals), replicate_ci(top_vals),
+                    len(top_vals), True)
+        if any_val is not None:
+            return any_val, None, 1, False
+        return None
+
+    def _record_derivation(self, hyp, extra_top: dict | None = None, **kw):
+        if not hasattr(self.tracker, "record_outcome"):
+            return
+        from bionexus.derivation import build
+        inst, ver = self._instrument()
+        extra = {"derivation": build(instrument=inst, version=ver, **kw)}
+        extra.update(extra_top or {})
+        self.tracker.record_outcome(hyp, extra=extra)
+
+    def _attach(self, event, result, hyp, value, ci) -> None:
+        from bionexus.labread import QC_ZPRIME_FLOOR
+        hyp.observed_value = value
+        hyp.observed_ci = ci
+        hyp.evidence_run_id = event.path.stem        # run <-> verdict link
+        hyp.qc_passed = (result.z_prime or 0) >= QC_ZPRIME_FLOOR
+
+    def _verdict_property(self, event, result, hyp, value, ci, n_top, _series):
+        crit = hyp.criteria
+        self._attach(event, result, hyp, value, ci)
+        hyp.status = crit.classify(value, ci)
+        self._record_derivation(
+            hyp, {"direction": crit.direction},
+            quantity=crit.metric,
+            counts={"wells": len(result.records),
+                    "replicates_at_gate_dose": n_top},
+            metric=crit.metric,
+            method=("property readout: replicate mean at top dose" if ci else
+                    "property readout at highest dose (single reading — no "
+                    "variance estimate)"),
+            ci="replicate bootstrap 95%" if ci else None,
+            criteria_metric=crit.metric, criteria_direction=crit.direction,
+            criteria_threshold=crit.threshold)
+        unit = next((d.get("unit", "") for d in _as_dicts(result.records)
+                     if d.get("sample") == hyp.candidate), "")
+        self.notify(f"hypothesis {hyp.hypothesis_id} ({hyp.candidate}): "
+                    f"{hyp.status.upper()} — {crit.metric} {value} {unit} vs "
+                    f"threshold {crit.threshold}")
+        return (hyp.hypothesis_id, hyp.candidate, hyp.status, value)
+
+    def _verdict_censored(self, event, result, hyp, match):
+        # CENSORED = unmeasurable on this ladder: transition above the top
+        # (weaker than measurable) or a saturated plateau at the fit-grid
+        # floor (stronger than measurable). The fit refuses a number —
+        # honest — but a hypothesis left silently 'tested' is an implicit
+        # claim. ABSTAIN explicitly, with the censoring as the reason.
+        crit = hyp.criteria
+        self._attach(event, result, hyp, None, None)
+        hyp.status = "inconclusive"
+        why = ("left-censored at the fit-grid floor: true IC50 is below the "
+               "measurable window (range statement, not an IC50)"
+               if match.get("left_censored")
+               else "right-censored: no measurable transition below the top "
+                    "dose (weaker than this ladder resolves)")
+        self._record_derivation(
+            hyp, quantity=getattr(result, "response_unit", None),
+            counts={"wells": len(result.records)},
+            metric=crit.metric if crit else None, method=why, ci=None,
+            criteria_metric=crit.metric if crit else None,
+            criteria_direction=crit.direction if crit else None,
+            criteria_threshold=crit.threshold if crit else None)
+        self.notify(f"hypothesis {hyp.hypothesis_id} ({hyp.candidate}): "
+                    f"INCONCLUSIVE — {why}; no claim either way")
+        return (hyp.hypothesis_id, hyp.candidate, hyp.status, None)
+
+    def _verdict_fitted(self, event, result, hyp, match):
+        crit = hyp.criteria
+        self._attach(event, result, hyp, match["ic50_um"], match.get("ic50_ci"))
+        if crit:
+            if not match.get("ic50_ci"):
+                # NO-USABLE-CI RULE: a fit whose residual bootstrap collapsed
+                # (hill-no-ci) or that leans on a 2-point interpolation
+                # carries unknown uncertainty — exactly when a binary call is
+                # least defensible. Abstain, don't guess.
+                hyp.status = "inconclusive"
+            else:
+                hyp.status = crit.classify(match["ic50_um"], match["ic50_ci"])
+        self._record_derivation(
+            hyp, quantity=getattr(result, "response_unit", None),
+            counts={"wells": len(result.records)},
+            metric=crit.metric if crit else None,
+            method=match.get("fit_method"),
+            ci="residual bootstrap 95%" if match.get("ic50_ci") else None,
+            criteria_metric=crit.metric if crit else None,
+            criteria_direction=crit.direction if crit else None,
+            criteria_threshold=crit.threshold if crit else None)
+        ci_txt = (f" (95% CI {match['ic50_ci'][0]}–{match['ic50_ci'][1]})"
+                  if match.get("ic50_ci") else "")
+        self.notify(f"hypothesis {hyp.hypothesis_id} ({hyp.candidate}): "
+                    f"{hyp.status.upper()} (preliminary — pending orthogonal "
+                    f"confirmation) — IC50 {match['ic50_um']} uM{ci_txt} vs "
+                    f"threshold {crit.threshold if crit else '?'}")
+        return (hyp.hypothesis_id, hyp.candidate, hyp.status, match["ic50_um"])
+
+    def _recommend(self, result) -> None:
+        """Scientist-facing diary line + (optionally) the confirmation."""
+        best = sorted(((c, r["ic50_um"])
+                       for c, r in result.analysis["compounds"].items()
                        if r["ic50_um"]), key=lambda t: t[1])
         if best:
             candidate, ic50 = best[0]
@@ -338,9 +337,6 @@ class AutoAnalysisAgent:
                         f"(IC50 {ic50} uM) — next: confirm with orthogonal assay")
             if self.auto_confirm and candidate not in self._confirm_submitted:
                 self._submit_confirmation(candidate, ic50)
-        summary = {"compounds": len(result.analysis["compounds"]),
-                   "z_prime": result.z_prime, "verdicts": verdicts}
-        return summary
 
     _TERMINAL = ("validated", "confirmed", "invalidated", "refuted",
                  "inconclusive")
