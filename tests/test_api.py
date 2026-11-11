@@ -41,7 +41,7 @@ def client(tmp_path, monkeypatch):
         decision={"objective": "registered objective",
                   "constraints": [{"name": "strength_mpa",
                                    "description": ">= 70 MPa"}]}))
-    monkeypatch.setattr("bionexus.views.PROVENANCE_DB",
+    monkeypatch.setattr("bionexus.views.ids.PROVENANCE_DB",
                         str(tmp_path / "prov.db"))
     # routes capture the constant at call time via views; patch there
     with TestClient(app) as c:
