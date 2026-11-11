@@ -49,17 +49,28 @@ reasoning.
 [Using BioNexus](#using-bionexus) · [The virtual lab](#the-virtual-lab) ·
 [Five core interfaces](#five-core-interfaces) · [Agent Skills and MCP](#agent-skills-and-mcp) ·
 [Architecture](#architecture) · [Documentation](#documentation) ·
-[Design principles](#design-principles) · [References](#references--sources)
+[Architectural principles](#architectural-principles) · [References](#references--sources)
 
 ## Installation
 
 ```sh
-pip install bionexuslab                 # core (pydantic only) + CLI
-pip install "bionexuslab[dev]"          # + development dependencies
+pip install bionexuslab                 # core (pydantic only) + the `bn` CLI
+pip install "bionexuslab[api]"          # + the web workbench (FastAPI)
+pip install "bionexuslab[dev]"          # + test dependencies
 ```
 
-Optional extras: `[models-openai]` · `[bio-rdkit]` · `[lab-imaging]` ·
-`[sandbox-agentenv]` · `[sandbox-opensandbox]` · `[store-postgres]`.
+Optional extras: `[api]` (workbench) · `[bio-rdkit]` · `[lab-xlsx]` (read
+`.xlsx` exports) · `[lab-imaging]` · `[models-openai]` · `[models-botorch]`
+(GP posterior for acquisition) · `[mcp-instruments]` · `[sandbox-agentenv]` ·
+`[sandbox-opensandbox]` · `[store-postgres]`.
+
+From a checkout (this README tracks `main`; the published package may lag it):
+
+```sh
+make install       # python package + web deps into ./.venv
+make test          # the offline test suite
+make api           # workbench on :8000 (API + built SPA)
+```
 
 ## CLI
 
@@ -67,9 +78,13 @@ Every capability is a `bn` command; the same functionality is available as a
 Python API (see [Using BioNexus](#using-bionexus)).
 
 ```sh
- bn demo                                # first run: abstains on a borderline
-                                        # CI and refutes a planted false hit (real
-                                        # machinery, simulated numbers)
+# first run
+bn demo                                # abstains on a borderline CI and refutes a
+                                       # planted false hit (real machinery,
+                                       # simulated numbers)
+bn sim                                 # one reference design round on the virtual lab
+
+# analyze data
 bn read results.csv --csv out.csv      # auto-analyze an instrument export
 bn read plate.csv --layout map.csv \
         --normalize pct_inhibition     # join a plate map; %INH vs the plate's
@@ -77,40 +92,47 @@ bn read plate.csv --layout map.csv \
 bn ingest legacy-eln.csv               # institutional memory: pre-BioNexus kills
                                        # enter ALREADY RULED OUT + family priors
 bn connect scan <share>                # detect instruments writing into a folder
+bn connect describe <device>           # interview you into an agent-readable device card
 bn watch <outbox>                      # agent notices device outputs as they land
+
+# run campaigns
 bn templates                           # campaign presets — no JSON needed
- bn campaign auto --template dose-response-screen --field compounds=C1,C2,C3
- bn campaign auto --template sar-exploration --acquisition bo-ei --dry-run \
-                                        # EI batch selection: shows the next
-                                        # batch + every refusal (AD vetoes,
-                                        # diversity, budget) — submits nothing
- bn campaign select campaign.json                  # what-would-run preview of the EI
-                                        # batch (picks + refusals), same path,
-                                        # no state written, no submissions
-make api                               # web app on :8000 (API + SPA)
+bn campaign auto --template dose-response-screen --field compounds=C1,C2,C3
+bn campaign auto campaign.json --dose-design adaptive   # Bayesian sequential dosing
+                                       # (typically 3 wells, not 4)
+bn campaign auto examples/campaign.json --acquisition bo-ei --dry-run
+                                       # EI batch selection: shows the next batch +
+                                       # every refusal (AD vetoes, diversity,
+                                       # budget) — submits nothing
+bn campaign select campaign.json       # the same what-would-run preview from a
+                                       # config; no state written
+bn campaign plan --objective "potent AND selective AND soluble" \
+        --model anthropic --run-budget 20   # decompose into a guarded problem tree
+bn campaign run examples/workflow.yml  # tournament + assay on the configured lab
+bn campaign reproduce <branch>         # replay a recorded experiment, diff verdicts
+make api                               # the web workbench on :8000 (API + SPA)
+
+# audit and govern
 bn diary <branch>                      # campaign as a lab-notebook narrative
 bn prove <branch> --html out.html      # tamper-evident provenance + shareable report
 bn prove <branch> --eln out.csv        # ELN-ready export (Benchling/SISSYO-friendly)
-bn anchor [--publish-cmd CMD]          # Merkle-root the store; PUBLISH the root (unpublished = no protection)
-bn campaign plan --objective "potent AND selective AND soluble" \
-        --model anthropic --run-budget 20   # decompose into a guarded problem tree
-bn campaign reproduce <branch>                  # replay a recorded experiment, diff verdicts
-bn sim                                 # reference design round on the virtual lab
-bn campaign run examples/workflow.yml           # tournament + assay on the configured lab
-bn mcp                                 # MCP server: drive BioNexus from Claude/Cursor
-bn new-adapter lab my_robot            # scaffold a tested LabAdapter
-bn skills list                         # discovered Agent Skills (theirs and ours)
- bn eval --all                          # scored task suite + leaderboard
-bn why char-ridge train.csv CCCCCO       # attribution panel: per-prediction drivers + caveats + applicability domain
-bn eval --suite epistemics,models      # run tiers separately
-bn anchor --verify                     # Merkle root: prove the whole store's state
-bn fixtures verify <study-dir>         # byte-reproducible case-study data
-bn connect describe <device>           # interview you into an agent-readable device card
- bn campaign auto --dose-design adaptive ...     # Bayesian sequential dosing (typically 3 wells, not 4)
- bn halt --engage --reason "spill"      # operator stop-condition outside the agent's reach
+bn anchor [--publish-cmd CMD]          # Merkle-root the store; PUBLISH the root
+                                       # (an unpublished anchor protects nothing)
+bn anchor --verify                     # does the store still match the anchored root?
+bn halt --engage --reason "spill"      # operator stop-condition outside the agent's reach
 bn halt --clear                        # only a human clears it
 bn sop list                            # agent-proposed recurring procedures awaiting sign-off
 bn sop approve <sop-id> --by "lab lead"  # sign-off turns a procedure into standing policy
+bn why char-ridge train.csv CCCCCO     # attribution panel: per-prediction drivers,
+                                       # caveats + applicability domain
+
+# measure and extend
+bn eval --all                          # scored task suite + leaderboard
+bn eval --suite epistemics,models      # run tiers separately
+bn fixtures verify <study-dir>         # byte-reproducible case-study data
+bn mcp                                 # MCP server: drive BioNexus from Claude/Cursor
+bn new-adapter lab my_robot            # scaffold a tested LabAdapter
+bn skills list                         # discovered Agent Skills (theirs and ours)
 ```
 
 ## Case studies
@@ -283,7 +305,7 @@ python examples/demo_full_flow.py        # the same, end to end (all layers)
 
 A round runs: hypothesis tournament → safety-gated protocol → virtual wet lab →
 analysis → provenance. Every stage can also be driven from Python with the five
-core interfaces .
+core interfaces.
 
 
 ### Use case: hand the full campaign to the agent
@@ -326,17 +348,21 @@ bn campaign auto campaign.json
 </details>
 
 ```
-[campaign] problem prob-89fd555d: 3 hypotheses -> 2 selected
-[campaign] [agent] noticed device output: sim-1403a26c.csv — reading it
-[campaign] [agent] hypothesis hyp-22911313 (C-102): VALIDATED (preliminary — pending orthogonal confirmation) — IC50 1.833 uM (95% CI 1.5–2.4) vs threshold 20.0
-[campaign] [agent] loop closed: confirmation assay for C-102 auto-submitted (safety-approved)
-[campaign] [agent] orthogonal confirmation for C-102: primary 1.83 vs secondary 2.10 µM (ratio 1.1x, CIs overlap) -> CONFIRMED
-{
-  "problem": "prob-89fd555d",
-  "selected": ["C-101", "C-102"],
-  "verdicts": {"C-101": "refuted", "C-102": "confirmed"}
-}
+[22:31:41] lab: 'bionexus-virtual-lab-0' selected from a pool of 1 (simulated=True); decision sealed
+[22:31:41] round 1: testing ['C-103', 'C-101'] (1 candidates remain)
+[22:31:41] started lab run sim-42-001 for C-103 on simulator (4 doses × 3 replicates)
+[22:31:42] [agent] reading instrument output sim-42-001.csv (device finished the measurement)
+[22:31:42] [agent] hypothesis hyp-92fa273f (C-103): VALIDATED (preliminary — pending orthogonal confirmation) — IC50 5.296 uM (95% CI 3.382–6.541) vs threshold 20.0
+[22:31:42] [agent] sending orthogonal confirmation assay for C-103 (safety-approved) -> run sim-42-003
+[22:31:44] [agent] orthogonal confirmation for C-103: primary 5.30 vs secondary 6.37 µM (ratio 1.2x, rule ci-overlap) -> CONFIRMED
+[22:31:44] reviewer: no findings — analysis consistent
+[22:31:44] CAMPAIGN COMPLETE prob-fe6dcecd: C-103=confirmed, C-101=confirmed
+{"problem": "prob-fe6dcecd", "selected": ["C-103", "C-101"],
+ "verdicts": {"C-103": "confirmed", "C-101": "confirmed"}}
 ```
+
+(Output abridged from `bn campaign auto examples/campaign.json`; the
+simulator is seeded, so reruns reproduce these numbers.)
 
 
 ### Use case: let the agent watch your instruments
@@ -676,23 +702,23 @@ Deeper design docs: [`docs/architecture.md`](docs/architecture.md) (blocks A–F
 
 | Doc | Contents |
 |---|---|
-| [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | install, scientist path, workflows |
+| [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | install, scientist path, workflows, campaign commands |
 | [`docs/ADAPTERS.md`](docs/ADAPTERS.md) | authoring adapters (labs, models, tools, stores) |
-| [`docs/safety-and-security.md`](docs/safety-and-security.md) | full mechanism table, safety rules, trust boundaries, threat model |
-
+| [`docs/safety-and-security.md`](docs/safety-and-security.md) | full mechanism table, safety rules, trust boundaries, threat model, API access |
 | [`docs/virtual-lab.md`](docs/virtual-lab.md) | simulated devices, image-based readouts, QC and failure modes |
 | [`docs/benchmarks.md`](docs/benchmarks.md) | public datasets and benchmark results |
 | [`docs/domain-review.md`](docs/domain-review.md) | flow fidelity review vs. the real drug-discovery cycle |
 | [`docs/stability.md`](docs/stability.md) | versioning, stability tiers, deprecation policy |
 | [`docs/research-landscape.md`](docs/research-landscape.md) | review vs. Google, Anthropic, Isomorphic, Cradle, Lila, FutureHouse, OpenAI Rosalind |
-| [`docs/critical-review.md`](docs/critical-review.md) | independent critical review: strengths and failure modes |
+| [`docs/critical-review.md`](docs/critical-review.md) · [`docs/REVIEW-2026-10.md`](docs/REVIEW-2026-10.md) | independent critical reviews: strengths and failure modes |
+| [`docs/UX.md`](docs/UX.md) · [`docs/BRAND.md`](docs/BRAND.md) | workbench UX principles and brand system |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | live TODO plan: uncertainty-aware verdicts, eval harness, adaptive design |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | the live plan: open work, status boxes, remediation log |
 | [`docs/architecture.md`](docs/architecture.md) · [`docs/flows.md`](docs/flows.md) · [`docs/blocks/`](docs/blocks/) | architectural blocks A–F, components, interfaces, end-to-end flows |
 | [`case-studies/`](case-studies/) | blind reproduction studies on real published data |
 | [`diagrams/`](diagrams/) | SVG diagrams + styled HTML artifact pages |
 
-## Design Principles
+## Architectural principles
 
 1. **Contract-first integration** — blocks communicate only through five versioned
    schemas; nothing else couples them.
