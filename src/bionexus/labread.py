@@ -74,6 +74,9 @@ def replicate_ci(values: list[float | None], seed: int = 7,
     lo, hi = bootstrap_ci(xs, n_boot=n_boot, seed=seed)
     return (lo, hi)
 
+from bionexus.fitting import (GRID_CEIL_UM, GRID_FLOOR_UM, GRID_LOG_HI,  # noqa: E402
+                              GRID_LOG_LO, hill_response)
+
 SYNONYMS: dict[str, list[str]] = {
     "well": ["well", "position", "pos", "site", "well_id", "wellid"],
     "sample": ["sample", "sample_id", "sampleid", "compound", "compound_id",
@@ -754,7 +757,7 @@ def _hill_sse(log_ic50: float, pts: list[tuple[float, float]],
     ic50 = 10 ** log_ic50
     sse = 0.0
     for c, v in pts:
-        pred = max_response / (1.0 + ic50 / max(c, 1e-9))
+        pred = hill_response(c, ic50, max_response)
         sse += (v - pred) ** 2
     return sse
 
@@ -776,7 +779,7 @@ def _hill_fit_ic50(pts: list[tuple[float, float]],
     top = max(v for _, v in pts)
     if top <= 0:
         return None
-    lo, hi = -3.0, 2.5                      # 0.001 – ~316 µM
+    lo, hi = GRID_LOG_LO, GRID_LOG_HI       # 0.001 – ~316 µM
     n = 60
     step = (hi - lo) / n
     if max_response is None:                # 3-param: unknown plateau
@@ -818,7 +821,8 @@ def _hill_fit_ic50(pts: list[tuple[float, float]],
 
 def fit_ic50(points: list[tuple[float, float]], max_response: float = 100.0) -> float | None:
     """IC50 from (conc, response) points — Hill fit, with legacy linear
-    interpolation as the fallback for sparse data."""
+    interpolation (in log10 conc) as the fallback for sparse data."""
+    import math
     pts = sorted((c, v) for c, v in points if v is not None)
     if len(pts) < 2:
         return None
@@ -831,6 +835,10 @@ def fit_ic50(points: list[tuple[float, float]], max_response: float = 100.0) -> 
     for (c0, v0), (c1, v1) in zip(pts, pts[1:]):
         if min(v0, v1) <= target <= max(v0, v1):
             frac = 0.0 if v1 == v0 else (target - v0) / (v1 - v0)
+            if c0 > 0 and c1 > 0:
+                # dose-response is ~linear in log10(conc), not in conc
+                lc = math.log10(c0) + frac * (math.log10(c1) - math.log10(c0))
+                return round(10 ** lc, 3)
             return round(c0 + frac * (c1 - c0), 3)
     return None  # right-censored within this concentration range
 
@@ -861,9 +869,9 @@ def fit_ic50_ci(points: list[tuple[float, float]], max_response: float = 100.0,
         mults = [1.0 + 3.0 * j / 12 for j in range(13)]
         best_m = min(mults, key=lambda m: _hill_sse(math.log10(base), pts,
                                                     top * m))
-        fitted = [top * best_m / (1.0 + base / max(c, 1e-9)) for c, _ in pts]
+        fitted = [hill_response(c, base, top * best_m) for c, _ in pts]
     else:
-        fitted = [max_response / (1.0 + base / max(c, 1e-9)) for c, _ in pts]
+        fitted = [hill_response(c, base, max_response) for c, _ in pts]
     # df-corrected residuals: raw residuals of a fitted curve understate the
     # noise by sqrt((n-p)/n); with 3-5 points that is a large optimism
     n_par = 1 if max_response is not None else 2
@@ -1021,8 +1029,6 @@ def analyze_records(records: list[dict[str, Any]],
         zp = max(-1.0, min(1.0, 1 - 3 * (_std(ctrl_vals) + 1.0) / (spread + sigma_all)))
         zp_kind = "heuristic"
 
-    GRID_FLOOR_UM = 10 ** -3    # mirrors _hill_fit_ic50's lower grid bound
-    GRID_CEIL_UM = 10 ** 2.5    # mirrors its upper bound (~316 uM)
     compounds: dict[str, Any] = {}
     for sample, vals in by_sample.items():
         if control_class(sample, control_classes) is not None:
@@ -1051,6 +1057,11 @@ def analyze_records(records: list[dict[str, Any]],
             "ic50_ci": (ci["ci_low"], ci["ci_high"]) if ci and ci.get("ci_low")
                         is not None else None,
             "fit_method": (ci or {}).get("method", "linear-interp"),
+            # what the curve model actually is: slope fixed at 1, bottom at 0
+            "fit_model": ("1-parameter logistic (IC50 only; slope=1, "
+                          "bottom=0, top known)" if max_response else
+                          "2-parameter logistic (IC50 + top; slope=1, "
+                          "bottom=0)"),
             "n_points": len(pts) or len(vals),
             "right_censored": bool(pts) and (ic50 is None or at_ceiling),
             "left_censored": left_censored,

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -22,7 +23,15 @@ from bionexus.adapters.store.sqlite import SqliteProvenanceStore
 from bionexus.paths import APPROVALS_FILE, DATA_DIR
 from bionexus.wizard_store import WizardStore
 
-app = FastAPI(title="BioNexus API", version="0.1.0")
+@asynccontextmanager
+async def _lifespan(_app):
+    await _start_watcher()
+    yield
+    if _watcher_task is not None:
+        _watcher_task.cancel()
+
+
+app = FastAPI(title="BioNexus API", version="0.1.0", lifespan=_lifespan)
 app.add_middleware(
     CORSMiddleware, allow_origins=["http://localhost:5173"],
     allow_methods=["*"], allow_headers=["*"])
@@ -65,7 +74,6 @@ _broker: asyncio.Queue = asyncio.Queue()
 _watcher_task = None
 
 
-@app.on_event("startup")
 async def _start_watcher():
     global _watcher_task
     from bionexus.api.sse import watcher_loop

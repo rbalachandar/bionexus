@@ -33,6 +33,22 @@ bn auto campaign.json --dose-design adaptive  # Bayesian sequential dosing
 bn diary <branch> --html diary.html     # the campaign as a lab notebook
 ```
 
+### Which command starts a campaign?
+
+Use **`bn auto`** (or the workbench's Launch button) — it is the one entry
+point for a real campaign. The others are narrower:
+
+| Command | Use it when |
+|---|---|
+| `bn auto` | start a campaign from a template or config (this is the default path) |
+| `bn plan` | decompose a compound objective into a guarded problem tree first |
+| `bn sweep` | fan one problem across candidate shards in parallel |
+| `bn run <workflow.yml>` | run a hand-written workflow file |
+| `bn watch <inbox>` | let the agent notice instrument exports as they land |
+| `bn demo` / `bn sim` | first-run tour / reference round on the virtual lab (simulated) |
+| `bn reproduce` | replay a recorded experiment and diff the verdicts |
+| `bn materials-run` | materials formulation sweeps |
+
 ## Verify the claims
 
 ```sh

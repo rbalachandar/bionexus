@@ -15,6 +15,8 @@ import math
 import random
 from typing import Iterable
 
+from bionexus.fitting import hill_response
+
 
 class DoseDesigner:
     def __init__(self, rmax: float = 500.0, sigma: float = 15.0,
@@ -35,7 +37,7 @@ class DoseDesigner:
     # -- belief updates ------------------------------------------------------
 
     def _pred(self, k: float, conc: float) -> float:
-        return self.rmax / (1.0 + k / max(conc, 1e-9))
+        return hill_response(conc, k, self.rmax)
 
     def observe(self, conc: float, response: float) -> None:
         self.used.append(conc)
@@ -88,7 +90,7 @@ def run_adaptive_series(true_ic50: float, rmax: float, sigma: float,
         c = d.next_dose()
         if c is None:
             break
-        r = rmax / (1.0 + true_ic50 / max(c, 1e-9)) + rng.gauss(0, sigma)
+        r = hill_response(c, true_ic50, rmax) + rng.gauss(0, sigma)
         d.observe(c, max(0.0, r))
     est, ci = d.estimate()
     return est, ci, len(d.used)
@@ -100,7 +102,7 @@ def run_fixed_series(true_ic50: float, rmax: float, sigma: float,
     (generous to the baseline — it gets the best possible fit of its data)."""
     d = DoseDesigner(rmax=rmax, sigma=sigma, doses=tuple(doses))
     for c in doses:
-        r = rmax / (1.0 + true_ic50 / max(c, 1e-9)) + rng.gauss(0, sigma)
+        r = hill_response(c, true_ic50, rmax) + rng.gauss(0, sigma)
         d.observe(c, max(0.0, r))
     est, ci = d.estimate()
     return est, ci, len(d.used)

@@ -36,6 +36,8 @@ from bionexus.watch import AutoAnalysisAgent, DeviceMonitor
 Autonomy = str  # "act" | "gate" | "observe"
 
 
+from bionexus.fitting import hill_response  # noqa: E402
+
 _log = logging.getLogger(__name__)
 
 
@@ -905,7 +907,7 @@ def _export_instrument_file(inbox: Path, run_id: str, candidate: str,
         if prop_mode:
             base = true_prop
         else:
-            base = (500.0 / (1.0 + true_ic50 / max(conc, 1e-6))) if true_ic50 \
+            base = hill_response(conc, true_ic50, 500.0, eps=1e-6) if true_ic50 \
                 else 110 + concentrations.index(c) * 90
         for _ in range(n_rep):          # real plates have replicate wells
             noise = rng.gauss(0.0, max(4.0, base * 0.05))

@@ -10,6 +10,7 @@ import hashlib
 import random
 from typing import Any
 
+from bionexus.fitting import hill_response
 from bionexus.core.contracts import (
     AssayResult,
     Envelope,
@@ -218,7 +219,7 @@ class SimulatorLab:
         dose-dependent: interferers (PAINS-like) show high artifact signal."""
         if assay == "counterscreen":
             return max_resp * 0.9 if self.is_interferer(run_id, sample_id) else max_resp * 0.02
-        return max_resp / (1.0 + ic50 / max(conc, 1e-6))
+        return hill_response(conc, ic50, max_resp, eps=1e-6)
 
     def cancel(self, run_id: str) -> None:
         self._runs.pop(run_id, None)

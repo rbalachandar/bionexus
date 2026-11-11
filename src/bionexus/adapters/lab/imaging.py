@@ -22,6 +22,8 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
+from bionexus.fitting import hill_response as _hill
+
 try:
     import numpy as np
 except ImportError as exc:  # pragma: no cover
@@ -53,7 +55,7 @@ def true_ic50_um(protocol_seed: int, sample_id: str) -> float:
 
 
 def hill_response(conc_um: float, ic50_um: float, max_resp: float = 100.0) -> float:
-    return max_resp / (1.0 + ic50_um / max(conc_um, 1e-6))
+    return _hill(conc_um, ic50_um, max_resp, eps=1e-6)
 
 
 class ImagingPlateReader:

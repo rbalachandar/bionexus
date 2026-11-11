@@ -95,7 +95,8 @@ def plate_section(result: dict) -> list[str]:
             f"<td>{_esc(c.get('ic50_um') if c.get('ic50_um') is not None
                         else '> range')}</td>"
             f"<td>{_esc(c['ic50_ci']) if c.get('ic50_ci') else '—'}</td>"
-            f"<td>{_esc(c.get('fit_method'))}"
+            f"<td title=\"{_esc(c.get('fit_model') or '')}\">"
+            f"{_esc(c.get('fit_method'))}"
             + (" · right-censored" if c.get("right_censored") else "")
             + (" · left-censored" if c.get("left_censored") else "")
             + "</td>"
