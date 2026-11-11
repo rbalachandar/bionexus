@@ -1267,7 +1267,7 @@ rather than kept.
 - [x] **Phase 0** golden characterization (`tests/test_golden_campaign.py`)
 - [x] **Phase 1** fresh start: one branch convention `problem/<root>-<leaf>`, drop alias helpers + legacy v1 hash, reset data dir
 - [x] **Phase 2** split `views.py` into a package by screen; inject the store
-- [ ] **Phase 3** split the rest of `labread.py` (formats / layout / qc / analysis)
+- [x] **Phase 3** split the rest of `labread.py` (formats / layout / qc / analysis)
 - [ ] **Phase 4** decompose `AutoAnalysisAgent.handle` into event handlers
 - [ ] **Phase 5** `run_campaign` -> `CampaignContext` + stage functions
 - [ ] **Phase 6** device adapters selectable from config (S-T4), single plugin
