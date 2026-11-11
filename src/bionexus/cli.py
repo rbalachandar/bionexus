@@ -901,9 +901,9 @@ def cmd_diary(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="bn", description="BioNexus CLI")
-    sub = parser.add_subparsers(dest="cmd", required=True)
+def _register_core(sub):
+    """Campaign group + the read/ingest/connect family. Returns the
+    `bn campaign` subparsers so later groups can attach to it."""
     camp = sub.add_parser(
         "campaign", help="start or inspect a campaign (auto, plan, sweep, "
                          "run, materials, select, reproduce)")
@@ -1012,8 +1012,11 @@ def main(argv: list[str] | None = None) -> int:
     diary.add_argument("--db", default="bionexus.db")
     diary.add_argument("--html", default="diary.html")
     diary.set_defaults(func=cmd_diary)
+    return csub
 
 
+def _register_flow(sub, csub) -> None:
+    """watch, campaign auto/select."""
     watch_p = sub.add_parser("watch", help="watch an instrument outbox; agent notices results automatically")
     watch_p.add_argument("inbox")
     watch_p.add_argument("--poll", type=float, default=1.0)
@@ -1060,6 +1063,9 @@ def main(argv: list[str] | None = None) -> int:
                      help="never prompt for template fields; fail instead")
     sel.set_defaults(func=cmd_select)
 
+
+def _register_governance(sub, csub) -> None:
+    """fixtures, anchor, halt, sop, campaign plan/materials."""
     fx = sub.add_parser("fixtures", help="case-study data fixtures: verify / materialize")
     fxsub = fx.add_subparsers(dest="command", required=True)
     for name in ("verify", "materialize"):
@@ -1079,6 +1085,7 @@ def main(argv: list[str] | None = None) -> int:
                           "script. An anchor that is never published to "
                           "somewhere you do not control gives no protection "
                           "against someone who can edit the DB file.")
+    anc.set_defaults(func=cmd_anchor)
     ht = sub.add_parser("halt", help="operator stop-condition outside the "
                         "agent's reach: engage/status/clear")
     ht.add_argument("--engage", action="store_true")
@@ -1120,10 +1127,6 @@ def main(argv: list[str] | None = None) -> int:
     matp.add_argument("--direction", choices=["min", "max"], default="max")
     matp.add_argument("--db", default="bionexus.db")
     matp.set_defaults(func=cmd_materials_run)
-    modp = sub.add_parser("modalities",
-                          help="registered DMTA modality packs — how "
-                               "Design/Make/Test/Analyze specialize")
-    modp.set_defaults(func=cmd_modalities)
     pl.add_argument("--modality", default="",
                     help="optional: small molecule, biologic, cell therapy, "
                          "mRNA, agrochemical, material — words the Make "
@@ -1138,6 +1141,15 @@ def main(argv: list[str] | None = None) -> int:
     pl.add_argument("--db", default="bionexus.db")
     pl.add_argument("--autonomy", choices=("act", "gate", "observe"), default="act")
     pl.set_defaults(func=cmd_plan)
+
+
+def _register_tools(sub, csub) -> None:
+    """modalities, campaign reproduce, eval, templates, skills, campaign
+    sweep, taste."""
+    modp = sub.add_parser("modalities",
+                          help="registered DMTA modality packs — how "
+                               "Design/Make/Test/Analyze specialize")
+    modp.set_defaults(func=cmd_modalities)
     rep = csub.add_parser("reproduce",
                          help="replay a recorded experiment; diff verdicts")
     rep.add_argument("branch")
@@ -1148,7 +1160,6 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--suite", help="comma list: epistemics,models,reproductions "
                                     "(default: epistemics)")
     ev.add_argument("--all", action="store_true", help="every suite")
-    anc.set_defaults(func=cmd_anchor)
     ev.set_defaults(func=cmd_eval)
     templates = sub.add_parser("templates", help="list campaign templates")
     templates.add_argument("name", nargs="?", default=None)
@@ -1189,6 +1200,14 @@ def main(argv: list[str] | None = None) -> int:
     ta.add_argument("--db", default="bionexus.db")
     ta.set_defaults(func=cmd_taste)
 
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="bn", description="BioNexus CLI")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    csub = _register_core(sub)
+    _register_flow(sub, csub)
+    _register_governance(sub, csub)
+    _register_tools(sub, csub)
     args = parser.parse_args(argv)
     try:
         return args.func(args)
