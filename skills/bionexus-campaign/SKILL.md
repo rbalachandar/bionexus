@@ -11,7 +11,7 @@ metadata:
 
 ## Overview
 
-`bn auto campaign.json` (or `bionexus.autoloop.run_campaign()` in Python) runs:
+`bn campaign auto campaign.json` (or `bionexus.autoloop.run_campaign()` in Python) runs:
 problem + constraints -> portfolio of N hypotheses -> filter to top-k ->
 design -> safety-gated submission -> device output -> agent analysis ->
 pre-registered verdicts -> auto-submitted confirmation assays.

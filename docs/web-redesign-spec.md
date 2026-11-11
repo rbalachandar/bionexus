@@ -60,7 +60,7 @@ engine modules            unchanged; API imports them in-process
 ```
 
 One uvicorn process, SQLite WAL, single writer via existing
-WizardStore lock. Campaign subprocesses unchanged (`bn auto`,
+WizardStore lock. Campaign subprocesses unchanged (`bn campaign auto`,
 `BN_PROGRAM` env).
 
 ## Data model delta
@@ -116,7 +116,7 @@ client timers.
 
 Load program -> mode-lock check (409) -> build cfg (problem from
 objective/constraints via coerce_assay_type; hypotheses from
-candidates or hypothesis_source=agent) -> spawn `bn auto` with
+candidates or hypothesis_source=agent) -> spawn `bn campaign auto` with
 BN_PROGRAM -> register_agent + set_campaign_spec + link_leaf -> SSE
 fire -> return {eid}.
 

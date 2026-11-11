@@ -23,7 +23,7 @@ make test                              # same suite via the Makefile
 make api                               # backend + built SPA on :8000
 make api-dev                           # backend only, auto-reload
 make web-dev                           # Vite SPA on :5173 (proxies /api)
-python -m bionexus.cli auto --template dose-response-screen \
+python -m bionexus.cli campaign auto --template dose-response-screen \
   --field compounds=a,b --field threshold=20 --autonomy act --yes   # e2e sim
 .venv/bin/python -m bionexus.cli demo  # engineered first-run moment (abstain + refutes)
 .venv/bin/python -m bionexus.cli eval  # offline eval suite -> evals/leaderboard.md

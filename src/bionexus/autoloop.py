@@ -2,7 +2,7 @@
 
 `run_campaign()` assembles the full flow — problem, portfolio, filter,
 design/test, lab awareness, verdicts, confirmation — so it can be started
-manually by a scientist (one function call / `bn auto`) or kicked off by an
+manually by a scientist (one function call / `bn campaign auto`) or kicked off by an
 agent (the same function, called programmatically or via MCP).
 
 autonomy levels:

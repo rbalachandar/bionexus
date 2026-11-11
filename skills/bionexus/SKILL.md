@@ -108,7 +108,7 @@ watch(inbox="/path/to/instrument_outbox", tracker=tracker, gateway=gateway)
 ### 5. One-call autonomous campaign
 
 ```sh
-bn auto campaign.json     # autonomy: "observe" | "gate" | "act"
+bn campaign auto campaign.json     # autonomy: "observe" | "gate" | "act"
 ```
 
 ## Reading instrument results

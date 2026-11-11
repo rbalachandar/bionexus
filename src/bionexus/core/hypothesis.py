@@ -242,7 +242,7 @@ class HypothesisTracker:
                        environment: dict | None = None) -> ProblemStatement:
         """Record the problem + constraints + execution environment.
         The environment block (lab adapter name/version/seed, concentrations,
-        autonomy) is what makes `bn reproduce` possible — without it recorded,
+        autonomy) is what makes `bn campaign reproduce` possible — without it recorded,
         reproducibility would be a claim, not a command."""
         self.store.append(self._record(
             Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),

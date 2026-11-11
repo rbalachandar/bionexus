@@ -1,4 +1,4 @@
-"""`bn reproduce` — replay a recorded experiment and diff the verdicts.
+"""`bn campaign reproduce` — replay a recorded experiment and diff the verdicts.
 
 Reads a provenance branch, reconstructs the campaign EXACTLY as recorded
 (hypotheses, criteria, lab adapter + seed, concentrations, autonomy, dose

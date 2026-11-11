@@ -1,6 +1,6 @@
 """Campaign templates — scientist-callable presets.
 
-`bn templates` lists them; `bn auto --template dose-response-screen
+`bn templates` lists them; `bn campaign auto --template dose-response-screen
 --field compounds=C1,C2,C3` fills the template (prompts for missing required
 fields), turns the compound list into a hypothesis portfolio, and runs the
 campaign. Users never see JSON unless they want to.
@@ -101,7 +101,7 @@ def fill(template: dict[str, Any], fields: dict[str, str],
 
 
 def build_campaign(rendered: dict[str, Any]) -> dict[str, Any]:
-    """Turn a filled template into a campaign config (the `bn auto` JSON):
+    """Turn a filled template into a campaign config (the `bn campaign auto` JSON):
     compounds become one hypothesis each with the template's potency criteria."""
     compounds = [c.strip() for c in
                  rendered.get("_values", {}).get("compounds", "").split(",") if c.strip()]

@@ -75,7 +75,7 @@ def spawn_campaign(doc: dict, program_name: str) -> str | None:
     env = {**__import__("os").environ, "BN_PROGRAM": program_name,
            "BN_CAMPAIGN_ID": cid}
     proc = subprocess.Popen(
-        [sys.executable, "-u", "-m", "bionexus.cli", "auto", str(cfgpath),
+        [sys.executable, "-u", "-m", "bionexus.cli", "campaign", "auto", str(cfgpath),
          "--db", "bionexus.db", "--inbox", str(APPROVALS_FILE),
          "--yes"],
         stdout=open(logf, "ab", buffering=0), stderr=subprocess.STDOUT,
@@ -113,7 +113,7 @@ def spawn_campaign(doc: dict, program_name: str) -> str | None:
 
 
 def _spawn_plan(doc: dict, program_name: str) -> None:
-    """Decompose launch: bn plan (agent tree decomposition) runs the
+    """Decompose launch: bn campaign plan (agent tree decomposition) runs the
     leaves; BN_PROGRAM links every leaf to the program."""
     import os as _os
     cands = ",".join(c.strip() for c in
@@ -121,7 +121,7 @@ def _spawn_plan(doc: dict, program_name: str) -> None:
     # autonomy comes from the PROGRAM, never hardcoded here: a gate-mode
     # program must not spawn unattended campaigns (audit fix, Oct 10)
     autonomy = doc.get("autonomy") or "gate"
-    cmd = [sys.executable, "-u", "-m", "bionexus.cli", "plan",
+    cmd = [sys.executable, "-u", "-m", "bionexus.cli", "campaign", "plan",
            "--objective", doc.get("objective") or "optimize",
            "--model", "anthropic", "--run", "--autonomy", autonomy]
     if cands:

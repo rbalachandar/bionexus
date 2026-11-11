@@ -27,27 +27,28 @@ make api            # the web app: workspace, launches, live agents (:8000)
 #     provenance + report/CSV export; a reviewed analysis can hand off to
 #     a guided campaign.
 bn templates                            # campaign presets
-bn auto --template dose-response-screen --field compounds=C1,C2,C3 \
+bn campaign auto --template dose-response-screen --field compounds=C1,C2,C3 \
         --autonomy gate                 # pause at each submission for your click
-bn auto campaign.json --dose-design adaptive  # Bayesian sequential dosing
+bn campaign auto campaign.json --dose-design adaptive  # Bayesian sequential dosing
 bn diary <branch> --html diary.html     # the campaign as a lab notebook
 ```
 
-### Which command starts a campaign?
+### Campaign commands (`bn campaign <sub>`)
 
-Use **`bn auto`** (or the workbench's Launch button) — it is the one entry
-point for a real campaign. The others are narrower:
+Use **`bn campaign auto`** (or the workbench's Launch button) — it is the one entry
+point for a real campaign. The other subcommands are narrower:
 
 | Command | Use it when |
 |---|---|
-| `bn auto` | start a campaign from a template or config (this is the default path) |
-| `bn plan` | decompose a compound objective into a guarded problem tree first |
-| `bn sweep` | fan one problem across candidate shards in parallel |
-| `bn run <workflow.yml>` | run a hand-written workflow file |
+| `bn campaign auto` | start a campaign from a template or config (this is the default path) |
+| `bn campaign plan` | decompose a compound objective into a guarded problem tree first |
+| `bn campaign sweep` | fan one problem across candidate shards in parallel |
+| `bn campaign select` | preview which experiments would run (picks + every refusal), submitting nothing |
+| `bn campaign run <workflow.yml>` | run a hand-written workflow file |
 | `bn watch <inbox>` | let the agent notice instrument exports as they land |
 | `bn demo` / `bn sim` | first-run tour / reference round on the virtual lab (simulated) |
-| `bn reproduce` | replay a recorded experiment and diff the verdicts |
-| `bn materials-run` | materials formulation sweeps |
+| `bn campaign reproduce` | replay a recorded experiment and diff the verdicts |
+| `bn campaign materials` | materials formulation sweeps |
 
 ## Verify the claims
 
@@ -74,7 +75,7 @@ safety rejection demo → provenance chain.
 
 ```sh
 export OPENAI_BASE_URL=http://localhost:11434/v1   # ollama, vLLM, llama.cpp, OpenAI…
-bn run examples/workflow.yml
+bn campaign run examples/workflow.yml
 ```
 
 Set `model.base_url` in the workflow YAML instead of an env var if you prefer.
@@ -84,7 +85,7 @@ needs a model server (P8).
 ## Run a workflow
 
 ```sh
-bn run examples/workflow.yml   # tournament + assay on the configured lab
+bn campaign run examples/workflow.yml   # tournament + assay on the configured lab
 bn prove demo-run              # inspect the hash-chained provenance
 ```
 

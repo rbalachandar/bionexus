@@ -5,7 +5,7 @@ real epistemic (mean, sd) per candidate instead of the RF tree-spread proxy,
 and stays out of every other import path. The acquisition still does ranking,
 AD veto, diversity and budget; GP optimization (`optimize_acqf`) is not used
 here — its Monte-Carlo randomness would break the byte-exact-replay guarantee
-that evals and `bn reproduce` rely on. We only take the posterior.
+that evals and `bn campaign reproduce` rely on. We only take the posterior.
 
 Determinism: manual_seed makes the (fit, predict) pair reproducible on the
 same machine; `noise="fixed"` skips the learned-noise optimizer so the result

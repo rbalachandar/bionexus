@@ -5,7 +5,7 @@ translates devices into read/write primitives plus a standard discovery
 format; this adapter maps those onto our protocol/result lifecycle so any
 MHS-compatible instrument becomes usable without bespoke code.
 
-    config (YAML/JSON passed to bn auto, or constructor kwargs):
+    config (YAML/JSON passed to bn campaign auto, or constructor kwargs):
       mhs_url: http://bench-host:8900     # driver endpoint (required)
       device_id: incubator-01
       name: Bench incubator

@@ -1,4 +1,4 @@
-"""`bn select` — the what-would-run preview: prints the EI batch and every
+"""`bn campaign select` — the what-would-run preview: prints the EI batch and every
 refusal, submits nothing, and is the same policy path a campaign runs."""
 import json
 
@@ -32,7 +32,7 @@ def _write(tmp_path):
 
 
 def test_select_prints_batch_and_refusals(tmp_path, capsys):
-    rc = main(["select", _write(tmp_path), "--seed", "1"])
+    rc = main(["campaign", "select", _write(tmp_path), "--seed", "1"])
     assert rc == 0
     out = capsys.readouterr().out
     assert "acquisition[bo-ei" in out
@@ -50,11 +50,11 @@ def test_select_submits_nothing_leaves_no_state(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(work)
     monkeypatch.setenv("BIONEXUS_DATA_DIR", str(tmp_path / "data"))
     cfg = _write(tmp_path)
-    rc = main(["select", cfg])
+    rc = main(["campaign", "select", cfg])
     assert rc == 0
     assert "Picks" in capsys.readouterr().out
     assert not (work / "bionexus.db").exists()
 
 
 def test_select_needs_a_source(capsys):
-    assert main(["select"]) == 2
+    assert main(["campaign", "select"]) == 2

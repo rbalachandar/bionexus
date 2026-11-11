@@ -1,4 +1,4 @@
-# BioNexus workflow — run with: bn auto examples/workflow.yml
+# BioNexus workflow — run with: bn campaign auto examples/workflow.yml
 problem:
   objective: "Identify active HPK1 inhibitors from the compound series"
   constraints:

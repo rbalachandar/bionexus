@@ -1,6 +1,6 @@
 """`bn` CLI — boring on purpose (P1).
 
-    bn run workflow.yml    # execute a workflow against configured adapters
+    bn campaign run workflow.yml    # execute a workflow against configured adapters
     bn sim                 # run the reference round on the virtual lab
     bn prove <branch_id>   # print the hash-chained provenance for a branch
 """
@@ -394,7 +394,7 @@ def _campaign_from_doc(cfg_doc: dict) -> "CampaignConfig":
 
 def _campaign_doc_from_args(args) -> dict | None:
     """Load a campaign config from --template or a config path (shared by
-    `bn auto` and `bn select` so the two never drift on how a campaign is
+    `bn campaign auto` and `bn campaign select` so the two never drift on how a campaign is
     specified). Returns None if neither source was given."""
     if getattr(args, "template", None):
         from bionexus.templates import build_campaign, fill, load_template
@@ -424,7 +424,7 @@ def cmd_select(args) -> int:
 
     cfg_doc = _campaign_doc_from_args(args)
     if cfg_doc is None:
-        print("bn select: pass a config file or --template NAME",
+        print("bn campaign select: pass a config file or --template NAME",
               file=sys.stderr)
         return 2
     cfg_doc["acquisition"] = args.acquisition or "bo-ei"
@@ -471,7 +471,7 @@ def cmd_auto(args: argparse.Namespace) -> int:
 
     cfg_doc = _campaign_doc_from_args(args)
     if cfg_doc is None:
-        print("bn auto: pass a config file or --template NAME", file=sys.stderr)
+        print("bn campaign auto: pass a config file or --template NAME", file=sys.stderr)
         return 2
     if args.autonomy:
         cfg_doc["autonomy"] = args.autonomy
@@ -904,8 +904,12 @@ def cmd_diary(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="bn", description="BioNexus CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)
+    camp = sub.add_parser(
+        "campaign", help="start or inspect a campaign (auto, plan, sweep, "
+                         "run, materials, select, reproduce)")
+    csub = camp.add_subparsers(dest="campaign_cmd", required=True)
 
-    run = sub.add_parser("run", help="run a workflow YAML")
+    run = csub.add_parser("run", help="run a workflow YAML")
     run.add_argument("workflow")
     run.set_defaults(func=cmd_run)
 
@@ -1015,7 +1019,7 @@ def main(argv: list[str] | None = None) -> int:
     watch_p.add_argument("--poll", type=float, default=1.0)
     watch_p.set_defaults(func=cmd_watch)
 
-    auto = sub.add_parser("auto", help="start the whole campaign flow (config or --template)")
+    auto = csub.add_parser("auto", help="start the whole campaign flow (config or --template)")
     auto.add_argument("--dose-design", choices=("fixed", "adaptive"),
                       help="adaptive = Bayesian sequential dosing (3 wells/compound)")
     auto.add_argument("config", nargs="?", default=None)
@@ -1039,7 +1043,7 @@ def main(argv: list[str] | None = None) -> int:
                       help="approval inbox file for gate mode (default <data dir>/approvals.jsonl)")
     auto.set_defaults(func=cmd_auto)
 
-    sel = sub.add_parser(
+    sel = csub.add_parser(
         "select",
         help="preview the EI batch (picks + every refusal) without "
              "submitting anything — the what-would-run probe for "
@@ -1091,7 +1095,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("sop_id")
     ap.add_argument("--by", default="operator")
     so.set_defaults(func=cmd_sop)
-    pl = sub.add_parser("plan", help="decompose a compound objective into a "
+    pl = csub.add_parser("plan", help="decompose a compound objective into a "
                         "guarded problem tree (dry plan, or --run the leaves)")
     pl.add_argument("--objective", required=True)
     pl.add_argument("--context", default="")
@@ -1103,7 +1107,7 @@ def main(argv: list[str] | None = None) -> int:
     pl.add_argument("--labs-json", default=None,
                     help='operator-declared instrument pool (S-T5): JSON '
                          'array of {"instrument": "<catalog-id>"} entries')
-    matp = sub.add_parser("materials-run",
+    matp = csub.add_parser("materials",
                           help="run a materials formulation sweep against "
                                "the program gate (material modality)")
     matp.add_argument("--objective", required=True)
@@ -1134,7 +1138,7 @@ def main(argv: list[str] | None = None) -> int:
     pl.add_argument("--db", default="bionexus.db")
     pl.add_argument("--autonomy", choices=("act", "gate", "observe"), default="act")
     pl.set_defaults(func=cmd_plan)
-    rep = sub.add_parser("reproduce",
+    rep = csub.add_parser("reproduce",
                          help="replay a recorded experiment; diff verdicts")
     rep.add_argument("branch")
     rep.add_argument("--db", default="bionexus.db")
@@ -1164,7 +1168,7 @@ def main(argv: list[str] | None = None) -> int:
     inst.add_argument("--dest", default=".agents/skills")
     sk.set_defaults(func=cmd_skills)
 
-    sw = sub.add_parser("sweep", help="fan one problem across candidate "
+    sw = csub.add_parser("sweep", help="fan one problem across candidate "
                         "shards (parallel campaign harness) and roll up")
     sw.add_argument("--objective", required=True)
     sw.add_argument("--candidates", required=True,

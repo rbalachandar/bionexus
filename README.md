@@ -79,12 +79,12 @@ bn ingest legacy-eln.csv               # institutional memory: pre-BioNexus kill
 bn connect scan <share>                # detect instruments writing into a folder
 bn watch <outbox>                      # agent notices device outputs as they land
 bn templates                           # campaign presets — no JSON needed
- bn auto --template dose-response-screen --field compounds=C1,C2,C3
- bn auto --template sar-exploration --acquisition bo-ei --dry-run \
+ bn campaign auto --template dose-response-screen --field compounds=C1,C2,C3
+ bn campaign auto --template sar-exploration --acquisition bo-ei --dry-run \
                                         # EI batch selection: shows the next
                                         # batch + every refusal (AD vetoes,
                                         # diversity, budget) — submits nothing
- bn select campaign.json                  # what-would-run preview of the EI
+ bn campaign select campaign.json                  # what-would-run preview of the EI
                                         # batch (picks + refusals), same path,
                                         # no state written, no submissions
 make api                               # web app on :8000 (API + SPA)
@@ -92,11 +92,11 @@ bn diary <branch>                      # campaign as a lab-notebook narrative
 bn prove <branch> --html out.html      # tamper-evident provenance + shareable report
 bn prove <branch> --eln out.csv        # ELN-ready export (Benchling/SISSYO-friendly)
 bn anchor [--publish-cmd CMD]          # Merkle-root the store; PUBLISH the root (unpublished = no protection)
-bn plan --objective "potent AND selective AND soluble" \
+bn campaign plan --objective "potent AND selective AND soluble" \
         --model anthropic --run-budget 20   # decompose into a guarded problem tree
-bn reproduce <branch>                  # replay a recorded experiment, diff verdicts
+bn campaign reproduce <branch>                  # replay a recorded experiment, diff verdicts
 bn sim                                 # reference design round on the virtual lab
-bn run examples/workflow.yml           # tournament + assay on the configured lab
+bn campaign run examples/workflow.yml           # tournament + assay on the configured lab
 bn mcp                                 # MCP server: drive BioNexus from Claude/Cursor
 bn new-adapter lab my_robot            # scaffold a tested LabAdapter
 bn skills list                         # discovered Agent Skills (theirs and ours)
@@ -106,7 +106,7 @@ bn eval --suite epistemics,models      # run tiers separately
 bn anchor --verify                     # Merkle root: prove the whole store's state
 bn fixtures verify <study-dir>         # byte-reproducible case-study data
 bn connect describe <device>           # interview you into an agent-readable device card
- bn auto --dose-design adaptive ...     # Bayesian sequential dosing (typically 3 wells, not 4)
+ bn campaign auto --dose-design adaptive ...     # Bayesian sequential dosing (typically 3 wells, not 4)
  bn halt --engage --reason "spill"      # operator stop-condition outside the agent's reach
 bn halt --clear                        # only a human clears it
 bn sop list                            # agent-proposed recurring procedures awaiting sign-off
@@ -293,14 +293,14 @@ To start the full flow without writing JSON, use a preset template:
 
 ```sh
 bn templates                                    # list presets
-bn auto --template dose-response-screen \
+bn campaign auto --template dose-response-screen \
       --field compounds=C1,C2,C3                # fills in the problem for you
 ```
 
 Or with your own config:
 
 ```sh
-bn auto campaign.json
+bn campaign auto campaign.json
 ```
 
 <details><summary>campaign.json — an example problem statement</summary>
@@ -502,7 +502,7 @@ hypothesis generation and target validation.
 
 ### Under the hood — how skills, tools, agents, and gates compose
 
-When you run `bn auto`, here is what actually happens to one compound, step by
+When you run `bn campaign auto`, here is what actually happens to one compound, step by
 step, and which BioNexus layer is responsible at each point:
 
 | Step | Who acts | What happens | What BioNexus enforces |
