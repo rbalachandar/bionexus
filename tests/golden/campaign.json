@@ -1,0 +1,1440 @@
+{
+ "act_default": {
+  "cards": [
+   {
+    "candidate": "AD1",
+    "citation": "",
+    "citation_detail": "",
+    "citation_status": "unverified",
+    "evidence": null,
+    "gate_label": "IC50 (\u00b5M) \u2264 2",
+    "head": "AD1",
+    "key": "hyp-b9fe9503",
+    "mechanism": "",
+    "predicted": "2.0 uM",
+    "predicted_by": null,
+    "rationale": "",
+    "refutation_condition": "",
+    "round": 1,
+    "selected": true,
+    "stage": "inconclusive \u2014 CI straddles the threshold (IC50 (\u00b5M) 20.883 (95% CI 17.825\u201341.468))",
+    "state": "inconclusive",
+    "statement": "binds",
+    "threshold": 2.0,
+    "verdict": {
+     "ci": [
+      17.825,
+      41.468
+     ],
+     "extrapolation": false,
+     "margin": "narrow margin",
+     "observed": 20.883,
+     "status": "inconclusive",
+     "unit_label": "IC50 (\u00b5M)"
+    }
+   },
+   {
+    "candidate": "H1",
+    "citation": "",
+    "citation_detail": "",
+    "citation_status": "unverified",
+    "evidence": null,
+    "gate_label": "IC50 (\u00b5M) \u2264 5",
+    "head": "H1",
+    "key": "hyp-77d730c6",
+    "mechanism": "",
+    "predicted": "5.0 uM",
+    "predicted_by": null,
+    "rationale": "",
+    "refutation_condition": "",
+    "round": 1,
+    "selected": true,
+    "stage": "confirmed by orthogonal assay \u2014 IC50 (\u00b5M) 4.642 (95% CI 2.598\u20134.642) \u00b7 narrow margin",
+    "state": "confirmed",
+    "statement": "binds",
+    "threshold": 5.0,
+    "verdict": {
+     "ci": [
+      2.598,
+      4.642
+     ],
+     "extrapolation": false,
+     "margin": "narrow margin",
+     "observed": 4.642,
+     "status": "confirmed",
+     "unit_label": "IC50 (\u00b5M)"
+    }
+   },
+   {
+    "candidate": "H2",
+    "citation": "",
+    "citation_detail": "",
+    "citation_status": "unverified",
+    "evidence": null,
+    "gate_label": "IC50 (\u00b5M) \u2264 8",
+    "head": "H2",
+    "key": "hyp-90365a1c",
+    "mechanism": "",
+    "predicted": "8.0 uM",
+    "predicted_by": null,
+    "rationale": "",
+    "refutation_condition": "",
+    "round": 1,
+    "selected": true,
+    "stage": "refuted (IC50 (\u00b5M) 61.6 (95% CI 55.431\u201380.199)) \u00b7 clear margin",
+    "state": "refuted",
+    "statement": "binds",
+    "threshold": 8.0,
+    "verdict": {
+     "ci": [
+      55.431,
+      80.199
+     ],
+     "extrapolation": false,
+     "margin": "clear margin",
+     "observed": 61.6,
+     "status": "invalidated",
+     "unit_label": "IC50 (\u00b5M)"
+    }
+   },
+   {
+    "candidate": "H3",
+    "citation": "",
+    "citation_detail": "",
+    "citation_status": "unverified",
+    "evidence": null,
+    "gate_label": "IC50 (\u00b5M) \u2264 11",
+    "head": "H3",
+    "key": "hyp-8a9bbedc",
+    "mechanism": "",
+    "predicted": "11.0 uM",
+    "predicted_by": null,
+    "rationale": "",
+    "refutation_condition": "",
+    "round": 2,
+    "selected": true,
+    "stage": "refuted (IC50 (\u00b5M) 49.879 (95% CI 27.188\u201366.674)) \u00b7 narrow margin",
+    "state": "refuted",
+    "statement": "binds",
+    "threshold": 11.0,
+    "verdict": {
+     "ci": [
+      27.188,
+      66.674
+     ],
+     "extrapolation": false,
+     "margin": "narrow margin",
+     "observed": 49.879,
+     "status": "invalidated",
+     "unit_label": "IC50 (\u00b5M)"
+    }
+   },
+   {
+    "candidate": "M1",
+    "citation": "",
+    "citation_detail": "",
+    "citation_status": "unverified",
+    "evidence": null,
+    "gate_label": "IC50 (\u00b5M) \u2264 90",
+    "head": "M1",
+    "key": "hyp-82ae5cc8",
+    "mechanism": "",
+    "predicted": "90.0 uM",
+    "predicted_by": null,
+    "rationale": "",
+    "refutation_condition": "",
+    "round": 2,
+    "selected": true,
+    "stage": "confirmed by orthogonal assay \u2014 IC50 (\u00b5M) 1.574 (95% CI 1.241\u20131.795) \u00b7 clear margin",
+    "state": "confirmed",
+    "statement": "binds",
+    "threshold": 90.0,
+    "verdict": {
+     "ci": [
+      1.241,
+      1.795
+     ],
+     "extrapolation": false,
+     "margin": "clear margin",
+     "observed": 1.574,
+     "status": "confirmed",
+     "unit_label": "IC50 (\u00b5M)"
+    }
+   }
+  ],
+  "events": [
+   [
+    "problem_defined",
+    {
+     "constraints": [
+      {
+       "description": "IC50",
+       "kind": "hard",
+       "limit": 20.0,
+       "name": "potency",
+       "unit": "uM"
+      }
+     ],
+     "environment": {
+      "autonomy": "act",
+      "concentrations": [
+       "0.5uM",
+       "2uM",
+       "10uM",
+       "40uM"
+      ],
+      "dose_design": "fixed",
+      "k": 3,
+      "lab": "simulator",
+      "lab_seed": 3,
+      "lab_version": "sim-v1",
+      "model": null
+     },
+     "objective": "find IC50<=20",
+     "success_metric": null
+    }
+   ],
+   [
+    "hypothesis_proposed",
+    {
+     "citation": "",
+     "citation_detail": "",
+     "citation_status": "unverified",
+     "criteria": {
+      "direction": "min",
+      "inconclusive_if_qc_failed": true,
+      "metric": "ic50_um",
+      "min_replicates": 1,
+      "proxy_of": null,
+      "threshold": 2.0
+     },
+     "design": {
+      "assay_type": "binding",
+      "concentrations": [],
+      "controls": [],
+      "definition": null,
+      "design_notes": "",
+      "readiness_verdict": null,
+      "replicates": 1
+     },
+     "family": "",
+     "mechanism": "",
+     "predicted": "2.0 uM",
+     "predicted_by": null,
+     "predicted_observables": [],
+     "rationale": "",
+     "refutation_condition": "",
+     "smiles": "",
+     "statement": "AD1 binds"
+    }
+   ],
+   [
+    "hypothesis_proposed",
+    {
+     "citation": "",
+     "citation_detail": "",
+     "citation_status": "unverified",
+     "criteria": {
+      "direction": "min",
+      "inconclusive_if_qc_failed": true,
+      "metric": "ic50_um",
+      "min_replicates": 1,
+      "proxy_of": null,
+      "threshold": 5.0
+     },
+     "design": {
+      "assay_type": "binding",
+      "concentrations": [],
+      "controls": [],
+      "definition": null,
+      "design_notes": "",
+      "readiness_verdict": null,
+      "replicates": 1
+     },
+     "family": "",
+     "mechanism": "",
+     "predicted": "5.0 uM",
+     "predicted_by": null,
+     "predicted_observables": [],
+     "rationale": "",
+     "refutation_condition": "",
+     "smiles": "",
+     "statement": "H1 binds"
+    }
+   ],
+   [
+    "hypothesis_proposed",
+    {
+     "citation": "",
+     "citation_detail": "",
+     "citation_status": "unverified",
+     "criteria": {
+      "direction": "min",
+      "inconclusive_if_qc_failed": true,
+      "metric": "ic50_um",
+      "min_replicates": 1,
+      "proxy_of": null,
+      "threshold": 8.0
+     },
+     "design": {
+      "assay_type": "binding",
+      "concentrations": [],
+      "controls": [],
+      "definition": null,
+      "design_notes": "",
+      "readiness_verdict": null,
+      "replicates": 1
+     },
+     "family": "",
+     "mechanism": "",
+     "predicted": "8.0 uM",
+     "predicted_by": null,
+     "predicted_observables": [],
+     "rationale": "",
+     "refutation_condition": "",
+     "smiles": "",
+     "statement": "H2 binds"
+    }
+   ],
+   [
+    "hypothesis_proposed",
+    {
+     "citation": "",
+     "citation_detail": "",
+     "citation_status": "unverified",
+     "criteria": {
+      "direction": "min",
+      "inconclusive_if_qc_failed": true,
+      "metric": "ic50_um",
+      "min_replicates": 1,
+      "proxy_of": null,
+      "threshold": 11.0
+     },
+     "design": {
+      "assay_type": "binding",
+      "concentrations": [],
+      "controls": [],
+      "definition": null,
+      "design_notes": "",
+      "readiness_verdict": null,
+      "replicates": 1
+     },
+     "family": "",
+     "mechanism": "",
+     "predicted": "11.0 uM",
+     "predicted_by": null,
+     "predicted_observables": [],
+     "rationale": "",
+     "refutation_condition": "",
+     "smiles": "",
+     "statement": "H3 binds"
+    }
+   ],
+   [
+    "hypothesis_proposed",
+    {
+     "citation": "",
+     "citation_detail": "",
+     "citation_status": "unverified",
+     "criteria": {
+      "direction": "min",
+      "inconclusive_if_qc_failed": true,
+      "metric": "ic50_um",
+      "min_replicates": 1,
+      "proxy_of": null,
+      "threshold": 90.0
+     },
+     "design": {
+      "assay_type": "binding",
+      "concentrations": [],
+      "controls": [],
+      "definition": null,
+      "design_notes": "",
+      "readiness_verdict": null,
+      "replicates": 1
+     },
+     "family": "",
+     "mechanism": "",
+     "predicted": "90.0 uM",
+     "predicted_by": null,
+     "predicted_observables": [],
+     "rationale": "",
+     "refutation_condition": "",
+     "smiles": "",
+     "statement": "M1 binds"
+    }
+   ],
+   [
+    "hypotheses_filtered",
+    {
+     "decisions": [
+      {
+       "reason": "top-k by score",
+       "score": 0.333,
+       "selected": true
+      },
+      {
+       "reason": "top-k by score",
+       "score": 0.167,
+       "selected": true
+      },
+      {
+       "reason": "top-k by score",
+       "score": 0.111,
+       "selected": true
+      },
+      {
+       "reason": "top-k by score",
+       "score": 0.083,
+       "selected": false
+      },
+      {
+       "reason": "top-k by score",
+       "score": 0.011,
+       "selected": false
+      }
+     ],
+     "k": 3
+    }
+   ],
+   [
+    "stage_transition",
+    {
+     "candidates": [
+      "AD1",
+      "H1",
+      "H2"
+     ],
+     "kind": "round_start",
+     "round": 1
+    }
+   ],
+   [
+    "synthesis_complete",
+    {
+     "attempt": 1,
+     "candidate": "AD1",
+     "lot": "lot-1a00eaf2",
+     "ok": true,
+     "purity": 98.3,
+     "yield_pct": 65.9
+    }
+   ],
+   [
+    "lab_run",
+    {
+     "assay": "binding",
+     "concentrations": [
+      0.5,
+      2.0,
+      10.0,
+      40.0
+     ],
+     "instrument": "simulator",
+     "instrument_version": "sim-v1",
+     "n_controls": 2,
+     "n_samples": 4,
+     "replicates": 3,
+     "title": "test-AD1"
+    }
+   ],
+   [
+    "hypothesis_tested",
+    {
+     "assay": "binding"
+    }
+   ],
+   [
+    "synthesis_complete",
+    {
+     "attempt": 1,
+     "candidate": "H1",
+     "lot": "lot-c9e92f7c",
+     "ok": true,
+     "purity": 92.0,
+     "yield_pct": 94.8
+    }
+   ],
+   [
+    "lab_run",
+    {
+     "assay": "binding",
+     "concentrations": [
+      0.5,
+      2.0,
+      10.0,
+      40.0
+     ],
+     "instrument": "simulator",
+     "instrument_version": "sim-v1",
+     "n_controls": 2,
+     "n_samples": 4,
+     "replicates": 3,
+     "title": "test-H1"
+    }
+   ],
+   [
+    "hypothesis_tested",
+    {
+     "assay": "binding"
+    }
+   ],
+   [
+    "synthesis_complete",
+    {
+     "attempt": 1,
+     "candidate": "H2",
+     "lot": "lot-3693adb4",
+     "ok": true,
+     "purity": 96.7,
+     "yield_pct": 60.1
+    }
+   ],
+   [
+    "lab_run",
+    {
+     "assay": "binding",
+     "concentrations": [
+      0.5,
+      2.0,
+      10.0,
+      40.0
+     ],
+     "instrument": "simulator",
+     "instrument_version": "sim-v1",
+     "n_controls": 2,
+     "n_samples": 4,
+     "replicates": 3,
+     "title": "test-H2"
+    }
+   ],
+   [
+    "hypothesis_tested",
+    {
+     "assay": "binding"
+    }
+   ],
+   [
+    "hypothesis_inconclusive",
+    {
+     "derivation": {
+      "decided_by": {
+       "direction": "min",
+       "metric": "ic50_um",
+       "threshold": 20.0
+      },
+      "derived": {
+       "ci": "residual bootstrap 95%",
+       "method": "hill-bootstrap",
+       "metric": "ic50_um"
+      },
+      "measured_by": "simulator (sim-v1)",
+      "raw": {
+       "quantity": "RFU",
+       "wells": 14
+      }
+     },
+     "direction": "min",
+     "metric": "ic50_um",
+     "observed": 20.883,
+     "observed_ci": [
+      17.825,
+      41.468
+     ],
+     "qc_passed": true,
+     "threshold": 20.0,
+     "verdict": "inconclusive"
+    }
+   ],
+   [
+    "lab_run",
+    {
+     "assay": "enzymatic",
+     "concentrations": [
+      10.0
+     ],
+     "instrument": "simulator",
+     "instrument_version": "sim-v1",
+     "n_controls": 1,
+     "n_samples": 1,
+     "replicates": 3,
+     "title": "auto-confirmation-AD1"
+    }
+   ],
+   [
+    "hypothesis_tested",
+    {
+     "assay": "enzymatic"
+    }
+   ],
+   [
+    "hypothesis_invalidated",
+    {
+     "derivation": {
+      "decided_by": {
+       "direction": "min",
+       "metric": "ic50_um",
+       "threshold": 20.0
+      },
+      "derived": {
+       "ci": "residual bootstrap 95%",
+       "method": "hill-bootstrap",
+       "metric": "ic50_um"
+      },
+      "measured_by": "simulator (sim-v1)",
+      "raw": {
+       "quantity": "RFU",
+       "wells": 14
+      }
+     },
+     "direction": "min",
+     "metric": "ic50_um",
+     "observed": 61.6,
+     "observed_ci": [
+      55.431,
+      80.199
+     ],
+     "qc_passed": true,
+     "threshold": 20.0,
+     "verdict": "invalidated"
+    }
+   ],
+   [
+    "lab_run",
+    {
+     "assay": "enzymatic",
+     "concentrations": [
+      10.0
+     ],
+     "instrument": "simulator",
+     "instrument_version": "sim-v1",
+     "n_controls": 1,
+     "n_samples": 1,
+     "replicates": 3,
+     "title": "auto-confirmation-H2"
+    }
+   ],
+   [
+    "hypothesis_tested",
+    {
+     "assay": "enzymatic"
+    }
+   ],
+   [
+    "hypothesis_validated",
+    {
+     "derivation": {
+      "decided_by": {
+       "direction": "min",
+       "metric": "ic50_um",
+       "threshold": 20.0
+      },
+      "derived": {
+       "ci": "residual bootstrap 95%",
+       "method": "hill-bootstrap",
+       "metric": "ic50_um"
+      },
+      "measured_by": "simulator (sim-v1)",
+      "raw": {
+       "quantity": "RFU",
+       "wells": 14
+      }
+     },
+     "direction": "min",
+     "metric": "ic50_um",
+     "observed": 4.288,
+     "observed_ci": [
+      3.043,
+      5.158
+     ],
+     "qc_passed": true,
+     "threshold": 20.0,
+     "verdict": "validated"
+    }
+   ],
+   [
+    "lab_run",
+    {
+     "assay": "enzymatic",
+     "concentrations": [
+      10.0
+     ],
+     "instrument": "simulator",
+     "instrument_version": "sim-v1",
+     "n_controls": 1,
+     "n_samples": 1,
+     "replicates": 3,
+     "title": "auto-confirmation-H1"
+    }
+   ],
+   [
+    "hypothesis_tested",
+    {
+     "assay": "enzymatic"
+    }
+   ],
+   [
+    "hypothesis_validated",
+    {
+     "confirmation": {
+      "agreed": true,
+      "primary_ci": [
+       3.043,
+       5.158
+      ],
+      "primary_ic50": 4.288,
+      "ratio": 1.08,
+      "rule": "ci-overlap",
+      "secondary_ci": [
+       2.598,
+       4.642
+      ],
+      "secondary_ic50": 4.642
+     },
+     "derivation": {
+      "decided_by": {
+       "direction": "min",
+       "metric": "ic50_um",
+       "threshold": 20.0
+      },
+      "derived": {
+       "ci": "residual bootstrap 95%",
+       "method": "orthogonal re-measurement + fit",
+       "metric": "ic50_um"
+      },
+      "measured_by": "simulator (sim-v1)",
+      "raw": {
+       "quantity": "RFU",
+       "wells": 14
+      }
+     },
+     "direction": "min",
+     "metric": "ic50_um",
+     "observed": 4.642,
+     "observed_ci": [
+      2.598,
+      4.642
+     ],
+     "qc_passed": true,
+     "threshold": 20.0,
+     "verdict": "confirmed"
+    }
+   ],
+   [
+    "stage_transition",
+    {
+     "picked": [
+      "AD1",
+      "H1",
+      "H2"
+     ],
+     "stage": "round-1-complete",
+     "verdicts": {
+      "AD1": "inconclusive",
+      "H1": "confirmed",
+      "H2": "invalidated"
+     }
+    }
+   ],
+   [
+    "hypotheses_filtered",
+    {
+     "decisions": [
+      {
+       "reason": "top-k by score",
+       "score": 0.083,
+       "selected": true
+      },
+      {
+       "reason": "top-k by score",
+       "score": 0.011,
+       "selected": true
+      }
+     ],
+     "k": 3
+    }
+   ],
+   [
+    "stage_transition",
+    {
+     "candidates": [
+      "H3",
+      "M1"
+     ],
+     "kind": "round_start",
+     "round": 2
+    }
+   ],
+   [
+    "synthesis_complete",
+    {
+     "attempt": 1,
+     "candidate": "H3",
+     "lot": "lot-07482940",
+     "ok": true,
+     "purity": 97.4,
+     "yield_pct": 80.5
+    }
+   ],
+   [
+    "lab_run",
+    {
+     "assay": "binding",
+     "concentrations": [
+      0.5,
+      2.0,
+      10.0,
+      40.0
+     ],
+     "instrument": "simulator",
+     "instrument_version": "sim-v1",
+     "n_controls": 2,
+     "n_samples": 4,
+     "replicates": 3,
+     "title": "test-H3"
+    }
+   ],
+   [
+    "hypothesis_tested",
+    {
+     "assay": "binding"
+    }
+   ],
+   [
+    "synthesis_complete",
+    {
+     "attempt": 1,
+     "candidate": "M1",
+     "lot": "lot-a1ca2c64",
+     "ok": true,
+     "purity": 96.4,
+     "yield_pct": 66.1
+    }
+   ],
+   [
+    "lab_run",
+    {
+     "assay": "binding",
+     "concentrations": [
+      0.5,
+      2.0,
+      10.0,
+      40.0
+     ],
+     "instrument": "simulator",
+     "instrument_version": "sim-v1",
+     "n_controls": 2,
+     "n_samples": 4,
+     "replicates": 3,
+     "title": "test-M1"
+    }
+   ],
+   [
+    "hypothesis_tested",
+    {
+     "assay": "binding"
+    }
+   ],
+   [
+    "hypothesis_invalidated",
+    {
+     "derivation": {
+      "decided_by": {
+       "direction": "min",
+       "metric": "ic50_um",
+       "threshold": 20.0
+      },
+      "derived": {
+       "ci": "residual bootstrap 95%",
+       "method": "hill-bootstrap",
+       "metric": "ic50_um"
+      },
+      "measured_by": "simulator (sim-v1)",
+      "raw": {
+       "quantity": "RFU",
+       "wells": 14
+      }
+     },
+     "direction": "min",
+     "metric": "ic50_um",
+     "observed": 49.879,
+     "observed_ci": [
+      27.188,
+      66.674
+     ],
+     "qc_passed": true,
+     "threshold": 20.0,
+     "verdict": "invalidated"
+    }
+   ],
+   [
+    "lab_run",
+    {
+     "assay": "enzymatic",
+     "concentrations": [
+      10.0
+     ],
+     "instrument": "simulator",
+     "instrument_version": "sim-v1",
+     "n_controls": 1,
+     "n_samples": 1,
+     "replicates": 3,
+     "title": "auto-confirmation-H3"
+    }
+   ],
+   [
+    "hypothesis_tested",
+    {
+     "assay": "enzymatic"
+    }
+   ],
+   [
+    "hypothesis_validated",
+    {
+     "derivation": {
+      "decided_by": {
+       "direction": "min",
+       "metric": "ic50_um",
+       "threshold": 20.0
+      },
+      "derived": {
+       "ci": "residual bootstrap 95%",
+       "method": "hill-bootstrap",
+       "metric": "ic50_um"
+      },
+      "measured_by": "simulator (sim-v1)",
+      "raw": {
+       "quantity": "RFU",
+       "wells": 14
+      }
+     },
+     "direction": "min",
+     "metric": "ic50_um",
+     "observed": 1.703,
+     "observed_ci": [
+      1.379,
+      1.843
+     ],
+     "qc_passed": true,
+     "threshold": 20.0,
+     "verdict": "validated"
+    }
+   ],
+   [
+    "lab_run",
+    {
+     "assay": "enzymatic",
+     "concentrations": [
+      10.0
+     ],
+     "instrument": "simulator",
+     "instrument_version": "sim-v1",
+     "n_controls": 1,
+     "n_samples": 1,
+     "replicates": 3,
+     "title": "auto-confirmation-M1"
+    }
+   ],
+   [
+    "hypothesis_tested",
+    {
+     "assay": "enzymatic"
+    }
+   ],
+   [
+    "hypothesis_validated",
+    {
+     "confirmation": {
+      "agreed": true,
+      "primary_ci": [
+       1.379,
+       1.843
+      ],
+      "primary_ic50": 1.703,
+      "ratio": 1.08,
+      "rule": "ci-overlap",
+      "secondary_ci": [
+       1.241,
+       1.795
+      ],
+      "secondary_ic50": 1.574
+     },
+     "derivation": {
+      "decided_by": {
+       "direction": "min",
+       "metric": "ic50_um",
+       "threshold": 20.0
+      },
+      "derived": {
+       "ci": "residual bootstrap 95%",
+       "method": "orthogonal re-measurement + fit",
+       "metric": "ic50_um"
+      },
+      "measured_by": "simulator (sim-v1)",
+      "raw": {
+       "quantity": "RFU",
+       "wells": 14
+      }
+     },
+     "direction": "min",
+     "metric": "ic50_um",
+     "observed": 1.574,
+     "observed_ci": [
+      1.241,
+      1.795
+     ],
+     "qc_passed": true,
+     "threshold": 20.0,
+     "verdict": "confirmed"
+    }
+   ],
+   [
+    "stage_transition",
+    {
+     "picked": [
+      "H3",
+      "M1"
+     ],
+     "stage": "round-2-complete",
+     "verdicts": {
+      "H3": "invalidated",
+      "M1": "confirmed"
+     }
+    }
+   ],
+   [
+    "stage_transition",
+    {
+     "critical": 0,
+     "findings": [],
+     "kind": "review_report",
+     "review": "reviewer-v1",
+     "verdicts_reviewed": 5,
+     "warnings": 0
+    }
+   ]
+  ],
+  "report": {
+   "recommendations": [
+    "recommendation: best binder so far is AD1 (IC50 20.883 uM) \u2014 next: confirm with orthogonal assay",
+    "recommendation: best binder so far is H2 (IC50 61.6 uM) \u2014 next: confirm with orthogonal assay",
+    "recommendation: best binder so far is H1 (IC50 4.288 uM) \u2014 next: confirm with orthogonal assay",
+    "recommendation: best binder so far is H3 (IC50 49.879 uM) \u2014 next: confirm with orthogonal assay",
+    "recommendation: best binder so far is M1 (IC50 1.703 uM) \u2014 next: confirm with orthogonal assay"
+   ],
+   "rounds_run": 2,
+   "selected": [
+    "AD1",
+    "H1",
+    "H2",
+    "H3",
+    "M1"
+   ],
+   "verdicts": {
+    "AD1": "inconclusive",
+    "H1": "confirmed",
+    "H2": "invalidated",
+    "H3": "invalidated",
+    "M1": "confirmed"
+   }
+  },
+  "tally": {
+   "confirmed": 2,
+   "inconclusive": 1,
+   "preliminary": 0,
+   "refuted": 2
+  }
+ },
+ "observe_boei": {
+  "cards": [
+   {
+    "candidate": "AD1",
+    "citation": "",
+    "citation_detail": "",
+    "citation_status": "unverified",
+    "evidence": null,
+    "gate_label": "IC50 (\u00b5M) \u2264 2",
+    "head": "AD1",
+    "key": "hyp-b9fe9503",
+    "mechanism": "",
+    "predicted": "2.0 uM",
+    "predicted_by": null,
+    "rationale": "",
+    "refutation_condition": "",
+    "round": null,
+    "selected": false,
+    "stage": "proposed",
+    "state": "proposed",
+    "statement": "binds",
+    "threshold": 2.0,
+    "verdict": null
+   },
+   {
+    "candidate": "H1",
+    "citation": "",
+    "citation_detail": "",
+    "citation_status": "unverified",
+    "evidence": null,
+    "gate_label": "IC50 (\u00b5M) \u2264 5",
+    "head": "H1",
+    "key": "hyp-77d730c6",
+    "mechanism": "",
+    "predicted": "5.0 uM",
+    "predicted_by": null,
+    "rationale": "",
+    "refutation_condition": "",
+    "round": 1,
+    "selected": false,
+    "stage": "proposed",
+    "state": "proposed",
+    "statement": "binds",
+    "threshold": 5.0,
+    "verdict": null
+   },
+   {
+    "candidate": "H2",
+    "citation": "",
+    "citation_detail": "",
+    "citation_status": "unverified",
+    "evidence": null,
+    "gate_label": "IC50 (\u00b5M) \u2264 8",
+    "head": "H2",
+    "key": "hyp-90365a1c",
+    "mechanism": "",
+    "predicted": "8.0 uM",
+    "predicted_by": null,
+    "rationale": "",
+    "refutation_condition": "",
+    "round": 1,
+    "selected": false,
+    "stage": "proposed",
+    "state": "proposed",
+    "statement": "binds",
+    "threshold": 8.0,
+    "verdict": null
+   },
+   {
+    "candidate": "H3",
+    "citation": "",
+    "citation_detail": "",
+    "citation_status": "unverified",
+    "evidence": null,
+    "gate_label": "IC50 (\u00b5M) \u2264 11",
+    "head": "H3",
+    "key": "hyp-8a9bbedc",
+    "mechanism": "",
+    "predicted": "11.0 uM",
+    "predicted_by": null,
+    "rationale": "",
+    "refutation_condition": "",
+    "round": 1,
+    "selected": false,
+    "stage": "proposed",
+    "state": "proposed",
+    "statement": "binds",
+    "threshold": 11.0,
+    "verdict": null
+   },
+   {
+    "candidate": "M1",
+    "citation": "",
+    "citation_detail": "",
+    "citation_status": "unverified",
+    "evidence": null,
+    "gate_label": "IC50 (\u00b5M) \u2264 90",
+    "head": "M1",
+    "key": "hyp-82ae5cc8",
+    "mechanism": "",
+    "predicted": "90.0 uM",
+    "predicted_by": null,
+    "rationale": "",
+    "refutation_condition": "",
+    "round": null,
+    "selected": false,
+    "stage": "proposed",
+    "state": "proposed",
+    "statement": "binds",
+    "threshold": 90.0,
+    "verdict": null
+   }
+  ],
+  "events": [
+   [
+    "problem_defined",
+    {
+     "constraints": [
+      {
+       "description": "IC50",
+       "kind": "hard",
+       "limit": 20.0,
+       "name": "potency",
+       "unit": "uM"
+      }
+     ],
+     "environment": {
+      "autonomy": "observe",
+      "concentrations": [
+       "0.5uM",
+       "2uM",
+       "10uM",
+       "40uM"
+      ],
+      "dose_design": "fixed",
+      "k": 3,
+      "lab": "simulator",
+      "lab_seed": 3,
+      "lab_version": "sim-v1",
+      "model": null
+     },
+     "objective": "find IC50<=20",
+     "success_metric": null
+    }
+   ],
+   [
+    "hypothesis_proposed",
+    {
+     "citation": "",
+     "citation_detail": "",
+     "citation_status": "unverified",
+     "criteria": {
+      "direction": "min",
+      "inconclusive_if_qc_failed": true,
+      "metric": "ic50_um",
+      "min_replicates": 1,
+      "proxy_of": null,
+      "threshold": 2.0
+     },
+     "design": {
+      "assay_type": "binding",
+      "concentrations": [],
+      "controls": [],
+      "definition": null,
+      "design_notes": "",
+      "readiness_verdict": null,
+      "replicates": 1
+     },
+     "family": "",
+     "mechanism": "",
+     "predicted": "2.0 uM",
+     "predicted_by": null,
+     "predicted_observables": [],
+     "rationale": "",
+     "refutation_condition": "",
+     "smiles": "",
+     "statement": "AD1 binds"
+    }
+   ],
+   [
+    "hypothesis_proposed",
+    {
+     "citation": "",
+     "citation_detail": "",
+     "citation_status": "unverified",
+     "criteria": {
+      "direction": "min",
+      "inconclusive_if_qc_failed": true,
+      "metric": "ic50_um",
+      "min_replicates": 1,
+      "proxy_of": null,
+      "threshold": 5.0
+     },
+     "design": {
+      "assay_type": "binding",
+      "concentrations": [],
+      "controls": [],
+      "definition": null,
+      "design_notes": "",
+      "readiness_verdict": null,
+      "replicates": 1
+     },
+     "family": "",
+     "mechanism": "",
+     "predicted": "5.0 uM",
+     "predicted_by": null,
+     "predicted_observables": [],
+     "rationale": "",
+     "refutation_condition": "",
+     "smiles": "",
+     "statement": "H1 binds"
+    }
+   ],
+   [
+    "hypothesis_proposed",
+    {
+     "citation": "",
+     "citation_detail": "",
+     "citation_status": "unverified",
+     "criteria": {
+      "direction": "min",
+      "inconclusive_if_qc_failed": true,
+      "metric": "ic50_um",
+      "min_replicates": 1,
+      "proxy_of": null,
+      "threshold": 8.0
+     },
+     "design": {
+      "assay_type": "binding",
+      "concentrations": [],
+      "controls": [],
+      "definition": null,
+      "design_notes": "",
+      "readiness_verdict": null,
+      "replicates": 1
+     },
+     "family": "",
+     "mechanism": "",
+     "predicted": "8.0 uM",
+     "predicted_by": null,
+     "predicted_observables": [],
+     "rationale": "",
+     "refutation_condition": "",
+     "smiles": "",
+     "statement": "H2 binds"
+    }
+   ],
+   [
+    "hypothesis_proposed",
+    {
+     "citation": "",
+     "citation_detail": "",
+     "citation_status": "unverified",
+     "criteria": {
+      "direction": "min",
+      "inconclusive_if_qc_failed": true,
+      "metric": "ic50_um",
+      "min_replicates": 1,
+      "proxy_of": null,
+      "threshold": 11.0
+     },
+     "design": {
+      "assay_type": "binding",
+      "concentrations": [],
+      "controls": [],
+      "definition": null,
+      "design_notes": "",
+      "readiness_verdict": null,
+      "replicates": 1
+     },
+     "family": "",
+     "mechanism": "",
+     "predicted": "11.0 uM",
+     "predicted_by": null,
+     "predicted_observables": [],
+     "rationale": "",
+     "refutation_condition": "",
+     "smiles": "",
+     "statement": "H3 binds"
+    }
+   ],
+   [
+    "hypothesis_proposed",
+    {
+     "citation": "",
+     "citation_detail": "",
+     "citation_status": "unverified",
+     "criteria": {
+      "direction": "min",
+      "inconclusive_if_qc_failed": true,
+      "metric": "ic50_um",
+      "min_replicates": 1,
+      "proxy_of": null,
+      "threshold": 90.0
+     },
+     "design": {
+      "assay_type": "binding",
+      "concentrations": [],
+      "controls": [],
+      "definition": null,
+      "design_notes": "",
+      "readiness_verdict": null,
+      "replicates": 1
+     },
+     "family": "",
+     "mechanism": "",
+     "predicted": "90.0 uM",
+     "predicted_by": null,
+     "predicted_observables": [],
+     "rationale": "",
+     "refutation_condition": "",
+     "smiles": "",
+     "statement": "M1 binds"
+    }
+   ],
+   [
+    "stage_transition",
+    {
+     "candidates": [
+      "H1",
+      "H2",
+      "H3"
+     ],
+     "kind": "round_start",
+     "round": 1
+    }
+   ],
+   [
+    "hypotheses_filtered",
+    {
+     "direction": "min",
+     "k": 3,
+     "kind": "acquisition_selection",
+     "note": "",
+     "picks": [
+      {
+       "acquisition": 0.602,
+       "candidate": "H1",
+       "mean": 5.0,
+       "reason": "acquisition=0.6021; mean=5.0, sd=0.2",
+       "sd": 0.2
+      },
+      {
+       "acquisition": 0.4,
+       "candidate": "H2",
+       "mean": 8.0,
+       "reason": "acquisition=0.3997; mean=8.0, sd=0.2",
+       "sd": 0.2
+      },
+      {
+       "acquisition": 0.269,
+       "candidate": "H3",
+       "mean": 11.0,
+       "reason": "acquisition=0.2688; mean=11.0, sd=0.2",
+       "sd": 0.2
+      }
+     ],
+     "policy": "bo-ei",
+     "policy_version": 1,
+     "refusals": [
+      {
+       "candidate": "AD1",
+       "reason": "extrapolation-veto (AD): selection outside the surrogate's domain is refused exploration"
+      },
+      {
+       "candidate": "M1",
+       "reason": "outside batch (budget)"
+      }
+     ],
+     "round": 1,
+     "seed": 7,
+     "target": 20.0
+    }
+   ]
+  ],
+  "report": {
+   "recommendations": [],
+   "rounds_run": 1,
+   "selected": [
+    "H1",
+    "H2",
+    "H3"
+   ],
+   "verdicts": {}
+  },
+  "tally": {
+   "confirmed": 0,
+   "inconclusive": 0,
+   "preliminary": 0,
+   "refuted": 0
+  }
+ }
+}

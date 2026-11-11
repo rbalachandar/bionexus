@@ -1250,3 +1250,34 @@ Goodhart, and spurious XAI against our evals/TPP/problem-trees/attribution.
   don't fit the offline suite; revisit as a fixtures-materialization job).
 - [x] eval --task no longer clobbers committed leaderboard artifacts
   (single-task debug guarded).
+
+---
+
+## Code-review remediation (Nov 11, 2026)
+
+Review findings, fixes and the remaining structural plan. Decisions: fresh
+start for provenance data (wipe), per-person approver tokens deferred (the
+single `BIONEXUS_API_TOKEN` works as-is), deprecated CLI aliases removed
+rather than kept.
+
+- [x] Verdict CI/row correctness, small-n CIs, grid-ceiling censoring
+- [x] Provenance: concurrency (BEGIN IMMEDIATE + WAL), rowid order, anchor prefix verify, full-record hash
+- [x] API mutation guard, Docker env/read-only, budget fails closed, logged exceptions
+- [x] Dead code removed (agentic/agents/core.flywheel/gnn_policy/serve), one Hill model (`fitting.py`)
+- [x] **Phase 0** golden characterization (`tests/test_golden_campaign.py`)
+- [ ] **Phase 1** fresh start: one branch convention `problem/<root>-<leaf>`, drop alias helpers + legacy v1 hash, reset data dir
+- [ ] **Phase 2** split `views.py` into a package by screen; inject the store
+- [ ] **Phase 3** split the rest of `labread.py` (formats / layout / qc / analysis)
+- [ ] **Phase 4** decompose `AutoAnalysisAgent.handle` into event handlers
+- [ ] **Phase 5** `run_campaign` -> `CampaignContext` + stage functions
+- [ ] **Phase 6** device adapters selectable from config (S-T4), single plugin
+      discovery path, `Registry.resolve` priority, docker non-root default,
+      remaining `get_store` call sites, `evals/tasks.py` Hill formula,
+      `publish_cmd` without shell, `bn campaign` regrouping (no aliases)
+- [ ] Later: per-person approver tokens (identity derived server-side)
+
+Note (eval after the CI fixes): `hit-recovery` fell 0.917 -> 0.833 and
+`verdict-honesty` now sees 4 borderline CIs (was 2) — the wider, df-corrected
+IC50 intervals abstain more often; 0 overconfident verdicts. Re-baseline the
+committed leaderboard when the model datasets are available (the `models`
+tasks did not run offline here).
