@@ -132,10 +132,9 @@ evidence that governance worked.
 - Geometry derived from the mark: the **ring** = in-progress; the
   **gate bar** = closed/refused (bar removed = open); the **nexus dot**
   = evidence/verdict. Icons must read at 14px.
-- Set (initial 12): `program`, `hypothesis`, `gate-open`, `gate-closed`,
-  `halt`, `human`, `clock`, `fault`, `history`, `instrument`,
-  `verdict`, `evidence`. Stored in `assets/icons/*.svg`; rendered via a
-  single `ui.icon(name, size, color)` helper.
+- The workbench draws its icons from `lucide-react`; the original bespoke
+  12-icon set (and its Streamlit `ui.icon` helper) was removed with the
+  Streamlit UI. Keep the geometry rules above if a custom icon is added.
 - **No emoji anywhere in the workbench**, including page icons in the
   router. Emoji is acceptable only in CLI console output, where icons
   cannot render.
