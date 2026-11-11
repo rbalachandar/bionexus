@@ -2,7 +2,7 @@
 
 `dose_response_svg(points, ...)` renders (conc, response) points plus an
 optional fitted curve into a small styled SVG. Used by `labread.PlateResult`,
-the HTML report, and `bn serve` — anywhere a curve is the answer.
+the HTML report, and the workbench — anywhere a curve is the answer.
 """
 from __future__ import annotations
 

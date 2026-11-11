@@ -154,3 +154,33 @@ def test_budget_fails_closed_when_store_unreadable():
             raise RuntimeError("db locked")
     with pytest.raises(RuntimeError):
         ResourceBudget().lab_runs_used(Broken(), "p")
+
+
+def test_v2_hash_covers_actor_and_branch_and_legacy_still_verifies(tmp_path):
+    import sqlite3
+    db = str(tmp_path / "h.db")
+    st = SqliteProvenanceStore(db)
+    st.append(record_for(Envelope(experiment_branch_id="b"),
+                         EventType.stage_transition, system_actor("alice")))
+    assert st.verify_chain() == []
+    conn = sqlite3.connect(db)
+    conn.execute("DROP TRIGGER provenance_no_update")
+    # tamper ONLY the actor name inside the payload (v1 could not see this)
+    conn.execute("UPDATE provenance SET payload = replace(payload, "
+                 "'alice', 'mallory')")
+    conn.commit(); conn.close()
+    assert [p["problem"] for p in SqliteProvenanceStore(db).verify_chain()
+            ] == ["payload-tampered"]
+
+
+def test_legacy_v1_records_keep_verifying(tmp_path):
+    st = SqliteProvenanceStore(str(tmp_path / "l.db"))
+    rec = record_for(Envelope(experiment_branch_id="b"),
+                     EventType.stage_transition, system_actor())
+    rec.hash_version = 1                     # as written before this change
+    rec.record_hash = st._hash(rec)
+    st._conn.execute("INSERT INTO provenance VALUES (?,?,?,?,?,?)",
+                     (rec.record_id, "b", None, rec.envelope.created_at,
+                      rec.record_hash, rec.model_dump_json()))
+    st._conn.commit()
+    assert st.verify_chain() == []

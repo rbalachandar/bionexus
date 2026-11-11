@@ -18,7 +18,6 @@ from bionexus.core.contracts import (
     SampleSpec,
     ToolInvocation,
 )
-from bionexus.core.flywheel import FlywheelLog
 from bionexus.core.interfaces import record_for, system_actor
 from bionexus.core.safety import SafetyEngine, LabGateway
 
@@ -120,18 +119,6 @@ def test_agentenv_sandbox_snapshot_fork(monkeypatch):
 
 
 # ---- T4.4 flywheel ----------------------------------------------------------------
-
-def test_flywheel_pairs_from_round(tmp_path):
-    lab = SimulatorLab(seed=3)
-    p = make_protocol()
-    result = lab.fetch_results(lab.submit_protocol(p))
-    log = FlywheelLog(tmp_path / "train.jsonl")
-    example = log.pair_from_round(p, result)
-    loaded = log.load()
-    assert len(loaded) == 1
-    assert example["labels"][0]["value"] == result.measurements[0].value
-    assert "protocol_id" in example["input"]
-
 
 def test_hypothesis_lifecycle_recorded(tmp_path):
     from bionexus.core.hypothesis import HypothesisTracker
@@ -1077,33 +1064,6 @@ def test_web_approver_waits_for_decision(tmp_path):
     assert approved == [False]
 
 
-def test_cockpit_server_endpoints(tmp_path):
-    import urllib.request
-    from bionexus.serve import serve_in_thread
-
-    httpd, _ = serve_in_thread(port=0, inbox=str(tmp_path / "a.jsonl"))
-    port = httpd.server_address[1]
-    try:
-        assert urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz").read() == b"ok"
-        html = urllib.request.urlopen(f"http://127.0.0.1:{port}/").read().decode()
-        assert "Awaiting your decision" in html
-        # request an approval via the inbox, see it on the dashboard, decide via POST
-        from bionexus.approvals import ApprovalInbox
-        box = ApprovalInbox(str(tmp_path / "a.jsonl"))
-        aid = box.request("assay C1")
-        html = urllib.request.urlopen(f"http://127.0.0.1:{port}/").read().decode()
-        assert aid in html and "assay C1" in html
-        req = urllib.request.Request(f"http://127.0.0.1:{port}/decide",
-                                     data=f"id={aid}&action=approve".encode())
-        urllib.request.urlopen(req)  # 303 redirect
-        assert box.status_of(aid) == "approved"
-        pend = json.loads(urllib.request.urlopen(
-            f"http://127.0.0.1:{port}/api/pending").read())
-        assert pend == []
-    finally:
-        httpd.shutdown()
-
-
 def test_plate_result_csv_export(tmp_path):
     from bionexus.labread import read_plate
     f = tmp_path / "p.csv"
@@ -1336,111 +1296,7 @@ def test_retrosynthesis_simulated():
 
 # ---- agent personas -------------------------------------------------------------------
 
-def test_agent_personas():
-    from bionexus.agents import AgentRole, get_persona, all_personas
-    assert len(all_personas()) == 6
-    p = get_persona("medicinal_chemist")
-    assert "rdkit" in [t.lower() for t in p.preferred_tools]
-    assert p.system_mandate  # non-empty mandate
-    ctx = p.to_prompt_context()
-    assert "Medicinal Chemist" in ctx
-    # all roles are valid strings
-    for role in AgentRole:
-        assert get_persona(role).role == role
-
-
 # ---- agentic loop ----------------------------------------------------------------------
-
-def test_agentic_loop_converges():
-    from bionexus.agentic import AgenticLoop, LoopConfig
-
-    tools = [
-        {"name": "check_synthesis", "description": "Check synthesis feasibility",
-         "input_schema": {"type": "object", "properties": {"smiles": {"type": "string"}},
-                          "required": ["smiles"]}},
-        {"name": "predict_admet", "description": "Predict ADMET properties",
-         "input_schema": {"type": "object", "properties": {"smiles": {"type": "string"}},
-                          "required": ["smiles"]}},
-    ]
-    calls = []
-    def check_synthesis(smiles):
-        calls.append("check_synthesis")
-        return {"feasible": True, "steps": 3}
-    def predict_admet(smiles):
-        calls.append("predict_admet")
-        return {"MW": 150, "LogP": 2.1}
-
-    class _ToolUsingModel:
-        """Scripted model that calls tools then finishes."""
-        name, model_version = "scripted", "s1"
-        def __init__(self):
-            self._step = 0
-        def generate(self, inv, prompt, **kw): ...
-        def call_with_tools(self, messages, tools, system=""):
-            self._step += 1
-            if self._step == 1:
-                tc = [{"name": "check_synthesis",
-                       "arguments": {"smiles": "CCO"}}]
-            elif self._step == 2:
-                tc = [{"name": "predict_admet",
-                       "arguments": {"smiles": "CCO"}}]
-            else:
-                return {"text": "DONE: Analysis complete",
-                        "tool_calls": [], "stop_reason": "end_turn"}
-            return {"text": "", "tool_calls": tc, "stop_reason": "tool_use"}
-
-    loop = AgenticLoop(
-        provider=_ToolUsingModel(), tools_schema=tools,
-        tool_executor={"check_synthesis": check_synthesis,
-                        "predict_admet": predict_admet},
-        config=LoopConfig(max_turns=5),
-    )
-    result = loop.run("Evaluate CCO")
-    assert result.completed and result.reason == "done"
-    assert result.tool_calls == 2
-    assert calls == ["check_synthesis", "predict_admet"]
-
-
-def test_agentic_loop_max_turns():
-    from bionexus.agentic import AgenticLoop, LoopConfig
-
-    class _AlwaysCalls:
-        name, model_version = "x", "x"
-        def call_with_tools(self, messages, tools, system=""):
-            return {"text": "", "stop_reason": "tool_use",
-                    "tool_calls": [{"name": "noop", "arguments": {}}]}
-
-    def noop(**kw): return {}
-    loop = AgenticLoop(
-        provider=_AlwaysCalls(),
-        tools_schema=[{"name": "noop", "input_schema": {}}],
-        tool_executor={"noop": noop},
-        config=LoopConfig(max_turns=3),
-    )
-    result = loop.run("task")
-    assert not result.completed and result.reason == "max_turns"
-    assert result.turns == 3
-
-
-def test_agentic_loop_error_circuit_breaker():
-    from bionexus.agentic import AgenticLoop, LoopConfig
-
-    def bad_tool(**kw): raise RuntimeError("lab exploded")
-    class _BadModel:
-        name, model_version = "x", "x"
-        def call_with_tools(self, messages, tools, system=""):
-            return {"text": "", "stop_reason": "tool_use",
-                    "tool_calls": [{"name": "bad_tool", "arguments": {}}]}
-
-    loop = AgenticLoop(
-        provider=_BadModel(),
-        tools_schema=[],
-        tool_executor={"bad_tool": bad_tool},
-        config=LoopConfig(max_turns=10, max_consecutive_errors=3),
-    )
-    result = loop.run("task")
-    assert result.reason == "errors"
-
 
 def test_agent_toolkit_tool_execution(tmp_path):
     from bionexus.adapters.lab.simulator import SimulatorLab

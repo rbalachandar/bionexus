@@ -63,7 +63,6 @@ def spawn_campaign(doc: dict, program_name: str) -> str | None:
     (each leaf links to the program via BN_PROGRAM). Returns the
     campaign eid, or None for decomposed launches."""
     from bionexus import program as program_cfg
-    from bionexus.serve import save_campaign_index
     ensure_dirs()
     if doc.get("decompose"):
         return _spawn_plan(doc, program_name)
@@ -139,6 +138,11 @@ def _spawn_plan(doc: dict, program_name: str) -> None:
     env.pop("BN_CAMPAIGN_ID", None)
     subprocess.Popen(cmd, stdout=open(logf, "ab", buffering=0),
                      stderr=subprocess.STDOUT, cwd=str(Path.cwd()), env=env)
+
+
+def save_campaign_index(idx: dict) -> None:
+    CAMPAIGN_DIR.mkdir(parents=True, exist_ok=True)
+    (CAMPAIGN_DIR / "index.json").write_text(json.dumps(idx, indent=1))
 
 
 def campaign_index() -> dict:

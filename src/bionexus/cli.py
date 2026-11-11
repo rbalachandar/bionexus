@@ -901,13 +901,6 @@ def cmd_diary(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_serve(args: argparse.Namespace) -> int:
-    from bionexus.serve import serve
-
-    serve(port=args.port, inbox=args.inbox, db_path=args.db)
-    return 0
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="bn", description="BioNexus CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -1016,11 +1009,6 @@ def main(argv: list[str] | None = None) -> int:
     diary.add_argument("--html", default="diary.html")
     diary.set_defaults(func=cmd_diary)
 
-    srv = sub.add_parser("serve", help="scientist cockpit: approval inbox + campaign dashboard")
-    srv.add_argument("--port", type=int, default=8080)
-    srv.add_argument("--inbox", default=str(APPROVALS_FILE))
-    srv.add_argument("--db", default=None, help="provenance DB to show recent events from")
-    srv.set_defaults(func=cmd_serve)
 
     watch_p = sub.add_parser("watch", help="watch an instrument outbox; agent notices results automatically")
     watch_p.add_argument("inbox")
@@ -1046,7 +1034,7 @@ def main(argv: list[str] | None = None) -> int:
     auto.add_argument("--yes", action="store_true",
                       help="never prompt for template fields; fail instead")
     auto.add_argument("--db", default="bionexus.db",
-                      help="provenance DB (shown by bn serve)")
+                      help="provenance DB (shown in the workbench)")
     auto.add_argument("--inbox", default=None,
                       help="approval inbox file for gate mode (default <data dir>/approvals.jsonl)")
     auto.set_defaults(func=cmd_auto)

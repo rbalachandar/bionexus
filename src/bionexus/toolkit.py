@@ -1,4 +1,4 @@
-"""AgentToolkit — wires BioNexus capabilities as tools for the agentic loop.
+"""AgentToolkit — wires BioNexus capabilities as tools for an LLM tool-calling loop.
 
 Each tool is a named function with an Anthropic-compatible schema. The toolkit
 connects to the real BioNexus layer: LabGateway (safety), ADMET panel,
@@ -139,8 +139,7 @@ class AgentToolkit:
 
     Usage:
         toolkit = AgentToolkit(lab=SimulatorLab(), store=store, actor=actor)
-        loop = AgenticLoop(provider=..., tools_schema=AgentToolkit.schemas(),
-                           tool_executor=toolkit.executors)
+        schemas, executors = AgentToolkit.schemas(), toolkit.executors()
     """
 
     def __init__(self, lab_gateway, store, actor, tpp=None,

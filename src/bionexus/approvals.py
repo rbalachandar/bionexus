@@ -1,7 +1,7 @@
 """Approval inbox — the scientist's button, backed by an append-only log.
 
 Autonomy `gate` mode: every lab submission writes a request here and waits for
-an operator decision. `bn serve` renders the inbox as a web page with
+an operator decision. the workbench (`make api`) renders the inbox as a web page with
 Approve/Deny buttons; decisions append to the same log. Both sides are
 multi-writer-safe (append-only events, folded on read).
 """
@@ -75,13 +75,13 @@ def web_approver(inbox: ApprovalInbox | str | Path = DEFAULT_INBOX,
                  notify: Callable[[str], None] | None = None
                  ) -> Callable[[str], bool]:
     """Approver callback for `gate` autonomy: request into the inbox, wait for
-    the operator's decision in `bn serve`. Denies on timeout."""
+    the operator's decision in the workbench. Denies on timeout."""
     box = inbox if isinstance(inbox, ApprovalInbox) else ApprovalInbox(inbox)
     say = notify or (lambda m: None)
 
     def approver(title: str) -> bool:
         aid = box.request(title)
-        say(f"approval requested: '{title}' ({aid}) — waiting in bn serve")
+        say(f"approval requested: '{title}' ({aid}) — waiting in the workbench (Approvals)")
         deadline = time.time() + timeout_secs
         while time.time() < deadline:
             status = box.status_of(aid)

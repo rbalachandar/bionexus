@@ -70,6 +70,7 @@ class SqliteProvenanceStore:
                     (record.envelope.experiment_branch_id,),
                 ).fetchone()
                 record.prev_record_hash = prev[0] if prev else None
+                record.hash_version = 2
                 record.record_hash = self._hash(record)
                 self._conn.execute(
                     "INSERT INTO provenance VALUES (?,?,?,?,?,?)",
@@ -168,17 +169,25 @@ class SqliteProvenanceStore:
 
     @staticmethod
     def _hash(record: ProvenanceRecord) -> str:
-        material = json.dumps(
-            {
-                "prev": record.prev_record_hash,
-                "record_id": record.record_id,
-                "event_type": record.event_type.value,
-                "artifact": record.artifact.model_dump() if record.artifact else None,
-                "decision": record.decision,
-                "created_at": record.envelope.created_at,
-            },
-            sort_keys=True,
-        )
+        if record.hash_version >= 2:
+            # v2: everything but the hash itself, so actor / inputs / branch
+            # edits are detected, not just decision payload edits
+            material = json.dumps(
+                record.model_dump(mode="json", exclude={"record_hash"}),
+                sort_keys=True, default=str)
+        else:
+            material = json.dumps(
+                {
+                    "prev": record.prev_record_hash,
+                    "record_id": record.record_id,
+                    "event_type": record.event_type.value,
+                    "artifact": (record.artifact.model_dump()
+                                 if record.artifact else None),
+                    "decision": record.decision,
+                    "created_at": record.envelope.created_at,
+                },
+                sort_keys=True,
+            )
         return hashlib.sha256(material.encode()).hexdigest()
 
 

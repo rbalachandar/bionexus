@@ -37,6 +37,12 @@ BioNexus is built on three principles:
   checksum you can publish somewhere you do not control, so anyone can check
   that the record has not been edited.
 
+A campaign also chooses **which experiments to run**: each round's batch can
+be selected by a deterministic, applicability-domain-gated **Bayesian
+expected-improvement** acquisition (with an optional BoTorch/GP posterior),
+scored against naive baselines in CI and sealed to provenance with its
+reasoning.
+
 **Contents:** [Installation](#installation) · [CLI](#cli) ·
 [Evals](#evaluation-suite) ·
 [Case studies](#case-studies) ·
@@ -436,9 +442,6 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
     prospective PD-L1 design campaign (112 hypotheses, 30 of them controls
     whose pre-registered refutation clauses evaluated true against the
     score's own ranking utility).
-- **`bn serve`** — a headless alternative cockpit (stdlib HTTP, no
-  dependencies) for approval queues and diaries on machines without a
-  browser; useful for remote/headless boxes.
 - **`bn diary <branch>`** — the hash-chained record as a static lab-notebook
   HTML file: hypotheses with rationale, tests with evidence runs, verdicts
   with predicted-vs-observed, gate decisions.

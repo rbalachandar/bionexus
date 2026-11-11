@@ -26,7 +26,6 @@ make api            # the web app: workspace, launches, live agents (:8000)
 #     review — calls with CIs, abstentions and refusals kept honest,
 #     provenance + report/CSV export; a reviewed analysis can hand off to
 #     a guided campaign.
-# (headless alternative: bn serve)
 bn templates                            # campaign presets
 bn auto --template dose-response-screen --field compounds=C1,C2,C3 \
         --autonomy gate                 # pause at each submission for your click
