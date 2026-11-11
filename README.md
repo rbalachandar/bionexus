@@ -137,26 +137,23 @@ bn skills list                         # discovered Agent Skills (theirs and our
 
 ## Case studies
 
-The case studies exercise the flow on three kinds of data: blind
-reproductions of published papers (CS01–03), re-analysis of deposited
-screening data (CS04–06), and a published protein-display dataset (CS07).
-CS08 generates a new dataset on rented GPU hardware — designs screened
-against composition-matched controls, with the refutation conditions
-registered before the scores existed.
+Eight studies exercise the flow on real data: blind reproductions of
+published papers (CS01–03), a prospective hit-to-lead run and re-analyses of
+deposited screening data (CS04–06), a published protein-display dataset
+(CS07), and a newly generated binder-design dataset (CS08). Several results
+are negative, and they are reported as such. Each study's README has the
+setup, the full results and its own limitations.
 
-| Study | Data | Result |
+| Study | Data | Headline result |
 |---|---|---|
-| [Case study 01](case-studies/01-egfr-blind-reproduction/) | Gazit et al., *J. Med. Chem.* 1989 — the original tyrphostins paper | Q1 hypothesis identified, **qualified**: a probe confirmed the model has prior exposure to this literature (recognition, not derivation). Q2 ranking vs published IC50s passed. |
-| [Case study 02](case-studies/02-az3246-hpk1/) | AZ3246 HPK1 inhibitor, *J. Med. Chem.* 2025 — post-training-cutoff | **Contamination-free** (self-report + never-published-variant probes). Agent derived the pyrazine-carboxamide hypothesis from structures alone; its blinded ranking (ρ = +0.42) outperformed a Random Forest trained on other HPK1 measurements (ρ = +0.08). *Figures predate a training-pool pagination fix; re-run on frozen fixtures is queued in the roadmap.* |
-| [Case study 03](case-studies/03-multi-paper/) | Multi-paper blind validation on recent ChEMBL studies | **Blind chemotype identification on 4/4 papers** (cores match the actual chemistry); contamination clean by self-report on 4/4, and the never-published-variant probe independently flagged **1 leakage-suspect** case the self-report missed. Flow integrity + budgets verified; scaffold leakage ~absent; no enrichment claim survives CIs + BH at n=31–67 — all reported as such |
-| [Case study 04](case-studies/04-prospective-hit2lead/) | Prospective hit-to-lead on real published data — EGFR, 26,322 ChEMBL measurement rows, the seven successor drugs (gefitinib→osimertinib) blinded | Gated `act` campaigns ran on ReplayLab against published truths, no simulator support. **5 hit claims — all true actives; 6 kills — all correct; 2 left-censored abstentions on the two sub-350pM compounds** (the most potent molecules were deliberately not numbered); reviewer clean; 209 hash-chained records. The blinded surrogate independently ranked Michael-acceptor chemistry #1–6, and the safety gate made testing it cost a declared covalent mechanism — the full refuse→redesign→gate→confirm loop on real data. Running real data also caught four product bugs, each fixed with a regression test. |
-| [Case study 05](case-studies/05-paper-pilot/) | The paper pilot — a proxy for the lab pilot: Jacobs et al., *J. Med. Chem.* 2013, the NIH MLPCN anti-SARS-CoV 3CLpro cascade, reproduced **from the lab's own deposited raw tables** (PubChem AIDs 1890/1879; 290,893 → 405 → 136 → 44) | **98.9% agreement on decisive verdicts, zero false actives** (32 TP / 54 TN / 0 FP vs the submitters' calls) — and 14 abstentions where our bootstrap CIs straddle the paper's own 10 µM gate (their point estimates 4.6–9.9 µM). The single disagreement is disclosed curve-and-all; 5 cross-plate inconsistencies found in *their own* cascade (secondary vs their confirmatory curves). The deposit had real formatting defects (the REST header truncates the dose columns; the meta rows carry the truth) — `bn read` now parses PubChem deposits natively, structurally blind to the answer keys |
-| [Case study 06](case-studies/06-ncats-deposit/) | The deposit pilot — a modern NCATS qHTS (AID 2061307, deposited 2025-09-13): 2,427 ALDH3A1 reassay curves vs NCATS' own AI-fit ACTIVE/INACTIVE/INCONCLUSIVE calls | **Negative result.** Fixed-reference 50%-crossing + CI rules do not port to internally self-normalized qHTS dialects (ρ = 0.107 vs their fits; 216 of their Inactives pass our trend filter). The pilot surfaced issues simulators do not produce: self-normalized baselines, autofluorescence flatlines needing curve-class rejection rather than threshold rejection, and a degenerate-fit trap (a known-max Hill fits a flat line as infinitely potent — detected by crosstab plausibility, not by tuning). Parser dialects + polarity refusals shipped with tests; answer keys untouched until verdicts locked |
-| [Case study 07](case-studies/07-proteinbase/) | Reproduction of the Proteinbase paper (40 MB deposit, 5,253 proteins / 2,630 measured display pairs) — hit rates, selection replay, applicability-domain transfer | 98% agreement reproducing their measured hit rates from raw deposit; **two negative results**: selection policies replay at/below baseline on their tested pairs (consistent with CS08), and an AD floor built on their data false-alarms 84% in-domain — a calibration problem on real distributions |
-| [Case study 08](case-studies/08-proteinbase-entry/) | Binder-design competition trial (Proteinbase/Adaptyv entry): 82 BindCraft PD-L1 designs generated and screened with Boltz-2 on rented GPU hardware (~$5), plus 30 composition-matched controls (scrambles of the top designs + random peptides) — newly generated data with no published source — all 112 through the hypothesis loop | **Boltz-2 ipTM separates designs from controls at the distribution level (MWU p≈1e-4, bootstrap CI [+0.12, +0.30]) but does not rank individual sequences**: AUC 0.80; the best composition-matched scramble scores 0.937, above 89% of real designs (73/82), and 11/30 controls clear the 0.7 gate — supporting use as a gate, not as a ranking. The pipeline ran end to end without an LLM API key. All 112 are hash-chained hypotheses with pre-registered refutation conditions; for the 11 validating controls, their own clause ("if this validates, ipTM's ranking value is refuted") is recorded as fired. In the workbench: `seed_workbench.py` → program card "CS08 PD-L1 Designs", verdict `partial`, 2 batched runs, origin-labeled cards |
-
-Each case-study README documents its own limitations explicitly (e.g. CS04's
-potency-only view misses osimertinib's real T790M-selectivity win).
+| [01](case-studies/01-egfr-blind-reproduction/) | Gazit et al. 1989 — the original tyrphostins | Q1 hypothesis identified but **qualified**: a probe showed the model has prior exposure to this literature (recognition, not derivation). Q2 ranking vs published IC50s passed. |
+| [02](case-studies/02-az3246-hpk1/) | AZ3246 HPK1 inhibitor, 2025 (post-training-cutoff) | **Contamination-free.** The agent derived the pyrazine-carboxamide hypothesis from structures alone; its blinded ranking (ρ = +0.42) beat a Random Forest (ρ = +0.125, recomputed on a deduplicated training pool — see the study's correction note). |
+| [03](case-studies/03-multi-paper/) | Four recent ChEMBL papers | **Blind chemotype identification on 4/4 papers**; the never-published-variant probe flagged 1 leakage-suspect case the self-report missed. No enrichment claim survives CIs + BH correction — reported as such. |
+| [04](case-studies/04-prospective-hit2lead/) | Prospective hit-to-lead, EGFR: 26,322 ChEMBL rows, the seven successor drugs blinded | Gated `act` campaigns on replayed published truths: **5 confirmed hits (all true actives), 5 refutations (all true inactives), 2 left-censored abstentions** — the two most potent compounds were deliberately not numbered. Reviewer clean; 209 hash-chained records; the refuse → redesign → gate → confirm loop ran on real data and caught product bugs, each fixed with a regression test. |
+| [05](case-studies/05-paper-pilot/) | Jacobs et al. 2013 NIH anti-SARS-CoV 3CLpro cascade, reproduced from the lab's raw PubChem tables | **98.9% agreement on decisive verdicts, zero false actives** (32 TP / 54 TN / 0 FP) and 14 abstentions where our CIs straddle the paper's own 10 µM gate. `bn read` now parses PubChem deposits natively. |
+| [06](case-studies/06-ncats-deposit/) | NCATS qHTS (AID 2061307): 2,427 ALDH3A1 curves vs NCATS' own calls | **Negative result.** Fixed-reference 50%-crossing rules do not port to self-normalized qHTS dialects (ρ = 0.107). It led to regime refusal and shape-only admission for such deposits. |
+| [07](case-studies/07-proteinbase/) | Proteinbase paper: 5,253 proteins, 2,630 measured display pairs | Hit rates reproduced from the raw deposit (Nipah 10.0% vs 9.3%; EGFR 15.7% vs 14.0%). **Two negatives:** selecting on computed confidence picks *worse* than random (4 of 4 lifts negative), and a fixed applicability-domain floor was miscalibrated on real distributions — data-derived quantile floors are now in. |
+| [08](case-studies/08-proteinbase-entry/) | 82 BindCraft PD-L1 designs + 30 composition-matched controls, scored with Boltz-2 on rented GPU (~$5) — newly generated data | **ipTM separates designs from controls in aggregate (MWU p ≈ 1e-4) but does not rank individual sequences:** AUC 0.80; the best scramble scores 0.937, above 73 of 82 real designs, and 11 of 30 controls clear the 0.7 gate. Use it as a gate, not a ranking. All 112 are hash-chained hypotheses with pre-registered refutation clauses. |
 
 ## Evaluation suite
 
@@ -526,51 +523,46 @@ hypothesis generation and target validation.
 **Benchmark datasets:** MoleculeNet (Lipophilicity, ESOL, BACE), TDC, DOCKSTRING
 — see [`docs/benchmarks.md`](docs/benchmarks.md).
 
-### Under the hood — how skills, tools, agents, and gates compose
+### How a campaign runs — who acts, and what BioNexus enforces
 
-When you run `bn campaign auto`, here is what actually happens to one compound, step by
-step, and which BioNexus layer is responsible at each point:
+When you run `bn campaign auto`, here is what happens to one compound, step by
+step, and which layer is responsible at each point:
 
 | Step | Who acts | What happens | What BioNexus enforces |
 |---|---|---|---|
-| 1. Problem setup | **Problem definition** | Decomposes the objective into constraints | Records problem + constraints as provenance root |
-| 2. Hypothesis proposal | **Hypothesis agent** using the `rdkit` **skill** | Generates analogs with SAR rationale | Validates schema, dedupes, records rationale |
+| 1. Problem setup | **Problem definition** | Decomposes the objective into constraints | Records problem + constraints as the provenance root |
+| 2. Hypothesis proposal | **Hypothesis agent** using the `rdkit` **skill** | Generates analogs with SAR rationale | Validates schema, dedupes, records rationale; injects skill guidance |
 | 3. Portfolio filter | **Portfolio selector** | Scores + ranks, applies diversity cap | Records every accept/reject with reason |
-| 4. Readiness review | **ExperimentDefinition** | Checks: is the readout capable? denominator present? synthesis feasible? | **Blocks** if result would be uninterpretable |
+| 4. Readiness review | **ExperimentDefinition** | Checks: is the readout capable? denominator present? synthesis feasible? | **Blocks** if the result would be uninterpretable |
 | 5. Safety gate | **SafetyEngine** | Checks reagents, BSL, step count, **toxicophores in sample structures**, dual-use text | **Refuses** with machine-readable reason + rule-set version |
 | 5b. Governance gate | **HaltSwitch + AuthorizationMatrix + SOP registry** — code the agent cannot reach | Checks the operator halt, the autonomous/human/never column, and SOP sign-off for recurring work | Refuses outside the agent's reach; every decision recorded as provenance |
 | 6. Lab execution | **LabAdapter** (simulator, Opentrons, PlateReaderShare) | Runs the assay, produces raw evidence | Records run ID, parameters, and raw output |
 | 7. Device event | **DeviceMonitor** | Notices the export appeared | Triggers agent analysis automatically |
 | 8. Analysis | **Analysis agent** + `labread` | Fits IC50s, checks QC, flags artifacts | Records measurements + QC flags as provenance |
-| 9. Verdict | **Analysis** against pre-registered criteria | VALIDATED / INVALIDATED / INCONCLUSIVE | Records the verdict with evidence and criteria |
-| 10. Audit | **ProvenanceStore** | Renders the full chain | `bn prove` verifies the hash chain |
+| 9. Verdict | **Analysis** against pre-registered criteria | VALIDATED / INVALIDATED / INCONCLUSIVE — a CI straddling the gate or a QC failure abstains | Records the verdict with evidence, criteria and confidence interval |
+| 10. Audit | **ProvenanceStore** | Renders the full chain | `bn prove` verifies the hash chain; `bn anchor` makes it externally checkable |
 
-The skills teach the agent *how* (domain knowledge from Scientific Agent Skills
-or the `bionexus` skill). The tools let the agent *act* (`run_assay`,
-`propose_hypothesis`, via MCP or direct Python). The gates decide *whether*
-(SafetyEngine + readiness review). The provenance records *what happened*.
-Each layer is independently swappable — but they only produce trustworthy
-science when composed through the BioNexus flow.
+**Division of labor.** The intelligence comes from the models: the LLM derives
+the SAR hypothesis, the QSAR model makes the calibrated prediction. BioNexus
+is the layer that makes those results executable, bounded, measurable and
+auditable. Skills teach the agent *how* (domain knowledge from Scientific Agent
+Skills or the `bionexus` skill); tools let it *act* (`run_assay`,
+`propose_hypothesis`, via MCP or direct Python); the gates decide *whether*
+(SafetyEngine, governance, readiness review); provenance records *what
+happened*. Each layer is independently swappable, but they only produce
+trustworthy science when composed through the BioNexus flow.
 
-### What BioNexus helps with
+Four things cut across the steps rather than sitting in one:
 
-The intelligence comes from the models: the LLM derives the SAR hypothesis, the
-QSAR model makes the calibrated prediction.
-BioNexus is the layer that makes those results executable, bounded, measurable,
-and auditable — the case studies above exercise this layer:
-
-| Campaign step | What the model does | What BioNexus does |
-|---|---|---|
-| Problem setup | — | Records problem + constraints as the provenance root |
-| Contamination control | — | Runs and records post-cutoff probes; the no-knowledge claim is part of the audit trail |
-| Hypothesis generation | LLM proposes families + tuned variables | Constrains, validates, dedupes, records; injects skill guidance |
-| Portfolio filter | LLM scores confidence | Enforces diversity caps; records every accept/reject reason |
-| Experiment execution | — | Safety-gates the submission; the lab produces raw evidence |
-| Result awareness | — | Device monitor notices the output automatically |
-| Verdicts | LLM interprets | Scores against pre-registered criteria with **confidence intervals**: QC failure or CI straddling the threshold → inconclusive |
-| Memory | LLM avoids dead ends when told | Flywheel: failed mechanistic families are discounted in every later portfolio |
-| Accountability | — | Hash-chained provenance + Merkle anchoring; `bn prove` renders the audit, `bn anchor` makes it externally checkable |
-| Measurement | — | `bn eval`: scored, deterministic task suite in CI — hit recovery, verdict honesty, confirmation coverage, falsifiability, adaptive design, flywheel memory |
+- **Contamination control** — post-cutoff and never-published-variant probes
+  run and are recorded, so a "no prior knowledge" claim is part of the audit
+  trail.
+- **Memory** — the flywheel discounts failed mechanistic families in every
+  later portfolio, and the hypothesis agent is told what the lab already
+  ruled out.
+- **Accountability** — hash-chained provenance plus Merkle anchoring.
+- **Measurement** — `bn eval`: a scored, deterministic task suite in CI (see
+  [Evaluation suite](#evaluation-suite)).
 
 ## The virtual lab
 
