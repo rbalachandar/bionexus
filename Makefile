@@ -1,7 +1,7 @@
 PY := $(shell [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3)
 UVICORN := $(PY) -m uvicorn
 
-.PHONY: test api api-dev web-dev web-build install
+.PHONY: reset-data test api api-dev web-dev web-build install
 
 install:            ## python package + web deps (in ./.venv — make targets use it)
 	@test -d .venv || python3 -m venv .venv
@@ -10,6 +10,9 @@ install:            ## python package + web deps (in ./.venv — make targets us
 
 test:               ## full python suite
 	$(PY) -m pytest tests/ -q
+
+reset-data:         ## back up then wipe local provenance + workbench state
+	./scripts/reset_data.sh
 
 api:                ## backend + built SPA on :8000
 	cd web && npm run build

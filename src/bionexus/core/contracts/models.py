@@ -393,7 +393,3 @@ class ProvenanceRecord(BaseModel):
     decision: dict[str, Any] | None = None
     prev_record_hash: str | None = None
     record_hash: str | None = None
-    # 1 = legacy hash (prev/id/event/artifact/decision/created_at only);
-    # 2 = hash over the WHOLE record (actor, inputs, envelope incl. branch).
-    # Old records parse as 1 and keep verifying; new appends are 2.
-    hash_version: int = 1

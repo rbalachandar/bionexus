@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from bionexus.views import (dmta_counts, has_doubled_branch, leaf_pid,
+from bionexus.views import (dmta_counts, leaf_pid,
                             problem_trees, resolve_problem, round_markers,
                             row_status)
 
@@ -63,16 +63,10 @@ def test_round_markers_sorted(prov_db):
     assert round_markers(recs) == [(1, ["C1", "C2"]), (2, ["C3"])]
 
 
-def test_leaf_pid_forms(tmp_path):
-    # no db -> run_tree doubled convention is default for single-node
-    assert has_doubled_branch("r1", tmp_path / "nope.db") is True
-    assert leaf_pid("r1", "r1", tmp_path / "nope.db") == "r1-r1"
-    assert leaf_pid("r1", "lf2", tmp_path / "nope.db") == "r1-lf2"
-    assert leaf_pid("r1", "lf2", tmp_path) == "r1-lf2"
-    # single-node leaf aliases cover both forms
-    from bionexus.views import pid_aliases
-    assert pid_aliases("r1", "r1") == {"r1", "r1-r1"}
-    assert pid_aliases("r1", "lf2") == {"r1-lf2"}
+def test_leaf_pid_single_convention():
+    # one convention: <root>-<leaf>; a single-node tree is <root>-<root>
+    assert leaf_pid("r1", "r1") == "r1-r1"
+    assert leaf_pid("r1", "lf2") == "r1-lf2"
 
 
 def test_resolve_problem_from_log(tmp_path):

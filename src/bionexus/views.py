@@ -40,33 +40,10 @@ def row_status(e: dict) -> str:
 
 
 # ------------------------------------------------------- problem id helpers
-def has_doubled_branch(root_id: str,
-                       db_path: str | Path = PROVENANCE_DB) -> bool:
-    """run_tree convention (problem/<root>-<root>) is the default when
-    no provenance exists yet."""
-    if not Path(db_path).exists():
-        return True
-    from bionexus.adapters.store.sqlite import get_store
-    return bool(get_store(str(db_path)).branch_records(
-        f"problem/{root_id}-{root_id}"))
-
-
-def leaf_pid(root_id: str, leaf_id: str,
-             db_path: str | Path = PROVENANCE_DB) -> str:
-    """Preferred campaign branch id for a leaf. Single-node trees (root
-    is its own leaf) may run on problem/<root> OR problem/<root>-<root>."""
-    if leaf_id == root_id:
-        return f"{root_id}-{root_id}" if has_doubled_branch(
-            root_id, db_path) else root_id
+def leaf_pid(root_id: str, leaf_id: str) -> str:
+    """The ONE campaign pid convention for a leaf of a problem tree:
+    problem/<root>-<leaf> (a single-node tree is <root>-<root>)."""
     return f"{root_id}-{leaf_id}"
-
-
-def pid_aliases(root_id: str, leaf_id: str) -> set[str]:
-    """All pid forms a leaf's campaign may be registered under."""
-    doubled = f"{root_id}-{leaf_id}"
-    if leaf_id == root_id:
-        return {root_id, doubled}
-    return {doubled}
 
 
 def resolve_problem(meta: dict, logf: Path) -> str | None:
@@ -224,15 +201,8 @@ def problem_trees(db_path: str | Path = PROVENANCE_DB) -> tuple[list, set]:
         alloc = tree.allocation()
         leaf_stats: dict[str, dict] = {}
         for leaf in tree.leaves():
-            aliases = pid_aliases(tree.root.id, leaf.id)
-            lrecs = []
-            # deterministic preference: the doubled (leaf-campaign) pid
-            # first — a root branch holding only genesis records must not
-            # shadow the leaf's real campaign records (set order is not)
-            for a in sorted(aliases, reverse=True):
-                lrecs = full.branch_records(f"problem/{a}")
-                if lrecs:
-                    break
+            pid = leaf_pid(tree.root.id, leaf.id)
+            lrecs = full.branch_records(f"problem/{pid}")
             lrecs = lrecs or full.branch_records(
                 leaf.branch(tree.root.id)) or []
             runs = sum(1 for r in lrecs if r.event_type.value == "lab_run")
@@ -263,8 +233,8 @@ def problem_trees(db_path: str | Path = PROVENANCE_DB) -> tuple[list, set]:
                                              if v in ("validated",
                                                       "confirmed")),
                                    "blocked": blocked,
-                                   "pids": sorted(aliases)}
-            leaf_pids.update(aliases)
+                                   "pids": [pid]}
+            leaf_pids.add(pid)
         nodes = [{"id": n.id, "parent": n.parent,
                   "objective": n.objective, "status": n.status,
                   "metric": n.metric, "direction": n.direction,
@@ -1170,7 +1140,7 @@ def workspace(wizard_store,
         parents = {n["parent"] for n in t["nodes"] if n["parent"]}
         return [n for n in t["nodes"] if n["id"] not in parents]
     trees = [t for t in trees if not _leaves(t) or any(
-        f'{t["root_id"]}-{leaf["id"]}' in live_leaf_pids
+        leaf_pid(t["root_id"], leaf["id"]) in live_leaf_pids
         for leaf in _leaves(t))]
 
     # map leaf -> experiment eid so the FE can link sub-problems

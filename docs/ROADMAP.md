@@ -1265,7 +1265,7 @@ rather than kept.
 - [x] API mutation guard, Docker env/read-only, budget fails closed, logged exceptions
 - [x] Dead code removed (agentic/agents/core.flywheel/gnn_policy/serve), one Hill model (`fitting.py`)
 - [x] **Phase 0** golden characterization (`tests/test_golden_campaign.py`)
-- [ ] **Phase 1** fresh start: one branch convention `problem/<root>-<leaf>`, drop alias helpers + legacy v1 hash, reset data dir
+- [x] **Phase 1** fresh start: one branch convention `problem/<root>-<leaf>`, drop alias helpers + legacy v1 hash, reset data dir
 - [ ] **Phase 2** split `views.py` into a package by screen; inject the store
 - [ ] **Phase 3** split the rest of `labread.py` (formats / layout / qc / analysis)
 - [ ] **Phase 4** decompose `AutoAnalysisAgent.handle` into event handlers

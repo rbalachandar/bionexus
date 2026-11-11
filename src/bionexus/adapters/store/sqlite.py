@@ -34,6 +34,19 @@ class SqliteProvenanceStore:
                     payload TEXT NOT NULL
                 )"""
             )
+            # schema marker: v2 = full-record hash. A DB written before it has
+            # records that can never verify; refuse loudly instead of reporting
+            # every record as tampered
+            uv = self._conn.execute("PRAGMA user_version").fetchone()[0]
+            if uv == 0:
+                n = self._conn.execute(
+                    "SELECT COUNT(*) FROM provenance").fetchone()[0]
+                if n:
+                    raise RuntimeError(
+                        "this provenance DB predates the full-record hash "
+                        "(schema v2); run `make reset-data` (backs up first) or "
+                        "point BIONEXUS at a fresh DB")
+                self._conn.execute("PRAGMA user_version = 2")
             # append-only is enforced by the DATABASE, not by convention:
             # UPDATE/DELETE abort at the engine level, so even a bug (or an
             # adb shell session) cannot rewrite history without an error
@@ -70,7 +83,6 @@ class SqliteProvenanceStore:
                     (record.envelope.experiment_branch_id,),
                 ).fetchone()
                 record.prev_record_hash = prev[0] if prev else None
-                record.hash_version = 2
                 record.record_hash = self._hash(record)
                 self._conn.execute(
                     "INSERT INTO provenance VALUES (?,?,?,?,?,?)",
@@ -169,25 +181,12 @@ class SqliteProvenanceStore:
 
     @staticmethod
     def _hash(record: ProvenanceRecord) -> str:
-        if record.hash_version >= 2:
-            # v2: everything but the hash itself, so actor / inputs / branch
-            # edits are detected, not just decision payload edits
-            material = json.dumps(
-                record.model_dump(mode="json", exclude={"record_hash"}),
-                sort_keys=True, default=str)
-        else:
-            material = json.dumps(
-                {
-                    "prev": record.prev_record_hash,
-                    "record_id": record.record_id,
-                    "event_type": record.event_type.value,
-                    "artifact": (record.artifact.model_dump()
-                                 if record.artifact else None),
-                    "decision": record.decision,
-                    "created_at": record.envelope.created_at,
-                },
-                sort_keys=True,
-            )
+        """Hash of the WHOLE record (everything but the hash itself), so an
+        edit to the actor, inputs or branch is detected, not just the
+        decision payload."""
+        material = json.dumps(
+            record.model_dump(mode="json", exclude={"record_hash"}),
+            sort_keys=True, default=str)
         return hashlib.sha256(material.encode()).hexdigest()
 
 
