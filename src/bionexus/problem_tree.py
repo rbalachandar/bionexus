@@ -403,39 +403,23 @@ def default_hypotheses(tree: "ProblemTree", candidates: list[str]) -> dict[str, 
     return out
 
 
-def run_tree(tree: "ProblemTree", lab_factory, store, *,
-             hypotheses: dict[str, list] | None = None,
-             model: Any = None, candidates: list[dict] | None = None,
-             inbox: str = ".data/inbox-tree", autonomy: str = "act",
-             rounds: int | None = None,
-             notify: Any = None, labs: list | None = None) -> dict[str, str]:
-    """Each leaf runs as its own budgeted campaign; the roll-up is recorded
-    on the root branch. Resumable: achieved leaves are skipped."""
-    from pathlib import Path
+def _record_root(tree, store, root_branch: str, say) -> None:
+    """Root problem record (+ the program link when launched from one)."""
+    import os as _os
 
-    from bionexus.autoloop import (CampaignConfig, ResourceBudget,
-                                   announce_branch, run_campaign)
     from bionexus.core.contracts import Envelope, EventType
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
     from bionexus.core.interfaces import record_for, system_actor
-
-    say = notify or (lambda m: print(f"[plan] {m}"))
-    alloc = tree.allocation()
-    hyps = hypotheses or default_hypotheses(
-        tree, [c["sample_id"] if isinstance(c, dict) else str(c)
-               for c in (candidates or [])])
-    root_branch = f"problem/{tree.root.id}"
     # launched from a program (workbench dialog): link the tree root to
     # it once, in provenance — the workspace nests on this record
-    import os as _os
     _bn_prog = _os.environ.get("BN_PROGRAM")
     if _bn_prog:
         try:
             from bionexus import program as _program
             _program.record_launch(_bn_prog, tree.root.id,
                                    tree.root.objective)
-        except Exception:
-            pass
+        except Exception as exc:
+            say(f"warning: could not link tree {tree.root.id} to program "
+                f"{_bn_prog}: {exc}")
     store.append(record_for(
         Envelope(experiment_branch_id=root_branch), EventType.problem_defined,
         system_actor("planner"),
@@ -444,58 +428,123 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
                   "environment": {"kind": "problem-tree",
                                   "tree": tree.model_dump(),
                                   "run_budget": tree.run_budget}}))
+
+
+def _leaf_campaign(tree, leaf, alloc, specs, model, candidates, rounds,
+                   autonomy, labs, inbox):
+    """The leaf's own budgeted CampaignConfig -> (cfg, problem, budget)."""
+    from pathlib import Path
+
+    from bionexus.autoloop import CampaignConfig, ResourceBudget
+    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    # agent mode: a leaf with no config hypotheses (no candidate
+    # list given) proposes its own via the model — same contract as
+    # direct campaigns with hypothesis_source "agent"
+    agent_mode = not specs and model is not None
+    cons = []
+    if leaf.gate is not None and leaf.metric:
+        cons = [Constraint(
+            name=leaf.metric,
+            description=f"{leaf.metric} "
+                        f"{'<=' if leaf.direction == 'min' else '>='} "
+                        f"{leaf.gate:g}",
+            kind="hard", limit=leaf.gate)]
+    # the leaf's registered objective must say more than its own
+    # name: state the purpose within the tree (parent context, gate,
+    # metric) so the experiment page's Objective line carries
+    # information instead of echoing the title
+    gate_txt = (f"{leaf.metric} "
+                f"{'<=' if leaf.direction == 'min' else '>='} "
+                f"{leaf.gate:g}" if leaf.metric and
+                leaf.gate is not None else "its registered gate")
+    if leaf.parent and leaf.parent != tree.root.id:
+        parent = (f"a {tree.nodes[leaf.parent].objective} sub-problem")
+    else:
+        parent = "a direct sub-problem"
+    problem = ProblemStatement(
+        objective=(f"{leaf.objective} — {parent} of "
+                   f"'{tree.root.objective}': show {gate_txt}"),
+        problem_id=f"{tree.root.id}-{leaf.id}",
+        constraints=cons,
+        success_metric=f"{leaf.metric or 'objective'} gate met")
+    budget = ResourceBudget(
+        max_total_runs=alloc.get(leaf.id, 2),
+        max_hypotheses_total=tree.limits.max_hypotheses_per_leaf,
+        max_confirmations=max(0, alloc.get(leaf.id, 2) - 1))
+    k_eff = min(tree.limits.k_per_leaf, alloc.get(leaf.id, 2))
+    cfg = CampaignConfig(
+        problem=problem,
+        hypotheses=None if agent_mode
+        else specs[: tree.limits.max_hypotheses_per_leaf],
+        hypothesis_source="agent" if agent_mode else "config",
+        model=model, candidates=candidates,
+        k=k_eff,
+        rounds=(max(2, len(specs) // max(1, k_eff))
+                if not rounds else rounds),
+        autonomy=autonomy, labs=labs,
+        inbox=str(Path(inbox) / leaf.id), poll_secs=0.05,
+        budget=budget)
+    return cfg, problem, budget
+
+
+def _register_leaf(tree, leaf, leaf_eid: str, leaf_log, autonomy: str,
+                   problem, say) -> None:
+    """The leaf surfaces in the workbench Experiments list like any other
+    agent run (one registry, tagged by origin)."""
+    # the leaf surfaces in the workbench Experiments list like any
+    # other agent run (one registry, tagged by origin)
+    try:
+        from bionexus.wizard_store import WizardStore
+        _ws = WizardStore()
+        _eid = leaf_eid
+        _root_name = tree.root.objective.split(":")[0].strip()[:40]
+        import os as _os
+        _status = ("completed" if leaf.status == "achieved"
+                   else ("failed" if leaf.status == "failed"
+                         else "verdict_recorded"))
+        _ws.register_agent(
+            _eid, f"{leaf.objective} · sub-problem of {_root_name}",
+            log=str(leaf_log), autonomy=autonomy, status=_status)
+        _bn_prog = _os.environ.get("BN_PROGRAM")
+        if _bn_prog:
+            try:
+                from bionexus import program as _program
+                _program.link_leaf(_bn_prog, _eid, tree.root.id,
+                                   leaf.objective, _status)
+            except Exception as _exc:
+                say(f"warning: leaf {_eid} not linked to program "
+                    f"{_bn_prog}: {_exc}")
+        _ws.link_problem(_eid, problem.problem_id)
+    except Exception as _exc:
+        say(f"warning: leaf {leaf.id} registration incomplete: {_exc}")
+
+
+def run_tree(tree: "ProblemTree", lab_factory, store, *,
+             hypotheses: dict[str, list] | None = None,
+             model: Any = None, candidates: list[dict] | None = None,
+             inbox: str = ".data/inbox-tree", autonomy: str = "act",
+             rounds: int | None = None,
+             notify: Any = None, labs: list | None = None) -> dict[str, str]:
+    """Each leaf runs as its own budgeted campaign; the roll-up is recorded
+    on the root branch. Resumable: achieved leaves are skipped."""
+    from bionexus.autoloop import announce_branch, run_campaign
+    from bionexus.core.contracts import Envelope, EventType
+    from bionexus.core.interfaces import record_for, system_actor
+
+    say = notify or (lambda m: print(f"[plan] {m}"))
+    alloc = tree.allocation()
+    hyps = hypotheses or default_hypotheses(
+        tree, [c["sample_id"] if isinstance(c, dict) else str(c)
+               for c in (candidates or [])])
+    root_branch = f"problem/{tree.root.id}"
+    _record_root(tree, store, root_branch, say)
     for leaf in tree.leaves():
         if leaf.status == "achieved":
             say(f"leaf {leaf.id} already achieved — skipping (resumable)")
             continue
-        specs = hyps.get(leaf.id) or []
-        # agent mode: a leaf with no config hypotheses (no candidate
-        # list given) proposes its own via the model — same contract as
-        # direct campaigns with hypothesis_source "agent"
-        agent_mode = not specs and model is not None
-        cons = []
-        if leaf.gate is not None and leaf.metric:
-            cons = [Constraint(
-                name=leaf.metric,
-                description=f"{leaf.metric} "
-                            f"{'<=' if leaf.direction == 'min' else '>='} "
-                            f"{leaf.gate:g}",
-                kind="hard", limit=leaf.gate)]
-        # the leaf's registered objective must say more than its own
-        # name: state the purpose within the tree (parent context, gate,
-        # metric) so the experiment page's Objective line carries
-        # information instead of echoing the title
-        gate_txt = (f"{leaf.metric} "
-                    f"{'<=' if leaf.direction == 'min' else '>='} "
-                    f"{leaf.gate:g}" if leaf.metric and
-                    leaf.gate is not None else "its registered gate")
-        if leaf.parent and leaf.parent != tree.root.id:
-            parent = (f"a {tree.nodes[leaf.parent].objective} sub-problem")
-        else:
-            parent = "a direct sub-problem"
-        problem = ProblemStatement(
-            objective=(f"{leaf.objective} — {parent} of "
-                       f"'{tree.root.objective}': show {gate_txt}"),
-            problem_id=f"{tree.root.id}-{leaf.id}",
-            constraints=cons,
-            success_metric=f"{leaf.metric or 'objective'} gate met")
-        budget = ResourceBudget(
-            max_total_runs=alloc.get(leaf.id, 2),
-            max_hypotheses_total=tree.limits.max_hypotheses_per_leaf,
-            max_confirmations=max(0, alloc.get(leaf.id, 2) - 1))
-        k_eff = min(tree.limits.k_per_leaf, alloc.get(leaf.id, 2))
-        cfg = CampaignConfig(
-            problem=problem,
-            hypotheses=None if agent_mode
-            else specs[: tree.limits.max_hypotheses_per_leaf],
-            hypothesis_source="agent" if agent_mode else "config",
-            model=model, candidates=candidates,
-            k=k_eff,
-            rounds=(max(2, len(specs) // max(1, k_eff))
-                    if not rounds else rounds),
-            autonomy=autonomy, labs=labs,
-            inbox=str(Path(inbox) / leaf.id), poll_secs=0.05,
-            budget=budget)
+        cfg, problem, budget = _leaf_campaign(
+            tree, leaf, alloc, hyps.get(leaf.id) or [], model, candidates,
+            rounds, autonomy, labs, inbox)
         say(f"leaf {leaf.id}: '{leaf.objective[:50]}' — "
             f"{budget.max_total_runs} runs allocated")
         # the leaf's workbench id, announced BEFORE the campaign runs so
@@ -513,32 +562,7 @@ def run_tree(tree: "ProblemTree", lab_factory, store, *,
             say(msg)
         report = run_campaign(cfg, lab_factory(), store, notify=_tee)
         tree.set_leaf_status(leaf.id, report.verdicts)
-        # the leaf surfaces in the workbench Experiments list like any
-        # other agent run (one registry, tagged by origin)
-        try:
-            from bionexus.wizard_store import WizardStore
-            _ws = WizardStore()
-            _eid = leaf_eid
-            _root_name = tree.root.objective.split(":")[0].strip()[:40]
-            import os as _os
-            _status = ("completed" if leaf.status == "achieved"
-                       else ("failed" if leaf.status == "failed"
-                             else "verdict_recorded"))
-            _ws.register_agent(
-                _eid, f"{leaf.objective} · sub-problem of {_root_name}",
-                log=str(leaf_log), autonomy=autonomy, status=_status)
-            _bn_prog = _os.environ.get("BN_PROGRAM")
-            if _bn_prog:
-                try:
-                    from bionexus import program as _program
-                    _program.link_leaf(_bn_prog, _eid, tree.root.id,
-                                       leaf.objective, _status)
-                except Exception as _exc:
-                    say(f"warning: leaf {_eid} not linked to program "
-                        f"{_bn_prog}: {_exc}")
-            _ws.link_problem(_eid, problem.problem_id)
-        except Exception as _exc:
-            say(f"warning: leaf {leaf.id} registration incomplete: {_exc}")
+        _register_leaf(tree, leaf, leaf_eid, leaf_log, autonomy, problem, say)
         store.append(record_for(
             Envelope(experiment_branch_id=leaf.branch(tree.root.id),
                      parent_branch_id=root_branch),
