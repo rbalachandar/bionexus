@@ -243,6 +243,105 @@ class PlateResult:
         return head + "\n" + self.table()
 
 
+def _read_pubchem(path, _unit: dict):
+    """PubChem submitter table: blind by construction; returns the records,
+    instrument stub and the normalization-regime fingerprint."""
+    rows = _rows_from_csv(path)
+    records = _parse_pubchem(rows, _unit)   # blind by construction
+    frame = _pubchem_frame(records) if records else "unknown"
+    instrument = {"deposition": "PubChem submitter table",
+                  "n_doses": _unit.get("n_doses")}
+    regime = {"dialect": "pubchem", "frame": frame,
+              "validated": frame == "external-reference",
+              "validation_source": ("CS05 (case-studies/05-paper-pilot): "
+                                    "98.9% decisive agreement, "
+                                    "0 false actives"
+                                    if frame == "external-reference"
+                                    else "CS06 (case-studies/06-ncats-"
+                                         "deposit): FAILED reproduction "
+                                         "(rho=0.107)")}
+    return records, instrument, regime
+
+
+def _read_npy(path) -> PlateResult:
+    """Imaging tiles (.npy): analyzed by the imaging plate reader."""
+    from bionexus.adapters.lab.imaging import analyze_plate, ImagingPlateReader
+    dev = ImagingPlateReader(seed=0)
+    plate = {p.stem: {"image": __import__("numpy").load(p), "sample_id": p.stem,
+                      "conc_um": None, "artifact": ""}
+             for p in sorted(path.parent.glob("*.npy"))}
+    analysis = analyze_plate(plate)
+    records = [{"well": w, "sample": sanitize_label(v["sample_id"]),
+                "conc_um": v["conc_um"],
+                "value": v["image"].mean(),
+                "control": is_control(v["sample_id"])}
+               for w, v in plate.items()]
+    return PlateResult(path, "npy", records, analysis)
+
+
+def _read_xlsx(path, _unit: dict, cycles: str):
+    """Excel export: sniff long / kinetic / grid on the extracted rows.
+    Returns (format label, records, instrument)."""
+    try:
+        import openpyxl
+    except ImportError as exc:
+        raise ImportError("pip install openpyxl to read .xlsx exports") from exc
+    ws = openpyxl.load_workbook(path, data_only=True).active
+    rows = [[("" if c is None else str(c)) for c in row] for row in ws.iter_rows(values_only=True)]
+    # reuse the CSV sniffing on the extracted rows
+    long_score = max((_header_score(r)[0] for r in rows[:20]), default=0)
+    kinetic_hit = any(_well_columns(r) for r in rows)
+    grid_hit = any(r and WELL_RE.match(r[0] + "1") and
+                   all(_is_number(c) for c in r[1:] if c.strip())
+                   for r in rows)
+    instrument = extract_instrument_meta(rows)
+    if long_score >= 3:
+        records = _parse_long(rows, _unit)
+        fmt = "xlsx-long"
+    elif kinetic_hit:
+        records = _parse_kinetic(rows, _unit, cycles=cycles)
+        fmt = "xlsx-kinetic"
+    elif grid_hit:
+        records = _parse_grid(rows)
+        fmt = "xlsx-grid"
+    else:
+        records = []
+        fmt = "xlsx-unknown"
+    return fmt, records, instrument
+
+
+def _refuse_regime(analysis: dict, records: list, regime: dict) -> None:
+    """Regime gate (CS06): an unvalidated normalization frame gets no
+    dose-response claims; self-normalized deposits get SHAPE-ONLY ones."""
+    analysis["regime_refusal"] = True
+    if regime["frame"] == "self-normalized":
+        # SHAPE-ONLY ADMISSION (CS06 re-admission ladder): absolute
+        # IC50 semantics need an external reference this frame does
+        # not have; shape classes are invariant under affine
+        # renormalization, so they are the ONLY claims made here.
+        bys: dict[str, list[tuple[float, float]]] = {}
+        for r in records:
+            bys.setdefault(r["sample"], []).append((r["conc_um"],
+                                                    r["value"]))
+        analysis["shape_only"] = {s: classify_curve(p)
+                                  for s, p in bys.items()}
+        regime["mode"] = "shape-only"
+        regime["note"] = (
+            "REGIME SHAPE-ONLY — absolute IC50/verdict claims are "
+            "refused on self-normalized deposits (no external "
+            "reference); concentration-dependence SHAPE classes "
+            "(rise-complete/partial/flat/noisy/falling) with "
+            "within-curve midpoints are admitted and labeled. "
+            "Never merge shape admits with validated IC50 verdicts.")
+    else:  # unknown frame: no claim at all survives
+        regime["note"] = (
+            "REGIME NOT VALIDATED — no dose-response assertions issued "
+            "on this normalization frame (CS06: fixed-reference "
+            "crossing rules do not port to unvalidated deposits). "
+            "Research mode (assert_regimes=False) is for declared "
+            "reproduction studies, never campaign verdicts.")
+
+
 def read_plate(path: str | Path, max_response: float | None = None,
                layout: str | Path | None = None,
                cycles: str = "last",
@@ -284,59 +383,11 @@ def read_plate(path: str | Path, max_response: float | None = None,
         records = _parse_kinetic(rows, _unit, cycles=cycles)
         instrument = extract_instrument_meta(rows)
     elif fmt == "pubchem":
-        rows = _rows_from_csv(path)
-        records = _parse_pubchem(rows, _unit)   # blind by construction
-        frame = _pubchem_frame(records) if records else "unknown"
-        instrument = {"deposition": "PubChem submitter table",
-                      "n_doses": _unit.get("n_doses")}
-        regime = {"dialect": "pubchem", "frame": frame,
-                  "validated": frame == "external-reference",
-                  "validation_source": ("CS05 (case-studies/05-paper-pilot): "
-                                        "98.9% decisive agreement, "
-                                        "0 false actives"
-                                        if frame == "external-reference"
-                                        else "CS06 (case-studies/06-ncats-"
-                                             "deposit): FAILED reproduction "
-                                             "(rho=0.107)")}
+        records, instrument, regime = _read_pubchem(path, _unit)
     elif fmt == "npy":
-        from bionexus.adapters.lab.imaging import analyze_plate, ImagingPlateReader
-        dev = ImagingPlateReader(seed=0)
-        plate = {p.stem: {"image": __import__("numpy").load(p), "sample_id": p.stem,
-                          "conc_um": None, "artifact": ""}
-                 for p in sorted(path.parent.glob("*.npy"))}
-        analysis = analyze_plate(plate)
-        records = [{"well": w, "sample": sanitize_label(v["sample_id"]),
-                    "conc_um": v["conc_um"],
-                    "value": v["image"].mean(),
-                    "control": is_control(v["sample_id"])}
-                   for w, v in plate.items()]
-        return PlateResult(path, "npy", records, analysis)
+        return _read_npy(path)
     elif fmt == "xlsx":
-        try:
-            import openpyxl
-        except ImportError as exc:
-            raise ImportError("pip install openpyxl to read .xlsx exports") from exc
-        ws = openpyxl.load_workbook(path, data_only=True).active
-        rows = [[("" if c is None else str(c)) for c in row] for row in ws.iter_rows(values_only=True)]
-        # reuse the CSV sniffing on the extracted rows
-        long_score = max((_header_score(r)[0] for r in rows[:20]), default=0)
-        kinetic_hit = any(_well_columns(r) for r in rows)
-        grid_hit = any(r and WELL_RE.match(r[0] + "1") and
-                       all(_is_number(c) for c in r[1:] if c.strip())
-                       for r in rows)
-        instrument = extract_instrument_meta(rows)
-        if long_score >= 3:
-            records = _parse_long(rows, _unit)
-            fmt = "xlsx-long"
-        elif kinetic_hit:
-            records = _parse_kinetic(rows, _unit, cycles=cycles)
-            fmt = "xlsx-kinetic"
-        elif grid_hit:
-            records = _parse_grid(rows)
-            fmt = "xlsx-grid"
-        else:
-            records = []
-            fmt = "xlsx-unknown"
+        fmt, records, instrument = _read_xlsx(path, _unit, cycles)
     else:
         raise ValueError(f"unrecognized plate format: {path}")
 
@@ -368,33 +419,7 @@ def read_plate(path: str | Path, max_response: float | None = None,
     refuse = regime is not None and not regime["validated"] and assert_regimes
     analysis = analyze_records([] if refuse else records, max_response)
     if refuse:
-        analysis["regime_refusal"] = True
-        if regime["frame"] == "self-normalized":
-            # SHAPE-ONLY ADMISSION (CS06 re-admission ladder): absolute
-            # IC50 semantics need an external reference this frame does
-            # not have; shape classes are invariant under affine
-            # renormalization, so they are the ONLY claims made here.
-            bys: dict[str, list[tuple[float, float]]] = {}
-            for r in records:
-                bys.setdefault(r["sample"], []).append((r["conc_um"],
-                                                        r["value"]))
-            analysis["shape_only"] = {s: classify_curve(p)
-                                      for s, p in bys.items()}
-            regime["mode"] = "shape-only"
-            regime["note"] = (
-                "REGIME SHAPE-ONLY — absolute IC50/verdict claims are "
-                "refused on self-normalized deposits (no external "
-                "reference); concentration-dependence SHAPE classes "
-                "(rise-complete/partial/flat/noisy/falling) with "
-                "within-curve midpoints are admitted and labeled. "
-                "Never merge shape admits with validated IC50 verdicts.")
-        else:  # unknown frame: no claim at all survives
-            regime["note"] = (
-                "REGIME NOT VALIDATED — no dose-response assertions issued "
-                "on this normalization frame (CS06: fixed-reference "
-                "crossing rules do not port to unvalidated deposits). "
-                "Research mode (assert_regimes=False) is for declared "
-                "reproduction studies, never campaign verdicts.")
+        _refuse_regime(analysis, records, regime)
 
     analysis_out = analysis
     return PlateResult(path, fmt, records, analysis_out,
