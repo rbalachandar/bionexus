@@ -156,3 +156,14 @@ the agent.
 
 Security issues: open a private security advisory on GitHub (do not open a
 public issue with exploit details).
+
+## API access and approver identity
+
+The workbench API is a local control surface. Writes are refused from
+non-local `Host`/`Origin` headers. Set `BIONEXUS_API_TOKENS="alice:tok1,bob:tok2"`
+(or the single `BIONEXUS_API_TOKEN`) to require `X-BioNexus-Token` on every
+write; approvals and halts are then attributed to the **token's owner**
+server-side — the `by` field in a request body is ignored. In the browser run
+`localStorage.setItem('bn_token', '<token>')` once. With no tokens configured
+the API is open local-dev mode and decisions are recorded as
+`local-unauthenticated`.

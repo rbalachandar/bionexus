@@ -6,6 +6,7 @@ production. All state lives in the existing wizard/provenance stores.
 from __future__ import annotations
 
 import asyncio
+import hmac
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -57,10 +58,37 @@ async def _guard_mutations(request: Request, call_next):
         origin = request.headers.get("origin")
         if origin and (urlparse(origin).hostname or "") not in _LOCAL_HOSTS:
             return JSONResponse({"detail": "cross-origin write refused"}, 403)
-        token = os.environ.get("BIONEXUS_API_TOKEN")
-        if token and request.headers.get("x-bionexus-token") != token:
-            return JSONResponse({"detail": "API token required"}, 401)
+        users = _api_tokens()
+        if users:
+            presented = request.headers.get("x-bionexus-token") or ""
+            who = next((u for t, u in users.items()
+                        if hmac.compare_digest(t, presented)), None)
+            if who is None:
+                return JSONResponse({"detail": "API token required"}, 401)
+            request.state.user = who
     return await call_next(request)
+
+
+def _api_tokens() -> dict[str, str]:
+    """token -> person. BIONEXUS_API_TOKENS="alice:tok1,bob:tok2" gives
+    per-person identity (approvals are attributed to the token's owner);
+    the single BIONEXUS_API_TOKEN maps to the user 'operator'. No tokens
+    configured = open local mode."""
+    import os
+    out: dict[str, str] = {}
+    for part in (os.environ.get("BIONEXUS_API_TOKENS") or "").split(","):
+        name, sep, tok = part.strip().partition(":")
+        if sep and name and tok:
+            out[tok] = name
+    single = os.environ.get("BIONEXUS_API_TOKEN")
+    if single:
+        out.setdefault(single, "operator")
+    return out
+
+
+def _actor(request: Request) -> str:
+    """Who is acting: the authenticated token owner, never a body field."""
+    return getattr(request.state, "user", None) or "local-unauthenticated"
 
 
 # generic analysis lifecycle (upload -> preview -> configure -> analyze ->
@@ -146,11 +174,12 @@ def halt_state() -> dict:
 
 
 @app.post("/api/halt")
-def halt_set(body: dict) -> dict:
+def halt_set(body: dict, request: Request) -> dict:
     from bionexus.governance import HaltSwitch
     hs = HaltSwitch()
     if body.get("halted"):
-        hs.engage(body.get("reason", "operator halt (web)"))
+        hs.engage(f"{body.get('reason', 'operator halt (web)')} "
+                  f"[by {_actor(request)}]")
     else:
         hs.clear()
     return halt_state()
@@ -168,11 +197,11 @@ def approvals() -> dict:
 
 
 @app.post("/api/approvals/{aid}/decide")
-def approval_decide(aid: str, body: dict) -> dict:
+def approval_decide(aid: str, body: dict, request: Request) -> dict:
     from bionexus.approvals import ApprovalInbox
     inbox = ApprovalInbox(str(APPROVALS_FILE))
-    inbox.decide(aid, bool(body.get("approve")),
-                 by=body.get("by", "operator-web"))
+    # identity comes from the authenticated token, NOT the request body
+    inbox.decide(aid, bool(body.get("approve")), by=_actor(request))
     return approvals()
 
 

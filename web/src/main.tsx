@@ -1,3 +1,4 @@
+import './api/auth'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Link, NavLink } from 'react-router-dom'

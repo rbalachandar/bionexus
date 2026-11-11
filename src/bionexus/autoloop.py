@@ -642,6 +642,37 @@ def _resolve_series(store, problem, actor, flywheel, say) -> None:
             f"{c['reason']}")
 
 
+def _assign_criteria(selected, _crit) -> None:
+    """Thread the pre-registered gate into each hypothesis of the round."""
+    if _crit is not None:
+        from bionexus.adapters.lab.simulator import DOSE_RESPONSE_ASSAYS
+        from bionexus.core.hypothesis import SuccessCriteria
+        for h in selected:
+            if h.assay_type in DOSE_RESPONSE_ASSAYS:
+                # IC50-style assay: the Hill fit produces ic50_um and
+                # lower-is-better, whatever the constraint is named
+                h.criteria = SuccessCriteria(
+                    metric="ic50_um", direction="min",
+                    threshold=float(_crit.threshold))
+            else:
+                h.criteria = _crit.model_copy()
+
+
+def _collect_round(monitor, agent, selected, adaptive, cfg, terminal) -> None:
+    """Feed this round's instrument outputs to the analysis agent until every
+    selected hypothesis is terminal (or the monitor goes quiet)."""
+    # analyze this round's outputs
+    n_expected = sum(1 for h in selected if h.design and h.design.run_id)
+    time.sleep(0.2)
+    cap = n_expected * (4 if adaptive else 2) + 1
+    for i, ev in enumerate(monitor.events(
+            stop_after=cap,
+            idle_timeout=max(5.0, cfg.poll_secs * 30))):
+        agent.handle(ev)
+        if all(h.status in terminal for h in selected) and i + 1 >= n_expected:
+            break
+
+
 def run_campaign(cfg: CampaignConfig, lab: Any,
                  store: ProvenanceStore,
                  approver: Callable[[str], bool] | None = None,
@@ -767,18 +798,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
                     decision=acq_sel.decision_payload()))
             say(f"round {round_no}: nothing selected — stopping")
             break
-        if _crit is not None:
-            from bionexus.adapters.lab.simulator import DOSE_RESPONSE_ASSAYS
-            from bionexus.core.hypothesis import SuccessCriteria
-            for h in selected:
-                if h.assay_type in DOSE_RESPONSE_ASSAYS:
-                    # IC50-style assay: the Hill fit produces ic50_um and
-                    # lower-is-better, whatever the constraint is named
-                    h.criteria = SuccessCriteria(
-                        metric="ic50_um", direction="min",
-                        threshold=float(_crit.threshold))
-                else:
-                    h.criteria = _crit.model_copy()
+        _assign_criteria(selected, _crit)
         say(f"round {round_no}: testing "
             f"{[h.candidate for h in selected]} "
             f"({len(remaining)} candidates remain)")
@@ -822,16 +842,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             _export(run_id, h.candidate,
                     [screen_conc] if adaptive else None)
 
-        # analyze this round's outputs
-        n_expected = sum(1 for h in selected if h.design and h.design.run_id)
-        time.sleep(0.2)
-        cap = n_expected * (4 if adaptive else 2) + 1
-        for i, ev in enumerate(monitor.events(
-                stop_after=cap,
-                idle_timeout=max(5.0, cfg.poll_secs * 30))):
-            agent.handle(ev)
-            if all(h.status in terminal for h in selected) and i + 1 >= n_expected:
-                break
+        _collect_round(monitor, agent, selected, adaptive, cfg, terminal)
         verdicts_r = {h.candidate: h.status for h in selected}
         store.append(record_for(
             Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),

@@ -233,3 +233,26 @@ def test_sandbox_worker_rebuilds_the_hosts_tool_set():
     worker = _build_registry(paths)
     assert "bionexus.adapters.bio.structure_score:StructureScorer" in \
         worker.tool_paths()
+
+
+def test_approval_identity_comes_from_the_token_not_the_body(monkeypatch):
+    import json
+    from fastapi.testclient import TestClient
+    from bionexus.api.app import app
+    from bionexus.approvals import ApprovalInbox
+    from bionexus.paths import APPROVALS_FILE
+    monkeypatch.setenv("BIONEXUS_API_TOKENS", "alice:tok-a,bob:tok-b")
+    box = ApprovalInbox(str(APPROVALS_FILE))
+    aid = box.request("assay C1")
+    c = TestClient(app)
+    assert c.post(f"/api/approvals/{aid}/decide", json={"approve": True}
+                  ).status_code == 401                      # no token
+    r = c.post(f"/api/approvals/{aid}/decide",
+               json={"approve": True, "by": "mallory"},
+               headers={"X-BioNexus-Token": "tok-b"})
+    assert r.status_code == 200
+    events = [json.loads(l) for l in
+              box.path.read_text().splitlines() if l.strip()]
+    dec = [e for e in events if e.get("event") == "decision"
+           and e.get("id") == aid]
+    assert dec and dec[-1]["by"] == "bob"                   # not "mallory"
