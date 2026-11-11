@@ -1269,7 +1269,7 @@ rather than kept.
 - [x] **Phase 2** split `views.py` into a package by screen; inject the store
 - [x] **Phase 3** split the rest of `labread.py` (formats / layout / qc / analysis)
 - [x] **Phase 4** decompose `AutoAnalysisAgent.handle` into event handlers
-- [ ] **Phase 5** `run_campaign` -> `CampaignContext` + stage functions
+- [x] **Phase 5** `run_campaign` split into stage functions (630 -> ~215 lines; the round loop remains inline)
 - [ ] **Phase 6** device adapters selectable from config (S-T4), single plugin
       discovery path, `Registry.resolve` priority, docker non-root default,
       remaining `get_store` call sites, `evals/tasks.py` Hill formula,

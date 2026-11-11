@@ -159,30 +159,8 @@ def announced_branches() -> dict:
         return {}
 
 
-def run_campaign(cfg: CampaignConfig, lab: Any,
-                 store: ProvenanceStore,
-                 approver: Callable[[str], bool] | None = None,
-                 notify: Callable[[str], None] | None = None,
-                 sandbox: Any = None) -> CampaignReport:
-    """Start-to-finish: problem -> portfolio -> filter -> test -> verdict -> confirm."""
-    actor = system_actor(cfg.actor_name)
-    from bionexus.flywheel import Flywheel
-    flywheel = cfg.flywheel if cfg.flywheel is not None else Flywheel()
-
-    def _on_verdict(h) -> None:
-        flywheel.submit(h.candidate, h.family, h.assay_type, h.status,
-                        h.observed_value, h.observed_ci,
-                        problem_id=(cfg.problem.problem_id or None),
-                        threshold=(h.criteria.threshold if h.criteria else None),
-                        evidence_run=h.evidence_run_id)
-
-    tracker = HypothesisTracker(store, actor, on_verdict=_on_verdict)
-
-    safety = SafetyEngine()
-    from bionexus.governance import AuthorizationMatrix, HaltSwitch
-    gov = {"matrix": AuthorizationMatrix(), "halt": HaltSwitch()}
-    say = notify or (lambda m: print(f"[campaign] {m}"))
-
+def _select_lab(cfg, lab, store, actor, approver, say):
+    """S-T5: pick the lab from the operator-declared pool (no-op without one)."""
     # S-T5: the pool is the operator's fence; this matcher only picks
     # WITHIN it, and the decision — with every refusal reason — is
     # sealed before any lab acts.
@@ -239,7 +217,11 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         say(f"lab: '{sel.name}' selected from a pool of {len(pool)} "
             f"(simulated={sel.rationale['chosen']['simulated']}); "
             f"decision sealed")
+    return lab
 
+
+def _build_gateway(cfg, lab, safety, store, actor, approver, say, gov):
+    """The submission gate: human-approved in gate mode, else advisory-reviewed."""
     if cfg.autonomy == "gate":
         if approver is None:
             raise ValueError("autonomy='gate' requires an approver callback")
@@ -252,8 +234,11 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         gateway = LabGateway(lab, safety, store, actor,
                              advisory=AdvisoryReviewer(), governance=gov,
                              approver=approver)
+    return gateway
 
-    # 0. problem + portfolio + filter
+
+def _durc_gate(cfg, store, actor) -> None:
+    """Refuse (and record) a campaign naming a select agent / regulated toxin."""
     from bionexus.adapters.bio.tox_alerts import durc_screen
     durc_hits = durc_screen(" ".join([cfg.problem.objective,
                                       cfg.problem.context or ""]))
@@ -267,6 +252,9 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             f"DURC: campaign names a select agent / regulated toxin family "
             f"({', '.join(durc_hits)}) — refused and recorded; requires "
             f"institutional review before BioNexus will run it")
+
+
+def _unique_branch(cfg, store, say) -> None:
     # every run gets its own branch: an explicit problem_id reused from a
     # previous campaign is auto-suffixed rather than merging records
     _base_pid = cfg.problem.problem_id
@@ -277,23 +265,10 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     if cfg.problem.problem_id != _base_pid:
         say(f"branch '{_base_pid}' already holds a previous run — this "
             f"campaign recorded separately as '{cfg.problem.problem_id}'")
-    if sandbox is not None:
-        from bionexus.sandbox_session import SandboxedLab
-        sandbox.start(f"problem/{cfg.problem.problem_id}")
-        lab = SandboxedLab(sandbox, lab=lab)
-        say(f"sandbox: lab ops execute inside the experiment sandbox "
-            f"({lab.name} @ problem/{cfg.problem.problem_id}) — every op "
-            f"is a sealed sandbox_exec")
-    problem = tracker.define_problem(cfg.problem, environment={
-        "lab": getattr(lab, "name", "unknown"),
-        "lab_version": getattr(lab, "version", None),
-        "lab_seed": getattr(lab, "seed", None),
-        "concentrations": list(cfg.concentrations),
-        "autonomy": cfg.autonomy,
-        "dose_design": cfg.dose_design,
-        "k": cfg.k,
-        "model": getattr(cfg.model, "model", None),
-    })
+
+
+def _propose_and_score(cfg, tracker, problem, store, flywheel, say):
+    """Hypothesis portfolio + the scoring function ranking it each round."""
     family_scores: dict[str, float] = {}
     if cfg.hypothesis_source == "agent":
         from bionexus.hypothesis_agent import propose_families_with_agent
@@ -339,6 +314,11 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         else:
             base_fn = lambda h: 0.5
         score_fn = lambda h: base_fn(h) + flywheel.prior_bonus(h.family)
+    return portfolio, score_fn
+
+
+def _declare_criteria(problem, lab, portfolio):
+    """The pre-registered gate (SuccessCriteria) + the acquisition log-axis flag."""
     # metric-aware criteria: the problem's primary hard constraint is the
     # pre-registered gate — thread it into every hypothesis so verdicts
     # read the program's metric/direction, never a hardcoded IC50
@@ -374,16 +354,11 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     from bionexus.adapters.lab.simulator import DOSE_RESPONSE_ASSAYS as _DRA
     _acq_log = (any((h.assay_type or "binding") in _DRA for h in portfolio)
                 or (_crit is not None and _crit.metric == "ic50_um"))
+    return _crit, _acq_log
 
-    # announce the branch for live streaming: the API watcher maps the
-    # campaign id to this problem branch the moment it exists, so the
-    # workbench streams records incrementally instead of at the end
-    _cid = os.environ.get("BN_CAMPAIGN_ID")
-    if _cid:
-        announce_branch(_cid, problem.problem_id)
 
-    # 1. rounds: select -> design+submit -> analyze; each round feeds the next
-    synth_cache: dict[str, dict] = {}
+def _install_budget_gate(gateway, cfg, store, actor, say) -> None:
+    """Route every submission (incl. confirmations) through the run budget."""
     _submit = gateway.submit
 
     def gateway_submit(protocol):  # budget-enforced submission
@@ -402,6 +377,333 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         return _submit(protocol)
 
     gateway.submit = gateway_submit  # confirmations flow through the same gate
+
+
+def _design_protocol(h, cfg, problem, adaptive, screen_conc):
+    """Build the lab protocol for one hypothesis and attach its design."""
+    protocol = ProtocolSubmission(
+        envelope=Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
+        title=f"screen-{h.candidate}" if adaptive else f"test-{h.candidate}",
+        assay_type=str(coerce_assay_type(h.assay_type).value),
+        steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense,
+                            params={"volume_ul": 50})],
+        samples=[SampleSpec(
+            sample_id=h.candidate, kind=SampleKind.compound,
+            concentration=c,
+            metadata={"smiles": (h.metadata or {}).get("smiles", ""),
+                      "sequence": (h.metadata or {}).get("sequence", ""),
+                      "description": f"{h.candidate} construct",
+                      "intent": ("covalent" if "covalent" in
+                                 (h.mechanism or "").lower() else "")})
+                 for c in ([screen_conc] if adaptive
+                           else cfg.concentrations)]
+        + [SampleSpec(sample_id=f"ctrl-neg{i}", kind=SampleKind.buffer,
+                      concentration="10uM") for i in (1, 2)],
+        reagents=[ReagentSpec(name="assay-buffer", amount="5 mL",
+                              bsl_level=1)],
+    )
+    h.design = ExperimentDesign(
+        assay_type=str(coerce_assay_type(h.assay_type).value), concentrations=list(cfg.concentrations),
+        replicates=3, controls=["negative"],
+        protocol_id=protocol.protocol_id)
+    return protocol
+
+
+def _make_candidate(h, protocol, cfg, store, say, synth_cache) -> bool:
+    """Make: route planning, toxicophore pre-screen, synthesis (+ biologic
+    stability QC) BEFORE Test. False = the batch never reaches the lab; the
+    refusal is already on the chain."""
+    # Make: plan routes, then synthesize & purify before Test — a
+    # compound with NO viable route never burns a batch, and a failed
+    # batch never reaches the lab (deterministic per candidate)
+    synth = synth_cache.get(h.candidate)
+    if synth is None:
+        from bionexus.adapters.lab.synthesis import \
+            VirtualSynthesizer
+        vs = VirtualSynthesizer()
+        best_route = None
+        smi = (h.metadata or {}).get("smiles")
+        mod = str((h.metadata or {}).get("modality", "")).lower()
+        # Gate-ordering debt (agent-tier finding, Oct 2026): the
+        # toxicophore screen ran only at SUBMISSION — after Make had
+        # already synthesized a batch that could never be assayed.
+        # Pre-screen the declared structure at Make entry with the
+        # same rules (intent respected: a declared covalent warhead
+        # still passes); the gateway rule remains the backstop.
+        # Refusal semantics unchanged; waste eliminated.
+        if smi and mod not in ("biologic", "cell therapy", "mrna"):
+            from bionexus.adapters.bio.tox_alerts import (
+                RULES_VERSION, screen_smiles)
+            _intent = ("covalent" if "covalent" in
+                       (h.mechanism or "").lower() else "")
+            _hits = screen_smiles(smi, _intent)["refuse"]
+            if _hits:
+                say(f"{h.candidate}: REFUSED at Make entry — "
+                    f"toxicophore pre-screen (never synthesized)")
+                store.append(record_for(
+                    protocol.envelope, EventType.gate_decision,
+                    system_actor("safety"),
+                    decision={
+                        "kind": "safety_refusal",
+                        "stage": "make_prescreen",
+                        "candidate": h.candidate,
+                        "samples": [h.candidate],
+                        "reason": (
+                            f"sample '{h.candidate}' carries "
+                            f"{len(_hits)} toxicophore alert(s) "
+                            f"[rules {RULES_VERSION}]: "
+                            + "; ".join(f"{x['alert']} ({x['note']})"
+                                        for x in _hits[:3])
+                            + " — screened before synthesis "
+                              "(gateway rule remains the backstop)"),
+                        "action": "Make skipped; batch never "
+                                  "spent"})
+                )
+                return False
+        if (smi and mod not in ("biologic", "cell therapy", "mrna")
+                and cfg.synthesis_backend != "none"):
+            from bionexus.adapters.retrosynthesis import \
+                get_retrosynthesis_adapter
+            plans = get_retrosynthesis_adapter(
+                cfg.synthesis_backend).plan_routes(smi)
+            viable = [p for p in plans if p.feasible]
+            if not viable:
+                say(f"{h.candidate}: NO VIABLE SYNTHESIS ROUTE — "
+                    f"blocked at Make (never reaches Test)")
+                store.append(record_for(
+                    protocol.envelope, EventType.gate_decision,
+                    system_actor("synthesis"),
+                    decision={
+                        "kind": "no_viable_route",
+                        "candidate": h.candidate,
+                        "reason": "rule-corpus retrosynthesis found "
+                                  "no route meeting the yield/"
+                                  "lead-time floors",
+                        "routes_planned": len(plans),
+                        "best_modeled_yield_pct": max(
+                            (p.yield_pct for p in plans), default=None),
+                        "smiles": smi,
+                        "data_origin": plans[0].data_origin,
+                        "samples": [h.candidate]}))
+                return False
+            best_route = max(viable,
+                             key=lambda p: p.yield_pct).summary()
+        for att in range(1 + max(0, cfg.synthesis_retries)):
+            synth = vs.synthesize(
+                h.candidate, smi,
+                modality=mod,
+                attempt=att + 1, route=best_route)
+            store.append(record_for(
+                protocol.envelope, EventType.synthesis_complete,
+                system_actor("synthesis"),
+                artifact=Artifact(artifact_id=f"syn-{synth['lot']}",
+                                  kind=ArtifactKind.other, uri="",
+                                  metadata=dict(synth)),
+                decision={"candidate": h.candidate,
+                          "yield_pct": synth["yield_pct"],
+                          "purity": synth["purity"],
+                          "ok": synth["ok"],
+                          "lot": synth["lot"],
+                          "attempt": att + 1,
+                          **({"route": synth["route"],
+                              "route_lead_time_days":
+                                  synth["route_lead_time_days"],
+                              "route_cost_usd":
+                                  synth["route_cost_usd"],
+                              "data_origin": synth["data_origin"]}
+                             if "route" in synth else {})}))
+            say(f"{synth.get('action', 'synthesized')} "
+                f"{h.candidate}: lot {synth['lot']} "
+                f"yield {synth['yield_pct']}% purity "
+                f"{synth['purity']}%"
+                + (f" (attempt {att + 1})" if att else ""))
+            if synth["ok"]:
+                break
+        synth_cache[h.candidate] = synth
+    if not synth["ok"]:
+        say(f"batch for {h.candidate} refused into Test: "
+            f"{synth['note']}")
+        store.append(record_for(
+            protocol.envelope, EventType.gate_decision,
+            system_actor("synthesis"),
+            decision={"kind": "synthesis_failed",
+                      "candidate": h.candidate,
+                      "lot": synth["lot"],
+                      "reason": synth["note"],
+                      "samples": [h.candidate]}))
+        return False
+    # biologic Make has a second QC: stability / aggregation.
+    # A batch that would aggregate in the vial never reaches an
+    # assay — the refusal is honest, not a missing verdict
+    if synth.get("modality", "").lower() in ("biologic",
+                                             "cell therapy",
+                                             "mrna"):
+        from bionexus.adapters.lab.bioprocess import bioprocess_qc
+        qc = bioprocess_qc(h.candidate,
+                           (h.metadata or {}).get("sequence", ""),
+                           synth["lot"])
+        store.append(record_for(
+            protocol.envelope, EventType.stage_transition,
+            system_actor("bioprocess"),
+            decision={"kind": "bioprocess_qc", "candidate":
+                      h.candidate, **qc}))
+        if not qc["ok"]:
+            say(f"batch for {h.candidate} refused into Test: "
+                f"{qc['note']}")
+            store.append(record_for(
+                protocol.envelope, EventType.gate_decision,
+                system_actor("bioprocess"),
+                decision={"kind": "stability_failed",
+                          "candidate": h.candidate,
+                          "lot": synth["lot"],
+                          "reason": qc["note"],
+                          "samples": [h.candidate]}))
+            return False
+    return True
+
+
+def _review_pass(cfg, store, problem, say) -> None:
+    """Independent audit (and the flags-only LLM advisory layer) before
+    results are finalized; recorded as provenance."""
+    # reviewer pass: independent audit before results are finalized.
+    # Findings are recorded as provenance and surfaced in the workbench;
+    # the reviewer demands revision, it never clears a gate
+    from bionexus.reviewer import review_campaign
+    review = review_campaign(store.branch_records(
+        f"problem/{problem.problem_id or 'unnamed'}"))
+    store.append(record_for(
+        Envelope(experiment_branch_id=
+                 f"problem/{problem.problem_id or 'unnamed'}"),
+        EventType.stage_transition, system_actor("reviewer"),
+        decision={"kind": "review_report", "review": review["review"],
+                  "critical": review["critical"],
+                  "warnings": review["warnings"],
+                  "verdicts_reviewed": review["verdicts_reviewed"],
+                  "findings": review["findings"]}))
+    if review["findings"]:
+        say(f"reviewer: {review['critical']} critical / "
+            f"{review['warnings']} warning finding(s) — "
+            + "; ".join(f["detail"] for f in
+                        review["findings"][:3]))
+    else:
+        say("reviewer: no findings — analysis consistent")
+
+    # LLM advisory layer: only when a model was part of this campaign.
+    # Its output is flags-only (schema-enforced) — advisory by construction
+    if cfg.model is not None:
+        from bionexus.reviewer import review_llm
+        llm_review = review_llm(
+            store.branch_records(
+                f"problem/{problem.problem_id or 'unnamed'}"), cfg.model)
+        store.append(record_for(
+            Envelope(experiment_branch_id=
+                     f"problem/{problem.problem_id or 'unnamed'}"),
+            EventType.stage_transition, system_actor("llm-reviewer"),
+            decision={"kind": "review_report_llm", **llm_review}))
+        if llm_review.get("unavailable"):
+            say(f"llm reviewer unavailable: "
+                f"{llm_review['unavailable']}")
+        elif llm_review["flags"]:
+            say(f"llm reviewer ({llm_review['model']}): "
+                f"{len(llm_review['flags'])} advisory flag(s)")
+        else:
+            say(f"llm reviewer ({llm_review['model']}): no advisory "
+                "flags")
+
+
+def _resolve_series(store, problem, actor, flywheel, say) -> None:
+    # S-T1.2: series-level claims derive their verdicts from members'
+    # CI-aware verdicts — never tested directly, abstention dominates,
+    # and resolutions feed the flywheel's family prior.
+    from bionexus.series import resolve_series_claims
+    branch = f"problem/{problem.problem_id}"
+    _claim_ev = {"confirmed": EventType.hypothesis_validated,
+                 "refuted": EventType.hypothesis_invalidated,
+                 "inconclusive": EventType.hypothesis_inconclusive}
+    for c in resolve_series_claims(store.branch_records(branch)):
+        if c["status"] == "open":
+            say(f"series claim {c['family_id']}: open — {c['reason']}")
+            continue
+        store.append(record_for(
+            Envelope(experiment_branch_id=branch), _claim_ev[c["status"]],
+            actor,
+            decision={"hypothesis_id": c["family_id"],
+                      "family_id": c["family_id"],
+                      "verdict": c["status"],
+                      "claim_kind": "series-derived", "derived": True,
+                      "family_kind": c["kind"],
+                      "retain_fold": c["retain_fold"],
+                      "parent_statement": c["parent_statement"],
+                      "reason": c["reason"],
+                      "derived_from": [list(x) for x in c["derived_from"]]}))
+        flywheel.submit(f"series:{c['family_id']}", c["family_id"],
+                        "series-claim", c["status"])
+        say(f"series claim {c['family_id']}: {c['status'].upper()} — "
+            f"{c['reason']}")
+
+
+def run_campaign(cfg: CampaignConfig, lab: Any,
+                 store: ProvenanceStore,
+                 approver: Callable[[str], bool] | None = None,
+                 notify: Callable[[str], None] | None = None,
+                 sandbox: Any = None) -> CampaignReport:
+    """Start-to-finish: problem -> portfolio -> filter -> test -> verdict -> confirm."""
+    actor = system_actor(cfg.actor_name)
+    from bionexus.flywheel import Flywheel
+    flywheel = cfg.flywheel if cfg.flywheel is not None else Flywheel()
+
+    def _on_verdict(h) -> None:
+        flywheel.submit(h.candidate, h.family, h.assay_type, h.status,
+                        h.observed_value, h.observed_ci,
+                        problem_id=(cfg.problem.problem_id or None),
+                        threshold=(h.criteria.threshold if h.criteria else None),
+                        evidence_run=h.evidence_run_id)
+
+    tracker = HypothesisTracker(store, actor, on_verdict=_on_verdict)
+
+    safety = SafetyEngine()
+    from bionexus.governance import AuthorizationMatrix, HaltSwitch
+    gov = {"matrix": AuthorizationMatrix(), "halt": HaltSwitch()}
+    say = notify or (lambda m: print(f"[campaign] {m}"))
+
+    lab = _select_lab(cfg, lab, store, actor, approver, say)
+
+    gateway = _build_gateway(cfg, lab, safety, store, actor, approver, say, gov)
+
+    # 0. problem + portfolio + filter
+    _durc_gate(cfg, store, actor)
+    _unique_branch(cfg, store, say)
+    if sandbox is not None:
+        from bionexus.sandbox_session import SandboxedLab
+        sandbox.start(f"problem/{cfg.problem.problem_id}")
+        lab = SandboxedLab(sandbox, lab=lab)
+        say(f"sandbox: lab ops execute inside the experiment sandbox "
+            f"({lab.name} @ problem/{cfg.problem.problem_id}) — every op "
+            f"is a sealed sandbox_exec")
+    problem = tracker.define_problem(cfg.problem, environment={
+        "lab": getattr(lab, "name", "unknown"),
+        "lab_version": getattr(lab, "version", None),
+        "lab_seed": getattr(lab, "seed", None),
+        "concentrations": list(cfg.concentrations),
+        "autonomy": cfg.autonomy,
+        "dose_design": cfg.dose_design,
+        "k": cfg.k,
+        "model": getattr(cfg.model, "model", None),
+    })
+    portfolio, score_fn = _propose_and_score(
+        cfg, tracker, problem, store, flywheel, say)
+    _crit, _acq_log = _declare_criteria(problem, lab, portfolio)
+
+    # announce the branch for live streaming: the API watcher maps the
+    # campaign id to this problem branch the moment it exists, so the
+    # workbench streams records incrementally instead of at the end
+    _cid = os.environ.get("BN_CAMPAIGN_ID")
+    if _cid:
+        announce_branch(_cid, problem.problem_id)
+
+    # 1. rounds: select -> design+submit -> analyze; each round feeds the next
+    synth_cache: dict[str, dict] = {}
+    _install_budget_gate(gateway, cfg, store, actor, say)
 
     # per-experiment outbox: two campaigns on one inbox would collide on
     # run ids (sim-N-001) and the monitor's seen-set would swallow the second
@@ -467,13 +769,14 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
             break
         if _crit is not None:
             from bionexus.adapters.lab.simulator import DOSE_RESPONSE_ASSAYS
+            from bionexus.core.hypothesis import SuccessCriteria
             for h in selected:
                 if h.assay_type in DOSE_RESPONSE_ASSAYS:
                     # IC50-style assay: the Hill fit produces ic50_um and
                     # lower-is-better, whatever the constraint is named
                     h.criteria = SuccessCriteria(
                         metric="ic50_um", direction="min",
-                        threshold=float(_con.limit))
+                        threshold=float(_crit.threshold))
                 else:
                     h.criteria = _crit.model_copy()
         say(f"round {round_no}: testing "
@@ -502,177 +805,9 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
 
         # design + submit this round
         for h in selected:
-            protocol = ProtocolSubmission(
-                envelope=Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
-                title=f"screen-{h.candidate}" if adaptive else f"test-{h.candidate}",
-                assay_type=str(coerce_assay_type(h.assay_type).value),
-                steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense,
-                                    params={"volume_ul": 50})],
-                samples=[SampleSpec(
-                    sample_id=h.candidate, kind=SampleKind.compound,
-                    concentration=c,
-                    metadata={"smiles": (h.metadata or {}).get("smiles", ""),
-                              "sequence": (h.metadata or {}).get("sequence", ""),
-                              "description": f"{h.candidate} construct",
-                              "intent": ("covalent" if "covalent" in
-                                         (h.mechanism or "").lower() else "")})
-                         for c in ([screen_conc] if adaptive
-                                   else cfg.concentrations)]
-                + [SampleSpec(sample_id=f"ctrl-neg{i}", kind=SampleKind.buffer,
-                              concentration="10uM") for i in (1, 2)],
-                reagents=[ReagentSpec(name="assay-buffer", amount="5 mL",
-                                      bsl_level=1)],
-            )
-            h.design = ExperimentDesign(
-                assay_type=str(coerce_assay_type(h.assay_type).value), concentrations=list(cfg.concentrations),
-                replicates=3, controls=["negative"],
-                protocol_id=protocol.protocol_id)
-            # Make: plan routes, then synthesize & purify before Test — a
-            # compound with NO viable route never burns a batch, and a failed
-            # batch never reaches the lab (deterministic per candidate)
-            synth = synth_cache.get(h.candidate)
-            if synth is None:
-                from bionexus.adapters.lab.synthesis import \
-                    VirtualSynthesizer
-                vs = VirtualSynthesizer()
-                best_route = None
-                smi = (h.metadata or {}).get("smiles")
-                mod = str((h.metadata or {}).get("modality", "")).lower()
-                # Gate-ordering debt (agent-tier finding, Oct 2026): the
-                # toxicophore screen ran only at SUBMISSION — after Make had
-                # already synthesized a batch that could never be assayed.
-                # Pre-screen the declared structure at Make entry with the
-                # same rules (intent respected: a declared covalent warhead
-                # still passes); the gateway rule remains the backstop.
-                # Refusal semantics unchanged; waste eliminated.
-                if smi and mod not in ("biologic", "cell therapy", "mrna"):
-                    from bionexus.adapters.bio.tox_alerts import (
-                        RULES_VERSION, screen_smiles)
-                    _intent = ("covalent" if "covalent" in
-                               (h.mechanism or "").lower() else "")
-                    _hits = screen_smiles(smi, _intent)["refuse"]
-                    if _hits:
-                        say(f"{h.candidate}: REFUSED at Make entry — "
-                            f"toxicophore pre-screen (never synthesized)")
-                        store.append(record_for(
-                            protocol.envelope, EventType.gate_decision,
-                            system_actor("safety"),
-                            decision={
-                                "kind": "safety_refusal",
-                                "stage": "make_prescreen",
-                                "candidate": h.candidate,
-                                "samples": [h.candidate],
-                                "reason": (
-                                    f"sample '{h.candidate}' carries "
-                                    f"{len(_hits)} toxicophore alert(s) "
-                                    f"[rules {RULES_VERSION}]: "
-                                    + "; ".join(f"{x['alert']} ({x['note']})"
-                                                for x in _hits[:3])
-                                    + " — screened before synthesis "
-                                      "(gateway rule remains the backstop)"),
-                                "action": "Make skipped; batch never "
-                                          "spent"})
-                        )
-                        continue
-                if (smi and mod not in ("biologic", "cell therapy", "mrna")
-                        and cfg.synthesis_backend != "none"):
-                    from bionexus.adapters.retrosynthesis import \
-                        get_retrosynthesis_adapter
-                    plans = get_retrosynthesis_adapter(
-                        cfg.synthesis_backend).plan_routes(smi)
-                    viable = [p for p in plans if p.feasible]
-                    if not viable:
-                        say(f"{h.candidate}: NO VIABLE SYNTHESIS ROUTE — "
-                            f"blocked at Make (never reaches Test)")
-                        store.append(record_for(
-                            protocol.envelope, EventType.gate_decision,
-                            system_actor("synthesis"),
-                            decision={
-                                "kind": "no_viable_route",
-                                "candidate": h.candidate,
-                                "reason": "rule-corpus retrosynthesis found "
-                                          "no route meeting the yield/"
-                                          "lead-time floors",
-                                "routes_planned": len(plans),
-                                "best_modeled_yield_pct": max(
-                                    (p.yield_pct for p in plans), default=None),
-                                "smiles": smi,
-                                "data_origin": plans[0].data_origin,
-                                "samples": [h.candidate]}))
-                        continue
-                    best_route = max(viable,
-                                     key=lambda p: p.yield_pct).summary()
-                for att in range(1 + max(0, cfg.synthesis_retries)):
-                    synth = vs.synthesize(
-                        h.candidate, smi,
-                        modality=mod,
-                        attempt=att + 1, route=best_route)
-                    store.append(record_for(
-                        protocol.envelope, EventType.synthesis_complete,
-                        system_actor("synthesis"),
-                        artifact=Artifact(artifact_id=f"syn-{synth['lot']}",
-                                          kind=ArtifactKind.other, uri="",
-                                          metadata=dict(synth)),
-                        decision={"candidate": h.candidate,
-                                  "yield_pct": synth["yield_pct"],
-                                  "purity": synth["purity"],
-                                  "ok": synth["ok"],
-                                  "lot": synth["lot"],
-                                  "attempt": att + 1,
-                                  **({"route": synth["route"],
-                                      "route_lead_time_days":
-                                          synth["route_lead_time_days"],
-                                      "route_cost_usd":
-                                          synth["route_cost_usd"],
-                                      "data_origin": synth["data_origin"]}
-                                     if "route" in synth else {})}))
-                    say(f"{synth.get('action', 'synthesized')} "
-                        f"{h.candidate}: lot {synth['lot']} "
-                        f"yield {synth['yield_pct']}% purity "
-                        f"{synth['purity']}%"
-                        + (f" (attempt {att + 1})" if att else ""))
-                    if synth["ok"]:
-                        break
-                synth_cache[h.candidate] = synth
-            if not synth["ok"]:
-                say(f"batch for {h.candidate} refused into Test: "
-                    f"{synth['note']}")
-                store.append(record_for(
-                    protocol.envelope, EventType.gate_decision,
-                    system_actor("synthesis"),
-                    decision={"kind": "synthesis_failed",
-                              "candidate": h.candidate,
-                              "lot": synth["lot"],
-                              "reason": synth["note"],
-                              "samples": [h.candidate]}))
+            protocol = _design_protocol(h, cfg, problem, adaptive, screen_conc)
+            if not _make_candidate(h, protocol, cfg, store, say, synth_cache):
                 continue
-            # biologic Make has a second QC: stability / aggregation.
-            # A batch that would aggregate in the vial never reaches an
-            # assay — the refusal is honest, not a missing verdict
-            if synth.get("modality", "").lower() in ("biologic",
-                                                     "cell therapy",
-                                                     "mrna"):
-                from bionexus.adapters.lab.bioprocess import bioprocess_qc
-                qc = bioprocess_qc(h.candidate,
-                                   (h.metadata or {}).get("sequence", ""),
-                                   synth["lot"])
-                store.append(record_for(
-                    protocol.envelope, EventType.stage_transition,
-                    system_actor("bioprocess"),
-                    decision={"kind": "bioprocess_qc", "candidate":
-                              h.candidate, **qc}))
-                if not qc["ok"]:
-                    say(f"batch for {h.candidate} refused into Test: "
-                        f"{qc['note']}")
-                    store.append(record_for(
-                        protocol.envelope, EventType.gate_decision,
-                        system_actor("bioprocess"),
-                        decision={"kind": "stability_failed",
-                                  "candidate": h.candidate,
-                                  "lot": synth["lot"],
-                                  "reason": qc["note"],
-                                  "samples": [h.candidate]}))
-                    continue
             run_id, rejection = gateway.submit(protocol)
             if rejection:
                 say(f"submission for {h.candidate} rejected: {rejection}")
@@ -709,79 +844,9 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         tested.extend(selected)
 
     verdicts = {h.candidate: h.status for h in tested}
-    # reviewer pass: independent audit before results are finalized.
-    # Findings are recorded as provenance and surfaced in the workbench;
-    # the reviewer demands revision, it never clears a gate
-    from bionexus.reviewer import review_campaign
-    review = review_campaign(store.branch_records(
-        f"problem/{problem.problem_id or 'unnamed'}"))
-    store.append(record_for(
-        Envelope(experiment_branch_id=
-                 f"problem/{problem.problem_id or 'unnamed'}"),
-        EventType.stage_transition, system_actor("reviewer"),
-        decision={"kind": "review_report", "review": review["review"],
-                  "critical": review["critical"],
-                  "warnings": review["warnings"],
-                  "verdicts_reviewed": review["verdicts_reviewed"],
-                  "findings": review["findings"]}))
-    if review["findings"]:
-        say(f"reviewer: {review['critical']} critical / "
-            f"{review['warnings']} warning finding(s) — "
-            + "; ".join(f["detail"] for f in
-                        review["findings"][:3]))
-    else:
-        say("reviewer: no findings — analysis consistent")
+    _review_pass(cfg, store, problem, say)
 
-    # LLM advisory layer: only when a model was part of this campaign.
-    # Its output is flags-only (schema-enforced) — advisory by construction
-    if cfg.model is not None:
-        from bionexus.reviewer import review_llm
-        llm_review = review_llm(
-            store.branch_records(
-                f"problem/{problem.problem_id or 'unnamed'}"), cfg.model)
-        store.append(record_for(
-            Envelope(experiment_branch_id=
-                     f"problem/{problem.problem_id or 'unnamed'}"),
-            EventType.stage_transition, system_actor("llm-reviewer"),
-            decision={"kind": "review_report_llm", **llm_review}))
-        if llm_review.get("unavailable"):
-            say(f"llm reviewer unavailable: "
-                f"{llm_review['unavailable']}")
-        elif llm_review["flags"]:
-            say(f"llm reviewer ({llm_review['model']}): "
-                f"{len(llm_review['flags'])} advisory flag(s)")
-        else:
-            say(f"llm reviewer ({llm_review['model']}): no advisory "
-                "flags")
-
-    # S-T1.2: series-level claims derive their verdicts from members'
-    # CI-aware verdicts — never tested directly, abstention dominates,
-    # and resolutions feed the flywheel's family prior.
-    from bionexus.series import resolve_series_claims
-    branch = f"problem/{problem.problem_id}"
-    _claim_ev = {"confirmed": EventType.hypothesis_validated,
-                 "refuted": EventType.hypothesis_invalidated,
-                 "inconclusive": EventType.hypothesis_inconclusive}
-    for c in resolve_series_claims(store.branch_records(branch)):
-        if c["status"] == "open":
-            say(f"series claim {c['family_id']}: open — {c['reason']}")
-            continue
-        store.append(record_for(
-            Envelope(experiment_branch_id=branch), _claim_ev[c["status"]],
-            actor,
-            decision={"hypothesis_id": c["family_id"],
-                      "family_id": c["family_id"],
-                      "verdict": c["status"],
-                      "claim_kind": "series-derived", "derived": True,
-                      "family_kind": c["kind"],
-                      "retain_fold": c["retain_fold"],
-                      "parent_statement": c["parent_statement"],
-                      "reason": c["reason"],
-                      "derived_from": [list(x) for x in c["derived_from"]]}))
-        flywheel.submit(f"series:{c['family_id']}", c["family_id"],
-                        "series-claim", c["status"])
-        say(f"series claim {c['family_id']}: {c['status'].upper()} — "
-            f"{c['reason']}")
+    _resolve_series(store, problem, actor, flywheel, say)
 
     say(f"CAMPAIGN COMPLETE {problem.problem_id}: "
         + (", ".join(f"{c}={s}" for c, s in verdicts.items()) or "nothing tested"))
