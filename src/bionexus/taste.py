@@ -127,8 +127,8 @@ def taste_report(db_path: str | Path | None = None) -> dict:
     provenance branches. Returns {n, accepted, overall_rate, by_feature,
     families, amendments} — amendments are strings, advisory only."""
     db_path = db_path or PROVENANCE_DB
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    store = SqliteProvenanceStore(str(db_path))
+    from bionexus.adapters.store.sqlite import get_store
+    store = get_store(str(db_path))
     feats_all: dict[str, dict] = {}
     decisions_all: list[dict] = []
     for br in store.branches():

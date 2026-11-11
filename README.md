@@ -91,7 +91,7 @@ make api                               # web app on :8000 (API + SPA)
 bn diary <branch>                      # campaign as a lab-notebook narrative
 bn prove <branch> --html out.html      # tamper-evident provenance + shareable report
 bn prove <branch> --eln out.csv        # ELN-ready export (Benchling/SISSYO-friendly)
-bn anchor [--publish-cmd CMD]          # Merkle-root the store; publish the root
+bn anchor [--publish-cmd CMD]          # Merkle-root the store; PUBLISH the root (unpublished = no protection)
 bn plan --objective "potent AND selective AND soluble" \
         --model anthropic --run-budget 20   # decompose into a guarded problem tree
 bn reproduce <branch>                  # replay a recorded experiment, diff verdicts

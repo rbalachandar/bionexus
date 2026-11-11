@@ -17,8 +17,8 @@ from typing import Any
 
 def reproduce(branch: str, db_path: str = "bionexus.db",
               inbox: str | Path | None = None) -> dict:
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    store = SqliteProvenanceStore(db_path)
+    from bionexus.adapters.store.sqlite import SqliteProvenanceStore, get_store
+    store = get_store(db_path)
     recs = store.branch_records(branch)
     if not recs:
         return {"status": "error", "reason": f"no records for '{branch}'"}

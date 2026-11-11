@@ -171,3 +171,52 @@ def test_hash_covers_actor_not_just_decision(tmp_path):
     conn.commit(); conn.close()
     assert [p["problem"] for p in SqliteProvenanceStore(db).verify_chain()
             ] == ["payload-tampered"]
+
+
+def test_registry_priority_and_tie_warning(caplog):
+    from bionexus.core.registry import Registry
+
+    class A:
+        capabilities = ["c.fm.predict_property"]
+
+    class B:
+        capabilities = ["c.fm.predict_property"]
+        priority = 5
+    r = Registry()
+    r.register_tool(A())
+    r.register_tool(B())
+    assert type(r.resolve("c.fm.predict_property")).__name__ == "B"      # priority wins
+    r2 = Registry()
+    r2.register_tool(A())
+    r2.register_tool(A())
+    with caplog.at_level("WARNING"):
+        r2.resolve("c.fm.predict_property")
+    assert "equal priority" in caplog.text                   # tie is loud
+
+
+def test_simulator_only_devices_are_in_the_catalog_and_labelled():
+    from bionexus.labselect import load_catalog
+    cat = {i["id"]: i for i in load_catalog()["instruments"]}
+    for iid in ("lcms-simulator", "hcs-microscope-simulator"):
+        assert cat[iid]["simulated"] is True
+        assert cat[iid]["hardware_validated"] is False
+
+
+def test_docker_user_is_opt_in_flag():
+    from bionexus.adapters.sandbox.docker import DockerSandbox
+
+    class R:
+        binary = "docker"
+
+        def run(self, *a, input=None):
+            self.args = list(a)
+            return "cid"
+
+        def run_capped(self, *a, **k):
+            return (0, "", False)
+
+        def ok(self, *a):
+            return True
+    r = R()
+    DockerSandbox(image="img:1", runner=r, user="65534:65534")
+    assert r.args[r.args.index("--user") + 1] == "65534:65534"

@@ -146,6 +146,28 @@
     "make"
    ],
    "note": "CI-verified against a spec-conformant simulated robot; physical confirmation pending (S-T4)"
+  },
+  {
+   "id": "lcms-simulator",
+   "kind": "adapter",
+   "name": "LC-MS ratiometric proteomics (simulator only)",
+   "vendor": "none (S-T4: no .raw/vendor API yet)",
+   "adapter": "bionexus.adapters.devices.lcms:LCMSAdapter",
+   "simulated": true,
+   "hardware_validated": false,
+   "requires_network": false,
+   "note": "SIMULATOR ONLY: supplies the edited-fraction denominator in virtual campaigns; simulator=False refuses"
+  },
+  {
+   "id": "hcs-microscope-simulator",
+   "kind": "adapter",
+   "name": "High-content imaging microscope (simulator only)",
+   "vendor": "none (S-T4: Micro-Manager binding pending)",
+   "adapter": "bionexus.adapters.devices.hcs_microscope:HCSMicroscopeAdapter",
+   "simulated": true,
+   "hardware_validated": false,
+   "requires_network": false,
+   "note": "SIMULATOR ONLY: all per-cell output is synthetic; simulator=False refuses"
   }
  ]
 }

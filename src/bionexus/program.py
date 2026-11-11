@@ -52,7 +52,7 @@ def _slug(name: str) -> str:
 def save_program_record(doc: dict, slug: str | None = None) -> str:
     """Register/refresh a program as a shared provenance root. Returns
     the program branch id (programs/<slug>)."""
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.adapters.store.sqlite import get_store
     from bionexus.core.contracts import Envelope, EventType
     from bionexus.core.interfaces import record_for, system_actor
     slug = slug or _slug(doc.get("program"))
@@ -60,7 +60,7 @@ def save_program_record(doc: dict, slug: str | None = None) -> str:
     # relational row: the query source for the workspace
     from bionexus.wizard_store import WizardStore
     WizardStore().upsert_program(slug, doc.get("program", slug), doc)
-    store = SqliteProvenanceStore("bionexus.db")
+    store = get_store("bionexus.db")
     store.append(record_for(
         Envelope(experiment_branch_id=branch),
         EventType.problem_defined, system_actor("program"),
@@ -85,7 +85,7 @@ def attach_experiment(program_name: str, eid: str, problem_id: str,
     WizardStore().link_experiment(slug, eid, role="leaf",
                                   campaign_root=problem_id or None,
                                   question=question, status=status)
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.adapters.store.sqlite import get_store
     from bionexus.core.contracts import Envelope, EventType
     from bionexus.core.interfaces import record_for, system_actor
     prev = existing[slug]
@@ -94,7 +94,7 @@ def attach_experiment(program_name: str, eid: str, problem_id: str,
     attachments.append({"eid": eid, "problem_id": problem_id,
                         "question": question[:120], "status": status,
                         "ts": __import__("time").time()})
-    store = SqliteProvenanceStore("bionexus.db")
+    store = get_store("bionexus.db")
     store.append(record_for(
         Envelope(experiment_branch_id=f"programs/{slug}"),
         EventType.problem_defined, system_actor("program"),
@@ -114,10 +114,10 @@ def record_launch(program_name: str, root_id: str, objective: str = "") -> None:
     WizardStore().link_experiment(slug, root_id, role="campaign",
                                   campaign_root=root_id,
                                   question=objective)
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.adapters.store.sqlite import get_store
     from bionexus.core.contracts import Envelope, EventType
     from bionexus.core.interfaces import record_for, system_actor
-    SqliteProvenanceStore("bionexus.db").append(record_for(
+    get_store("bionexus.db").append(record_for(
         Envelope(experiment_branch_id=f"programs/{slug}"),
         EventType.problem_defined, system_actor("program"),
         decision={"kind": "program_launch", "program_id": slug,
@@ -155,7 +155,7 @@ def delete_program(program_name: str) -> bool:
     """Delete a program: relations + program row go, experiments survive
     unlinked, and a tombstone is appended to provenance."""
     slug = _slug(program_name)
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from bionexus.adapters.store.sqlite import get_store
     from bionexus.core.contracts import Envelope, EventType
     from bionexus.core.interfaces import record_for, system_actor
     from bionexus.wizard_store import WizardStore
@@ -163,7 +163,7 @@ def delete_program(program_name: str) -> bool:
     if ws.get_program(slug) is None:
         return False
     ws.delete_program(slug)
-    SqliteProvenanceStore("bionexus.db").append(record_for(
+    get_store("bionexus.db").append(record_for(
         Envelope(experiment_branch_id=f"programs/{slug}"),
         EventType.problem_defined, system_actor("program"),
         decision={"kind": "program_deleted", "program_id": slug,
@@ -215,8 +215,8 @@ def list_programs() -> list[dict]:
 def _migrate_from_provenance(ws) -> None:
     """One-time: seed the relational programs table from legacy
     provenance-only program records."""
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    store = SqliteProvenanceStore("bionexus.db")
+    from bionexus.adapters.store.sqlite import get_store
+    store = get_store("bionexus.db")
     for br in store.branches():
         if not br.startswith("programs/") or br.count("/") != 1:
             continue

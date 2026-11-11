@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import shlex
 import subprocess
 import time
 from pathlib import Path
@@ -94,7 +95,7 @@ def anchor(db_path: str = "bionexus.db",
     existing.append(entry)
     ANCHORS.write_text(json.dumps(existing, indent=1))
     if publish_cmd:
-        proc = subprocess.run(publish_cmd, shell=True, input=json.dumps(entry),
+        proc = subprocess.run(shlex.split(publish_cmd), input=json.dumps(entry),
                               capture_output=True, text=True, timeout=120)
         entry["published"] = proc.returncode == 0
         if proc.returncode:

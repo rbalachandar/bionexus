@@ -1,6 +1,8 @@
 """The task suite. Add tasks here; the harness scores them."""
 from __future__ import annotations
 
+from bionexus.fitting import hill_response
+
 from pathlib import Path
 
 from bionexus.evals.harness import (PASS_THRESHOLD, TaskResult, register,
@@ -469,7 +471,7 @@ def _t_adaptive():
         est, ci, wells = run_adaptive_series(true, rmax, sigma, 3,
                                              random.Random(i))
         noise = random.Random(100 + i)
-        pts = [(c, max(0.0, rmax / (1 + true / c) + noise.gauss(0, sigma)))
+        pts = [(c, max(0.0, hill_response(c, true, rmax) + noise.gauss(0, sigma)))
                for c in (0.5, 2.0, 10.0, 40.0)]
         f = fit_ic50_ci(pts, None)
         ea = abs(math.log10(est / true))

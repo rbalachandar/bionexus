@@ -1270,10 +1270,18 @@ rather than kept.
 - [x] **Phase 3** split the rest of `labread.py` (formats / layout / qc / analysis)
 - [x] **Phase 4** decompose `AutoAnalysisAgent.handle` into event handlers
 - [x] **Phase 5** `run_campaign` split into stage functions (630 -> ~215 lines; the round loop remains inline)
-- [ ] **Phase 6** device adapters selectable from config (S-T4), single plugin
-      discovery path, `Registry.resolve` priority, docker non-root default,
-      remaining `get_store` call sites, `evals/tasks.py` Hill formula,
-      `publish_cmd` without shell, `bn campaign` regrouping (no aliases)
+- [x] **Phase 6** (done): LC-MS/HCS simulator adapters in the instrument catalog
+      (labelled simulated, not hardware-validated); the rest stay reachable
+      via the `{"adapter": "pkg:Class"}` escape hatch. `Registry.resolve` has an
+      explicit `priority` and warns on ties. `evals/tasks.py` uses
+      `fitting.hill_response`. `publish_cmd` runs without a shell. Docker
+      sandbox: opt-in `read_only` and `user`. Shared `get_store` in
+      `program.py`/`taste.py`/`reproduce.py`.
+      NOT done, by decision: no CLI regrouping (nothing is deprecated; the
+      QUICKSTART table names the entry points). Still open: `sandboxd`
+      loads entry points + RDKit only (tools registered in code on the host
+      are absent inside a sandbox); SiLA2 is still a generic-HTTP template
+      and the Scheduler is unvalidated (S-T4 hardware sessions).
 - [ ] Later: per-person approver tokens (identity derived server-side)
 
 Note (eval after the CI fixes): `hit-recovery` fell 0.917 -> 0.833 and

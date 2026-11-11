@@ -7,9 +7,12 @@ capabilities.
 from __future__ import annotations
 
 import importlib
+import logging
 from typing import Any
 
 from bionexus.core.contracts import ToolInvocation, ToolName, ToolResult
+
+log = logging.getLogger(__name__)
 
 
 class Registry:
@@ -30,7 +33,19 @@ class Registry:
         tools = self._tools.get(ToolName(tool))
         if not tools:
             raise LookupError(f"no tool registered for capability '{tool}'")
-        return tools[0]
+        if len(tools) == 1:
+            return tools[0]
+        # several implementations: an explicit integer `priority` attribute
+        # (higher wins) decides; a tie falls back to registration order and
+        # says so — a silent first-wins hid which adapter actually ran
+        ranked = sorted(tools, key=lambda t: -int(getattr(t, "priority", 0)))
+        if int(getattr(ranked[0], "priority", 0)) == \
+                int(getattr(ranked[1], "priority", 0)):
+            log.warning("capability '%s' has %d implementations with equal "
+                        "priority; using %s (first registered). Set a "
+                        "`priority` attribute to choose explicitly.",
+                        tool, len(tools), type(ranked[0]).__name__)
+        return ranked[0]
 
     def invoke(self, invocation: ToolInvocation) -> ToolResult:
         tool = self.resolve(invocation.tool)

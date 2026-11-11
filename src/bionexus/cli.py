@@ -1069,8 +1069,12 @@ def main(argv: list[str] | None = None) -> int:
                      help="recompute and compare against the latest anchor")
     anc.add_argument("--root", help="explicit root to verify against")
     anc.add_argument("--publish-cmd",
-                     help="shell command receiving the anchor JSON on stdin "
-                          "(e.g. 'gh gist create - && …', 'git commit …')")
+                     help="command (split like a shell line, run WITHOUT a shell — "
+                          "no pipes/&&) receiving the anchor JSON on stdin, "
+                          "e.g. 'gh gist create -'. Wrap pipelines in a "
+                          "script. An anchor that is never published to "
+                          "somewhere you do not control gives no protection "
+                          "against someone who can edit the DB file.")
     ht = sub.add_parser("halt", help="operator stop-condition outside the "
                         "agent's reach: engage/status/clear")
     ht.add_argument("--engage", action="store_true")
