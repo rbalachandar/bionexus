@@ -1282,7 +1282,10 @@ rather than kept.
       loads entry points + RDKit only (tools registered in code on the host
       are absent inside a sandbox); SiLA2 is still a generic-HTTP template
       and the Scheduler is unvalidated (S-T4 hardware sessions).
-- [ ] Later: per-person approver tokens (identity derived server-side)
+- [x] Per-person approver tokens (`BIONEXUS_API_TOKENS`; identity derived server-side)
+- [x] `bn campaign <sub>` regroup (clean break), sandbox worker rebuilds the host tool set, evals re-baselined
+- [ ] Remaining long functions (>110 lines), split behind the golden tests: `views.narrative_data` (254), `views.workspace` (212), `pipeline_cards` (147), `experiment_detail` (133), `labread.read_plate` (158), `watch._finish_confirmation` (124), `problem_tree.run_tree` (152), `cli.main` (294, parser construction)
+- [ ] Hardware (needs vendor/robot sessions, not code): SiLA2 real binding, scheduler vendor shapes, OT-2/Flex confirmation
 
 Note (eval after the CI fixes): `hit-recovery` fell 0.917 -> 0.833 and
 `verdict-honesty` now sees 4 borderline CIs (was 2) — the wider, df-corrected
