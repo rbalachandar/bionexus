@@ -16,7 +16,10 @@
    "lab_run",
    "problem_defined"
   ],
-  "flow_ok": true
+  "flow_ok": true,
+  "hypothesis_match": null,
+  "agent_core": null,
+  "contamination": null
  },
  {
   "paper": "2025 paper, target CHEMBL4508, 67 compounds",
@@ -25,8 +28,8 @@
   "n_true_actives": 5,
   "tested": 30,
   "rounds": 3,
-  "recall_of_actives": 0.4,
-  "best_compound_rank": 1,
+  "recall_of_actives": 0.2,
+  "best_compound_rank": null,
   "chain_intact": true,
   "flow_stages_recorded": [
    "hypothesis_invalidated",
@@ -35,7 +38,10 @@
    "lab_run",
    "problem_defined"
   ],
-  "flow_ok": true
+  "flow_ok": true,
+  "hypothesis_match": null,
+  "agent_core": null,
+  "contamination": null
  },
  {
   "paper": "2025 paper, target CHEMBL614245, 53 compounds",
@@ -54,7 +60,10 @@
    "lab_run",
    "problem_defined"
   ],
-  "flow_ok": true
+  "flow_ok": true,
+  "hypothesis_match": null,
+  "agent_core": null,
+  "contamination": null
  },
  {
   "paper": "2025 paper, target CHEMBL614245, 53 compounds",
@@ -63,8 +72,8 @@
   "n_true_actives": 11,
   "tested": 30,
   "rounds": 3,
-  "recall_of_actives": 0.182,
-  "best_compound_rank": null,
+  "recall_of_actives": 0.273,
+  "best_compound_rank": 1,
   "chain_intact": true,
   "flow_stages_recorded": [
    "hypothesis_invalidated",
@@ -73,7 +82,10 @@
    "lab_run",
    "problem_defined"
   ],
-  "flow_ok": true
+  "flow_ok": true,
+  "hypothesis_match": null,
+  "agent_core": null,
+  "contamination": null
  },
  {
   "paper": "CHEMBL6078657",
@@ -91,7 +103,10 @@
    "lab_run",
    "problem_defined"
   ],
-  "flow_ok": true
+  "flow_ok": true,
+  "hypothesis_match": null,
+  "agent_core": null,
+  "contamination": null
  },
  {
   "paper": "CHEMBL6078657",
@@ -109,6 +124,9 @@
    "lab_run",
    "problem_defined"
   ],
-  "flow_ok": true
+  "flow_ok": true,
+  "hypothesis_match": null,
+  "agent_core": null,
+  "contamination": null
  }
 ]

@@ -100,6 +100,7 @@ def fetch_target_pool(target_id: str, exclude_doc: str, cap: int = 20000) -> lis
     else:
         rows, p = [], (f"/activity.json?target_chembl_id={target_id}"
                        "&limit=1000")
+        seen: set[tuple[str, float]] = set()   # identical rows are repeats
         while p and len(rows) < cap:
             d = chembl(p, soft=True)
             if not d.get("activities"):
@@ -112,7 +113,10 @@ def fetch_target_pool(target_id: str, exclude_doc: str, cap: int = 20000) -> lis
                     except ValueError:
                         continue
                     if 0 < v < 1e5:
-                        rows.append([smi, -math.log10(v * 1e-9)])
+                        row = (smi, -math.log10(v * 1e-9))
+                        if row not in seen:
+                            seen.add(row)
+                            rows.append(list(row))
             nxt = d.get("page_meta", {}).get("next") or ""
             p = nxt.replace("https://www.ebi.ac.uk", "").replace("/chembl/api/data", "", 1)
             if not p or not d.get("activities"):
@@ -266,7 +270,7 @@ def main() -> None:
             results[doc_id] = row
             continue
         if len(pool) >= 200 and len(paper) >= 10:
-            model = MorganFingerprintRF(n_estimators=300)
+            model = MorganFingerprintRF(n_estimators=300, compute_ad=False)
             model.fit(pool)
             preds = [model.predict(s) for s, _ in paper]
             truth = [p for _, p in paper]
@@ -330,7 +334,7 @@ def main() -> None:
             clean = [(s, v) for s, v in pool if _scaf(s) not in paper_scafs]
             row["n_scaffold_overlap"] = len(pool) - len(clean)
             if len(clean) >= 200:
-                model2 = MorganFingerprintRF(n_estimators=300)
+                model2 = MorganFingerprintRF(n_estimators=300, compute_ad=False)
                 model2.fit(clean)
                 row["rf_spearman_scaffoldclean"] = round(
                     spearman([model2.predict(s) for s, _ in paper], truth), 3)

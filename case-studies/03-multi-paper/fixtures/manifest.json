@@ -1,5 +1,5 @@
 {
- "frozen_at": "2026-09-09T22:23:16",
+ "frozen_at": "2026-11-12T20:44:54",
  "entries": [
   {
    "path": "doc_CHEMBL6078657.json",
@@ -62,33 +62,39 @@
    "target": "case-studies/03-multi-paper/.cache/doc_CHEMBL6103593.json"
   },
   {
-   "path": "pool_CHEMBL2842.json",
-   "sha256": "49b24588214ebf92a81e149ba88461b5a5d8f77bd472a79cf4a109a17a96ca9c",
-   "bytes": 1713519,
-   "target": "case-studies/03-multi-paper/.cache/pool_CHEMBL2842.json"
+   "path": "pool_CHEMBL247.json",
+   "sha256": "be123af444bfbc0b846866730b2dde8daf2745b19836f017d4ebf8a44b8aba1c",
+   "bytes": 838849,
+   "target": "case-studies/03-multi-paper/.cache/pool_CHEMBL247.json"
   },
   {
    "path": "pool_CHEMBL392.json",
-   "sha256": "892ecd95642a54b198fe5d988f33fd6935135f855d88da81131f1140a20a5335",
-   "bytes": 1871590,
+   "sha256": "7095e3a6a57103326176e1f0f1b6e0f62fa76f369fe669723c3e659540813452",
+   "bytes": 1853550,
    "target": "case-studies/03-multi-paper/.cache/pool_CHEMBL392.json"
   },
   {
    "path": "pool_CHEMBL4508.json",
-   "sha256": "f65dcc7f4353c38ea76d715865caf7d22a9e3b85336ef438db90ea4a4bf78328",
-   "bytes": 1351516,
+   "sha256": "172bc27aca88712d53e6f48ec5c4e68c473867daf7a355fbea8800098dec0616",
+   "bytes": 97096,
    "target": "case-studies/03-multi-paper/.cache/pool_CHEMBL4508.json"
   },
   {
+   "path": "pool_CHEMBL612545.json",
+   "sha256": "ec3a5987a16847a8490f1a2f1444a3426f43dcacaf3d9cc932422f11deffe529",
+   "bytes": 1749802,
+   "target": "case-studies/03-multi-paper/.cache/pool_CHEMBL612545.json"
+  },
+  {
    "path": "pool_CHEMBL613835.json",
-   "sha256": "2918169d265e9d643c7616d08be146bd54f423af2dbfd63a9a77a1771d84ef40",
-   "bytes": 1661743,
+   "sha256": "ad111702910c1065e09f8a4ddff8e0b3bf0f5259042fe007a301eb91edd25668",
+   "bytes": 539714,
    "target": "case-studies/03-multi-paper/.cache/pool_CHEMBL613835.json"
   },
   {
    "path": "pool_CHEMBL614245.json",
-   "sha256": "8fbabb669ac49d6690a5c1dfca432240933c7d1757f4a8b645753479e2e303af",
-   "bytes": 1742310,
+   "sha256": "befefe7e250aa3ddebd7f657b9a175e2ab6894569f93d2eb4e01effc05640070",
+   "bytes": 427163,
    "target": "case-studies/03-multi-paper/.cache/pool_CHEMBL614245.json"
   }
  ]

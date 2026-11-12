@@ -160,7 +160,7 @@ def run_campaign(doc: str, label: str, strategy: str, use_llm: bool,
         acts = fetch_doc_activities(doc)
         target = next(iter({a["target_chembl_id"] for a in acts if a.get("target_chembl_id")}))
         pool = [(s, p) for s, p in fetch_target_pool(target, doc) if s not in values][:12000]
-        model = MorganFingerprintRF(n_estimators=200)
+        model = MorganFingerprintRF(n_estimators=200, compute_ad=False)
         model.fit(pool)
         score = lambda c: model.predict(c)  # noqa: E731
     elif strategy == "llm" and use_llm:

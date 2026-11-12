@@ -58,9 +58,9 @@ was intact; and no campaign exceeded the 30-experiment budget.
 | Paper | Strategy | Tested | True actives | Active-set recall | Flow integrity |
 |---|---|---:|---:|---:|---|
 | CHEMBL6087407 | random | 30/67 | 5 | 0.80 | **PASS** |
-| CHEMBL6087407 | RF | 30/67 | 5 | 0.40 | **PASS** |
+| CHEMBL6087407 | RF | 30/67 | 5 | 0.20 | **PASS** |
 | CHEMBL6087417 | random | 30/54 | 11 | 0.636 | **PASS** |
-| CHEMBL6087417 | RF | 30/54 | 11 | 0.182 | **PASS** |
+| CHEMBL6087417 | RF | 30/54 | 11 | 0.273 | **PASS** |
 | CHEMBL6078657 | random | 30/54 | 0 | 1.00* | **PASS** |
 | CHEMBL6078657 | RF | 30/54 | 0 | 1.00* | **PASS** |
 
@@ -79,15 +79,15 @@ row sharing a Murcko scaffold with the paper removed):
 
 | Paper | ρ (full) | ρ (scaffold-clean) | EF@10% | EF 95% CI | p | BH sig |
 |---|---|---|---|---|---|---|
-| CHEMBL6087414 | −0.193 | −0.189 (0 overlap) | n/a (no actives) | — | — | — |
-| CHEMBL6087416 | +0.175 | +0.175 (0 overlap) | 1.09× | [1.0, 1.23] | 0.77 | no |
-| CHEMBL6087417 | −0.554 | −0.554 (0 overlap) | 0.0× | [0.0, 0.0] | 1.00 | no |
-| CHEMBL6087407 | +0.662 | **+0.696** (299 removed) | 2.23× | **[0.0, 6.98]** | 0.38 | no |
+| CHEMBL6087414 | +0.135 [−0.18, +0.43] | +0.242 (1 row removed) | n/a (no actives) | — | — | — |
+| CHEMBL6087416 | +0.407 [+0.13, +0.65] | +0.437 (150 removed) | 1.09× | [1.0, 1.23] | 0.77 | no |
+| CHEMBL6087417 | −0.526 [−0.71, −0.30] | −0.486 (1 row removed) | 0.0× | [0.0, 0.0] | 1.00 | no |
+| CHEMBL6087407 | +0.713 [+0.57, +0.79] | +0.727 (13 removed) | 2.23× | **[0.0, 7.44]** | 0.38 | no |
 
 Three findings, stated plainly:
 
 1. **No enrichment claim survives correction.** The best-looking EF (2.23×)
-   has a bootstrap CI spanning 0.0–6.98 — at n=67 compounds the point estimate
+   has a bootstrap CI spanning 0.0–7.44 — at n=67 compounds the point estimate
    was noise wearing a conclusion's clothes. The flow-integrity claim stands;
    an EF-based "the model finds actives" claim would not.
 2. **Scaffold leakage is ~absent** — these 2025 papers genuinely introduce
@@ -106,10 +106,10 @@ structured-output tasks before answering).
 
 | Paper | Contamination (self-report) | Variant probe | Agent's core | Core match | Agent ρ | RF ρ |
 |---|---|---|---|---|---|---|
-| CHEMBL6087414 | clean | **leakage-suspect (1/2)** | 2-(3,5-disubstituted isoxazol-4-yl)benzimidazole | marker-string: no¹ | **+0.421** | −0.193 |
-| CHEMBL6087416 | clean | clean (0/3) | 2-anilinopyrimidine hinge-binder | **yes** | −0.057 | +0.175 |
-| CHEMBL6087417 | clean | clean (0/3) | 2-aminothiazole-urea series | **yes** | −0.039 | −0.554 |
-| CHEMBL6087407 | clean | clean (0/3) | biaryl-imidazole (biphenyl–imidazole) | marker-string: no¹ | +0.214 | **+0.662** |
+| CHEMBL6087414 | clean | **leakage-suspect (1/2)** | 2-(3,5-disubstituted isoxazol-4-yl)benzimidazole | marker-string: no¹ | **+0.421** | +0.135 |
+| CHEMBL6087416 | clean | clean (0/3) | 2-anilinopyrimidine hinge-binder | **yes** | −0.057 | **+0.407** |
+| CHEMBL6087417 | clean | clean (0/3) | 2-aminothiazole-urea series | **yes** | **−0.039** | −0.526 |
+| CHEMBL6087407 | clean | clean (0/3) | biaryl-imidazole (biphenyl–imidazole) | marker-string: no¹ | +0.214 | **+0.713** |
 
 ¹ The automated matcher is a substring test against Murcko-derived marker
 words ("benzene", "morpholine"): "benzimidazole" is chemically the right
@@ -126,11 +126,40 @@ What this pass establishes:
   leakage-suspect — one never-published perturbed molecule got attached to a
   source the model shouldn't know — while self-report said clean. Exactly the
   disagreement the naive probe cannot surface.
-- **Agent vs RF is genuinely mixed** (+0.42 vs −0.19 on one paper; −0.06/+0.18
-  and −0.04/−0.55 on two others; +0.21/+0.66 on the last). No cherry-picking:
-  the model wins where the training pool is informative, the agent wins where
-  it is anti-predictive. Ranking skill is not the claim; blind chemotype
-  recovery and honest contamination accounting are.
+- **Agent vs RF is genuinely mixed** (+0.42 vs +0.14 on one paper; −0.06 vs
+  +0.41 and −0.04 vs −0.53 on two others; +0.21 vs +0.71 on the last; RF
+  intervals in the table below). No cherry-picking: the RF wins where its
+  training pool is informative (papers 2 and 4), the agent is ahead where the
+  RF is weak or anti-predictive (papers 1 and 3). With 37–67 compounds per
+  paper none of these differences is established. Ranking skill is not the
+  claim; blind chemotype recovery and honest contamination accounting are.
+
+## Correction (2026-11-12): the RF training pools were duplicate-inflated
+
+The frozen training pools were built with a broken ChEMBL pagination cursor
+that returned the same pages repeatedly: each pool held about 20,000 rows but
+only 685–1,651 unique ones. Every quantitative RF figure above was therefore
+computed on a heavily repeated, much smaller training set. The pools are now
+fetched correctly and deduplicated (training rows per paper: 20,416 · 10,831 ·
+4,944 · 1,361) and frozen in `fixtures/`; the numbers above are the
+recomputed ones (the agent, contamination and chemotype columns come from the
+original LLM sweep, which does not depend on the pools, and were not re-run).
+
+| Paper | RF ρ before | RF ρ now | RF selection recall before → now |
+|---|---|---|---|
+| CHEMBL6087414 | −0.193 | +0.135 | — |
+| CHEMBL6087416 | +0.175 | +0.407 | — |
+| CHEMBL6087417 | −0.554 | −0.526 | 0.182 → 0.273 |
+| CHEMBL6087407 | +0.662 | +0.713 | 0.40 → 0.20 |
+
+What did **not** change: the flow runs on every paper with an intact hash
+chain, random-strategy recall is identical (it does not use the pool), no
+enrichment claim survives CIs + BH correction (best EF@10% 2.23×, CI
+[0.0, 7.44], p = 0.38), and the headline claims — blind chemotype
+identification and the contamination accounting — never depended on the RF.
+What changed is the agent-vs-RF picture (see the findings above): the RF now
+leads clearly on two papers, so the earlier "agent wins where the model is
+anti-predictive" reading only holds for papers 1 and 3.
 
 ## What this demonstrates
 

@@ -2,31 +2,33 @@
  "CHEMBL6087414": {
   "paper": "2025 paper, target CHEMBL392, 45 compounds",
   "n_paper": 45,
-  "n_train": 20279,
+  "n_train": 20416,
   "scaffold_markers": [
    "benzene",
    "morpholine"
   ],
-  "baseline_rmse": 1.538,
-  "rf_spearman": -0.193,
+  "baseline_rmse": 0.435,
+  "rf_spearman": 0.135,
   "rf_spearman_ci95": [
-   -0.474,
-   0.1357
+   -0.1836,
+   0.4295
   ],
-  "rf_rmse": 0.499,
+  "rf_rmse": 0.273,
   "rf_ef10": null,
-  "rf_spearman_scaffoldclean": -0.189,
-  "contamination": "clean",
-  "contamination_variants": "leakage-suspect",
-  "contamination_variant_hits": "1/2",
+  "n_scaffold_overlap": 1,
+  "rf_spearman_scaffoldclean": 0.242,
   "agent_core": "2-(3,5-disubstituted isoxazol-4-yl)benzimidazole (kinase hinge-binder scaffold)",
+  "agent_spearman": 0.421,
+  "contamination": "clean",
+  "contamination_variant_hits": "1/2",
+  "contamination_variants": "leakage-suspect",
   "hypothesis_match": false,
-  "agent_spearman": 0.421
+  "quantitative_rows_recomputed": "2026-11-12 on deduplicated training pools (paging fix); agent_*/contamination_*/hypothesis_* are from the original LLM sweep and were not re-run"
  },
  "CHEMBL6087416": {
   "paper": "2025 paper, A2A adenosine receptor, 40 compounds",
   "n_paper": 37,
-  "n_train": 527,
+  "n_train": 10831,
   "scaffold_markers": [
    "benzene",
    "pyrimidine",
@@ -34,32 +36,34 @@
    "sulfonamide",
    "amide"
   ],
-  "baseline_rmse": 0.868,
-  "rf_spearman": 0.175,
+  "baseline_rmse": 0.888,
+  "rf_spearman": 0.407,
   "rf_spearman_ci95": [
-   -0.1207,
-   0.4865
+   0.1347,
+   0.6451
   ],
-  "rf_rmse": 1.062,
+  "rf_rmse": 0.468,
   "rf_ef10": 1.09,
   "rf_ef10_ci95": [
    1.0,
    1.23
   ],
   "rf_ef10_p": 0.77014,
-  "rf_spearman_scaffoldclean": 0.175,
+  "n_scaffold_overlap": 150,
+  "rf_spearman_scaffoldclean": 0.437,
   "rf_ef10_bh_sig_fdr0.10": false,
-  "contamination": "clean",
-  "contamination_variants": "clean",
-  "contamination_variant_hits": "0/3",
   "agent_core": "2-anilinopyrimidine (aminopyrimidine hinge-binder) with dimethylphenoxy-acrylonitrile covalent warhead",
+  "agent_spearman": -0.057,
+  "contamination": "clean",
+  "contamination_variant_hits": "0/3",
+  "contamination_variants": "clean",
   "hypothesis_match": true,
-  "agent_spearman": -0.057
+  "quantitative_rows_recomputed": "2026-11-12 on deduplicated training pools (paging fix); agent_*/contamination_*/hypothesis_* are from the original LLM sweep and were not re-run"
  },
  "CHEMBL6087417": {
   "paper": "2025 paper, target CHEMBL614245, 53 compounds",
   "n_paper": 53,
-  "n_train": 20496,
+  "n_train": 4944,
   "scaffold_markers": [
    "benzene",
    "thiazole",
@@ -67,56 +71,60 @@
    "trifluoromethyl",
    "amide"
   ],
-  "baseline_rmse": 1.232,
-  "rf_spearman": -0.554,
+  "baseline_rmse": 0.864,
+  "rf_spearman": -0.526,
   "rf_spearman_ci95": [
-   -0.7292,
-   -0.3893
+   -0.7108,
+   -0.3041
   ],
-  "rf_rmse": 1.234,
+  "rf_rmse": 1.144,
   "rf_ef10": 0.0,
   "rf_ef10_ci95": [
    0.0,
    0.0
   ],
   "rf_ef10_p": 1.0,
-  "rf_spearman_scaffoldclean": -0.554,
+  "n_scaffold_overlap": 1,
+  "rf_spearman_scaffoldclean": -0.486,
   "rf_ef10_bh_sig_fdr0.10": false,
-  "contamination": "clean",
-  "contamination_variants": "clean",
-  "contamination_variant_hits": "0/3",
   "agent_core": "2-aminothiazole-urea series (4-benzylthiazolyl ureas with piperidine/piperazine C-terminal groups)",
+  "agent_spearman": -0.039,
+  "contamination": "clean",
+  "contamination_variant_hits": "0/3",
+  "contamination_variants": "clean",
   "hypothesis_match": true,
-  "agent_spearman": -0.039
+  "quantitative_rows_recomputed": "2026-11-12 on deduplicated training pools (paging fix); agent_*/contamination_*/hypothesis_* are from the original LLM sweep and were not re-run"
  },
  "CHEMBL6087407": {
   "paper": "2025 paper, target CHEMBL4508, 67 compounds",
   "n_paper": 67,
-  "n_train": 20600,
+  "n_train": 1361,
   "scaffold_markers": [
    "benzene",
    "trifluoromethyl"
   ],
-  "baseline_rmse": 1.168,
-  "rf_spearman": 0.662,
+  "baseline_rmse": 1.203,
+  "rf_spearman": 0.713,
   "rf_spearman_ci95": [
-   0.521,
-   0.7544
+   0.5736,
+   0.7925
   ],
-  "rf_rmse": 1.044,
+  "rf_rmse": 1.101,
   "rf_ef10": 2.23,
   "rf_ef10_ci95": [
    0.0,
-   6.98
+   7.44
   ],
   "rf_ef10_p": 0.384,
-  "rf_spearman_scaffoldclean": 0.696,
+  "n_scaffold_overlap": 13,
+  "rf_spearman_scaffoldclean": 0.727,
   "rf_ef10_bh_sig_fdr0.10": false,
-  "contamination": "clean",
-  "contamination_variants": "clean",
-  "contamination_variant_hits": "0/3",
   "agent_core": "biaryl-imidazole (biphenyl tethered to 1H-imidazole via alkyl linker), an H3/Kinase antagonist-like scaffold",
+  "agent_spearman": 0.214,
+  "contamination": "clean",
+  "contamination_variant_hits": "0/3",
+  "contamination_variants": "clean",
   "hypothesis_match": false,
-  "agent_spearman": 0.214
+  "quantitative_rows_recomputed": "2026-11-12 on deduplicated training pools (paging fix); agent_*/contamination_*/hypothesis_* are from the original LLM sweep and were not re-run"
  }
 }
