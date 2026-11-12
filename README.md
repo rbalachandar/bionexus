@@ -155,95 +155,64 @@ limitations.
 ## Evaluation suite
 
 `bn eval` runs scored tasks against seeded ground truth — deterministic,
-offline, in CI. Scores below 1.0 are kept as reported: an honest abstention
-is graded down rather than counted as a pass. Example run:
+offline, and run in CI. A score below 1.0 is kept as reported: an honest
+abstention is graded down, not counted as a pass. The latest full run is 25
+tasks, mean 0.947, all passing ([`evals/leaderboard.md`](evals/leaderboard.md));
+CI fails if any score drops below the pass bar.
+
+| Tier | Covers | Examples |
+|---|---|---|
+| **epistemics** (15) | reasoning under uncertainty | hit recovery vs truth · verdict honesty (abstain where the CI straddles the gate) · confirmation coverage · falsifiability · adaptive dosing · EI acquisition (must honour the applicability-domain gate) · flywheel memory |
+| **models** (6) | baseline model quality | Lipophilicity, ESOL, HIV, Caco2, HIA, BBB on scaffold folds, frozen in-repo, against a random floor |
+| **reproductions** (2) | published-paper reruns | frozen data fixtures |
+| **agent** (2, opt-in) | end-to-end triage | workflows with one verifiable answer — exact refusal map, no refused compound tested, no wrong confirm, byte-exact reruns; graded deterministically, no LLM judge (`bn eval --suite agent`) |
 
 ```
 epistemics — mean 0.969 · 15/15 tasks pass
   hit-recovery         0.833  honest abstains credited 0.5, not 1.0
   acquisition-policy   0.875  EI batch beats gates+randomize on every pool
-                              (0.88 vs 0.29 hits/well) — and never picks an
-                              applicability-domain outsider
   adaptive-dose        0.875  3 wells beat 4 — a genuine negative result
-  applicability-domain 1.000  far chemistry stamped extrapolation —
-                      confident claims vetoed in BOTH directions
-  sandbox-isolation    1.000  sibling writes invisible, forks diverge,
-                      lifecycle sealed, degradation loud
   verdict-honesty      1.000  must abstain where the CI straddles the gate
 ```
 
-Full run: [`evals/leaderboard.md`](evals/leaderboard.md).
-
-| Tier | Covers | Tasks |
-|---|---|---|
-| **epistemics** | scientific reasoning under uncertainty | hit-recovery vs truth · verdict-honesty (abstains where the CI straddles) · confirmation-coverage · falsifiability-tiebreak · adaptive-dose-design · acquisition-policy (EI batch selection must beat gates+randomize and honour the AD gate) · flywheel-memory |
-| **models** | baseline quality | policy ladder on MoleculeNet (Lipophilicity, ESOL, HIV) plus TDC ADMET Group (Caco2, HIA, BBB) on canonical scaffold folds — frozen in-repo, no network; vs the random floor. Fold-relative sanity (small held-out folds swing AUC; these are not leaderboard claims), scaffold-split throughout |
-| **reproductions** | published-paper reruns | the blind paper studies (opt-in; frozen data fixtures) |
-| **agent** *(opt-in)* | end-to-end loop triage | DDB-shaped workflows with ONE verifiable answer — exact refusal map (safety + makeability gates), zero refused-compounds-tested, zero wrong-confirms vs seeded truth, and byte-exact reruns — all graded deterministically, no LLM judge (`bn eval --suite agent`) |
-
-Findings the suite produced during development: an observed-max fit bias,
-per-run ground-truth instability, confirmation labels that overrode the
-gate, and non-hermetic tests — all fixed, with the tasks kept as regression
-tests. `evals/leaderboard.md` is regenerated on every run; the CI job
-fails if any score drops below the pass bar.
-
-The opt-in **agent tier** grades multi-step early-discovery workflows that
-resolve to a single verifiable answer, deterministically and without an LLM
-judge. Its first full run found a real ordering flaw: a batch was being
-synthesized for a compound the toxicophore screen would refuse moments
-later (Make ran before the submission screen). The fix shipped the same
-day, with the tier's waste counter as the permanent regression test.
-
-The `GET /api/evals` read-model serves these scores and flags every passing
-task below 1.0 as an `honest_deduction`; the workbench header carries the
-live `graded 0.947 · 25 tasks, all pass` badge on every page.
+The suite has caught real bugs: an observed-max fit bias, confirmation labels
+that overrode the gate, and a Make step that ran before the safety screen.
+Each one is now a permanent regression test. `GET /api/evals` serves the scores
+and flags every passing task below 1.0 as an `honest_deduction`; the workbench
+header shows the live `graded 0.947 · 25 tasks, all pass` badge.
 
 ### Trust mechanisms
 
-The mechanisms are modality-agnostic — the loop, the gates, and the record
-work the same for a kinase IC50, a plate-reader export, or a protein
-binder's predicted interface confidence. Some rows are one modality's
-*implementation* of a general rule.
-
-The full mechanism table — two dozen rows, from the regime gate to
-attribution and institutional memory — lives in
+These are modality-agnostic: the loop, the gates and the record work the same
+for a kinase IC50, a plate-reader export or a protein binder's predicted
+confidence. The full table (two dozen rows) is in
 [docs/safety-and-security.md](docs/safety-and-security.md).
 
 | Mechanism | What it guarantees |
 |---|---|
-| Uncertainty vetoes certainty | a 95% CI straddling the gate abstains on any metric — IC50, %-inhibition, ipTM alike; near-gate point estimates do not earn a decisive verdict (CS05: 14 abstentions; CS08: 6) |
-| Pre-registered claims | every hypothesis records its predicted and **refuted-if** clauses before data arrives; verdicts are read against the pre-registered condition — CS08's control clauses ("if this validates, the score's ranking value is refuted") evaluated true, in the chain |
-| Molecular safety gate | 18+ curated toxicophore SMARTS (versioned data file — refusals cite the rule version); hard classes always refuse; electrophilic warheads pass **only** with declared covalent intent in the hypothesis |
-| Execution governance | enforced in gateway code, outside the agent's tool surface: an operator halt switch it cannot lift (`bn halt`), a three-column authorization matrix (autonomous / human-approved / never — DURC and BSL-3+ default to never), and SOP sign-off before anything recurring runs unattended; every decision is a provenance record |
-| Provenance physics | the hash chain is engine-enforced and recomputed on read (`verify_chain`); verdict reading is payload-driven, recency-wins — the read path is verified like the write path |
-| Physical-fault honesty | saturated plates, dark reads, negative values, and device errors are classified as **physical** failures before any retry — flagged for operator inspection, not re-queried blindly and not turned into verdicts |
-| Fault tolerance | junk/adversarial instrument files degrade to "unreadable, no verdicts changed" — no crashes, no verdicts from noise |
-| Input trust boundary | instrument labels are sanitized data; injection-shaped sample names cannot reach the gate as instructions (tested) |
-
+| Uncertainty vetoes certainty | a 95% CI straddling the gate abstains, on any metric |
+| Pre-registered claims | every hypothesis records its predicted and **refuted-if** clauses before data arrives |
+| Molecular safety gate | 18 curated toxicophore rules (versioned); hard classes always refuse; electrophilic warheads pass only with declared covalent intent |
+| Execution governance | enforced in gateway code, outside the agent: an operator halt it cannot lift (`bn halt`), an autonomous / human-approved / never authorization matrix, SOP sign-off for anything recurring |
+| Provenance physics | the hash chain is engine-enforced and recomputed on read; verdict reading is payload-driven, recency-wins |
+| Physical-fault honesty | saturated plates, dark reads and device errors are flagged for inspection, never retried blindly or turned into verdicts |
+| Input trust boundary | junk or adversarial instrument files degrade to "unreadable, no verdicts changed"; injection-shaped sample names cannot reach the gate as instructions |
 
 ## Using BioNexus
 
-BioNexus supports two working styles, backed by the same engine and the same
-five interfaces. The loop itself is **modality-agnostic**: the program defines
-the objective in your own terms (any metric, unit, direction), the Make step
-words production per modality (chemical synthesis, bioprocessing, engineered
-cells), Test adapters supply the assay, and Analyze reads the registered
-metric against its gate — small-molecule, biologic, agrochemical, or
-materials programs differ in adapters, not in the framework.
+BioNexus supports two working styles on the same engine: use it by hand as a
+daily analysis tool, or hand stages of the loop to an agent as trust grows. The
+loop is **modality-agnostic**: the program defines the objective in your own
+terms (any metric, unit, direction), Make words production per modality,
+adapters supply the assay, and Analyze reads the registered metric against its
+gate.
 
+### Analyze an instrument export yourself
 
-### Use case: analyze an instrument export yourself
-
-
-Point `bn read` at a plate-reader export. Long CSV/TSV/XLSX (any column
-order, any vendor header block), plate grids, **kinetic tables**
-(Tecan i-control, BioTek KC1/Gen5: time-rows × well-columns, with vendor
-quirks tolerated — Windows-1252 encoding, `?????` placeholders for missing
-values, multi-channel kept separate), and `.npy` images — all auto-detected.
-IC50 fits carry CIs; Z′ is computed only when the plate has both control
-classes (otherwise reported as `Z'~`, control-spread heuristic);
-reader/device/serial/date are scraped into the result for provenance.
-Format detection, control discovery, and QC are automatic:
+`bn read` auto-detects long CSV/TSV/XLSX tables, plate grids, kinetic tables
+(Tecan, BioTek) and `.npy` images. IC50 fits carry confidence intervals; Z′ is
+computed only when the plate has both control classes (otherwise it is reported
+as the `Z'~` heuristic); reader, serial and date are kept for provenance.
 
 ```sh
 bn read .data/exports/synergy_export_export.csv     # the virtual-lab export (from `bn demo`)
@@ -266,15 +235,10 @@ bn read tests/data/instruments/tecan_ON1.csv --normalize pct_inhibition
 # (the refusal path: this plate has no control-class wells)
 ```
 
-A bare grid carries no compound identity — `--layout` joins a plate map
-(well → sample/concentration, multi-layer conc/sample/reagent maps
-supported) so exports without compound identity can still be fitted;
-`--normalize pct_inhibition` rescales against the plate's own blank +
-full-inhibition controls and refuses when those classes are missing.
-The repo ships three genuine vendor exports (Tecan i-control CSV+XLSX,
-BioTek 1-Step-Timer, Gen5 multi-channel) plus a plate map under
-`tests/data/instruments/` (attributed, MIT) so the parser can be tried on
-real vendor output before your own.
+`--layout` joins a plate map to exports that carry no compound identity;
+`--normalize pct_inhibition` rescales against the plate's own controls and
+refuses when those are missing. Three genuine vendor exports ship in
+`tests/data/instruments/` so you can try the parser on real output first.
 
 ```python
 from bionexus.labread import read_plate
@@ -283,40 +247,21 @@ print(r)                           # IC50 table + Z' — no configuration
 svg = r.curve_svg("C-101")         # fitted dose–response curve
 ```
 
-Response is a fitted dose–response curve like this one (auto-generated
-from a virtual-lab run):
-
 ![Dose–response curve](docs/images/dose-response.svg)
 
-
-### Use case: run a reference round on the virtual lab
-
+### Run a reference round on the virtual lab
 
 ```sh
-bn sim                                    # reference round on the virtual lab
-python examples/demo_full_flow.py        # the same, end to end (all layers)
+bn sim                                    # one round: tournament → safety gate → virtual lab → analysis → provenance
+python examples/demo_full_flow.py         # the same, end to end (all layers)
 ```
 
-A round runs: hypothesis tournament → safety-gated protocol → virtual wet lab →
-analysis → provenance. Every stage can also be driven from Python with the five
-core interfaces.
-
-
-### Use case: hand the full campaign to the agent
-
-
-To start the full flow without writing JSON, use a preset template:
+### Hand the full campaign to the agent
 
 ```sh
-bn templates                                    # list presets
-bn campaign auto --template dose-response-screen \
-      --field compounds=C1,C2,C3                # fills in the problem for you
-```
-
-Or with your own config:
-
-```sh
-bn campaign auto campaign.json
+bn templates                              # list presets
+bn campaign auto --template dose-response-screen --field compounds=C1,C2,C3
+bn campaign auto campaign.json            # or your own config
 ```
 
 <details><summary>campaign.json — an example problem statement</summary>
@@ -355,19 +300,14 @@ bn campaign auto campaign.json
  "verdicts": {"C-103": "confirmed", "C-101": "confirmed"}}
 ```
 
-(Output abridged from `bn campaign auto examples/campaign.json`; the
-simulator is seeded, so reruns reproduce these numbers.)
+Abridged output of `bn campaign auto examples/campaign.json`; the simulator is seeded, so reruns reproduce these numbers.
 
+### Let the agent watch your instruments
 
-### Use case: let the agent watch your instruments
-
-
-With `bn watch` monitoring an instrument outbox, there are no files to shuttle:
-when a reader exports a result, the agent reads it, updates open hypotheses
-against their pre-registered criteria, and recommends the next step. The same
-event interface maps to instrument webhooks and lab queue callbacks.
-
-To find out which instrument writes into a given folder:
+With `bn watch` on an instrument outbox, no files get shuttled: when a reader
+exports a result the agent reads it, updates open hypotheses against their
+pre-registered criteria, and recommends the next step. `bn connect scan` finds
+which instrument writes into a folder.
 
 ```sh
 bn connect scan /path/to/reader_share
@@ -376,30 +316,19 @@ bn connect scan /path/to/reader_share
 #   → device: plate reader (auto-exporting to this share)
 ```
 
+### Declare your instrument fence
 
-### Use case: declare your instrument fence
+The program creator declares a **pool of permitted instruments** (`labs:` in the
+campaign config, by id from `bionexus/instruments.json` or as inline
+adapter/MCP entries). The matcher then picks **within** that pool from each
+experiment's declared needs (assay types, readouts, BSL ceiling), preferring
+hardware-validated over simulated. Under gate autonomy a real choice between
+instruments is confirmed by a human. The choice, and why each other instrument
+was declined, is sealed into the branch before anything runs; with no capable
+instrument the campaign refuses rather than falling back to simulation
+(`bionexus.labselect`).
 
-
-*Use case: you know what's physically in your lab; the campaign knows
-what each experiment needs.*
-
-Two decisions, two owners: the **program creator declares the fence** —
-a pool of permitted instruments (campaign config `labs:` referencing
-ids from the catalog `bionexus/instruments.json`, or inline
-adapter/MCP entries; the program form shows installed instruments as a
-tickable list with simulated/needs-device badges, plus per-instrument
-connection config) — and the **matcher selects within it** by each
-experiment's declared needs (assay types, readouts, BSL ceiling),
-preferring hardware-validated over simulated. Under gate autonomy, a
-genuine multi-instrument choice is confirmed by a human. The selection —
-including why each other instrument was declined — is sealed into the
-branch before any instrument acts; no capable instrument means refusal,
-never a silent fallback to simulation (`bionexus.labselect`).
-
-
-
-### Configure: agent authority and campaign limits
-
+### Configure agent authority and limits
 
 | autonomy | agent behavior |
 |---|---|
@@ -407,22 +336,10 @@ never a silent fallback to simulation (`bionexus.labselect`).
 | `gate` | proposes everything; each lab submission waits for your Approve click in the workbench |
 | `act` | autonomous within the SafetyEngine, including confirmation assays |
 
-Round breadth is schedulable: `"k": [4, 2, 1]` screens wide in round 1,
-then narrows as the flywheel discounts failed families (`"k": 2` keeps it
-constant). The run budget still caps the total either way.
-
-Verdicts are uncertainty-aware: a fitted IC50 whose 95% CI straddles the
-threshold comes back `inconclusive` rather than a decisive verdict. An
-orthogonal confirmation verifies the *direction* of the preliminary verdict —
-agreement confirms hits, refutes non-hits, and disagreement on a claimed hit
-refutes it. Campaigns may run `--dose-design adaptive`: a Bayesian posterior
-picks each next concentration (measured: 3 adaptive wells beat a fixed
-4-point series, ~4x lower error — scored by `bn eval`).
-
-A `ResourceBudget` (max lab runs, hypotheses, confirmations, wall clock) is
-enforced at submission and generation time. Every step — problem, hypotheses,
-decisions, submissions, verdicts — lands in the hash-chained provenance store;
-`bn prove <problem-id> --html report.html` renders it as a shareable audit.
+- **Round breadth** is schedulable: `"k": [4, 2, 1]` screens wide first, then narrows as the flywheel discounts failed families.
+- **Verdicts are uncertainty-aware:** a fitted IC50 whose 95% CI straddles the threshold is `inconclusive`. An orthogonal confirmation verifies the *direction* of the preliminary verdict: agreement confirms hits and refutes non-hits; disagreement on a claimed hit refutes it.
+- **Adaptive dosing** (`--dose-design adaptive`) lets a Bayesian posterior pick each next concentration (3 adaptive wells beat a fixed 4-point series in `bn eval`).
+- **A `ResourceBudget`** (lab runs, hypotheses, confirmations, wall clock) is enforced at submission and generation time. `bn prove <problem-id> --html report.html` renders the whole chain as a shareable audit.
 
 ### The scientist's workbench
 
@@ -430,95 +347,27 @@ decisions, submissions, verdicts — lands in the hash-chained provenance store;
 |---|---|
 | ![Problem workspace](assets/screenshots/workspace.png) | ![Experiment record](assets/screenshots/experiment.png) |
 
-- **`make api`** — the single web portal (React + FastAPI), all local, no
-  accounts, no cloud.
-  - **Workspace — program cards.** Each program shows its verdict
-    (`achieved / partial / no-tree`), computed from its pre-registered
-    claims, its launched problem trees with per-node roll-up status and
-    run budget, experiment rows with verdict tallies and run counts, and
-    taste lines distilled from its own portfolio decisions.
-  - **Experiment pages** (deep-linkable: `/programs/<slug>`,
-    `/experiments/<eid>`, lineage breadcrumb). DMTA funnel, a round table of
-    what was TESTED, and one hypothesis card per candidate: state badge,
-    observed value **with its 95% CI drawn against the gate** (a straddling
-    CI shows *inconclusive*, margin label included), **origin** (what the
-    molecule actually is), the `predicted_by` model stamp, mechanism, and
-    the pre-registered **refuted-if** clause.
-  - **The record.** Hash-chained provenance; a sandbox receipt when the
-    experiment ran in one (adapter, id, egress/memory policy, sealed op
-    count); evidence curves re-rendered
-    from recorded run files (or an explicit "none recorded" state); reviewer audit; trust section; raw trace log. Harness
-    decisions the code made (halts, authorization column, SOP sign-offs,
-    physical-fault classification) all surface here. Wizard experiments are
-    provenance-chained too — `bn prove wizard/<id>`. Experiments are
-    archived (retired from the working set, provenance intact), never
-    silently deleted.
-  - **Series view.** Proposed→tested→judged grouped by family or chemotype,
-    per-series rollups, and a matched-pair SAR table whose calls carry CIs —
-    straddling intervals abstain, and derived series claims show their
-    status chip.
-  - **Real data to click through:** `bn demo` seeds the abstain-and-refute
-    cascade; `case-studies/08-proteinbase-entry/seed_workbench.py` seeds the
-    prospective PD-L1 design campaign (112 hypotheses, 30 of them controls
-    whose pre-registered refutation clauses evaluated true against the
-    score's own ranking utility).
-- **`bn diary <branch>`** — the hash-chained record as a static lab-notebook
-  HTML file: hypotheses with rationale, tests with evidence runs, verdicts
-  with predicted-vs-observed, gate decisions.
-- **`bn read --csv out.csv`** — standardized results ready for Excel/GraphPad.
+`make api` serves the web workbench (React + FastAPI), all local, no accounts, no cloud:
+
+- **Workspace:** program cards with a verdict (`achieved / partial / no-tree`) computed from pre-registered claims, their problem trees with run budgets, experiment rows with verdict tallies, and taste lines distilled from past portfolio decisions.
+- **Experiment pages:** the DMTA funnel and one card per hypothesis — state, observed value **with its 95% CI drawn against the gate**, the prediction's source, mechanism, and the pre-registered **refuted-if** clause.
+- **The record:** hash-chained provenance, a sandbox receipt when the run was sandboxed, evidence curves re-rendered from recorded run files, the reviewer audit, and every harness decision (halts, authorization column, SOP sign-offs, fault classification). Experiments are archived, never deleted.
+- **Series view:** hypotheses grouped by family or chemotype with per-series rollups and a matched-pair SAR table whose calls carry CIs.
+- **Try it on real data:** `bn demo` seeds the abstain-and-refute cascade; `case-studies/08-proteinbase-entry/seed_workbench.py` seeds the PD-L1 design campaign.
+
+Also: `bn diary <branch>` writes the record as a static lab-notebook HTML file, and `bn read --csv out.csv` writes standardized results for Excel/GraphPad.
 
 ### The DMTA cycle — scientific decision layer
 
-BioNexus structures the Design-Make-Test-Analyze cycle as first-class objects:
+BioNexus models Design–Make–Test–Analyze as first-class objects:
 
-- **Target Product Profile (TPP)** — the workbench program defines winning
-  in your own terms (objective, metric, unit, direction, gate — see the
-  Program hierarchy below); for small-molecule programs, phased criteria
-  (hit → lead → candidate → clinical) are available in the engine
-  (`bionexus.tpp`) and evaluated after every experiment
-- **Experiment Definition** — the full scientific manifest: intervention,
-  biological system, delivery conditions, readout capabilities, denominators,
-  and expected intermediates (not just protocol steps)
-- **Readiness Review** — runs *before* the safety gate: checks that the
-  experiment, if successful, would produce an interpretable result (denominators
-  present, authentic modification distinguishable, delivery variance controlled,
-  synthesis feasible)
-- **Program hierarchy** — Program ▸ Problem ▸ Hypothesis ▸ Experiment: you
-  define the problem in your own terms — objective in plain words, any
-  metric, unit, and direction (`pathogenicity_score ≥ 0.8`, `fold_change`
-  `≤ 2`, IC50 in µM — anything). That gate is what wizard hypotheses and
-  agent experiments inherit
-- **Flywheel** — every verdict is remembered: mechanistic families that fail
-  are discounted in later portfolios, and the hypothesis agent is shown what
-  the lab already ruled out
+- **Target Product Profile** — the program defines winning in your own terms (objective, metric, unit, direction, gate); small-molecule programs can add phased criteria (hit → lead → candidate → clinical) in `bionexus.tpp`.
+- **Experiment Definition** — the full manifest: intervention, biological system, readout capabilities, denominators, expected intermediates.
+- **Readiness Review** — runs *before* the safety gate and can block an experiment that would be unsafe to *interpret* (missing denominator, mimetic vs authentic modification, unmeasured delivery variance).
+- **Program hierarchy** — Program ▸ Problem ▸ Hypothesis ▸ Experiment, with the gate inherited downward.
+- **Flywheel** — every verdict is remembered: failing mechanistic families are discounted later and the hypothesis agent is shown what the lab already ruled out.
 
-```python
-from bionexus.tpp import standard_small_molecule_tpp, CriterionPhase
-from bionexus.experiment import (ExperimentDefinition, ClaimType,
-                                 Intervention, ReadoutSpec)
-from bionexus.readiness import review_experiment
-
-tpp = standard_small_molecule_tpp("Program-X", "MAP4K1")
-exp = ExperimentDefinition(
-    scientific_question="Does S62 phosphorylation cause degradation?",
-    claim_type=ClaimType.causal_modification,
-    intervention=Intervention(kind="protein_edit", target="c-Myc", site="S62"),
-    readout=ReadoutSpec(assay="ratiometric MS", measures_edited_fraction=True),
-    ...)
-review = review_experiment(exp)
-print(review.verdict)   # ready / ready_with_warnings / blocked
-```
-
-The readiness review can **block** an experiment before it runs — not because
-it's unsafe, but because its result wouldn't be interpretable (missing
-denominator, mimetic vs authentic modification, delivery variance unmeasured).
-
-**External database adapters:** ChEMBL (dataset download), Open Targets
-(GraphQL), PubMed (NCBI E-utilities) — for live database queries during
-hypothesis generation and target validation.
-
-**Benchmark datasets:** MoleculeNet (Lipophilicity, ESOL, BACE), TDC, DOCKSTRING
-— see [`docs/benchmarks.md`](docs/benchmarks.md).
+External database adapters: ChEMBL, Open Targets, PubMed. Benchmark datasets: MoleculeNet, TDC, DOCKSTRING ([`docs/benchmarks.md`](docs/benchmarks.md)).
 
 ### How a campaign runs — who acts, and what BioNexus enforces
 
@@ -563,129 +412,78 @@ Four things cut across the steps rather than sitting in one:
 
 ## The virtual lab
 
-BioNexus ships simulated devices at three fidelity tiers, so the entire
-loop runs offline and every layer is testable before hardware is involved —
-and so hardware can be *added* later without changing the science code:
+Simulated devices at three fidelity tiers let the whole loop run offline, so
+every layer is testable before hardware is involved:
 
-- **Assay simulators** — SimulatorLab: seeded dose–response ground truth,
-  replicates, counterscreen interference (PAINS-like artifacts), controls,
-  and a property-gate mode for dose-independent readouts; plus DLS
-  (Brownian + scattering physics), ELISA (4PL saturation curves), DSF
-  (two-state Boltzmann melts), imaging, synthesis-route and bioprocess
-  simulators — roundtrip-tested against the analysis adapters
-- **Wire-level device simulators** — instrument protocols simulated from
-  the manufacturer's published contract, with teeth: `ot2_sim` is a
-  spec-conformant Opentrons robot (400s header-less clients, 422s wrong
-  multipart fields, derives command evidence from the actually-uploaded
-  protocol source), and the EZO pH wire-sim reproduces datasheet grammar
-  (*OK/*ER, wake quirks) with calibration-state uncertainty that flows
-  into verdicts. Mocks that skip quirks teach lies; these don't
-- **Recording/playback** — real hardware sessions are recorded once and
-  replay identically in CI
-- **MCP practice mode** — external instrument servers (the LabMCP
-  catalog) run under `--simulate`, driven by the same `McpLabAdapter`
-  that will drive their hardware
+- **Assay simulators** — seeded dose–response truth, replicates, interference artifacts, controls; plus DLS, ELISA, DSF, imaging, synthesis and bioprocess simulators, round-trip tested against the analysis adapters.
+- **Wire-level device simulators** — instrument protocols simulated from the manufacturer's published contract, with teeth: `ot2_sim` refuses header-less clients and wrong multipart fields; the EZO pH simulator reproduces datasheet quirks, and its calibration uncertainty flows into verdicts.
+- **Recording/playback** — real hardware sessions are recorded once and replay identically in CI.
+- **MCP practice mode** — external instrument servers run under `--simulate`, driven by the same adapter that will drive the hardware.
 
-Every simulator is labeled as such in its capabilities; adapters whose
-live modes don't exist refuse rather than serve synthetic readings as
-instrument data. With a multimodal model, the agent can even read a
-plate visually — `bionexus.vision` shows a vision-LLM estimating
-fluorescence from pixels alone, recovering the IC50 to the same order
-of magnitude as the analysis pipeline. See
-[`docs/virtual-lab.md`](docs/virtual-lab.md).
+Every simulator labels itself in its capabilities, and adapters whose live
+mode doesn't exist refuse rather than serve synthetic readings as instrument
+data. See [`docs/virtual-lab.md`](docs/virtual-lab.md).
 
 ## Five core interfaces
 
-Everything in BioNexus implements one of five interfaces; adapters are opt-in
-and interchangeable. The contracts are the pydantic models in `bionexus.core.contracts`.
+Everything implements one of five interfaces; adapters are opt-in and
+interchangeable. The contracts are the pydantic models in `bionexus.core.contracts`.
 
-| Interface | Adapters (now → roadmap) |
+| Interface | Adapters today |
 |---|---|
-| `ModelProvider` | openai_compat (OpenAI/ollama/vLLM/stub — Authorization header sent), anthropic → gemini |
-| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulators: SimulatorLab, imaging, recording/playback, replay, bioprocess, synthesis, protein-design skeleton. Real-I/O: PlateReaderShare (share-watch + `labread`). Contract-pinned + CI-verified vs a simulated robot: Opentrons OT-2/Flex (published v3 HTTP contract + ot2_sim; hardware confirmation = S-T4). Honest labels: generic-HTTP device template (not a SiLA 2 binding), HCS & LC-MS (simulator-only — live mode raises; vendor APIs unpublished), arm scheduler (REST template) → cloud labs |
-| `Sandbox` | local (copy-on-fork), docker (commit-based snapshots), OpenSandbox (gVisor/Kata/Firecracker runtimes, K8s scale, egress controls), AgentENV (VM-level snapshots) |
-| `ProvenanceStore` | sqlite → postgres, s3-worm |
-| `BioTool` | rdkit descriptors, ADMET, AlphaGenome Atlas variant scoring (AVI) → docking, ESMFold |
+| `ModelProvider` | OpenAI-compatible (OpenAI, ollama, vLLM), Anthropic |
+| `LabAdapter` (+ `SafetyEngine`, `LabGateway`) | simulators, imaging, recording/replay, PlateReaderShare, Opentrons OT-2/Flex (contract-tested against a simulated robot; hardware confirmation pending). LC-MS and HCS are simulator-only; the SiLA 2 and scheduler adapters are generic-HTTP templates |
+| `Sandbox` | local, Docker, OpenSandbox, AgentENV |
+| `ProvenanceStore` | SQLite (Postgres and S3-WORM on the roadmap) |
+| `BioTool` | RDKit descriptors, ADMET, AlphaGenome variant scoring |
 
-Sandbox execution is opt-in: campaign config `sandbox:
-{mode: per_experiment, type: local|docker}` runs one sandbox per experiment —
-lab submissions, statuses and results execute in-sandbox (tool calls route
-through the same worker via `SandboxSession.registry()`), every op is
-provenance-sealed, and the experiment page carries a receipt. Docker mode
-uses the repo-installed image (`Dockerfile.sandbox`) with egress closed by
-default, verified end to end in CI. The analysis fit and the
-agent/reviewer/MCP registry lanes remain in-process (S-T3 1d/1e in
-[`docs/ROADMAP.md`](docs/ROADMAP.md)).
+Sandboxing is opt-in (`sandbox: {mode: per_experiment, type: local|docker}`):
+lab calls and tool calls run in one sandbox per experiment, every op is
+provenance-sealed, and the experiment page shows a receipt. Docker mode uses
+`Dockerfile.sandbox` with egress closed by default, verified in CI. Analysis
+fits and the agent/reviewer/MCP registry lanes still run in-process (S-T3 1d/1e
+in [`docs/ROADMAP.md`](docs/ROADMAP.md)).
 
 ## Agent Skills and MCP
 
 BioNexus ships as an [Agent Skills](https://agentskills.io/) package
-(`skills/`, `plugin.json`) and exposes its tools over MCP — and, via the
-S-T4 `McpLabAdapter`, consumes MCP instrument servers too: typed tool
-schemas for understanding, readOnly-annotated auto-invocation only,
-gateway upstream (`mcp_instrument.py`). Tested live against two real
-[K-Dense LabMCP](https://github.com/K-Dense-AI/lab-instrument-mcps)
-servers from PyPI (Mettler Toledo balance, IKA hotplate — Apache-2.0,
-unmodified); compatible with the rest of the 32-server catalog via a
-declared ~10-line instrument profile (read tool + result fields, tested
-per family) — readout instruments today, actuator-only verbs are
-Make-step components, and nothing is hardware-validated (S-T4):
+(`skills/`, `plugin.json`) and exposes its tools over MCP:
 
 ```json
 {"bionexus": {"command": "bn", "args": ["mcp"]}}
 ```
 
+It also *consumes* MCP instrument servers through `McpLabAdapter`: typed tool
+schemas, read-only auto-invocation, everything gated. It was tested live
+against two [K-Dense LabMCP](https://github.com/K-Dense-AI/lab-instrument-mcps)
+servers (a Mettler Toledo balance and an IKA hotplate); nothing is
+hardware-validated yet.
+
 It composes with [Scientific Agent Skills](https://github.com/K-Dense-AI/scientific-agent-skills):
-those skills teach an agent *how* to author protocols and query databases;
-BioNexus decides *whether they run*, and records what happened. Focused skills:
-`bionexus` (overview) · `bionexus-labread` · `bionexus-labwatch` ·
-`bionexus-campaign` · `bionexus-opentrons`.
+those teach an agent *how* to author protocols and query databases; BioNexus
+decides *whether they run* and records what happened. Skills shipped here:
+`bionexus` · `bionexus-labread` · `bionexus-labwatch` · `bionexus-campaign` · `bionexus-opentrons`.
 
 ## Architecture
 
-Blueprint-style diagrams (SVG) of the engine architecture, blocks A–F.
-Adapter and workbench details are documented in
-[`docs/architecture.md`](docs/architecture.md) and the
-Five-core-interfaces table above.
+Engine architecture, blocks A–F: [`docs/architecture.md`](docs/architecture.md),
+[`docs/flows.md`](docs/flows.md), [`docs/blocks/`](docs/blocks/). Styled HTML
+versions of all diagrams are in [`diagrams/artifacts/`](diagrams/artifacts/).
 
-**1 · Layered View** — L0 governance → L3 infrastructure, with the five architectural blocks between.
+**Layered view** — governance at the top, infrastructure at the bottom, the five blocks between.
 
 ![Layered View](diagrams/svg/01-layered-view.svg)
 
-**2 · Design Iteration Loop** — one active-learning round, from dossier to
-next-round proposals. (In-silico assay stages shown are adapters: ADMET is
-implemented; docking and MD are roadmap `BioTool` implementations.)
-
-![Design Iteration Loop](diagrams/svg/02-iteration-loop.svg)
-
-**3 · Hypothesis Tournament** — Generate → Reflect → Rank → Evolve, plus the fine-tuning flywheel.
-
-![Hypothesis Tournament](diagrams/svg/03-tournament.svg)
-
-**4 · Wet-Lab Round Trip** — protocol through the safety boundary, instruments, and back as provenance.
-
-![Wet-Lab Round Trip](diagrams/svg/04-wetlab-roundtrip.svg)
-
-**5 · Fork / Snapshot Branching** — sandbox lifecycle as experiment tree.
-
-![Fork / Snapshot Branching](diagrams/svg/05-branching.svg)
-
-**6 · Campaign Pipeline** — target ID through trial design with human gates and failure loops. ("FM-driven design" is the protein track: the simulator and the BindCraft/Boltz design loop of CS08; cloud-lab execution is the roadmap.)
-
-![Campaign Pipeline](diagrams/svg/06-campaign.svg)
-
-**7 · Problem → Portfolio → Autonomous Loop** — state the problem, propose N hypotheses, filter to k, autonomous test-and-confirm with the provenance spine.
+**Problem → portfolio → autonomous loop** — state the problem, propose N hypotheses, filter to k, test and confirm autonomously, with the provenance spine.
 
 ![Problem to Autonomous Loop](diagrams/svg/07-problem-loop.svg)
 
-**8 · Scientific Decision Layer** — Experiment Definition and Readiness Review, between hypothesis and safety gate.
-
-![Scientific Decision Layer](diagrams/svg/08-scientific-decision-layer.svg)
-
-Styled HTML versions (light blueprint pages with legends/captions) live in
-[`diagrams/artifacts/`](diagrams/artifacts/) — open locally in a browser.
-Deeper design docs: [`docs/architecture.md`](docs/architecture.md) (blocks A–F),
-[`docs/flows.md`](docs/flows.md) (end-to-end flows), [`docs/blocks/`](docs/blocks/).
+More: [design iteration loop](diagrams/svg/02-iteration-loop.svg) ·
+[hypothesis tournament](diagrams/svg/03-tournament.svg) ·
+[wet-lab round trip](diagrams/svg/04-wetlab-roundtrip.svg) ·
+[fork / snapshot branching](diagrams/svg/05-branching.svg) ·
+[campaign pipeline](diagrams/svg/06-campaign.svg) ·
+[scientific decision layer](diagrams/svg/08-scientific-decision-layer.svg).
 
 ## Documentation
 
