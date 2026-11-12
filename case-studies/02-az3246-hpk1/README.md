@@ -10,10 +10,11 @@ was published **after the agent model's training cutoff**. Probes recorded in
 provenance (step 0) confirm the model has no knowledge of the paper or of
 AZ3246. The agent nevertheless derived the paper's optimization hypothesis from
 structures alone, and its blinded potency ranking was positively correlated with
-the paper's measurements (ρ = +0.42 and +0.34 in the two sealed runs) — higher
-than every non-LLM baseline we tried (all about +0.1), **but with only 21
-compounds the intervals overlap heavily, so this is a suggestive pattern, not a
-significant difference** (see the corrections below).
+the paper's measurements: ρ = +0.42 and +0.34 in the two original sealed runs, and
+a mean of +0.48 (run-averaged ρ = +0.52, 95% CI [+0.14, +0.78]) over five repeated
+runs with a second model (`gpt-6-luna`). That is above chance and above every
+non-LLM baseline's point estimate (all about +0.1), **but with only 21 compounds
+the intervals still overlap, so it is not a significant difference** (see below).
 
 **Verdict: Q1 (hypothesis) passed, contamination-free; Q2 (ranking) is positive but not statistically distinguishable from the baselines at n = 21.**
 
@@ -72,52 +73,32 @@ The agent's top hypothesis (confidence 0.8):
 ### Q2 — Result reproduction: positive, but within noise at n = 21
 
 Spearman ρ against the paper's 21 published pIC50s. The non-LLM rows are
-recomputed offline by `rf_baseline.py` with bootstrap 95% intervals; the agent
-rows are the two sealed runs (raw scores were not kept, so no bootstrap — the
-Fisher-z interval for ρ = +0.42 at n = 21 is about [−0.02, +0.73]).
+recomputed offline by `rf_baseline.py` with bootstrap 95% intervals. The agent
+rows are the two original sealed runs (raw scores not kept) and five repeated
+runs of `agent_runs.py` with `gpt-6-luna` (raw scores in
+`agent_runs_gpt-6-luna.json`).
 
-| Ranking source | Spearman ρ | 95% interval | Rank of the most potent compound |
-|---|---|---|---|
-| Agent, run 1 (blinded) | **+0.42** | ≈ [−0.02, +0.73] (Fisher-z) | 2 of 21 |
-| Agent, run 2 (blinded) | +0.34 | — | — |
-| Morgan + RF (7,078 deduplicated HPK1 values) | +0.125 | [−0.38, +0.52] | 6 of 21 |
-| Nearest neighbour (top-1 Tanimoto) | +0.146 | [−0.37, +0.73] | 7 of 21 |
-| Similarity-weighted 5-NN | +0.153 | [−0.33, +0.68] | 12 of 21 |
-| Crippen logP (a trivial ordering) | +0.095 | [−0.50, +0.54] | 5 of 21 |
+| Ranking source | Spearman ρ | 95% interval |
+|---|---|---|
+| Agent, original runs 1 and 2 (earlier model) | +0.42, +0.34 | ≈ [−0.02, +0.73] (Fisher-z, run 1) |
+| Agent, 5 runs with `gpt-6-luna` | +0.15, +0.69, +0.57, +0.46, +0.54 (mean +0.48, SD 0.18) | — |
+| Agent, `gpt-6-luna` run-averaged scores | **+0.52** | [+0.14, +0.78] |
+| Morgan + RF (7,078 deduplicated HPK1 values) | +0.125 | [−0.38, +0.52] |
+| Nearest neighbour (top-1 Tanimoto) | +0.146 | [−0.37, +0.73] |
+| Similarity-weighted 5-NN | +0.153 | [−0.33, +0.68] |
+| Crippen logP (a trivial ordering) | +0.095 | [−0.50, +0.54] |
 
-The agent's point estimates sit above every baseline, which is the pattern the
-study was built to look for — but every interval contains zero or nearly so
-and they overlap each other, so **we cannot claim the agent's reasoning beats
-the trained model** on this evidence. A plausible reason the trained models do
-poorly is assay shift (the paper's cellular autophosphorylation readout vs
-biochemical training assays), but that is a hypothesis, not a finding. Case
-study 01's corrected comparison (RF ρ ≈ +0.56) points the other way and is
-equally inconclusive. A defensible test needs repeated agent runs (5 or more,
-to separate sampling noise from signal) and more than 21 compounds.
-
-## Honest caveats
-
-- The agent's hypothesis wording and scores vary between runs (LLM sampling);
-  both executed runs identified the carboxamide core. The sealed chain
-  (`case_study.db`) records ρ = +0.42 and +0.34; an earlier note of a run at
-  +0.57 is not in the sealed record and is withdrawn.
-- n = 21 unique compounds (109 measurements include repeats); the ranked
-  subset shown to the agent was 45 of the deposited rows sampled before
-  deduplication.
-- "Agent beat the model" is one paper, one assay shift; it motivates a
-  systematic study of cross-assay transfer, not a general conclusion.
-- Q1 is lexical + substructure-based; a human medicinal chemist should review
-  the agent's full hypothesis text.
-
-## Reproduce
-
-```sh
-python run.py   # from this directory
-```
-
-Requires network (ChEMBL) and `BIONEXUS_LLM_*` / `ANTHROPIC_*` env for the
-agent. Artifacts: `case_study.db` — inspect with
-`bn prove case-study-02 --db case_study.db --html report.html`.
+The agent's point estimates sit above every baseline, and with `gpt-6-luna`
+the interval excludes zero. But the baselines' intervals reach +0.5 to +0.7
+and overlap the agent's, so **we cannot claim the agent beats the trained
+models** at n = 21. A single run is noisy (+0.15 to +0.69 across five), which
+is why one number should not be trusted. The two agent models differ, and
+`gpt-6-luna`'s probes found no evidence of leakage (variant probe clean, 0/3;
+it recognised only the title given in the probe), which is not proof of none.
+A plausible reason the trained models do poorly is assay shift (the paper's
+cellular readout vs biochemical training assays), but that is a hypothesis.
+A decisive test needs more compounds, or the same protocol on a second
+post-cutoff paper.
 
 ## Correction (2026-11-11): RF baseline recomputed on the deduplicated pool
 

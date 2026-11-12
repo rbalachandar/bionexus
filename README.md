@@ -137,23 +137,20 @@ bn skills list                         # discovered Agent Skills (theirs and our
 
 ## Case studies
 
-Eight studies exercise the flow on real data: blind reproductions of
-published papers (CS01–03), a prospective hit-to-lead run and re-analyses of
-deposited screening data (CS04–06), a published protein-display dataset
-(CS07), and a newly generated binder-design dataset (CS08). Several results
-are negative, and they are reported as such. Each study's README has the
-setup, the full results and its own limitations.
+Eight studies run the flow on real data. Some results are negative, and they
+are reported as such. Each study's README has the setup, full results and
+limitations.
 
-| Study | Data | Headline result |
+| Study | What it tests | Result |
 |---|---|---|
-| [01](case-studies/01-egfr-blind-reproduction/) | Gazit et al. 1989 — the original tyrphostins | **Contaminated and illustrative:** the paper is in the model's training data (the study's own probe confirms it), so the class identification is recognition, not derivation, and with 67 compounds the agent-vs-model comparison is inconclusive. Kept to show the contamination check, not as evidence of skill. |
-| [02](case-studies/02-az3246-hpk1/) | AZ3246 HPK1 inhibitor, 2025 (post-training-cutoff) | **Contamination-free.** The agent derived the pyrazine-carboxamide hypothesis from structures alone. Its blinded ranking (ρ = +0.42 and +0.34 in two sealed runs) is above every non-LLM baseline (all ≈ +0.1), but with 21 compounds the intervals overlap heavily — suggestive, not significant. |
-| [03](case-studies/03-multi-paper/) | Four recent ChEMBL papers | **Blind chemotype identification on 4/4 papers**; the never-published-variant probe flagged 1 leakage-suspect case the self-report missed. No enrichment claim survives CIs + BH correction — reported as such. |
-| [04](case-studies/04-prospective-hit2lead/) | Prospective hit-to-lead, EGFR: 26,322 ChEMBL rows, the seven successor drugs blinded | Gated `act` campaigns on replayed published truths: **5 confirmed hits (all true actives), 5 refutations (all true inactives), 2 left-censored abstentions** — the two most potent compounds were deliberately not numbered. Reviewer clean; 209 hash-chained records; the refuse → redesign → gate → confirm loop ran on real data and caught product bugs, each fixed with a regression test. |
-| [05](case-studies/05-paper-pilot/) | Jacobs et al. 2013 NIH anti-SARS-CoV 3CLpro cascade, reproduced from the lab's raw PubChem tables | **98.9% agreement on decisive verdicts, zero false actives** (32 TP / 54 TN / 0 FP) and 14 abstentions where our CIs straddle the paper's own 10 µM gate. `bn read` now parses PubChem deposits natively. |
-| [06](case-studies/06-ncats-deposit/) | NCATS qHTS (AID 2061307): 2,427 ALDH3A1 curves vs NCATS' own calls | **Negative result.** Fixed-reference 50%-crossing rules do not port to self-normalized qHTS dialects (ρ = 0.107). It led to regime refusal and shape-only admission for such deposits. |
-| [07](case-studies/07-proteinbase/) | Proteinbase paper: 5,253 proteins, 2,630 measured display pairs | Hit rates reproduced from the raw deposit (Nipah 10.0% vs 9.3%; EGFR 15.7% vs 14.0%). **Two negatives:** selecting on computed confidence picks *worse* than random (4 of 4 lifts negative), and a fixed applicability-domain floor was miscalibrated on real distributions — data-derived quantile floors are now in. |
-| [08](case-studies/08-proteinbase-entry/) | 82 BindCraft PD-L1 designs + 30 composition-matched controls, scored with Boltz-2 on rented GPU (~$5) — newly generated data | **ipTM separates designs from controls in aggregate (MWU p ≈ 1e-4) but does not rank individual sequences:** AUC 0.80; the best scramble scores 0.937, above 73 of 82 real designs, and 11 of 30 controls clear the 0.7 gate. Use it as a gate, not a ranking. All 112 are hash-chained hypotheses with pre-registered refutation clauses. |
+| [01](case-studies/01-egfr-blind-reproduction/) · Tyrphostins (1989) | Blind reproduction of a classic paper | **Illustrative only:** the model had already seen the paper. |
+| [02](case-studies/02-az3246-hpk1/) · AZ3246 HPK1 (2025) | Blind hypothesis and potency ranking on a post-cutoff paper | Found the paper's core from structures alone. Ranking is above chance (ρ ≈ +0.5 over 5 runs) but **not significantly better than simple baselines** at n = 21. |
+| [03](case-studies/03-multi-paper/) · Four ChEMBL papers | Does the full flow run on real data? | Chemotype identified 4/4; flow and audit trail intact; **no enrichment claim survives correction**. |
+| [04](case-studies/04-prospective-hit2lead/) · EGFR hit-to-lead | A prospective loop on replayed real data, seven successor drugs hidden | 5 hits (all true), 5 refutations (all true), 2 honest abstentions. |
+| [05](case-studies/05-paper-pilot/) · SARS-CoV 3CLpro screen (2013) | Reproduce a published screening cascade from raw tables | 98.9% agreement on decided calls, 0 false actives, 14 abstentions. |
+| [06](case-studies/06-ncats-deposit/) · NCATS qHTS | Re-analyze a modern deposited screen | **Negative:** our rules don't port to self-normalized data (ρ = 0.107), which led to refusing them. |
+| [07](case-studies/07-proteinbase/) · Proteinbase | Reproduce a protein-design dataset | Hit rates reproduced. Computed confidence picks *worse* than random. A miscalibrated applicability-domain floor was fixed. |
+| [08](case-studies/08-proteinbase-entry/) · PD-L1 binder designs | Does a score separate designs from controls? | Separates the groups (AUC 0.80) but **doesn't rank sequences**: use it as a gate, not a ranking. |
 
 ## Evaluation suite
 
