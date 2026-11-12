@@ -1,0 +1,417 @@
+"""/api/v1/campaigns — the campaign cockpit's data.
+
+Everything here is a pure adaptation of the existing read-models in
+`bionexus.views` into the typed v1 contract (see schemas.py); no engine logic
+lives in this file.
+"""
+from __future__ import annotations
+
+from fastapi import APIRouter, HTTPException, Query
+
+from bionexus import views
+from bionexus.api.v1 import schemas as S
+from bionexus.views import ids as _ids
+from bionexus.views.experiment import _branch_records, _problem_id
+from bionexus.views.ids import row_status
+from bionexus.wizard_store import WizardStore
+
+router = APIRouter(prefix="/campaigns", tags=["campaigns"])
+
+_STATE = {"inconclusive": "abstained", "invalidated": "refuted"}
+_JUDGED = {"confirmed", "validated", "abstained", "refuted"}
+_TESTED = _JUDGED | {"in_lab"}
+
+
+def _norm(x: str | None) -> str | None:
+    return _STATE.get(x, x) if x else x
+
+
+# ------------------------------------------------------------------ helpers
+def _ws() -> WizardStore:
+    return WizardStore()
+
+
+def _program_index() -> dict[str, S.ProgramRef]:
+    """eid -> the program that links it."""
+    from bionexus import program as program_cfg
+    out: dict[str, S.ProgramRef] = {}
+    for p in program_cfg.list_programs():
+        for link in program_cfg.links_for(p["slug"]):
+            out.setdefault(link["eid"],
+                           S.ProgramRef(slug=p["slug"], name=p["name"]))
+    return out
+
+
+def _cand(rec) -> str | None:
+    d = rec.decision or {}
+    if d.get("candidate"):
+        return str(d["candidate"])
+    if rec.artifact:
+        c = (rec.artifact.metadata or {}).get("candidate")
+        return str(c) if c else None
+    return None
+
+
+def summarize(rec) -> tuple[str, str, str | None]:
+    """(kind, human text, candidate) for one provenance record."""
+    et = rec.event_type.value
+    d = rec.decision or {}
+    cand = _cand(rec)
+    if et == "problem_defined":
+        return "problem", f"Problem defined: {d.get('objective', '')}", None
+    if et == "hypothesis_proposed":
+        label = cand or str(d.get("statement", ""))[:60]
+        return "proposed", f"Proposed {label}", cand
+    if et == "hypotheses_filtered":
+        if d.get("kind") == "acquisition_selection":
+            return ("batch", f"Batch chosen by {d.get('policy')}: "
+                    f"{len(d.get('picks') or [])} picked, "
+                    f"{len(d.get('refusals') or [])} refused", None)
+        decs = d.get("decisions") or []
+        return ("batch", f"Portfolio filtered: "
+                f"{sum(1 for x in decs if x.get('selected'))} of "
+                f"{len(decs)} selected", None)
+    if et == "lab_run":
+        return ("run", f"Run {d.get('run_id', '?')} submitted"
+                + (f" — {d['title']}" if d.get("title") else ""), cand)
+    if et == "synthesis_complete":
+        return ("make", f"Synthesised {d.get('candidate', '?')}: yield "
+                f"{d.get('yield_pct', '?')}%, purity {d.get('purity', '?')}%",
+                cand)
+    if et in ("hypothesis_validated", "hypothesis_invalidated",
+              "hypothesis_inconclusive"):
+        word = {"hypothesis_validated": "VALIDATED",
+                "hypothesis_invalidated": "REFUTED",
+                "hypothesis_inconclusive": "ABSTAINED"}[et]
+        obs = d.get("observed")
+        return ("verdict", f"{cand or '?'}: {word}"
+                + (f" — observed {obs}" if obs is not None else ""), cand)
+    if et == "gate_decision":
+        kind = d.get("kind", "gate")
+        reason = d.get("reason") or d.get("action") or ""
+        return ("gate", f"{kind.replace('_', ' ').capitalize()}"
+                + (f": {reason}" if reason else ""), cand)
+    if et == "stage_transition":
+        stage = str(d.get("stage", d.get("kind", "")))
+        if d.get("kind") == "round_start":
+            return ("round", f"Round {d.get('round')} started: "
+                    f"{', '.join(d.get('candidates') or [])}", None)
+        if stage.endswith("-complete") and stage.startswith("round-"):
+            return "round", f"Round {stage.split('-')[1]} complete", None
+        if d.get("kind") == "review_report":
+            n = len(d.get("findings") or [])
+            return ("review", "Reviewer: no findings" if not n
+                    else f"Reviewer: {n} finding(s)", None)
+    return "event", et.replace("_", " ").capitalize(), cand
+
+
+def _ts(rec) -> float | None:
+    return getattr(getattr(rec, "envelope", None), "created_at", None)
+
+
+_QUIET = {"proposed", "event"}      # kept in provenance, hidden in the feed
+
+
+def activity_items(recs, limit: int = 50) -> list[S.ActivityItem]:
+    out = []
+    for r in recs:
+        kind, text, cand = summarize(r)
+        if kind in _QUIET:
+            continue
+        out.append(S.ActivityItem(ts=_ts(r), kind=kind, text=text,
+                                  candidate=cand))
+    return list(reversed(out))[:limit]
+
+
+def _id2cand(recs) -> dict[str, str]:
+    m: dict[str, str] = {}
+    for r in recs:
+        if r.event_type.value == "hypothesis_proposed":
+            c = _cand(r)
+            hid = (r.decision or {}).get("hypothesis_id")
+            for k in (hid, r.artifact.artifact_id if r.artifact else None):
+                if k and c:
+                    m[k] = c
+    return m
+
+
+def _why_rounds(recs, detail_rounds) -> list[S.Round]:
+    id2c = _id2cand(recs)
+    portfolio = [r.decision for r in recs
+                 if r.event_type.value == "hypotheses_filtered"
+                 and (r.decision or {}).get("decisions") is not None]
+    out = []
+    for rd in detail_rounds:
+        n = rd["round"]
+        sel, why = rd.get("selection"), None
+        if sel:
+            why = S.Why(
+                policy=sel.get("policy"),
+                policy_version=sel.get("policy_version"), k=sel.get("k"),
+                target=sel.get("target"), direction=sel.get("direction"),
+                note=sel.get("note", ""),
+                picks=[S.Pick(candidate=p["candidate"],
+                              reason=p.get("reason", ""),
+                              score=p.get("acquisition"), mean=p.get("mean"),
+                              sd=p.get("sd")) for p in sel.get("picks", [])],
+                refusals=[S.Refusal(candidate=x["candidate"],
+                                    reason=x.get("reason", ""))
+                          for x in sel.get("refusals", [])])
+        elif 0 <= n - 1 < len(portfolio):
+            decs = portfolio[n - 1].get("decisions", [])
+
+            def name(d):
+                return id2c.get(d.get("hypothesis_id"),
+                                d.get("hypothesis_id", "?"))
+            why = S.Why(
+                policy="portfolio score", k=sum(1 for d in decs
+                                                if d.get("selected")),
+                picks=[S.Pick(candidate=name(d), reason=d.get("reason", ""),
+                              score=d.get("score"))
+                       for d in decs if d.get("selected")],
+                refusals=[S.Refusal(candidate=name(d),
+                                    reason=d.get("reason") or "not selected")
+                          for d in decs if not d.get("selected")])
+        out.append(S.Round(n=n, candidates=rd["candidates"],
+                           verdicts={k: _norm(v) or v
+                                     for k, v in rd.get("verdicts", {}).items()},
+                           why=why))
+    return out
+
+
+def _summary_of(card, gate_label: str | None = None) -> S.HypothesisSummary:
+    v = card.get("verdict")
+    verdict = None
+    if v and v.get("status"):
+        status = _norm(str(v["status"]).lower())
+        if status in ("confirmed", "validated", "abstained", "refuted"):
+            ci = v.get("ci")
+            verdict = S.Verdict(
+                status=status, observed=v.get("observed"),
+                ci=tuple(ci) if ci else None, unit_label=v.get("unit_label"),
+                margin=v.get("margin") or None,
+                extrapolation=bool(v.get("extrapolation")))
+    return S.HypothesisSummary(
+        id=card["key"], candidate=card.get("candidate"),
+        head=card.get("head") or card["key"],
+        statement=card.get("statement") or "",
+        state=_norm(card["state"]), stage=card.get("stage") or "",
+        round=card.get("round"), verdict=verdict,
+        gate_label=gate_label or card.get("gate_label"),
+        selected=bool(card.get("selected")))
+
+
+def _funnel(hyps: list[S.HypothesisSummary]) -> S.Funnel:
+    st = [h.state for h in hyps]
+    tested = sum(s in _TESTED for s in st)
+    return S.Funnel(
+        proposed=len(st),
+        selected=tested + sum(s in ("selected", "refused") for s in st),
+        tested=tested, judged=sum(s in _JUDGED for s in st),
+        claimed=sum(s in ("confirmed", "validated") for s in st),
+        refuted=sum(s == "refuted" for s in st),
+        abstained=sum(s == "abstained" for s in st))
+
+
+def _gate(recs, cards, detail) -> S.Gate:
+    """The campaign's gate, from what the VERDICTS were judged against (the
+    recorded decision), then the problem's hard constraint, then the program.
+    Per-card proposal-time thresholds are not authoritative (a hypothesis
+    can be proposed against a prediction, then judged against the gate)."""
+    from bionexus.derivation import criteria_label
+    for r in reversed(recs):
+        d = r.decision or {}
+        if d.get("threshold") is not None and d.get("metric") \
+                and d.get("verdict"):
+            direction = d.get("direction") or "min"
+            return S.Gate(
+                metric=d["metric"], direction=direction,
+                threshold=float(d["threshold"]),
+                label=criteria_label(d["metric"], direction,
+                                     d["threshold"]))
+    for c in detail.get("constraints") or []:
+        if c.get("limit") is not None:
+            direction = "max" if ">=" in (c.get("description") or "") else "min"
+            sym = "≥" if direction == "max" else "≤"
+            unit = f" {c['unit']}" if c.get("unit") else ""
+            return S.Gate(metric=c.get("name"), direction=direction,
+                          threshold=float(c["limit"]), unit=c.get("unit"),
+                          label=f"{c.get('name')} {sym} {c['limit']}{unit}")
+    g = ((detail.get("program") or {}).get("gate")) or {}
+    if g.get("value") is not None:
+        return S.Gate(metric=g.get("metric"), direction=g.get("direction"),
+                      threshold=g["value"], unit=g.get("unit"),
+                      label=f"{g.get('metric')} {g.get('symbol', '')} "
+                            f"{g['value']}")
+    for c in cards:
+        if c.get("threshold") is not None:
+            return S.Gate(threshold=float(c["threshold"]),
+                          label=c.get("gate_label"))
+    return S.Gate()
+
+
+def _reviewer(recs) -> S.Reviewer | None:
+    last = None
+    for r in recs:
+        d = r.decision or {}
+        if d.get("kind") == "review_report":
+            last = d
+    if last is None:
+        return None
+    return S.Reviewer(
+        critical=last.get("critical", 0), warnings=last.get("warnings", 0),
+        findings=[S.ReviewFinding(severity=f.get("severity", "?"),
+                                  kind=f.get("kind", "?"),
+                                  candidate=f.get("candidate"),
+                                  detail=f.get("detail", ""))
+                  for f in last.get("findings") or []])
+
+
+def _chain(branch: str | None, recs) -> S.ChainStatus:
+    if not branch:
+        return S.ChainStatus(verified=True, records=0)
+    from bionexus.adapters.store.sqlite import get_store
+    problems = get_store(str(_ids.PROVENANCE_DB)).verify_chain(branch)
+    return S.ChainStatus(verified=not problems, records=len(recs),
+                         problems=problems[:10])
+
+
+def _load(eid: str):
+    ws = _ws()
+    row = ws.get(eid)
+    if not row:
+        raise HTTPException(404, S.Problem(
+            type="campaign-not-found", title="Campaign not found",
+            detail=eid).model_dump())
+    detail = views.experiment_detail(eid, ws) or {}
+    branch = detail.get("branch")
+    recs = _branch_records(branch, _ids.PROVENANCE_DB)
+    return ws, row, detail, branch, recs
+
+
+# ------------------------------------------------------------------ routes
+@router.get("", response_model=list[S.CampaignSummary])
+def list_campaigns(program: str | None = Query(None),
+                   status: str | None = Query(None),
+                   include_archived: bool = False) -> list[S.CampaignSummary]:
+    ws = _ws()
+    rows = ws.ongoing() + ws.finished(500)
+    progs = _program_index()
+    out = []
+    for e in rows:
+        payload = e.get("payload") or {}
+        if payload.get("archived") and not include_archived:
+            continue
+        ag = payload.get("agent") or {}
+        pref = progs.get(e["id"])
+        st = row_status(e)
+        if program and (not pref or pref.slug != program):
+            continue
+        if status and st != status:
+            continue
+        out.append(S.CampaignSummary(
+            id=e["id"], title=e.get("question") or e["id"], status=st,
+            autonomy=ag.get("autonomy"), program=pref,
+            updated_at=e.get("updated_at"),
+            problem_id=ag.get("problem_id")))
+    out.sort(key=lambda c: -(c.updated_at or 0))
+    return out
+
+
+@router.get("/{eid}", response_model=S.CampaignDetail)
+def get_campaign(eid: str) -> S.CampaignDetail:
+    ws, row, detail, branch, recs = _load(eid)
+    cards = detail.get("cards") or []
+    gate = _gate(recs, cards, detail)
+    hyps = [_summary_of(c, gate.label) for c in cards]
+    runs = sum(1 for r in recs if r.event_type.value == "lab_run"
+               and (r.decision or {}).get("run_id"))
+    progs = _program_index()
+    return S.CampaignDetail(
+        id=eid, title=row.get("question") or eid,
+        status=detail.get("status") or row_status(row),
+        autonomy=(detail.get("agent") or {}).get("autonomy"),
+        program=progs.get(eid), updated_at=row.get("updated_at"),
+        problem_id=(detail.get("agent") or {}).get("problem_id"),
+        objective=detail.get("objective"), branch=branch,
+        gate=gate,
+        budget=S.Budget(runs_used=runs,
+                        runs_max=(detail.get("spec") or {}).get("run_budget")),
+        funnel=_funnel(hyps), rounds=_why_rounds(
+            recs, detail.get("rounds") or []),
+        hypotheses=hyps,
+        eliminated=[S.Refusal(candidate=str(x.get("candidate")),
+                              reason=x.get("reason") or "not selected")
+                    for x in detail.get("eliminated") or []],
+        reviewer=_reviewer(recs), chain=_chain(branch, recs))
+
+
+@router.get("/{eid}/hypotheses/{hid}", response_model=S.HypothesisDetail)
+def get_hypothesis(eid: str, hid: str) -> S.HypothesisDetail:
+    _, _, detail, branch, recs = _load(eid)
+    card = next((c for c in detail.get("cards") or [] if c["key"] == hid), None)
+    if card is None:
+        raise HTTPException(404, S.Problem(
+            type="hypothesis-not-found", title="Hypothesis not found",
+            detail=hid).model_dump())
+    base = _summary_of(card, _gate(recs, detail.get("cards") or [], detail).label)
+    cand = card.get("candidate")
+    mine = [r for r in recs
+            if (r.decision or {}).get("hypothesis_id") == hid
+            or (r.artifact and r.artifact.artifact_id == hid)
+            or (cand and _cand(r) == cand)]
+    from bionexus.derivation import describe
+    deriv, runs = None, []
+    for r in mine:
+        d = r.decision or {}
+        if d.get("derivation"):
+            deriv = describe(d["derivation"])
+        for k in ("evidence_run_id", "run_id"):
+            if d.get(k) and d[k] not in runs:
+                runs.append(d[k])
+    events = []
+    for r in mine:
+        kind, text, c = summarize(r)
+        events.append(S.ActivityItem(ts=_ts(r), kind=kind, text=text,
+                                     candidate=c))
+    return S.HypothesisDetail(
+        **base.model_dump(), rationale=card.get("rationale"),
+        predicted=card.get("predicted"), predicted_by=card.get("predicted_by"),
+        mechanism=card.get("mechanism"),
+        refutation_condition=card.get("refutation_condition"),
+        citation=card.get("citation"),
+        citation_status=card.get("citation_status"),
+        evidence=card.get("evidence"), derivation=deriv, evidence_runs=runs,
+        events=events)
+
+
+@router.get("/{eid}/activity", response_model=list[S.ActivityItem])
+def get_activity(eid: str, limit: int = Query(50, ge=1, le=500)
+                 ) -> list[S.ActivityItem]:
+    _, _, _, _, recs = _load(eid)
+    return activity_items(recs, limit)
+
+
+@router.get("/{eid}/provenance", response_model=S.ProvenanceView)
+def get_provenance(eid: str, limit: int = Query(500, ge=1, le=5000)
+                   ) -> S.ProvenanceView:
+    _, _, _, branch, recs = _load(eid)
+    items = []
+    for r in recs[-limit:]:
+        _, text, _ = summarize(r)
+        items.append(S.ProvenanceRecord(ts=_ts(r), event=r.event_type.value,
+                                        summary=text))
+    return S.ProvenanceView(chain=_chain(branch, recs), records=items)
+
+
+@router.post("/{eid}/archive", response_model=S.CampaignSummary)
+def archive_campaign(eid: str) -> S.CampaignSummary:
+    ws = _ws()
+    if not ws.get(eid):
+        raise HTTPException(404, S.Problem(
+            type="campaign-not-found", title="Campaign not found",
+            detail=eid).model_dump())
+    ws.set_archived(eid, True)
+    row = ws.get(eid)
+    return S.CampaignSummary(id=eid, title=row.get("question") or eid,
+                             status=row_status(row))

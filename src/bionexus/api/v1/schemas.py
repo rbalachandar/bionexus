@@ -1,0 +1,175 @@
+"""API v1 response models — the single source of truth for the workbench
+contract. The TypeScript client is GENERATED from the OpenAPI these produce."""
+from __future__ import annotations
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field
+
+State = Literal["confirmed", "validated", "abstained", "refuted", "refused",
+                "in_lab", "selected", "not_selected", "proposed"]
+VerdictStatus = Literal["confirmed", "validated", "abstained", "refuted"]
+
+
+class Problem(BaseModel):
+    """RFC 7807-style error body."""
+    type: str = "about:blank"
+    title: str
+    detail: str | None = None
+
+
+class ProgramRef(BaseModel):
+    slug: str
+    name: str
+
+
+class Gate(BaseModel):
+    """The pre-registered success criterion the campaign is judged against."""
+    metric: str | None = None
+    direction: Literal["min", "max"] | None = None
+    threshold: float | None = None
+    unit: str | None = None
+    label: str | None = Field(None, description="e.g. 'IC50 (µM) ≤ 2'")
+
+
+class Budget(BaseModel):
+    runs_used: int
+    runs_max: int | None = None
+
+
+class Funnel(BaseModel):
+    proposed: int
+    selected: int = Field(description="chosen for testing (incl. refused/in lab)")
+    tested: int = Field(description="reached the lab")
+    judged: int = Field(description="has a verdict")
+    claimed: int = Field(description="validated or confirmed")
+    refuted: int
+    abstained: int = Field(description="interval straddles the gate")
+
+
+class Verdict(BaseModel):
+    status: VerdictStatus
+    observed: float | None = None
+    ci: tuple[float, float] | None = None
+    unit_label: str | None = None
+    margin: str | None = None
+    extrapolation: bool = False
+
+
+class HypothesisSummary(BaseModel):
+    id: str
+    candidate: str | None = None
+    head: str
+    statement: str
+    state: State
+    stage: str = Field(description="one-line, human-readable status")
+    round: int | None = None
+    verdict: Verdict | None = None
+    gate_label: str | None = None
+    selected: bool = False
+
+
+class Pick(BaseModel):
+    candidate: str
+    reason: str
+    score: float | None = Field(None, description="EI value or portfolio score")
+    mean: float | None = None
+    sd: float | None = None
+
+
+class Refusal(BaseModel):
+    candidate: str
+    reason: str
+
+
+class Why(BaseModel):
+    """'Why this plate': how a round's batch was chosen."""
+    policy: str | None = None
+    policy_version: str | None = None
+    k: int | None = None
+    target: float | None = None
+    direction: str | None = None
+    picks: list[Pick] = []
+    refusals: list[Refusal] = []
+    note: str = ""
+
+
+class Round(BaseModel):
+    n: int
+    candidates: list[str]
+    verdicts: dict[str, str] = {}
+    why: Why | None = None
+
+
+class ReviewFinding(BaseModel):
+    severity: str
+    kind: str
+    candidate: str | None = None
+    detail: str
+
+
+class Reviewer(BaseModel):
+    critical: int = 0
+    warnings: int = 0
+    findings: list[ReviewFinding] = []
+
+
+class ChainStatus(BaseModel):
+    verified: bool
+    records: int
+    problems: list[dict[str, Any]] = []
+
+
+class ActivityItem(BaseModel):
+    ts: float | None = None
+    kind: str
+    text: str
+    candidate: str | None = None
+
+
+class CampaignSummary(BaseModel):
+    id: str
+    title: str
+    status: str
+    autonomy: str | None = None
+    program: ProgramRef | None = None
+    updated_at: float | None = None
+    problem_id: str | None = None
+
+
+class CampaignDetail(CampaignSummary):
+    objective: str | None = None
+    branch: str | None = None
+    gate: Gate = Gate()
+    budget: Budget
+    funnel: Funnel
+    rounds: list[Round] = []
+    hypotheses: list[HypothesisSummary] = []
+    eliminated: list[Refusal] = []
+    reviewer: Reviewer | None = None
+    chain: ChainStatus
+
+
+class HypothesisDetail(HypothesisSummary):
+    rationale: str | None = None
+    predicted: str | None = None
+    predicted_by: dict[str, Any] | None = None
+    mechanism: str | None = None
+    refutation_condition: str | None = None
+    citation: str | None = None
+    citation_status: str | None = None
+    evidence: dict[str, Any] | None = None
+    derivation: str | None = Field(None, description="how the verdict was derived")
+    evidence_runs: list[str] = []
+    events: list[ActivityItem] = []
+
+
+class ProvenanceRecord(BaseModel):
+    ts: float | None = None
+    event: str
+    summary: str
+
+
+class ProvenanceView(BaseModel):
+    chain: ChainStatus
+    records: list[ProvenanceRecord]

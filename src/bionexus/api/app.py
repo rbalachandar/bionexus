@@ -91,6 +91,10 @@ def _actor(request: Request) -> str:
     return getattr(request.state, "user", None) or "local-unauthenticated"
 
 
+# v1: typed resource model for the redesigned workbench
+from bionexus.api.v1 import router as v1_router  # noqa: E402
+app.include_router(v1_router)
+
 # generic analysis lifecycle (upload -> preview -> configure -> analyze ->
 # review), modality-neutral; the plate assay is the first profile
 from bionexus.api.analyses import router as analyses_router  # noqa: E402
