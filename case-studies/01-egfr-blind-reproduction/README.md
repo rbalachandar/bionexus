@@ -1,5 +1,17 @@
 # Case Study 01 — Blind Reproduction of the Original Tyrphostins Paper (Gazit et al., J. Med. Chem. 1989)
 
+## Status: contaminated, illustrative — not evidence of agent skill
+
+This study is kept as a **demonstration of the contamination problem and of the
+harness's handling of it**, not as evidence that an agent can reproduce
+science. The held-out paper is from 1989 and is in the model's training data
+(the study's own probe confirms it), so the agent's identification of the
+tyrphostin class is recognition, and its potency ranking cannot be separated
+from memorized SAR. With 67 compounds every correlation here has a wide
+interval (the RF baseline's 95% CI is +0.33…+0.75), so the agent-vs-model
+comparison supports no ranking of the two. The post-cutoff studies (CS02,
+CS04, CS08) are the ones designed to make a claim; read those for results.
+
 ## Summary
 
 We asked an LLM agent to reproduce, blind, the core scientific contribution of

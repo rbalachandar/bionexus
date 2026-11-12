@@ -9,11 +9,13 @@ DOI: [10.1021/acs.jmedchem.4c02631](https://doi.org/10.1021/acs.jmedchem.4c02631
 was published **after the agent model's training cutoff**. Probes recorded in
 provenance (step 0) confirm the model has no knowledge of the paper or of
 AZ3246. The agent nevertheless derived the paper's optimization hypothesis from
-45 structures alone, and its blinded potency ranking agreed with the paper's
-measurements — **outperforming a Random Forest trained on ~7,100 other HPK1
-measurements** (see the 2026-11-11 correction below).
+structures alone, and its blinded potency ranking was positively correlated with
+the paper's measurements (ρ = +0.42 and +0.34 in the two sealed runs) — higher
+than every non-LLM baseline we tried (all about +0.1), **but with only 21
+compounds the intervals overlap heavily, so this is a suggestive pattern, not a
+significant difference** (see the corrections below).
 
-**Verdict: both pre-registered reproduction checks PASSED, contamination-free.**
+**Verdict: Q1 (hypothesis) passed, contamination-free; Q2 (ranking) is positive but not statistically distinguishable from the baselines at n = 21.**
 
 | Question | Result |
 |---|---|
@@ -67,29 +69,38 @@ The agent's top hypothesis (confidence 0.8):
 > core, the morpholine aryl substitution, and a pyrazolyl regioisomer subseries,
 > plus flagging indole/indazole outliers as deviating from the core.
 
-### Q2 — Result reproduction: PASS, and a notable finding
+### Q2 — Result reproduction: positive, but within noise at n = 21
 
-| Ranking source | Spearman ρ vs published pIC50 | Rank of the paper's most potent compound |
-|---|---|---|
-| Agent's blinded scores | **+0.42** | 2 of 21 |
-| Trained RF (7,078 deduplicated HPK1 values) | +0.125 | 6 of 21 |
+Spearman ρ against the paper's 21 published pIC50s. The non-LLM rows are
+recomputed offline by `rf_baseline.py` with bootstrap 95% intervals; the agent
+rows are the two sealed runs (raw scores were not kept, so no bootstrap — the
+Fisher-z interval for ρ = +0.42 at n = 21 is about [−0.02, +0.73]).
 
-**The LLM agent's transferable reasoning outperformed the trained model's
-calibrated predictions on this paper** — a measured finding the BioNexus
-harness surfaced. The RF's poor transfer reflects a real phenomenon: the
-paper's assay (cellular autophosphorylation readout) differs from the training
-assays (biochemical), so its potency calibration does not transfer, while the
-agent's structure-based comparative reasoning was more robust across the
-assay shift. Case study 01's corrected comparison (calibrated model ρ ≈ +0.56 vs agent
-+0.42…0.58) is roughly a tie. Neither intelligence dominates; the campaign
-harness runs both, scores them against pre-registered criteria, and lets the
-data decide — which is precisely the role BioNexus claims.
+| Ranking source | Spearman ρ | 95% interval | Rank of the most potent compound |
+|---|---|---|---|
+| Agent, run 1 (blinded) | **+0.42** | ≈ [−0.02, +0.73] (Fisher-z) | 2 of 21 |
+| Agent, run 2 (blinded) | +0.34 | — | — |
+| Morgan + RF (7,078 deduplicated HPK1 values) | +0.125 | [−0.38, +0.52] | 6 of 21 |
+| Nearest neighbour (top-1 Tanimoto) | +0.146 | [−0.37, +0.73] | 7 of 21 |
+| Similarity-weighted 5-NN | +0.153 | [−0.33, +0.68] | 12 of 21 |
+| Crippen logP (a trivial ordering) | +0.095 | [−0.50, +0.54] | 5 of 21 |
+
+The agent's point estimates sit above every baseline, which is the pattern the
+study was built to look for — but every interval contains zero or nearly so
+and they overlap each other, so **we cannot claim the agent's reasoning beats
+the trained model** on this evidence. A plausible reason the trained models do
+poorly is assay shift (the paper's cellular autophosphorylation readout vs
+biochemical training assays), but that is a hypothesis, not a finding. Case
+study 01's corrected comparison (RF ρ ≈ +0.56) points the other way and is
+equally inconclusive. A defensible test needs repeated agent runs (5 or more,
+to separate sampling noise from signal) and more than 21 compounds.
 
 ## Honest caveats
 
 - The agent's hypothesis wording and scores vary between runs (LLM sampling);
-  both executed runs identified the carboxamide core, but per-run ρ ranged
-  +0.42…+0.57.
+  both executed runs identified the carboxamide core. The sealed chain
+  (`case_study.db`) records ρ = +0.42 and +0.34; an earlier note of a run at
+  +0.57 is not in the sealed record and is withdrawn.
 - n = 21 unique compounds (109 measurements include repeats); the ranked
   subset shown to the agent was 45 of the deposited rows sampled before
   deduplication.

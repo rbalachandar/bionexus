@@ -36,7 +36,7 @@ def main() -> None:
     paper = sorted(((s, statistics.mean(v)) for s, v in by_smi.items()),
                    key=lambda t: -t[1])
     train = [(r["smiles"], r["pic50"]) for v in by_assay.values() for r in v]
-    model = MorganFingerprintRF(n_estimators=300)
+    model = MorganFingerprintRF(n_estimators=300, compute_ad=False)
     model.fit(train)
     preds = [model.predict(s) for s, _ in paper]
     truth = [p for _, p in paper]

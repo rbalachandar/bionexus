@@ -1,9 +1,12 @@
-"""CS02 RF baseline, recomputed OFFLINE from the frozen fixtures.
+"""CS02 non-LLM baselines, recomputed OFFLINE from the frozen fixtures.
 
 The agent's blinded ranking needs an LLM and a network and is recorded in
-case_study.db; the Random-Forest comparator does not. This recomputes the RF
-Spearman rho against the paper's 21 published pIC50s on the DEDUPLICATED
-training pool, so that half of the headline comparison is reproducible.
+case_study.db; the comparators do not. Against the paper's 21 published
+pIC50s, on the DEDUPLICATED training pool, this reports Spearman rho WITH a
+bootstrap 95% CI for: the Morgan+RF model, a nearest-neighbour baseline
+(pIC50 of the most Tanimoto-similar training compound; and a similarity-
+weighted 5-NN), and Crippen logP (a trivial physico-chemical ordering).
+With n = 21 every interval is wide — that is the point of printing them.
 
     python case-studies/02-az3246-hpk1/rf_baseline.py
 """
@@ -24,7 +27,7 @@ spec.loader.exec_module(cs02)
 
 from bionexus import fixtures  # noqa: E402
 from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF  # noqa: E402
-from bionexus.benchmark import spearman  # noqa: E402
+from bionexus.benchmark import spearman_ci  # noqa: E402
 
 
 def _rows(activities, skip_doc=None):
@@ -49,6 +52,7 @@ def main() -> None:
         by[smi].append(p)
     paper = sorted(({"smiles": s, "pic50": statistics.mean(v)}
                     for s, v in by.items()), key=lambda c: -c["pic50"])
+    truth = [c["pic50"] for c in paper]
     train, seen = [], set()
     url = (f"/activity.json?target_chembl_id={cs02.TARGET}"
            "&assay_type=B&limit=1000")
@@ -63,16 +67,44 @@ def main() -> None:
                  .replace("/chembl/api/data", "", 1) or ""
         if not d.get("activities"):
             break
-    truth = [c["pic50"] for c in paper]
-    model = MorganFingerprintRF(n_estimators=300)
-    model.fit(train)
-    preds = [model.predict(c["smiles"]) for c in paper]
-    rho = spearman(preds, truth)
-    top_rank = 1 + sorted(preds, reverse=True).index(preds[0])
+    smis = [c["smiles"] for c in paper]
     print(f"paper compounds: {len(paper)} · training rows (deduplicated): "
           f"{len(train)}")
-    print(f"RF rho vs published pIC50: {rho:+.3f} · rank of the most potent "
-          f"compound: {top_rank} of {len(paper)}")
+
+    def report(name, preds):
+        rho, lo, hi = spearman_ci(preds, truth)
+        rank = 1 + sorted(preds, reverse=True).index(preds[0])
+        print(f"  {name:<34} rho {rho:+.3f}  95% CI [{lo:+.2f}, {hi:+.2f}]"
+              f"  · most potent ranked {rank}/{len(paper)}")
+
+    model = MorganFingerprintRF(n_estimators=300, compute_ad=False)
+    model.fit(train)
+    report("Morgan+RF (300 trees)", [model.predict(x) for x in smis])
+
+    from rdkit import Chem, DataStructs
+    from rdkit.Chem import Crippen, rdFingerprintGenerator
+    gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+
+    def fp(smi):
+        m = Chem.MolFromSmiles(smi)
+        return gen.GetFingerprint(m) if m else None
+    tfps = [(fp(s), y) for s, y in train]
+    tfps = [(f, y) for f, y in tfps if f is not None]
+    nn1, nn5 = [], []
+    for smi in smis:
+        sims = DataStructs.BulkTanimotoSimilarity(fp(smi),
+                                                  [f for f, _ in tfps])
+        order = sorted(range(len(sims)), key=lambda i: -sims[i])[:5]
+        nn1.append(tfps[order[0]][1])
+        w = [max(sims[i], 1e-6) for i in order]
+        nn5.append(sum(wi * tfps[i][1] for wi, i in zip(w, order)) / sum(w))
+    report("nearest neighbour (top-1)", nn1)
+    report("similarity-weighted 5-NN", nn5)
+    report("Crippen logP (higher = more potent)",
+           [Crippen.MolLogP(Chem.MolFromSmiles(x)) for x in smis])
+    print("  agent (recorded runs, not re-run): rho +0.42 and +0.34 in the "
+          "two sealed runs — raw scores were not kept, so no bootstrap; "
+          "Fisher-z 95% interval for rho=+0.42 at n=21 is about [-0.02, +0.73]")
 
 
 if __name__ == "__main__":

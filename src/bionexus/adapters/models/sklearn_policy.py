@@ -11,8 +11,13 @@ import math
 class MorganFingerprintRF:
     name = "morgan2048-rf"
 
-    def __init__(self, n_estimators: int = 300, n_bits: int = 2048, radius: int = 2, seed: int = 0):
+    def __init__(self, n_estimators: int = 300, n_bits: int = 2048, radius: int = 2, seed: int = 0,
+                 compute_ad: bool = True):
         self.n_estimators, self.n_bits, self.radius, self.seed = n_estimators, n_bits, radius, seed
+        # the applicability domain is O(n^2) in the training set; benchmark-only
+        # callers that never read it (case-study RF baselines) can skip it —
+        # the forest and its predictions are identical either way
+        self.compute_ad = compute_ad
 
     def _fp(self, smiles: str) -> list[float]:
         from rdkit import Chem
@@ -39,6 +44,9 @@ class MorganFingerprintRF:
             self.model = RandomForestRegressor(n_estimators=self.n_estimators,
                                                random_state=self.seed, n_jobs=-1)
         self.model.fit(X, y)
+        if not self.compute_ad:
+            self.ad = None
+            return
         from bionexus.ad import ApplicabilityDomain
         self.ad = ApplicabilityDomain.from_smiles([s for s, _ in data],
                                                   basis="morgan")
@@ -52,4 +60,6 @@ class MorganFingerprintRF:
         """predict() plus the applicability-domain stamp — the local-model
         guard: outside the training chemistry the number comes back, but
         flagged `extrapolation` so abstention rules widen and cards chip."""
+        if self.ad is None:
+            raise RuntimeError("built with compute_ad=False — no applicability domain")
         return self.predict(smiles), self.ad.check(smiles)
