@@ -40,7 +40,7 @@ def scan_share(directory: str | Path, max_files: int = 50) -> dict[str, Any]:
         suggestions.append({
             "device": "nothing recognized yet",
             "adapter": "SimulatorLab",
-            "usage": "start with the virtual lab: bn sim"})
+            "usage": "start with the virtual lab: bn demo"})
     return {"directory": str(d), "scanned": len(files), "formats": found,
             "suggestions": suggestions}
 

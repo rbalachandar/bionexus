@@ -31,7 +31,7 @@ levels) · `bionexus-opentrons` (robot execution via safety gateway).
 
 ```sh
 pip install bionexuslab          # core (pydantic only)
-bn sim                           # reference round on the virtual lab — no hardware
+bn demo                          # guided first run on the virtual lab — no hardware
 ```
 
 ## HARD RULES — read before any lab action

@@ -46,7 +46,7 @@ point for a real campaign. The other subcommands are narrower:
 | `bn campaign select` | preview which experiments would run (picks + every refusal), submitting nothing |
 | `bn campaign run <workflow.yml>` | run a hand-written workflow file |
 | `bn watch <inbox>` | let the agent notice instrument exports as they land |
-| `bn demo` / `bn sim` | first-run tour / reference round on the virtual lab (simulated) |
+| `bn demo` | first-run tour on the virtual lab (simulated) |
 | `bn campaign reproduce` | replay a recorded experiment and diff the verdicts |
 | `bn campaign materials` | materials formulation sweeps |
 
@@ -63,8 +63,8 @@ bn anchor && bn anchor --verify       # Merkle root: externally checkable
 ## Run the reference round (no network, no model server)
 
 ```sh
-python examples/demo_full_flow.py     # or: bn sim  (iteration_loop.py
-# retired with the notebooks cleanup; demo_full_flow covers the same loop)
+python examples/demo_full_flow.py     # one file exercising every layer
+bn demo                               # the guided first run
 ```
 
 This runs one full design round: candidate generation (offline stub) →

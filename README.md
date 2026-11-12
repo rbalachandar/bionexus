@@ -62,7 +62,7 @@ pip install "bionexuslab[dev]"          # + test dependencies
 Optional extras: `[api]` (workbench) · `[bio-rdkit]` · `[lab-xlsx]` (read
 `.xlsx` exports) · `[lab-imaging]` · `[models-openai]` · `[models-botorch]`
 (GP posterior for acquisition) · `[mcp-instruments]` · `[sandbox-agentenv]` ·
-`[sandbox-opensandbox]` · `[store-postgres]`.
+`[sandbox-opensandbox]`.
 
 From a checkout (this README tracks `main`; the published package may lag it):
 
@@ -82,7 +82,6 @@ Python API (see [Using BioNexus](#using-bionexus)).
 bn demo                                # abstains on a borderline CI and refutes a
                                        # planted false hit (real machinery,
                                        # simulated numbers)
-bn sim                                 # one reference design round on the virtual lab
 
 # analyze data
 bn read results.csv --csv out.csv      # auto-analyze an instrument export
@@ -215,11 +214,11 @@ computed only when the plate has both control classes (otherwise it is reported
 as the `Z'~` heuristic); reader, serial and date are kept for provenance.
 
 ```sh
-bn read .data/exports/synergy_export_export.csv     # the virtual-lab export (from `bn demo`)
-# plate: synergy_export_export.csv [long] | wells: 10 | controls: 2 | Z'~ 0.956 (control-spread heuristic)
+bn campaign auto examples/campaign.json         # a campaign drops an export per run
+bn read .data/inbox/<problem-id>/sim-42-001.csv
+# plate: sim-42-001.csv [long] | wells: 14 | controls: 2 | Z'~ 0.959 (control-spread heuristic)
 # compound        IC50 (uM)  points  note
-# C-101               10.52       4  observed-max
-# C-102                4.77       4  observed-max
+# C-103                5.30      12  observed-max
 
 bn read tests/data/instruments/biotek_1steptimer.csv
 # plate: biotek_1steptimer.csv [kinetic] | wells: 1536 | ... | reader: Synergy HTX (2206293D)
@@ -249,11 +248,11 @@ svg = r.curve_svg("C-101")         # fitted dose–response curve
 
 ![Dose–response curve](docs/images/dose-response.svg)
 
-### Run a reference round on the virtual lab
+### Try the virtual lab
 
 ```sh
-bn sim                                    # one round: tournament → safety gate → virtual lab → analysis → provenance
-python examples/demo_full_flow.py         # the same, end to end (all layers)
+bn demo                                   # guided first run: abstains on a borderline CI, refutes a planted false hit
+python examples/demo_full_flow.py         # one round, end to end: tournament → safety gate → virtual lab → analysis → provenance
 ```
 
 ### Hand the full campaign to the agent
@@ -310,9 +309,11 @@ pre-registered criteria, and recommends the next step. `bn connect scan` finds
 which instrument writes into a folder.
 
 ```sh
-bn connect scan /path/to/reader_share
-# scanned 2 files in /path/to/reader_share
-#   long   x1   e.g. synergy_export.csv
+bn connect scan tests/data/instruments
+# scanned 6 files in tests/data/instruments
+#   kinetic x3   e.g. biotek_1steptimer.csv
+#   grid   x1   e.g. plate_layout_96.csv
+#   xlsx   x1   e.g. tecan_ON1.xlsx
 #   → device: plate reader (auto-exporting to this share)
 ```
 
@@ -351,7 +352,7 @@ instrument the campaign refuses rather than falling back to simulation
 
 - **Workspace:** program cards with a verdict (`achieved / partial / no-tree`) computed from pre-registered claims, their problem trees with run budgets, experiment rows with verdict tallies, and taste lines distilled from past portfolio decisions.
 - **Experiment pages:** the DMTA funnel and one card per hypothesis — state, observed value **with its 95% CI drawn against the gate**, the prediction's source, mechanism, and the pre-registered **refuted-if** clause.
-- **The record:** hash-chained provenance, a sandbox receipt when the run was sandboxed, evidence curves re-rendered from recorded run files, the reviewer audit, and every harness decision (halts, authorization column, SOP sign-offs, fault classification). Experiments are archived, never deleted.
+- **The record:** hash-chained provenance, a sandbox receipt when the run was sandboxed, evidence curves re-rendered from recorded run files, the reviewer audit, and every harness decision (halts, authorization column, SOP sign-offs, fault classification). Experiments are archived (recoverable); a purge removes them from the workbench registry only — the provenance ledger keeps the audit trail.
 - **Series view:** hypotheses grouped by family or chemotype with per-series rollups and a matched-pair SAR table whose calls carry CIs.
 - **Try it on real data:** `bn demo` seeds the abstain-and-refute cascade; `case-studies/08-proteinbase-entry/seed_workbench.py` seeds the PD-L1 design campaign.
 

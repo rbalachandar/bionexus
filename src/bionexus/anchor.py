@@ -45,6 +45,22 @@ def merkle_root(leaf_hashes: list[str]) -> str:
     return level[0]
 
 
+def _require_store(db_path: str) -> None:
+    """A clear error instead of 'no such table' — and never create the file."""
+    msg = (f"no provenance database at {db_path} — run a campaign first "
+           "(or pass --db)")
+    if not Path(db_path).exists():
+        raise FileNotFoundError(msg)
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        has = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                           "AND name='provenance'").fetchone()
+    finally:
+        conn.close()
+    if not has:
+        raise FileNotFoundError(msg)
+
+
 def store_hashes(db_path: str) -> list[str]:
     conn = sqlite3.connect(db_path)
     try:
@@ -86,6 +102,7 @@ def anchor(db_path: str = "bionexus.db",
     The root is computed over RECOMPUTED payload hashes: an anchor
     commits to what the records actually contain, so a published root
     also pins content integrity, not just copied metadata."""
+    _require_store(db_path)
     hashes, problems = recomputed_hashes(db_path)
     entry = {"ts": time.time(), "records": len(hashes),
              "merkle_root": merkle_root(hashes),
@@ -111,6 +128,7 @@ def verify(db_path: str = "bionexus.db", root: str | None = None) -> dict:
     untouched) changes the root and breaks the match. `content_tampered`
     flags divergence between stored column hashes and recomputed ones
     even before anyone compares to an anchor."""
+    _require_store(db_path)
     hashes = store_hashes(db_path)
     recomputed, problems = recomputed_hashes(db_path)
     current = merkle_root(recomputed)

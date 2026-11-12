@@ -1,7 +1,7 @@
 """`bn` CLI — boring on purpose (P1).
 
     bn campaign run workflow.yml    # execute a workflow against configured adapters
-    bn sim                 # run the reference round on the virtual lab
+    bn demo                # guided first run on the virtual lab
     bn prove <branch_id>   # print the hash-chained provenance for a branch
 """
 from __future__ import annotations
@@ -113,13 +113,6 @@ def cmd_run(args: argparse.Namespace) -> int:
         result = gateway.results(envelope, run_id)
         print(f"[bn] run {run_id}: {result.measurements[0].value} {result.measurements[0].unit}")
     print(f"[bn] provenance: bn prove {branch}")
-    return 0
-
-
-def cmd_sim(args: argparse.Namespace) -> int:
-    import examples.iteration_loop as example
-
-    example.main()
     return 0
 
 
@@ -913,8 +906,6 @@ def _register_core(sub):
     run.add_argument("workflow")
     run.set_defaults(func=cmd_run)
 
-    sim = sub.add_parser("sim", help="reference round on the virtual lab")
-    sim.set_defaults(func=cmd_sim)
 
     prove = sub.add_parser("prove", help="print provenance chain for a branch")
     prove.add_argument("branch")
