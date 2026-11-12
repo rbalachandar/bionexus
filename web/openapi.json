@@ -1,0 +1,1791 @@
+{
+ "components": {
+  "schemas": {
+   "ActivityItem": {
+    "properties": {
+     "candidate": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Candidate"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "text": {
+      "title": "Text",
+      "type": "string"
+     },
+     "ts": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ts"
+     }
+    },
+    "required": [
+     "kind",
+     "text"
+    ],
+    "title": "ActivityItem",
+    "type": "object"
+   },
+   "AnchorStatus": {
+    "properties": {
+     "age_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "seconds since the last anchor",
+      "title": "Age S"
+     },
+     "published": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Published"
+     },
+     "records": {
+      "title": "Records",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "records"
+    ],
+    "title": "AnchorStatus",
+    "type": "object"
+   },
+   "Body_create_analysis_api_analyses_post": {
+    "properties": {
+     "config": {
+      "default": "{}",
+      "title": "Config",
+      "type": "string"
+     },
+     "file": {
+      "contentMediaType": "application/octet-stream",
+      "title": "File",
+      "type": "string"
+     },
+     "layout": {
+      "anyOf": [
+       {
+        "contentMediaType": "application/octet-stream",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Layout"
+     },
+     "profile": {
+      "default": "plate_assay",
+      "title": "Profile",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file"
+    ],
+    "title": "Body_create_analysis_api_analyses_post",
+    "type": "object"
+   },
+   "Body_wizard_upload_api_wizard_sessions__sid__upload_post": {
+    "properties": {
+     "file": {
+      "contentMediaType": "application/octet-stream",
+      "title": "File",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file"
+    ],
+    "title": "Body_wizard_upload_api_wizard_sessions__sid__upload_post",
+    "type": "object"
+   },
+   "Budget": {
+    "properties": {
+     "runs_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Runs Max"
+     },
+     "runs_used": {
+      "title": "Runs Used",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "runs_used"
+    ],
+    "title": "Budget",
+    "type": "object"
+   },
+   "CampaignDetail": {
+    "properties": {
+     "autonomy": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Autonomy"
+     },
+     "branch": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Branch"
+     },
+     "budget": {
+      "$ref": "#/components/schemas/Budget"
+     },
+     "chain": {
+      "$ref": "#/components/schemas/ChainStatus"
+     },
+     "eliminated": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/Refusal"
+      },
+      "title": "Eliminated",
+      "type": "array"
+     },
+     "funnel": {
+      "$ref": "#/components/schemas/Funnel"
+     },
+     "gate": {
+      "$ref": "#/components/schemas/Gate",
+      "default": {}
+     },
+     "hypotheses": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/HypothesisSummary"
+      },
+      "title": "Hypotheses",
+      "type": "array"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "objective": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Objective"
+     },
+     "problem_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Problem Id"
+     },
+     "program": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ProgramRef"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "reviewer": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Reviewer"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "rounds": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/Round"
+      },
+      "title": "Rounds",
+      "type": "array"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     },
+     "updated_at": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Updated At"
+     }
+    },
+    "required": [
+     "id",
+     "title",
+     "status",
+     "budget",
+     "funnel",
+     "chain"
+    ],
+    "title": "CampaignDetail",
+    "type": "object"
+   },
+   "CampaignSummary": {
+    "properties": {
+     "autonomy": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Autonomy"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "problem_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Problem Id"
+     },
+     "program": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ProgramRef"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     },
+     "updated_at": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Updated At"
+     }
+    },
+    "required": [
+     "id",
+     "title",
+     "status"
+    ],
+    "title": "CampaignSummary",
+    "type": "object"
+   },
+   "ChainStatus": {
+    "properties": {
+     "problems": {
+      "default": [],
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Problems",
+      "type": "array"
+     },
+     "records": {
+      "title": "Records",
+      "type": "integer"
+     },
+     "verified": {
+      "title": "Verified",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "verified",
+     "records"
+    ],
+    "title": "ChainStatus",
+    "type": "object"
+   },
+   "DispositionAction": {
+    "description": "What a human did with a computed call. Acknowledgement is NOT\northogonal experimental confirmation \u2014 'confirmed' stays reserved for\nthe campaign confirmation-agreement semantics.",
+    "enum": [
+     "acknowledge",
+     "comment",
+     "override"
+    ],
+    "title": "DispositionAction",
+    "type": "string"
+   },
+   "EvalSummary": {
+    "properties": {
+     "all_pass": {
+      "title": "All Pass",
+      "type": "boolean"
+     },
+     "mean": {
+      "title": "Mean",
+      "type": "number"
+     },
+     "tasks": {
+      "title": "Tasks",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "mean",
+     "tasks",
+     "all_pass"
+    ],
+    "title": "EvalSummary",
+    "type": "object"
+   },
+   "Funnel": {
+    "properties": {
+     "abstained": {
+      "description": "interval straddles the gate",
+      "title": "Abstained",
+      "type": "integer"
+     },
+     "claimed": {
+      "description": "validated or confirmed",
+      "title": "Claimed",
+      "type": "integer"
+     },
+     "judged": {
+      "description": "has a verdict",
+      "title": "Judged",
+      "type": "integer"
+     },
+     "proposed": {
+      "title": "Proposed",
+      "type": "integer"
+     },
+     "refuted": {
+      "title": "Refuted",
+      "type": "integer"
+     },
+     "selected": {
+      "description": "chosen for testing (incl. refused/in lab)",
+      "title": "Selected",
+      "type": "integer"
+     },
+     "tested": {
+      "description": "reached the lab",
+      "title": "Tested",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "proposed",
+     "selected",
+     "tested",
+     "judged",
+     "claimed",
+     "refuted",
+     "abstained"
+    ],
+    "title": "Funnel",
+    "type": "object"
+   },
+   "Gate": {
+    "description": "The pre-registered success criterion the campaign is judged against.",
+    "properties": {
+     "direction": {
+      "anyOf": [
+       {
+        "enum": [
+         "min",
+         "max"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Direction"
+     },
+     "label": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "e.g. 'IC50 (\u00b5M) \u2264 2'",
+      "title": "Label"
+     },
+     "metric": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Metric"
+     },
+     "threshold": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Threshold"
+     },
+     "unit": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Unit"
+     }
+    },
+    "title": "Gate",
+    "type": "object"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "title": "Detail",
+      "type": "array"
+     }
+    },
+    "title": "HTTPValidationError",
+    "type": "object"
+   },
+   "HypothesisDetail": {
+    "properties": {
+     "candidate": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Candidate"
+     },
+     "citation": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Citation"
+     },
+     "citation_status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Citation Status"
+     },
+     "derivation": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "how the verdict was derived",
+      "title": "Derivation"
+     },
+     "events": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ActivityItem"
+      },
+      "title": "Events",
+      "type": "array"
+     },
+     "evidence": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Evidence"
+     },
+     "evidence_runs": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Evidence Runs",
+      "type": "array"
+     },
+     "gate_label": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Gate Label"
+     },
+     "head": {
+      "title": "Head",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "mechanism": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mechanism"
+     },
+     "predicted": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Predicted"
+     },
+     "predicted_by": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Predicted By"
+     },
+     "rationale": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rationale"
+     },
+     "refutation_condition": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Refutation Condition"
+     },
+     "round": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Round"
+     },
+     "selected": {
+      "default": false,
+      "title": "Selected",
+      "type": "boolean"
+     },
+     "stage": {
+      "description": "one-line, human-readable status",
+      "title": "Stage",
+      "type": "string"
+     },
+     "state": {
+      "enum": [
+       "confirmed",
+       "validated",
+       "abstained",
+       "refuted",
+       "refused",
+       "in_lab",
+       "selected",
+       "not_selected",
+       "proposed"
+      ],
+      "title": "State",
+      "type": "string"
+     },
+     "statement": {
+      "title": "Statement",
+      "type": "string"
+     },
+     "verdict": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Verdict"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "head",
+     "statement",
+     "state",
+     "stage"
+    ],
+    "title": "HypothesisDetail",
+    "type": "object"
+   },
+   "HypothesisSummary": {
+    "properties": {
+     "candidate": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Candidate"
+     },
+     "gate_label": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Gate Label"
+     },
+     "head": {
+      "title": "Head",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "round": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Round"
+     },
+     "selected": {
+      "default": false,
+      "title": "Selected",
+      "type": "boolean"
+     },
+     "stage": {
+      "description": "one-line, human-readable status",
+      "title": "Stage",
+      "type": "string"
+     },
+     "state": {
+      "enum": [
+       "confirmed",
+       "validated",
+       "abstained",
+       "refuted",
+       "refused",
+       "in_lab",
+       "selected",
+       "not_selected",
+       "proposed"
+      ],
+      "title": "State",
+      "type": "string"
+     },
+     "statement": {
+      "title": "Statement",
+      "type": "string"
+     },
+     "verdict": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Verdict"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "head",
+     "statement",
+     "state",
+     "stage"
+    ],
+    "title": "HypothesisSummary",
+    "type": "object"
+   },
+   "Pick": {
+    "properties": {
+     "candidate": {
+      "title": "Candidate",
+      "type": "string"
+     },
+     "mean": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mean"
+     },
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     },
+     "score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "EI value or portfolio score",
+      "title": "Score"
+     },
+     "sd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sd"
+     }
+    },
+    "required": [
+     "candidate",
+     "reason"
+    ],
+    "title": "Pick",
+    "type": "object"
+   },
+   "ProgramIn": {
+    "additionalProperties": true,
+    "properties": {
+     "autonomy": {
+      "default": "act",
+      "title": "Autonomy",
+      "type": "string"
+     },
+     "candidates": {
+      "default": "",
+      "title": "Candidates",
+      "type": "string"
+     },
+     "direction": {
+      "default": "min",
+      "title": "Direction",
+      "type": "string"
+     },
+     "gate_value": {
+      "default": 20.0,
+      "title": "Gate Value",
+      "type": "number"
+     },
+     "k": {
+      "default": 2,
+      "title": "K",
+      "type": "integer"
+     },
+     "metric": {
+      "default": "ic50",
+      "title": "Metric",
+      "type": "string"
+     },
+     "modality": {
+      "default": "",
+      "title": "Modality",
+      "type": "string"
+     },
+     "mode": {
+      "default": "autonomous",
+      "title": "Mode",
+      "type": "string"
+     },
+     "objective": {
+      "default": "",
+      "title": "Objective",
+      "type": "string"
+     },
+     "program": {
+      "title": "Program",
+      "type": "string"
+     },
+     "rounds": {
+      "default": 2,
+      "title": "Rounds",
+      "type": "integer"
+     },
+     "unit": {
+      "default": "",
+      "title": "Unit",
+      "type": "string"
+     }
+    },
+    "required": [
+     "program"
+    ],
+    "title": "ProgramIn",
+    "type": "object"
+   },
+   "ProgramRef": {
+    "properties": {
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "slug": {
+      "title": "Slug",
+      "type": "string"
+     }
+    },
+    "required": [
+     "slug",
+     "name"
+    ],
+    "title": "ProgramRef",
+    "type": "object"
+   },
+   "ProvenanceRecord": {
+    "properties": {
+     "event": {
+      "title": "Event",
+      "type": "string"
+     },
+     "summary": {
+      "title": "Summary",
+      "type": "string"
+     },
+     "ts": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ts"
+     }
+    },
+    "required": [
+     "event",
+     "summary"
+    ],
+    "title": "ProvenanceRecord",
+    "type": "object"
+   },
+   "ProvenanceView": {
+    "properties": {
+     "chain": {
+      "$ref": "#/components/schemas/ChainStatus"
+     },
+     "records": {
+      "items": {
+       "$ref": "#/components/schemas/ProvenanceRecord"
+      },
+      "title": "Records",
+      "type": "array"
+     }
+    },
+    "required": [
+     "chain",
+     "records"
+    ],
+    "title": "ProvenanceView",
+    "type": "object"
+   },
+   "Refusal": {
+    "properties": {
+     "candidate": {
+      "title": "Candidate",
+      "type": "string"
+     },
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     }
+    },
+    "required": [
+     "candidate",
+     "reason"
+    ],
+    "title": "Refusal",
+    "type": "object"
+   },
+   "ReviewBody": {
+    "properties": {
+     "action": {
+      "$ref": "#/components/schemas/DispositionAction"
+     },
+     "actor": {
+      "default": "scientist",
+      "title": "Actor",
+      "type": "string"
+     },
+     "reason": {
+      "default": "",
+      "title": "Reason",
+      "type": "string"
+     },
+     "target": {
+      "default": "",
+      "title": "Target",
+      "type": "string"
+     }
+    },
+    "required": [
+     "action"
+    ],
+    "title": "ReviewBody",
+    "type": "object"
+   },
+   "ReviewFinding": {
+    "properties": {
+     "candidate": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Candidate"
+     },
+     "detail": {
+      "title": "Detail",
+      "type": "string"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "severity": {
+      "title": "Severity",
+      "type": "string"
+     }
+    },
+    "required": [
+     "severity",
+     "kind",
+     "detail"
+    ],
+    "title": "ReviewFinding",
+    "type": "object"
+   },
+   "Reviewer": {
+    "properties": {
+     "critical": {
+      "default": 0,
+      "title": "Critical",
+      "type": "integer"
+     },
+     "findings": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ReviewFinding"
+      },
+      "title": "Findings",
+      "type": "array"
+     },
+     "warnings": {
+      "default": 0,
+      "title": "Warnings",
+      "type": "integer"
+     }
+    },
+    "title": "Reviewer",
+    "type": "object"
+   },
+   "Round": {
+    "properties": {
+     "candidates": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Candidates",
+      "type": "array"
+     },
+     "n": {
+      "title": "N",
+      "type": "integer"
+     },
+     "verdicts": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "default": {},
+      "title": "Verdicts",
+      "type": "object"
+     },
+     "why": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Why"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "n",
+     "candidates"
+    ],
+    "title": "Round",
+    "type": "object"
+   },
+   "SystemStatus": {
+    "description": "What the top bar and trust strip show on every page.",
+    "properties": {
+     "anchor": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/AnchorStatus"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "chain": {
+      "$ref": "#/components/schemas/ChainStatus"
+     },
+     "eval": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/EvalSummary"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "halt_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Halt Reason"
+     },
+     "halted": {
+      "title": "Halted",
+      "type": "boolean"
+     },
+     "pending_approvals": {
+      "title": "Pending Approvals",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "halted",
+     "pending_approvals",
+     "chain"
+    ],
+    "title": "SystemStatus",
+    "type": "object"
+   },
+   "ValidationError": {
+    "properties": {
+     "ctx": {
+      "title": "Context",
+      "type": "object"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "title": "Location",
+      "type": "array"
+     },
+     "msg": {
+      "title": "Message",
+      "type": "string"
+     },
+     "type": {
+      "title": "Error Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError",
+    "type": "object"
+   },
+   "Verdict": {
+    "properties": {
+     "ci": {
+      "anyOf": [
+       {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "number"
+         }
+        ],
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ci"
+     },
+     "extrapolation": {
+      "default": false,
+      "title": "Extrapolation",
+      "type": "boolean"
+     },
+     "margin": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Margin"
+     },
+     "observed": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Observed"
+     },
+     "status": {
+      "enum": [
+       "confirmed",
+       "validated",
+       "abstained",
+       "refuted"
+      ],
+      "title": "Status",
+      "type": "string"
+     },
+     "unit_label": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Unit Label"
+     }
+    },
+    "required": [
+     "status"
+    ],
+    "title": "Verdict",
+    "type": "object"
+   },
+   "Why": {
+    "description": "'Why this plate': how a round's batch was chosen.",
+    "properties": {
+     "direction": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Direction"
+     },
+     "k": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "K"
+     },
+     "note": {
+      "default": "",
+      "title": "Note",
+      "type": "string"
+     },
+     "picks": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/Pick"
+      },
+      "title": "Picks",
+      "type": "array"
+     },
+     "policy": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Policy"
+     },
+     "policy_version": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Policy Version"
+     },
+     "refusals": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/Refusal"
+      },
+      "title": "Refusals",
+      "type": "array"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     }
+    },
+    "title": "Why",
+    "type": "object"
+   }
+  }
+ },
+ "info": {
+  "title": "BioNexus API",
+  "version": "0.1.0"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/api/v1/campaigns": {
+   "get": {
+    "operationId": "list_campaigns_api_v1_campaigns_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "program",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Program"
+      }
+     },
+     {
+      "in": "query",
+      "name": "status",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Status"
+      }
+     },
+     {
+      "in": "query",
+      "name": "include_archived",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Include Archived",
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/CampaignSummary"
+         },
+         "title": "Response List Campaigns Api V1 Campaigns Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "List Campaigns",
+    "tags": [
+     "campaigns"
+    ]
+   }
+  },
+  "/api/v1/campaigns/{eid}": {
+   "get": {
+    "operationId": "get_campaign_api_v1_campaigns__eid__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "eid",
+      "required": true,
+      "schema": {
+       "title": "Eid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignDetail"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Campaign",
+    "tags": [
+     "campaigns"
+    ]
+   }
+  },
+  "/api/v1/campaigns/{eid}/activity": {
+   "get": {
+    "operationId": "get_activity_api_v1_campaigns__eid__activity_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "eid",
+      "required": true,
+      "schema": {
+       "title": "Eid",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "maximum": 500,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ActivityItem"
+         },
+         "title": "Response Get Activity Api V1 Campaigns  Eid  Activity Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Activity",
+    "tags": [
+     "campaigns"
+    ]
+   }
+  },
+  "/api/v1/campaigns/{eid}/archive": {
+   "post": {
+    "operationId": "archive_campaign_api_v1_campaigns__eid__archive_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "eid",
+      "required": true,
+      "schema": {
+       "title": "Eid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignSummary"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Archive Campaign",
+    "tags": [
+     "campaigns"
+    ]
+   }
+  },
+  "/api/v1/campaigns/{eid}/hypotheses/{hid}": {
+   "get": {
+    "operationId": "get_hypothesis_api_v1_campaigns__eid__hypotheses__hid__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "eid",
+      "required": true,
+      "schema": {
+       "title": "Eid",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "hid",
+      "required": true,
+      "schema": {
+       "title": "Hid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HypothesisDetail"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Hypothesis",
+    "tags": [
+     "campaigns"
+    ]
+   }
+  },
+  "/api/v1/campaigns/{eid}/provenance": {
+   "get": {
+    "operationId": "get_provenance_api_v1_campaigns__eid__provenance_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "eid",
+      "required": true,
+      "schema": {
+       "title": "Eid",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 500,
+       "maximum": 5000,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProvenanceView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Provenance",
+    "tags": [
+     "campaigns"
+    ]
+   }
+  },
+  "/api/v1/system/status": {
+   "get": {
+    "operationId": "status_api_v1_system_status_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SystemStatus"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Status",
+    "tags": [
+     "system"
+    ]
+   }
+  }
+ }
+}

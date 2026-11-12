@@ -24,5 +24,8 @@ api-dev:            ## backend only (auto-reload)
 web-dev:            ## Vite dev server on :5173 (proxies /api to :8000)
 	cd web && npm run dev
 
+api-types:          ## regenerate the typed TS client from the backend's OpenAPI
+	$(PY) scripts/export_openapi.py && cd web && npm run gen:api
+
 web-build:          ## production SPA build
 	cd web && npm run build

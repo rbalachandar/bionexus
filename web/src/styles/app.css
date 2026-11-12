@@ -1,0 +1,68 @@
+@layer legacy, theme, base, components, utilities;
+/* legacy screens' global CSS sits in the LOWEST layer so it can never override
+   the new utilities; deleted together with the legacy screens */
+@import "./tokens.css" layer(legacy);
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ---- design tokens ------------------------------------------------------
+   Verdict colours follow the Okabe–Ito colour-blind-safe set (blue / vermilion
+   / violet) and every verdict ALSO carries an icon + label — never colour alone. */
+:root {
+  --canvas: #f6f6f3;   --surface: #ffffff;  --sunken: #efefeb;
+  --ink: #14181c;      --muted: #5b6670;    --faint: #8b949d;
+  --line: #e2e4e6;     --line-strong: #cfd3d6;
+  --accent: #0f766e;   --accent-soft: #d9f0ec;
+  --ok: #1d4ed8;       --ok-soft: #e3ebfd;
+  --bad: #c2410c;      --bad-soft: #fcebe0;
+  --abstain: #6d28d9;  --abstain-soft: #eee8fb;
+  --refused: #475569;  --refused-soft: #e7eaee;
+  --lab: #0e7490;      --lab-soft: #def2f6;
+  --warn: #a16207;     --warn-soft: #fbf0d5;
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --canvas: #0c1014;   --surface: #131a20;  --sunken: #0f151a;
+  --ink: #e7ecef;      --muted: #93a0ab;    --faint: #66727d;
+  --line: #222b33;     --line-strong: #2f3a44;
+  --accent: #2dd4bf;   --accent-soft: #11332f;
+  --ok: #7aa7ff;       --ok-soft: #14233f;
+  --bad: #fb923c;      --bad-soft: #3a2010;
+  --abstain: #b69cff;  --abstain-soft: #251a45;
+  --refused: #a3b1c0;  --refused-soft: #1d252d;
+  --lab: #5fd0e6;      --lab-soft: #0f2e36;
+  --warn: #f0c14b;     --warn-soft: #33290d;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);   --color-surface: var(--surface);
+  --color-sunken: var(--sunken);   --color-ink: var(--ink);
+  --color-muted: var(--muted);     --color-faint: var(--faint);
+  --color-line: var(--line);       --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);   --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);           --color-ok-soft: var(--ok-soft);
+  --color-bad: var(--bad);         --color-bad-soft: var(--bad-soft);
+  --color-abstain: var(--abstain); --color-abstain-soft: var(--abstain-soft);
+  --color-refused: var(--refused); --color-refused-soft: var(--refused-soft);
+  --color-lab: var(--lab);         --color-lab-soft: var(--lab-soft);
+  --color-warn: var(--warn);       --color-warn-soft: var(--warn-soft);
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+  --radius-card: 10px;
+}
+
+html, body, #root { height: 100%; }
+body {
+  background: var(--canvas); color: var(--ink);
+  font-family: var(--font-sans); font-size: 14px; line-height: 1.45;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+::selection { background: var(--accent-soft); }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

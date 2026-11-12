@@ -17,3 +17,6 @@ case-studies/*/study.db
 
 # local sandbox-image build inputs
 bionexuslab-*.whl
+
+# local UI screenshots
+web/.shots/

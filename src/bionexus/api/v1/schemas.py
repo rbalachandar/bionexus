@@ -173,3 +173,25 @@ class ProvenanceRecord(BaseModel):
 class ProvenanceView(BaseModel):
     chain: ChainStatus
     records: list[ProvenanceRecord]
+
+
+class EvalSummary(BaseModel):
+    mean: float
+    tasks: int
+    all_pass: bool
+
+
+class AnchorStatus(BaseModel):
+    records: int
+    age_s: float | None = Field(None, description="seconds since the last anchor")
+    published: bool | None = None
+
+
+class SystemStatus(BaseModel):
+    """What the top bar and trust strip show on every page."""
+    halted: bool
+    halt_reason: str | None = None
+    pending_approvals: int
+    chain: ChainStatus
+    anchor: AnchorStatus | None = None
+    eval: EvalSummary | None = None

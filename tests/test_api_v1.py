@@ -117,3 +117,9 @@ def test_openapi_describes_v1():
     assert "/api/v1/campaigns/{eid}" in paths
     schemas = app.openapi()["components"]["schemas"]
     assert {"CampaignDetail", "Funnel", "Round", "Why"} <= set(schemas)
+
+
+def test_system_status_for_the_trust_strip(client):
+    s = client.get("/api/v1/system/status").json()
+    assert s["halted"] is False and s["pending_approvals"] >= 0
+    assert s["chain"]["verified"] is True and s["chain"]["records"] > 0
