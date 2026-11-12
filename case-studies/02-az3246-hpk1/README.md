@@ -80,8 +80,8 @@ harness surfaced. The RF's poor transfer reflects a real phenomenon: the
 paper's assay (cellular autophosphorylation readout) differs from the training
 assays (biochemical), so its potency calibration does not transfer, while the
 agent's structure-based comparative reasoning was more robust across the
-assay shift. Case study 01 showed the complementary regime (calibrated model
-ρ +0.70 vs agent +0.42…0.58). Neither intelligence dominates; the campaign
+assay shift. Case study 01's corrected comparison (calibrated model ρ ≈ +0.56 vs agent
++0.42…0.58) is roughly a tie. Neither intelligence dominates; the campaign
 harness runs both, scores them against pre-registered criteria, and lets the
 data decide — which is precisely the role BioNexus claims.
 

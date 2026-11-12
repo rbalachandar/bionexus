@@ -17,7 +17,7 @@ rather than *independent derivation*. See Contamination Analysis.
 | Question | Result |
 |---|---|
 | Q1 — Does the agent, from structures alone, identify the paper's compound class and binding hypothesis? | **Identified correctly; qualified.** The agent named the compound class and pharmacophore accurately, but contamination analysis (below) confirmed prior model exposure to this literature; the result is therefore attributed to recognition rather than independent derivation |
-| Q2 — Are blinded potency scores consistent with the published IC50s? | **PASS** — agent ranking ρ = +0.42…+0.58; trained model ρ = +0.70 (MAE 0.67 pIC50) |
+| Q2 — Are blinded potency scores consistent with the published IC50s? | **PASS** — agent ranking ρ = +0.42…+0.58; trained model ρ = +0.56 (95% CI +0.33…+0.75; MAE 0.66 pIC50) — corrected, see below |
 
 ## The held-out paper
 
@@ -46,12 +46,13 @@ shown**, addressing the circularity critique of simulation-based demos:
 ## Method
 
 1. **Data.** All EGFR (ChEMBL target CHEMBL203) binding measurements in ChEMBL:
-   20,863 published values across 126 papers/assays.
+   26,255 unique published values across 2,573 assays (the held-out assay
+   plus 2,572 others) — see the 2026-11-12 correction below.
 2. **Held out.** The entire Gazit et al. 1989 assay (67 unique compounds after
    averaging repeats). Its values were excluded from all training and all
    prompts.
 3. **Trained model.** Morgan fingerprints (2048-bit, radius 2) + Random Forest
-   on the remaining ~19,500 values from the other 125 papers.
+   on the 26,255 deduplicated values from the 2,572 other assays.
 4. **Blind agent task.** The agent (glm-5.1 via the Anthropic-compatible API)
    received the 45 structures and was asked for (a) the unifying binding
    hypothesis of the series and (b) a 0–100 potency score per compound. It saw
@@ -79,7 +80,34 @@ cyanoacrylate/thioamide subseries and a catechol-SAR pattern
 | Ranking source | Spearman ρ vs published pIC50 | Rank of the paper's most potent compound |
 |---|---|---|
 | Agent's blinded scores | +0.42 … +0.58 (varies by run — LLM nondeterminism) | 3–13 of 67 |
-| Trained RF model | **+0.70** (MAE 0.67 pIC50 units) | 33 of 67 |
+| Trained RF model | **+0.56** (95% CI +0.33…+0.75; MAE 0.66 pIC50 units) | 4 of 67 |
+
+### Correction (2026-11-12): the training pool was duplicate-inflated
+
+The original run reported "20,863 values across 126 papers" and RF ρ = +0.70
+(MAE 0.67, most-potent compound rank 33 of 67). That pool was built with a
+broken ChEMBL pagination cursor that returned the first pages repeatedly: of
+the 20,863 rows, 19,080 were exact repeats (**1,783 unique**, 126 assays — a
+small slice of EGFR's measured space). The held-out paper was also chosen as
+"the largest assay", which only the duplication made it. The runner now names
+the held-out assay (`CHEMBL674643`, Gazit et al. 1989) and the fixture is
+the correctly fetched, deduplicated EGFR set. The RF comparator is recomputed
+offline by `rf_baseline.py`:
+
+| Training pool | RF ρ vs the paper | MAE | rank of most potent |
+|---|---|---|---|
+| original, as published | +0.70 | 0.67 | 33 of 67 |
+| original pool re-run today (library versions differ) | +0.62 (CI +0.38…+0.79) | 0.76 | 39 of 67 |
+| original pool, deduplicated (1,716 rows) | +0.55 (CI +0.30…+0.73) | 0.74 | 45 of 67 |
+| **corrected: full EGFR fetch, deduplicated (26,255 rows)** | **+0.56** (CI +0.33…+0.75) | **0.66** | **4 of 67** |
+
+Two things to take from this. The published +0.70 does not reproduce even on
+its own pool (+0.62 now; the RF is not byte-stable across library versions),
+and the corrected value is about +0.56 with a wide interval. The agent's
+blinded ρ (+0.42…+0.58, LLM-dependent, not re-run) is therefore **comparable
+to the trained model rather than clearly below it**; the Q2 PASS stands (both
+rank the series well above chance) but the "calibrated model wins" contrast
+drawn in case study 02 is withdrawn.
 
 ### Honest caveats
 

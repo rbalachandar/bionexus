@@ -40,6 +40,10 @@ from bionexus.core.interfaces import record_for, system_actor
 from bionexus.vision import gray_png  # noqa: F401  (png helper reuse)
 
 
+# Gazit et al. 1989, 67 measured IC50s (EGF-dependent autophosphorylation)
+HELD_ASSAY = "CHEMBL674643"
+
+
 def load_all() -> dict[str, list[dict]]:
     """All cached EGFR activities grouped by assay (paper)."""
     path = fetch_target_activities("CHEMBL203")
@@ -54,6 +58,9 @@ def load_all() -> dict[str, list[dict]]:
             if row["smiles"] == "smiles":
                 continue
             by_assay[row["assay"]].append({"smiles": row["smiles"], "pic50": y})
+    # identical repeated rows are paging artefacts, not extra evidence
+    for k, v in by_assay.items():
+        by_assay[k] = list({(r["smiles"], r["pic50"]): r for r in v}.values())
     return by_assay
 
 
@@ -70,8 +77,13 @@ def main() -> None:
 
     print("[1] loading published EGFR data, grouping by paper (assay)...")
     by_assay = load_all()
-    papers = sorted(by_assay.items(), key=lambda kv: -len(kv[1]))
-    paper_id, paper_cpds = papers[0]
+    # the held-out paper is NAMED, not "the largest assay": size-ranking
+    # picked it only because the old (duplicated) pool inflated its row count
+    paper_id = HELD_ASSAY
+    paper_cpds = by_assay[paper_id]
+    papers = [(paper_id, paper_cpds)] + [
+        kv for kv in sorted(by_assay.items(), key=lambda kv: -len(kv[1]))
+        if kv[0] != paper_id]
     # dedupe compounds (mean pIC50) — assays contain repeat measurements
     by_smi: dict[str, list[float]] = {}
     for c in paper_cpds:
