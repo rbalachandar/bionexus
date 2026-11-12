@@ -36,9 +36,68 @@ cs02 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cs02)
 
 from bionexus import fixtures  # noqa: E402
-from bionexus.adapters.models.openai_compat import OpenAICompatProvider  # noqa: E402
 from bionexus.benchmark import spearman, spearman_ci  # noqa: E402
 from bionexus.core.contracts import Envelope, ToolInvocation  # noqa: E402
+
+
+class GoClient:
+    """Minimal client for the OpenCode Go endpoints.
+
+    Go asks API clients to (a) identify with their own User-Agent — generic
+    HTTP-library agents are refused (Cloudflare 1010) — and (b) send a stable
+    `x-opencode-session` per conversation. GPT/Grok models are served by the
+    Responses API (`/responses`); the rest by `/chat/completions`.
+    """
+    UA = "bionexus-case-study/1.0 (+https://github.com/rbalachandar/bionexus)"
+    RESPONSES_MODELS = ("gpt-", "grok-")
+
+    def __init__(self, model: str, base_url: str, api_key: str):
+        import uuid
+        self.model, self.base_url, self.api_key = model, base_url.rstrip("/"), api_key
+        self.session = f"cs02-{uuid.uuid4()}"
+        self.api = ("responses" if model.startswith(self.RESPONSES_MODELS)
+                    else "chat")
+
+    def _post(self, path: str, body: dict) -> dict:
+        import urllib.request
+        req = urllib.request.Request(
+            f"{self.base_url}/{path}", data=json.dumps(body).encode(),
+            method="POST",
+            headers={"Authorization": f"Bearer {self.api_key}",
+                     "Content-Type": "application/json",
+                     "User-Agent": self.UA,
+                     "x-opencode-session": self.session})
+        import urllib.error
+        for attempt in range(6):
+            try:
+                with urllib.request.urlopen(req, timeout=180) as r:  # noqa: S310
+                    return json.loads(r.read())
+            except urllib.error.HTTPError as exc:
+                if exc.code not in (429, 502, 503, 529) or attempt == 5:
+                    raise
+                wait = float(exc.headers.get("Retry-After") or 0) or 15 * 2 ** attempt
+                print(f"   [{exc.code}] backing off {wait:.0f}s", flush=True)
+                time.sleep(min(wait, 240))
+        raise RuntimeError("unreachable")
+
+    def text(self, prompt: str) -> str:
+        if self.api == "responses":
+            d = self._post("responses", {"model": self.model, "input": prompt})
+            if d.get("output_text"):
+                return d["output_text"]
+            parts = [c.get("text", "") for o in d.get("output", [])
+                     for c in (o.get("content") or [])
+                     if c.get("type") in ("output_text", "text")]
+            return "".join(parts)
+        d = self._post("chat/completions", {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}]})
+        return d["choices"][0]["message"]["content"]
+
+    def generate(self, invocation, prompt, system=None, **kw):
+        from types import SimpleNamespace
+        return SimpleNamespace(output={"text": self.text(prompt)})
+
 
 DEFAULT_URL = "https://opencode.ai/inference/go/openai/v1"
 
@@ -100,8 +159,7 @@ def main() -> None:
     if not key:
         sys.exit(f"set ${args.key_env} in the environment (not on the command line)")
     fixtures.materialize(HERE)
-    agent = OpenAICompatProvider(model=args.model, base_url=args.base_url,
-                                 api_key=key)
+    agent = GoClient(args.model, args.base_url, key)
     paper = _paper()
     out = {"model": args.model, "base_url": args.base_url,
            "n_compounds": len(paper), "run_at": time.strftime("%F %T")}
