@@ -94,6 +94,10 @@ jobs:
           python -m bionexus.cli fixtures verify case-studies/01-egfr-blind-reproduction
           python -m bionexus.cli fixtures verify case-studies/02-az3246-hpk1
           python -m bionexus.cli fixtures verify case-studies/03-multi-paper
+          python -m bionexus.cli fixtures verify case-studies/04-prospective-hit2lead
+          python -m bionexus.cli fixtures verify case-studies/05-paper-pilot
+          python -m bionexus.cli fixtures verify case-studies/06-ncats-deposit
+          python -m bionexus.cli fixtures verify case-studies/07-proteinbase
       - name: materialize restores caches
         run: |
           python -m bionexus.cli fixtures materialize case-studies/01-egfr-blind-reproduction
