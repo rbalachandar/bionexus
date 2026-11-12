@@ -1,0 +1,119 @@
+# Workbench redesign — spec
+
+Status: approved scope (Nov 12, 2026) · first flow: **Campaign cockpit**.
+Decisions: new `/api/v1` layer over the unchanged engine; React + Vite + TS
+with Tailwind + Radix primitives + visx charts; a real end-to-end tool, not a
+demo build; no static demo mode.
+
+## 1. Who and what for
+
+A bench or computational scientist running real campaigns. Five jobs:
+
+| Job | Question | Surface |
+|---|---|---|
+| Trust the data | "Is this plate any good, and what does it say?" | **Analyze** |
+| Decide what's next | "What do we test next, and why?" | **Campaign** (why-this-plate) |
+| Respond | "What needs me right now?" | **Inbox** |
+| Defend | "Can I stand behind this result?" | **Evidence** |
+| Steer | "Are we winning against the gate?" | **Today** |
+
+Principles: uncertainty is the main visual idea (every estimate is drawn with
+its interval against the gate); abstention is a first-class, dignified state,
+never an error; the system explains itself (every pick, refusal and verdict has
+a "why" one click away); nothing happens without a record.
+
+## 2. Information architecture
+
+```
+Today ─ program cards (progress vs gate, needs-you count, changes since last visit)
+Inbox ─ approvals · abstentions to review · QC failures · refusals   (decide inline)
+Campaigns ─ list ─ Campaign cockpit (see §3)
+Analyze ─ drop file → detect → confirm → results → "make it a verdict" → export
+Evidence ─ provenance chain · Verify · anchor status · report export
+Lab ─ instruments & fence · simulated/real badges · halt switch
+```
+
+Global chrome: left rail (the six sections), top bar with the **Halt** button,
+a trust strip ("chain verified ✓ · anchored 2 d ago · eval 0.947"), ⌘K command
+palette, light/dark theme.
+
+## 3. Campaign cockpit (first flow)
+
+```
+┌ objective · status chip · autonomy · gate "IC50 ≤ 2 µM" · budget 7/20 runs · chain ✓ ┐
+│ FUNNEL  proposed 5 → selected 3 → tested 3 → judged 3  (validated 1 · refuted 2 · abstained 0)
+├───────────────────────────────┬────────────────────────────────────────────────────┤
+│ ROUNDS (timeline)             │ HYPOTHESES (table, sortable)                       │
+│  ● Round 1  H1 H2 AD1         │  cand │ verdict │ estimate ±CI vs gate (interval   │
+│    why this plate ▸           │       │         │ plot, gate as a vertical line)   │
+│  ● Round 2  H3 M1             │  ...                                               │
+│    why this plate ▸           │  row click → side drawer: statement, mechanism,    │
+│  ○ Round 3  (planned)         │  refuted-if clause, curve, evidence run, derivation│
+├───────────────────────────────┴────────────────────────────────────────────────────┤
+│ ACTIVITY  live stream: "run sim-42-003 submitted" · "H1 VALIDATED (preliminary)" …  │
+└────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why-this-plate drawer** (per round): the policy and seed; each pick with its
+reason (EI arithmetic when acquisition is on, portfolio score otherwise); each
+refusal with the gate that refused it (AD veto, diversity, budget, safety).
+
+**States are never colour-only:** validated ✓, refuted ✕, abstained ◐
+(interval straddles the gate), refused ⊘, in lab ◷, proposed ·.
+
+Actions: Approve/Decline pending submissions (inline), Halt, re-run review,
+export report, open Evidence, archive.
+
+## 4. Design system
+
+Tailwind tokens + Radix primitives (Dialog, Popover, Tooltip, Tabs, Select,
+Dropdown, Command) styled as a small in-repo component set. Type: Inter for
+text, JetBrains Mono (tabular figures) for numbers and ids. Neutral ink with
+one accent; semantic verdict palette validated for colour-blind safety.
+visx for the interval-vs-gate plot, funnel, dose–response curves and plate map.
+Light and dark themes; keyboard-first; WCAG AA contrast.
+
+## 5. API v1 (resource model)
+
+Generated OpenAPI → generated TypeScript client (no hand-written types).
+
+```
+GET  /api/v1/campaigns                       list (filter: program, status)
+GET  /api/v1/campaigns/{id}                  cockpit model (header, funnel, rounds+why, hypotheses, reviewer)
+GET  /api/v1/campaigns/{id}/hypotheses/{h}   one hypothesis: card + evidence + derivation
+GET  /api/v1/campaigns/{id}/activity         recent human-readable events
+GET  /api/v1/campaigns/{id}/events           SSE stream
+GET  /api/v1/campaigns/{id}/provenance       chain + verification result
+POST /api/v1/campaigns/{id}/archive
+GET  /api/v1/inbox                           unified action queue
+POST /api/v1/inbox/{item}/decision           approve / decline (identity from the token)
+GET  /api/v1/programs, /programs/{slug}      program + gate progress
+GET  /api/v1/instruments, /halt, POST /halt
+POST /api/v1/analyses, GET/POST /analyses/{id}/…   (Analyze flow)
+```
+
+Write endpoints keep the existing guard (local Host/Origin, optional per-person
+tokens). One event stream. Errors are RFC 7807-style `{type, title, detail}`.
+
+## 6. What gets removed
+
+- the Wizard flow (`/api/wizard/*`, `Wizard.tsx`): a hand-run experiment becomes a
+  campaign with `autonomy: observe` and manual result upload (same cockpit);
+- every `/api/*` route replaced by `/api/v1/*`, and the hand-written
+  `client.ts` + duplicated types;
+- the per-screen ad-hoc CSS in `web/src/styles` (replaced by tokens);
+- duplicated read-model code paths once the v1 models read from `views/` only.
+
+## 7. Phases (each ends green and committed)
+
+1. **API v1 for campaigns**: pydantic response models, `/campaigns`, hypothesis,
+   activity, events, provenance; OpenAPI export; tests on the golden campaign.
+2. **Frontend foundation**: Tailwind + Radix primitives, tokens, app shell
+   (rail, top bar, Halt, trust strip, ⌘K), generated client, routing.
+3. **Campaign cockpit**: header/funnel, rounds timeline + why-this-plate,
+   hypothesis table with interval plot, drawer, activity stream.
+4. **Inbox + Halt** (approve/decline inline), then **Evidence** (verify, export).
+5. **Today** (program board) and **Lab**.
+6. **Analyze** rebuilt on the same system; Wizard removal.
+7. Polish: accessibility pass, Playwright end-to-end tests, performance, README
+   screenshots, delete the old routes and client.
