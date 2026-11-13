@@ -34,12 +34,6 @@ def row_status(e: dict) -> str:
 
 
 # ------------------------------------------------------- problem id helpers
-def leaf_pid(root_id: str, leaf_id: str) -> str:
-    """The ONE campaign pid convention for a leaf of a problem tree:
-    problem/<root>-<leaf> (a single-node tree is <root>-<root>)."""
-    return f"{root_id}-{leaf_id}"
-
-
 def resolve_problem(meta: dict, logf: Path) -> str | None:
     """Latest prob-* id for a campaign: explicit metadata wins; else the
     log is searched (problem-registration lines first, then any
@@ -53,8 +47,3 @@ def resolve_problem(meta: dict, logf: Path) -> str | None:
         if latest and latest != problem_id:
             problem_id = latest
     return problem_id
-
-
-def wizard_db_path() -> Path:
-    """The registry DB path, honoring BIONEXUS_DATA_DIR."""
-    return DATA_DIR / "wizard.db"

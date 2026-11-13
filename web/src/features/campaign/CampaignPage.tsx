@@ -5,7 +5,9 @@ import { useCampaign } from '../../api/hooks'
 import { Card, CardHeader, EmptyState, Skeleton } from '../../ui/Card'
 import { Tag } from '../../ui/Chip'
 import { StatusTag } from '../../routes/Campaigns'
+import { ApprovalCard } from '../inbox/ApprovalCard'
 import { ActivityFeed } from './ActivityFeed'
+import { AgentsCard } from './AgentsCard'
 import { HypothesisDrawer } from './HypothesisDrawer'
 import { OutcomeBar } from './OutcomeBar'
 import { ResultsTable } from './ResultsTable'
@@ -21,7 +23,7 @@ export default function CampaignPage() {
   if (isLoading) return <div className="mx-auto max-w-7xl space-y-4 p-6"><Skeleton className="h-10 w-2/3" /><Skeleton className="h-24" /><Skeleton className="h-72" /></div>
   if (error || !d) return <div className="mx-auto max-w-3xl p-10"><EmptyState title="Campaign not found" hint={(error as Error | null)?.message ?? 'It may have been archived.'} /></div>
 
-  const abstained = d.hypotheses.filter((h) => h.state === 'abstained')
+  const abstained = d.hypotheses.filter((h) => h.state === 'abstained' && !h.review)
   return (
     <div className="mx-auto max-w-7xl p-6">
       <Link to="/campaigns" className="mb-2 inline-flex items-center gap-1 text-xs text-muted hover:text-ink"><ChevronLeft size={14} /> Campaigns</Link>
@@ -40,6 +42,13 @@ export default function CampaignPage() {
         </span>
       </div>
 
+      {!!d.awaiting_approvals.length && (
+        <Card className="mb-4 border-warn/50 bg-warn-soft">
+          <div className="px-4 pt-3 text-sm font-semibold text-warn">Waiting for you — the agent has paused</div>
+          <div className="divide-y divide-line">{d.awaiting_approvals.map((a) => <ApprovalCard key={a.id} item={a} compact />)}</div>
+        </Card>
+      )}
+
       <Card className="mb-4 px-5 py-4"><OutcomeBar d={d} /></Card>
 
       {!!abstained.length && (
@@ -47,7 +56,7 @@ export default function CampaignPage() {
           <TriangleAlert size={16} className="mt-0.5 shrink-0" />
           <div>
             <b>{abstained.length} candidate{abstained.length > 1 ? 's' : ''} abstained</b> ({abstained.map((h) => h.head).join(', ')}): the interval straddles the gate
-            {d.gate.threshold != null ? ` (${sig(d.gate.threshold)})` : ''}, so the data can’t say which side the true value is on. More replicates and a tighter dose ladder near the gate would resolve it. Click a candidate to see its curve.
+            {d.gate.threshold != null ? ` (${sig(d.gate.threshold)})` : ''}, so the data can’t say which side the true value is on. Open one to see its curve and record your decision: follow up, accept as inconclusive, or drop.
           </div>
         </div>
       )}
@@ -85,6 +94,10 @@ export default function CampaignPage() {
               </div>
             </Card>
           )}
+          <Card>
+            <CardHeader title="Agents" hint="who did what — click for the full trace" />
+            <AgentsCard id={d.id} />
+          </Card>
           <Card>
             <CardHeader title="Activity" hint="live" />
             <ActivityFeed id={d.id} />

@@ -27,6 +27,12 @@ function Plot({ width, rows, gate, direction, unit }: {
   const vals = rows.flatMap((r) => [r.est, r.lo, r.hi]).concat(gate).filter((v): v is number => v != null && isFinite(v))
   const height = rows.length * ROW_H + AXIS_H
   const pad = 14
+  if (!rows.some((r) => r.est != null))
+    return (
+      <svg width={width} height={rows.length * ROW_H + AXIS_H} role="img" aria-label="No estimates yet">
+        <text x={width / 2} y={(rows.length * ROW_H) / 2} textAnchor="middle" fontSize={12} fill="var(--faint)">waiting for the first measurement</text>
+      </svg>
+    )
   if (!vals.length) return <svg width={width} height={height} />
   const mn = Math.min(...vals), mx = Math.max(...vals)
   const log = mn > 0 && mx / mn > 8

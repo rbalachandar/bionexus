@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { CheckCircle2, ChevronLeft, CircleDashed, Settings2 } from 'lucide-react'
+import { ArrowRight, CheckCircle2, ChevronLeft, CircleDashed, Compass, Plus } from 'lucide-react'
 import { useProgram } from '../../api/hooks'
 import { Button } from '../../ui/Button'
 import { Card, CardHeader, EmptyState, Skeleton } from '../../ui/Card'
@@ -10,11 +11,16 @@ import { ResultsTable } from '../campaign/ResultsTable'
 import type { Hyp } from '../campaign/format'
 import { sig } from '../campaign/format'
 import { goalLine } from './goal'
+import { LaunchCampaignDialog } from '../launch/LaunchCampaignDialog'
+import { NewProgramDialog } from '../launch/NewProgramDialog'
 
 export default function ProgramPage() {
   const { slug = '' } = useParams()
   const nav = useNavigate()
   const { data: p, isLoading, error } = useProgram(slug)
+  const [launch, setLaunch] = useState(false)
+  const [follow, setFollow] = useState<string[] | null>(null)
+  const [np, setNp] = useState(false)
   if (isLoading) return <div className="mx-auto max-w-6xl space-y-4 p-6"><Skeleton className="h-10 w-1/2" /><Skeleton className="h-24" /><Skeleton className="h-64" /></div>
   if (error || !p) return <div className="mx-auto max-w-3xl p-10"><EmptyState title="Program not found" hint={(error as Error | null)?.message} /></div>
 
@@ -36,7 +42,8 @@ export default function ProgramPage() {
         {p.gate.label && <Tag className="num !text-xs">gate {p.gate.label}</Tag>}
         {p.modality && <Tag>{p.modality}</Tag>}
         {p.mode && <Tag>{p.mode}</Tag>}
-        <Button asChild variant="ghost" size="sm" className="ml-auto"><Link to={`/programs/${p.slug}/manage`}><Settings2 size={14} /> Launch / manage</Link></Button>
+        <Button variant="primary" size="sm" className="ml-auto" onClick={() => setLaunch(true)}><Plus size={14} /> New campaign</Button>
+        <LaunchCampaignDialog open={launch} onOpenChange={setLaunch} slug={p.slug} />
       </div>
       {p.objective && <p className="mb-4 max-w-3xl text-sm text-muted">{p.objective}</p>}
 
@@ -48,6 +55,29 @@ export default function ProgramPage() {
           <div className="mt-1 text-xs text-faint">Across {p.campaigns} campaign{p.campaigns === 1 ? '' : 's'}: <b className="num text-ink">{p.goal.claimed}</b> claimed · <b className="num text-ink">{p.goal.refuted}</b> refuted · <b className="num text-ink">{p.goal.abstained}</b> abstained</div>
         </div>
       </Card>
+
+      {!!p.next_steps.length && (
+        <Card className="mb-4">
+          <CardHeader title="What next" hint="from the evidence — no model needed" />
+          <ul className="divide-y divide-line">
+            {p.next_steps.map((n, i) => (
+              <li key={i} className="flex items-start gap-3 px-4 py-3">
+                <Compass size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden />
+                <div className="min-w-0 flex-1"><div className="text-sm font-medium">{n.title}</div><div className="text-xs text-muted">{n.detail}</div></div>
+                <Button size="sm" variant="secondary" onClick={() => {
+                  if (n.action === 'inbox') nav('/inbox')
+                  else if (n.action === 'new_program') setNp(true)
+                  else if (n.kind === 'follow_up') setFollow(n.candidates)
+                  else setLaunch(true)
+                }}>{n.action === 'inbox' ? 'Open inbox' : n.action === 'new_program' ? 'New program' : n.kind === 'follow_up' ? 'Follow up' : 'New campaign'} <ArrowRight size={13} /></Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+      <NewProgramDialog open={np} onOpenChange={setNp} />
+      {follow && <LaunchCampaignDialog open onOpenChange={() => setFollow(null)} slug={p.slug} title="Follow up"
+        defaults={{ objective: `Follow-up: resolve ${follow.join(', ')}`, candidates: follow }} />}
 
       <div className="grid gap-4 lg:grid-cols-12">
         <Card className="lg:col-span-7">

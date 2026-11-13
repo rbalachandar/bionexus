@@ -8,11 +8,7 @@ from __future__ import annotations
 from bionexus.views.counts import (dmta_counts, round_markers, series_view,
                                    verdict_tally)
 from bionexus.views.experiment import experiment_detail
-from bionexus.views.ids import (PROVENANCE_DB, leaf_pid, resolve_problem,
-                                row_status, wizard_db_path)
+from bionexus.views.ids import PROVENANCE_DB, resolve_problem, row_status
 from bionexus.views.narrative import narrative_data
 from bionexus.views.pipeline import (_rounds_with_verdicts, _sandbox_summary,
                                      pipeline_cards, pipeline_data)
-from bionexus.views.program import (labselect_fence, program_policy,
-                                    program_verdict, workspace)
-from bionexus.views.trees import problem_trees

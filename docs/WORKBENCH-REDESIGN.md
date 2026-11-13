@@ -111,7 +111,11 @@ Radix primitives, shell with Halt / trust strip / ⌘K, generated client,
 `/api/v1/system/status`, campaigns list, dark + light) · **3 done** (campaign
 cockpit: outcome bar, interval-vs-gate forest plot on a log axis, rounds timeline
 with why-this-plate, evidence drawer with the recorded dose–response curve + QC,
-plain-language verdict explanation and next step, live activity) · 4 next.
+plain-language verdict explanation and next step, live activity) · **4 done** (decisions: Inbox, approvals on the campaign, sealed human review of
+abstentions, follow-up / new-campaign / new-program dialogs with `gate` autonomy by
+default, agents + full trace per actor, deterministic "what next"; legacy Workspace /
+Program / Experiment / Wizard / Approvals screens and ~800 lines of old API removed) ·
+5 next: rebuild Analyze (still legacy), Evidence (Verify, report) and Lab.
 
 1. **API v1 for campaigns**: pydantic response models, `/campaigns`, hypothesis,
    activity, events, provenance; OpenAPI export; tests on the golden campaign.
@@ -124,3 +128,15 @@ plain-language verdict explanation and next step, live activity) · 4 next.
 6. **Analyze** rebuilt on the same system; Wizard removal.
 7. Polish: accessibility pass, Playwright end-to-end tests, performance, README
    screenshots, delete the old routes and client.
+
+
+## 8. Removed in phase 4 (and where it went)
+
+- The LLM-drafted **program brief** and the problem-tree **program verdict / termination
+  policy** were API+UI features of the old workspace. The engine modules remain
+  (`problem_tree`, `bn campaign plan`), but they are no longer surfaced; the new
+  program page shows deterministic **What next** recommendations instead. Restore the
+  model-drafted brief on top of v1 if/when a model is configured for the workbench.
+- `/api/wizard/*`, `/api/programs*`, `/api/experiments*`, `/api/approvals*`,
+  `/api/instruments`, `/api/taste`, `/api/events` (SSE): replaced by `/api/v1/*` (the UI
+  polls). `/api/analyses/*` stays until Analyze is rebuilt.

@@ -58,6 +58,7 @@ class ApprovalInbox:
                                  "status": "pending", "ts": ev["ts"]}
             elif ev.get("event") == "decision" and ev["id"] in out:
                 out[ev["id"]]["status"] = "approved" if ev["approve"] else "denied"
+                out[ev["id"]]["decided_ts"] = ev.get("ts")
                 out[ev["id"]]["decided_by"] = ev.get("by", "operator")
         return out
 

@@ -60,6 +60,14 @@ class Verdict(BaseModel):
     extrapolation: bool = False
 
 
+class Review(BaseModel):
+    """A scientist's recorded decision on a hypothesis (sealed in provenance)."""
+    decision: Literal["follow_up", "accept", "drop"]
+    note: str = ""
+    by: str
+    ts: float | None = None
+
+
 class HypothesisSummary(BaseModel):
     id: str
     candidate: str | None = None
@@ -71,6 +79,7 @@ class HypothesisSummary(BaseModel):
     verdict: Verdict | None = None
     gate_label: str | None = None
     selected: bool = False
+    review: Review | None = None
 
 
 class Pick(BaseModel):
@@ -129,6 +138,7 @@ class ActivityItem(BaseModel):
     kind: str
     text: str
     candidate: str | None = None
+    actor: str | None = Field(None, description="who did it (agent / service / person)")
 
 
 class CampaignSummary(BaseModel):
@@ -141,7 +151,15 @@ class CampaignSummary(BaseModel):
     problem_id: str | None = None
 
 
+class ApprovalRef(BaseModel):
+    id: str
+    title: str
+    detail: str = ""
+    ts: float | None = None
+
+
 class CampaignDetail(CampaignSummary):
+    awaiting_approvals: list[ApprovalRef] = []
     objective: str | None = None
     branch: str | None = None
     gate: Gate = Gate()
@@ -172,6 +190,10 @@ class ProvenanceRecord(BaseModel):
     ts: float | None = None
     event: str
     summary: str
+    actor: str | None = None
+    actor_kind: str | None = None
+    model_version: str | None = None
+    detail: dict[str, Any] | None = Field(None, description="the recorded decision, verbatim")
 
 
 class ProvenanceView(BaseModel):
@@ -284,9 +306,19 @@ class ProgramResult(BaseModel):
     ci: Interval | None = None
 
 
+class NextStep(BaseModel):
+    """A rule-based recommendation — deterministic, always available, no model needed."""
+    kind: Literal["inbox", "follow_up", "start", "expand", "milestone"]
+    title: str
+    detail: str = ""
+    action: Literal["inbox", "launch", "new_program"]
+    candidates: list[str] = []
+
+
 class ProgramDetail(ProgramSummary):
     campaign_list: list[CampaignDigest] = []
     results: list[ProgramResult] = []
+    next_steps: list[NextStep] = []
 
 
 class AbstentionNote(BaseModel):
@@ -307,3 +339,69 @@ class Today(BaseModel):
     attention: Attention
     programs: list[ProgramSummary]
     standalone: list[CampaignDigest]
+
+
+class AgentSummary(BaseModel):
+    id: str
+    kind: str
+    role: str
+    model_version: str | None = None
+    events: int
+    last_ts: float | None = None
+    last_text: str = ""
+
+
+class ReviewIn(BaseModel):
+    decision: Literal["follow_up", "accept", "drop"]
+    note: str = ""
+
+
+InboxKind = Literal["approval", "review"]
+
+
+class InboxItem(BaseModel):
+    id: str
+    kind: InboxKind
+    title: str
+    detail: str = ""
+    ts: float | None = None
+    status: str = "pending"
+    decided_by: str | None = None
+    campaign_id: str | None = None
+    campaign_title: str | None = None
+    hypothesis_id: str | None = None
+    candidate: str | None = None
+
+
+class DecisionIn(BaseModel):
+    approve: bool
+    note: str = ""
+
+
+class ProgramCreate(BaseModel):
+    name: str
+    objective: str = ""
+    modality: str = "small molecule"
+    metric: str = "ic50_um"
+    direction: Literal["min", "max"] = "min"
+    gate_value: float = 20.0
+    unit: str = "µM"
+
+
+class CampaignCreate(BaseModel):
+    objective: str | None = None
+    candidates: list[str] = []
+    autonomy: Literal["observe", "gate", "act"] = "gate"
+    k: int = Field(2, ge=1, le=12)
+    rounds: int = Field(2, ge=1, le=8)
+
+
+class HaltState(BaseModel):
+    halted: bool
+    reason: str | None = None
+    history: list[dict[str, Any]] = []
+
+
+class HaltIn(BaseModel):
+    halted: bool
+    reason: str = ""

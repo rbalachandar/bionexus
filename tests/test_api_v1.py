@@ -222,3 +222,92 @@ def test_today_surfaces_programs_attention_and_standalone(client, seeded):
     assert t["attention"]["halted"] is False
     # the campaign is linked to a program, so it is not 'standalone'
     assert all(c["id"] != seeded["eid"] for c in t["standalone"])
+
+
+def test_agents_and_traces_show_who_did_what(client, seeded):
+    ag = client.get(f"/api/v1/campaigns/{seeded['eid']}/agents").json()
+    ids = {a["id"] for a in ag}
+    assert {"campaign", "reviewer"} <= ids
+    camp = next(a for a in ag if a["id"] == "campaign")
+    assert camp["events"] > 10 and "orchestrator" in camp["role"]
+    tr = client.get(f"/api/v1/campaigns/{seeded['eid']}/provenance?actor=reviewer").json()
+    assert tr["records"] and all(r["actor"] == "reviewer" for r in tr["records"])
+    assert tr["records"][0]["detail"]["kind"] == "review_report"
+
+
+def test_human_review_is_sealed_and_clears_the_attention_item(client, seeded):
+    d = client.get(f"/api/v1/campaigns/{seeded['eid']}").json()
+    ab = next(h for h in d["hypotheses"] if h["state"] == "abstained")
+    before = d["chain"]["records"]
+    inbox = client.get("/api/v1/inbox").json()
+    assert any(i["kind"] == "review" and i["hypothesis_id"] == ab["id"] for i in inbox)
+    r = client.post(f"/api/v1/campaigns/{seeded['eid']}/hypotheses/{ab['id']}/review",
+                    json={"decision": "follow_up", "note": "add replicates near 20"})
+    assert r.status_code == 200 and r.json()["by"] == "local-user"
+    d2 = client.get(f"/api/v1/campaigns/{seeded['eid']}").json()
+    assert d2["chain"]["verified"] is True and d2["chain"]["records"] == before + 1
+    ab2 = next(h for h in d2["hypotheses"] if h["id"] == ab["id"])
+    assert ab2["review"]["decision"] == "follow_up"
+    inbox = client.get("/api/v1/inbox").json()
+    assert not any(i["kind"] == "review" and i["hypothesis_id"] == ab["id"] for i in inbox)
+    act = client.get(f"/api/v1/campaigns/{seeded['eid']}/activity").json()
+    assert any("decided to follow up" in a["text"] for a in act)
+
+
+def test_gate_approval_appears_on_the_campaign_and_can_be_decided(client, seeded):
+    from bionexus.approvals import ApprovalInbox
+    from bionexus.paths import APPROVALS_FILE
+    d = client.get(f"/api/v1/campaigns/{seeded['eid']}").json()
+    aid = ApprovalInbox(str(APPROVALS_FILE)).request(
+        f"screen-H9 [problem/{d['problem_id']}]", "1 well, 4 doses")
+    d = client.get(f"/api/v1/campaigns/{seeded['eid']}").json()
+    assert [a["id"] for a in d["awaiting_approvals"]] == [aid]
+    items = client.get("/api/v1/inbox").json()
+    it = next(i for i in items if i["id"] == aid)
+    assert it["kind"] == "approval" and it["campaign_id"] == seeded["eid"]
+    r = client.post(f"/api/v1/inbox/{aid}/decision", json={"approve": True})
+    assert r.status_code == 200 and r.json()["status"] == "approved"
+    assert r.json()["decided_by"] == "local-user"
+    assert client.get(f"/api/v1/campaigns/{seeded['eid']}").json()["awaiting_approvals"] == []
+    # the human decision is sealed in the campaign's chain, under the approver's name
+    tr = client.get(f"/api/v1/campaigns/{seeded['eid']}/provenance?actor=local-user").json()
+    assert any(r["detail"]["kind"] == "human_approval" and r["detail"]["approve"] for r in tr["records"])
+    assert tr["chain"]["verified"] is True
+
+
+def test_create_program_and_launch_a_campaign(client, monkeypatch):
+    launched = {}
+
+    def fake_spawn(doc, name):
+        launched.update(doc=doc, name=name)
+        return "cmp-fake-1"
+    monkeypatch.setattr("bionexus.api.v1.programs.spawn_campaign", fake_spawn)
+    import uuid
+    name = f"Launch Test {uuid.uuid4().hex[:6]}"
+    slug = name.lower().replace(" ", "-")
+    r = client.post("/api/v1/programs", json={
+        "name": name, "objective": "sub-10 uM", "gate_value": 10})
+    assert r.status_code == 201 and r.json()["gate"]["label"].startswith("IC50")
+    assert client.post("/api/v1/programs", json={"name": name}).status_code == 409
+    c = client.post(f"/api/v1/programs/{slug}/campaigns",
+                    json={"candidates": ["A-1", "A-2"], "rounds": 3})
+    assert c.status_code == 201 and c.json()["id"] == "cmp-fake-1"
+    assert launched["doc"]["autonomy"] == "gate"          # safe default
+    assert launched["doc"]["candidates"] == "A-1,A-2" and launched["doc"]["rounds"] == 3
+
+
+def test_halt_is_attributed_and_clearable(client):
+    r = client.post("/api/v1/halt", json={"halted": True, "reason": "spill"})
+    assert r.json()["halted"] is True and "by local-user" in r.json()["reason"]
+    assert client.get("/api/v1/system/status").json()["halted"] is True
+    assert client.post("/api/v1/halt", json={"halted": False}).json()["halted"] is False
+
+
+def test_next_steps_are_deterministic_and_actionable(client, seeded):
+    _ensure_program(seeded)
+    p = client.get("/api/v1/programs/v1-prog").json()
+    kinds = {n["kind"] for n in p["next_steps"]}
+    assert "milestone" in kinds                     # the goal is met
+    fu = [n for n in p["next_steps"] if n["kind"] == "follow_up"]
+    # AD1 abstained (earlier tests may have recorded a decision on it)
+    assert all(n["action"] == "launch" and n["candidates"] for n in fu)

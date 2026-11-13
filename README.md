@@ -176,7 +176,7 @@ epistemics — mean 0.969 · 15/15 tasks pass
 
 The suite has caught real bugs: an observed-max fit bias, confirmation labels
 that overrode the gate, and a Make step that ran before the safety screen.
-Each one is now a permanent regression test. `GET /api/evals` serves the scores
+Each one is now a permanent regression test. `GET /api/v1/evals` serves the scores
 and flags every passing task below 1.0 as an `honest_deduction`; the workbench
 header shows the live `graded 0.947 · 25 tasks, all pass` badge.
 

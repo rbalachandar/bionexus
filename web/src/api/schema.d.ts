@@ -55,6 +55,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/{eid}/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Agents
+         * @description Who acted in this campaign — each agent/service/person with what it did.
+         */
+        get: operations["get_agents_api_v1_campaigns__eid__agents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{eid}/archive": {
         parameters: {
             query?: never;
@@ -111,6 +131,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/{eid}/hypotheses/{hid}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Hypothesis
+         * @description Record the scientist's decision on a hypothesis. Append-only and sealed
+         *     in the same hash chain as everything the agents did.
+         */
+        post: operations["review_hypothesis_api_v1_campaigns__eid__hypotheses__hid__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{eid}/provenance": {
         parameters: {
             query?: never;
@@ -128,6 +169,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/evals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Evals */
+        get: operations["evals_api_v1_evals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/halt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Halt */
+        get: operations["get_halt_api_v1_halt_get"];
+        put?: never;
+        /**
+         * Set Halt
+         * @description Engage or clear the halt. Clearing is a deliberate human act and is
+         *     attributed to the authenticated person, like every other decision.
+         */
+        post: operations["set_halt_api_v1_halt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Inbox */
+        get: operations["list_inbox_api_v1_inbox_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/{item_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide
+         * @description Approve or decline a paused lab submission. The decider is the
+         *     authenticated person, never a field in the body.
+         */
+        post: operations["decide_api_v1_inbox__item_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/programs": {
         parameters: {
             query?: never;
@@ -138,7 +256,8 @@ export interface paths {
         /** List Programs */
         get: operations["list_programs_api_v1_programs_get"];
         put?: never;
-        post?: never;
+        /** Create Program */
+        post: operations["create_program_api_v1_programs_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -156,6 +275,27 @@ export interface paths {
         get: operations["get_program_api_v1_programs__slug__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/programs/{slug}/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Launch Campaign
+         * @description Start a campaign against the program's gate. Default autonomy is
+         *     `gate`: every lab submission waits for a human approval.
+         */
+        post: operations["launch_campaign_api_v1_programs__slug__campaigns_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -215,6 +355,11 @@ export interface components {
         };
         /** ActivityItem */
         ActivityItem: {
+            /**
+             * Actor
+             * @description who did it (agent / service / person)
+             */
+            actor?: string | null;
             /** Candidate */
             candidate?: string | null;
             /** Kind */
@@ -223,6 +368,26 @@ export interface components {
             text: string;
             /** Ts */
             ts?: number | null;
+        };
+        /** AgentSummary */
+        AgentSummary: {
+            /** Events */
+            events: number;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Last Text
+             * @default
+             */
+            last_text: string;
+            /** Last Ts */
+            last_ts?: number | null;
+            /** Model Version */
+            model_version?: string | null;
+            /** Role */
+            role: string;
         };
         /** AnchorStatus */
         AnchorStatus: {
@@ -235,6 +400,20 @@ export interface components {
             published?: boolean | null;
             /** Records */
             records: number;
+        };
+        /** ApprovalRef */
+        ApprovalRef: {
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Ts */
+            ts?: number | null;
         };
         /**
          * Attention
@@ -282,11 +461,6 @@ export interface components {
              */
             profile: string;
         };
-        /** Body_wizard_upload_api_wizard_sessions__sid__upload_post */
-        Body_wizard_upload_api_wizard_sessions__sid__upload_post: {
-            /** File */
-            file: string;
-        };
         /** Budget */
         Budget: {
             /** Runs Max */
@@ -294,10 +468,41 @@ export interface components {
             /** Runs Used */
             runs_used: number;
         };
+        /** CampaignCreate */
+        CampaignCreate: {
+            /**
+             * Autonomy
+             * @default gate
+             * @enum {string}
+             */
+            autonomy: "observe" | "gate" | "act";
+            /**
+             * Candidates
+             * @default []
+             */
+            candidates: string[];
+            /**
+             * K
+             * @default 2
+             */
+            k: number;
+            /** Objective */
+            objective?: string | null;
+            /**
+             * Rounds
+             * @default 2
+             */
+            rounds: number;
+        };
         /** CampaignDetail */
         CampaignDetail: {
             /** Autonomy */
             autonomy?: string | null;
+            /**
+             * Awaiting Approvals
+             * @default []
+             */
+            awaiting_approvals: components["schemas"]["ApprovalRef"][];
             /** Branch */
             branch?: string | null;
             budget: components["schemas"]["Budget"];
@@ -448,6 +653,16 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /** DecisionIn */
+        DecisionIn: {
+            /** Approve */
+            approve: boolean;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
         /**
          * DispositionAction
          * @description What a human did with a computed call. Acknowledgement is NOT
@@ -554,6 +769,30 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HaltIn */
+        HaltIn: {
+            /** Halted */
+            halted: boolean;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
+        /** HaltState */
+        HaltState: {
+            /** Halted */
+            halted: boolean;
+            /**
+             * History
+             * @default []
+             */
+            history: {
+                [key: string]: unknown;
+            }[];
+            /** Reason */
+            reason?: string | null;
+        };
         /** HypothesisDetail */
         HypothesisDetail: {
             /** Candidate */
@@ -599,6 +838,7 @@ export interface components {
             rationale?: string | null;
             /** Refutation Condition */
             refutation_condition?: string | null;
+            review?: components["schemas"]["Review"] | null;
             /** Round */
             round?: number | null;
             /**
@@ -630,6 +870,7 @@ export interface components {
             head: string;
             /** Id */
             id: string;
+            review?: components["schemas"]["Review"] | null;
             /** Round */
             round?: number | null;
             /**
@@ -651,6 +892,68 @@ export interface components {
             statement: string;
             verdict?: components["schemas"]["Verdict"] | null;
         };
+        /** InboxItem */
+        InboxItem: {
+            /** Campaign Id */
+            campaign_id?: string | null;
+            /** Campaign Title */
+            campaign_title?: string | null;
+            /** Candidate */
+            candidate?: string | null;
+            /** Decided By */
+            decided_by?: string | null;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Hypothesis Id */
+            hypothesis_id?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "approval" | "review";
+            /**
+             * Status
+             * @default pending
+             */
+            status: string;
+            /** Title */
+            title: string;
+            /** Ts */
+            ts?: number | null;
+        };
+        /**
+         * NextStep
+         * @description A rule-based recommendation — deterministic, always available, no model needed.
+         */
+        NextStep: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "inbox" | "launch" | "new_program";
+            /**
+             * Candidates
+             * @default []
+             */
+            candidates: string[];
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "inbox" | "follow_up" | "start" | "expand" | "milestone";
+            /** Title */
+            title: string;
+        };
         /** Pick */
         Pick: {
             /** Candidate */
@@ -666,6 +969,42 @@ export interface components {
             score?: number | null;
             /** Sd */
             sd?: number | null;
+        };
+        /** ProgramCreate */
+        ProgramCreate: {
+            /**
+             * Direction
+             * @default min
+             * @enum {string}
+             */
+            direction: "min" | "max";
+            /**
+             * Gate Value
+             * @default 20
+             */
+            gate_value: number;
+            /**
+             * Metric
+             * @default ic50_um
+             */
+            metric: string;
+            /**
+             * Modality
+             * @default small molecule
+             */
+            modality: string;
+            /** Name */
+            name: string;
+            /**
+             * Objective
+             * @default
+             */
+            objective: string;
+            /**
+             * Unit
+             * @default µM
+             */
+            unit: string;
         };
         /** ProgramDetail */
         ProgramDetail: {
@@ -684,6 +1023,11 @@ export interface components {
             mode?: string | null;
             /** Name */
             name: string;
+            /**
+             * Next Steps
+             * @default []
+             */
+            next_steps: components["schemas"]["NextStep"][];
             /** Objective */
             objective?: string | null;
             /**
@@ -697,68 +1041,6 @@ export interface components {
             slug: string;
             /** Updated At */
             updated_at?: number | null;
-        };
-        /** ProgramIn */
-        ProgramIn: {
-            /**
-             * Autonomy
-             * @default act
-             */
-            autonomy: string;
-            /**
-             * Candidates
-             * @default
-             */
-            candidates: string;
-            /**
-             * Direction
-             * @default min
-             */
-            direction: string;
-            /**
-             * Gate Value
-             * @default 20
-             */
-            gate_value: number;
-            /**
-             * K
-             * @default 2
-             */
-            k: number;
-            /**
-             * Metric
-             * @default ic50
-             */
-            metric: string;
-            /**
-             * Modality
-             * @default
-             */
-            modality: string;
-            /**
-             * Mode
-             * @default autonomous
-             */
-            mode: string;
-            /**
-             * Objective
-             * @default
-             */
-            objective: string;
-            /** Program */
-            program: string;
-            /**
-             * Rounds
-             * @default 2
-             */
-            rounds: number;
-            /**
-             * Unit
-             * @default
-             */
-            unit: string;
-        } & {
-            [key: string]: unknown;
         };
         /** ProgramRef */
         ProgramRef: {
@@ -807,8 +1089,21 @@ export interface components {
         };
         /** ProvenanceRecord */
         ProvenanceRecord: {
+            /** Actor */
+            actor?: string | null;
+            /** Actor Kind */
+            actor_kind?: string | null;
+            /**
+             * Detail
+             * @description the recorded decision, verbatim
+             */
+            detail?: {
+                [key: string]: unknown;
+            } | null;
             /** Event */
             event: string;
+            /** Model Version */
+            model_version?: string | null;
             /** Summary */
             summary: string;
             /** Ts */
@@ -826,6 +1121,26 @@ export interface components {
             candidate: string;
             /** Reason */
             reason: string;
+        };
+        /**
+         * Review
+         * @description A scientist's recorded decision on a hypothesis (sealed in provenance).
+         */
+        Review: {
+            /** By */
+            by: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "follow_up" | "accept" | "drop";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** Ts */
+            ts?: number | null;
         };
         /** ReviewBody */
         ReviewBody: {
@@ -856,6 +1171,19 @@ export interface components {
             kind: string;
             /** Severity */
             severity: string;
+        };
+        /** ReviewIn */
+        ReviewIn: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "follow_up" | "accept" | "drop";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** Reviewer */
         Reviewer: {
@@ -1084,6 +1412,37 @@ export interface operations {
             };
         };
     };
+    get_agents_api_v1_campaigns__eid__agents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     archive_campaign_api_v1_campaigns__eid__archive_post: {
         parameters: {
             query?: never;
@@ -1179,10 +1538,48 @@ export interface operations {
             };
         };
     };
+    review_hypothesis_api_v1_campaigns__eid__hypotheses__hid__review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eid: string;
+                hid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Review"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_provenance_api_v1_campaigns__eid__provenance_get: {
         parameters: {
             query?: {
                 limit?: number;
+                /** @description only this agent / person */
+                actor?: string | null;
             };
             header?: never;
             path: {
@@ -1199,6 +1596,147 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProvenanceView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    evals_api_v1_evals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_halt_api_v1_halt_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HaltState"];
+                };
+            };
+        };
+    };
+    set_halt_api_v1_halt_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HaltIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HaltState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_inbox_api_v1_inbox_get: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_api_v1_inbox__item_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxItem"];
                 };
             };
             /** @description Validation Error */
@@ -1232,6 +1770,39 @@ export interface operations {
             };
         };
     };
+    create_program_api_v1_programs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_program_api_v1_programs__slug__get: {
         parameters: {
             query?: never;
@@ -1250,6 +1821,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProgramDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    launch_campaign_api_v1_programs__slug__campaigns_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignSummary"];
                 };
             };
             /** @description Validation Error */

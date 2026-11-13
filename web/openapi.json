@@ -29,6 +29,18 @@
    },
    "ActivityItem": {
     "properties": {
+     "actor": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "who did it (agent / service / person)",
+      "title": "Actor"
+     },
      "candidate": {
       "anyOf": [
        {
@@ -67,6 +79,61 @@
     "title": "ActivityItem",
     "type": "object"
    },
+   "AgentSummary": {
+    "properties": {
+     "events": {
+      "title": "Events",
+      "type": "integer"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "last_text": {
+      "default": "",
+      "title": "Last Text",
+      "type": "string"
+     },
+     "last_ts": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Ts"
+     },
+     "model_version": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model Version"
+     },
+     "role": {
+      "title": "Role",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "kind",
+     "role",
+     "events"
+    ],
+    "title": "AgentSummary",
+    "type": "object"
+   },
    "AnchorStatus": {
     "properties": {
      "age_s": {
@@ -101,6 +168,40 @@
      "records"
     ],
     "title": "AnchorStatus",
+    "type": "object"
+   },
+   "ApprovalRef": {
+    "properties": {
+     "detail": {
+      "default": "",
+      "title": "Detail",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     },
+     "ts": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ts"
+     }
+    },
+    "required": [
+     "id",
+     "title"
+    ],
+    "title": "ApprovalRef",
     "type": "object"
    },
    "Attention": {
@@ -226,20 +327,6 @@
     "title": "Body_create_analysis_api_analyses_post",
     "type": "object"
    },
-   "Body_wizard_upload_api_wizard_sessions__sid__upload_post": {
-    "properties": {
-     "file": {
-      "contentMediaType": "application/octet-stream",
-      "title": "File",
-      "type": "string"
-     }
-    },
-    "required": [
-     "file"
-    ],
-    "title": "Body_wizard_upload_api_wizard_sessions__sid__upload_post",
-    "type": "object"
-   },
    "Budget": {
     "properties": {
      "runs_max": {
@@ -264,6 +351,55 @@
     "title": "Budget",
     "type": "object"
    },
+   "CampaignCreate": {
+    "properties": {
+     "autonomy": {
+      "default": "gate",
+      "enum": [
+       "observe",
+       "gate",
+       "act"
+      ],
+      "title": "Autonomy",
+      "type": "string"
+     },
+     "candidates": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Candidates",
+      "type": "array"
+     },
+     "k": {
+      "default": 2,
+      "maximum": 12.0,
+      "minimum": 1.0,
+      "title": "K",
+      "type": "integer"
+     },
+     "objective": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Objective"
+     },
+     "rounds": {
+      "default": 2,
+      "maximum": 8.0,
+      "minimum": 1.0,
+      "title": "Rounds",
+      "type": "integer"
+     }
+    },
+    "title": "CampaignCreate",
+    "type": "object"
+   },
    "CampaignDetail": {
     "properties": {
      "autonomy": {
@@ -276,6 +412,14 @@
        }
       ],
       "title": "Autonomy"
+     },
+     "awaiting_approvals": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ApprovalRef"
+      },
+      "title": "Awaiting Approvals",
+      "type": "array"
      },
      "branch": {
       "anyOf": [
@@ -753,6 +897,24 @@
     "title": "CurveSet",
     "type": "object"
    },
+   "DecisionIn": {
+    "properties": {
+     "approve": {
+      "title": "Approve",
+      "type": "boolean"
+     },
+     "note": {
+      "default": "",
+      "title": "Note",
+      "type": "string"
+     }
+    },
+    "required": [
+     "approve"
+    ],
+    "title": "DecisionIn",
+    "type": "object"
+   },
    "DispositionAction": {
     "description": "What a human did with a computed call. Acknowledgement is NOT\northogonal experimental confirmation \u2014 'confirmed' stays reserved for\nthe campaign confirmation-agreement semantics.",
     "enum": [
@@ -960,6 +1122,57 @@
     "title": "HTTPValidationError",
     "type": "object"
    },
+   "HaltIn": {
+    "properties": {
+     "halted": {
+      "title": "Halted",
+      "type": "boolean"
+     },
+     "reason": {
+      "default": "",
+      "title": "Reason",
+      "type": "string"
+     }
+    },
+    "required": [
+     "halted"
+    ],
+    "title": "HaltIn",
+    "type": "object"
+   },
+   "HaltState": {
+    "properties": {
+     "halted": {
+      "title": "Halted",
+      "type": "boolean"
+     },
+     "history": {
+      "default": [],
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "History",
+      "type": "array"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     }
+    },
+    "required": [
+     "halted"
+    ],
+    "title": "HaltState",
+    "type": "object"
+   },
    "HypothesisDetail": {
     "properties": {
      "candidate": {
@@ -1110,6 +1323,16 @@
       ],
       "title": "Refutation Condition"
      },
+     "review": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Review"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "round": {
       "anyOf": [
        {
@@ -1203,6 +1426,16 @@
       "title": "Id",
       "type": "string"
      },
+     "review": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Review"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "round": {
       "anyOf": [
        {
@@ -1264,6 +1497,158 @@
     "title": "HypothesisSummary",
     "type": "object"
    },
+   "InboxItem": {
+    "properties": {
+     "campaign_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Id"
+     },
+     "campaign_title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Title"
+     },
+     "candidate": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Candidate"
+     },
+     "decided_by": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Decided By"
+     },
+     "detail": {
+      "default": "",
+      "title": "Detail",
+      "type": "string"
+     },
+     "hypothesis_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hypothesis Id"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "approval",
+       "review"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "status": {
+      "default": "pending",
+      "title": "Status",
+      "type": "string"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     },
+     "ts": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ts"
+     }
+    },
+    "required": [
+     "id",
+     "kind",
+     "title"
+    ],
+    "title": "InboxItem",
+    "type": "object"
+   },
+   "NextStep": {
+    "description": "A rule-based recommendation \u2014 deterministic, always available, no model needed.",
+    "properties": {
+     "action": {
+      "enum": [
+       "inbox",
+       "launch",
+       "new_program"
+      ],
+      "title": "Action",
+      "type": "string"
+     },
+     "candidates": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Candidates",
+      "type": "array"
+     },
+     "detail": {
+      "default": "",
+      "title": "Detail",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "inbox",
+       "follow_up",
+       "start",
+       "expand",
+       "milestone"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kind",
+     "title",
+     "action"
+    ],
+    "title": "NextStep",
+    "type": "object"
+   },
    "Pick": {
     "properties": {
      "candidate": {
@@ -1316,6 +1701,53 @@
     "title": "Pick",
     "type": "object"
    },
+   "ProgramCreate": {
+    "properties": {
+     "direction": {
+      "default": "min",
+      "enum": [
+       "min",
+       "max"
+      ],
+      "title": "Direction",
+      "type": "string"
+     },
+     "gate_value": {
+      "default": 20.0,
+      "title": "Gate Value",
+      "type": "number"
+     },
+     "metric": {
+      "default": "ic50_um",
+      "title": "Metric",
+      "type": "string"
+     },
+     "modality": {
+      "default": "small molecule",
+      "title": "Modality",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "objective": {
+      "default": "",
+      "title": "Objective",
+      "type": "string"
+     },
+     "unit": {
+      "default": "\u00b5M",
+      "title": "Unit",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "title": "ProgramCreate",
+    "type": "object"
+   },
    "ProgramDetail": {
     "properties": {
      "campaign_list": {
@@ -1361,6 +1793,14 @@
      "name": {
       "title": "Name",
       "type": "string"
+     },
+     "next_steps": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/NextStep"
+      },
+      "title": "Next Steps",
+      "type": "array"
      },
      "objective": {
       "anyOf": [
@@ -1410,75 +1850,6 @@
      "running"
     ],
     "title": "ProgramDetail",
-    "type": "object"
-   },
-   "ProgramIn": {
-    "additionalProperties": true,
-    "properties": {
-     "autonomy": {
-      "default": "act",
-      "title": "Autonomy",
-      "type": "string"
-     },
-     "candidates": {
-      "default": "",
-      "title": "Candidates",
-      "type": "string"
-     },
-     "direction": {
-      "default": "min",
-      "title": "Direction",
-      "type": "string"
-     },
-     "gate_value": {
-      "default": 20.0,
-      "title": "Gate Value",
-      "type": "number"
-     },
-     "k": {
-      "default": 2,
-      "title": "K",
-      "type": "integer"
-     },
-     "metric": {
-      "default": "ic50",
-      "title": "Metric",
-      "type": "string"
-     },
-     "modality": {
-      "default": "",
-      "title": "Modality",
-      "type": "string"
-     },
-     "mode": {
-      "default": "autonomous",
-      "title": "Mode",
-      "type": "string"
-     },
-     "objective": {
-      "default": "",
-      "title": "Objective",
-      "type": "string"
-     },
-     "program": {
-      "title": "Program",
-      "type": "string"
-     },
-     "rounds": {
-      "default": 2,
-      "title": "Rounds",
-      "type": "integer"
-     },
-     "unit": {
-      "default": "",
-      "title": "Unit",
-      "type": "string"
-     }
-    },
-    "required": [
-     "program"
-    ],
-    "title": "ProgramIn",
     "type": "object"
    },
    "ProgramRef": {
@@ -1641,9 +2012,55 @@
    },
    "ProvenanceRecord": {
     "properties": {
+     "actor": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Actor"
+     },
+     "actor_kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Actor Kind"
+     },
+     "detail": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "the recorded decision, verbatim",
+      "title": "Detail"
+     },
      "event": {
       "title": "Event",
       "type": "string"
+     },
+     "model_version": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model Version"
      },
      "summary": {
       "title": "Summary",
@@ -1706,6 +2123,46 @@
     "title": "Refusal",
     "type": "object"
    },
+   "Review": {
+    "description": "A scientist's recorded decision on a hypothesis (sealed in provenance).",
+    "properties": {
+     "by": {
+      "title": "By",
+      "type": "string"
+     },
+     "decision": {
+      "enum": [
+       "follow_up",
+       "accept",
+       "drop"
+      ],
+      "title": "Decision",
+      "type": "string"
+     },
+     "note": {
+      "default": "",
+      "title": "Note",
+      "type": "string"
+     },
+     "ts": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ts"
+     }
+    },
+    "required": [
+     "decision",
+     "by"
+    ],
+    "title": "Review",
+    "type": "object"
+   },
    "ReviewBody": {
     "properties": {
      "action": {
@@ -1765,6 +2222,29 @@
      "detail"
     ],
     "title": "ReviewFinding",
+    "type": "object"
+   },
+   "ReviewIn": {
+    "properties": {
+     "decision": {
+      "enum": [
+       "follow_up",
+       "accept",
+       "drop"
+      ],
+      "title": "Decision",
+      "type": "string"
+     },
+     "note": {
+      "default": "",
+      "title": "Note",
+      "type": "string"
+     }
+    },
+    "required": [
+     "decision"
+    ],
+    "title": "ReviewIn",
     "type": "object"
    },
    "Reviewer": {
@@ -2112,7 +2592,7 @@
  },
  "info": {
   "title": "BioNexus API",
-  "version": "0.1.0"
+  "version": "1.0.0"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -2295,6 +2775,53 @@
     ]
    }
   },
+  "/api/v1/campaigns/{eid}/agents": {
+   "get": {
+    "description": "Who acted in this campaign \u2014 each agent/service/person with what it did.",
+    "operationId": "get_agents_api_v1_campaigns__eid__agents_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "eid",
+      "required": true,
+      "schema": {
+       "title": "Eid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/AgentSummary"
+         },
+         "title": "Response Get Agents Api V1 Campaigns  Eid  Agents Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Agents",
+    "tags": [
+     "campaigns"
+    ]
+   }
+  },
   "/api/v1/campaigns/{eid}/archive": {
    "post": {
     "operationId": "archive_campaign_api_v1_campaigns__eid__archive_post",
@@ -2440,6 +2967,68 @@
     ]
    }
   },
+  "/api/v1/campaigns/{eid}/hypotheses/{hid}/review": {
+   "post": {
+    "description": "Record the scientist's decision on a hypothesis. Append-only and sealed\nin the same hash chain as everything the agents did.",
+    "operationId": "review_hypothesis_api_v1_campaigns__eid__hypotheses__hid__review_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "eid",
+      "required": true,
+      "schema": {
+       "title": "Eid",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "hid",
+      "required": true,
+      "schema": {
+       "title": "Hid",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ReviewIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Review"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Review Hypothesis",
+    "tags": [
+     "campaigns"
+    ]
+   }
+  },
   "/api/v1/campaigns/{eid}/provenance": {
    "get": {
     "operationId": "get_provenance_api_v1_campaigns__eid__provenance_get",
@@ -2463,6 +3052,24 @@
        "minimum": 1,
        "title": "Limit",
        "type": "integer"
+      }
+     },
+     {
+      "description": "only this agent / person",
+      "in": "query",
+      "name": "actor",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "only this agent / person",
+       "title": "Actor"
       }
      }
     ],
@@ -2494,6 +3101,191 @@
     ]
    }
   },
+  "/api/v1/evals": {
+   "get": {
+    "operationId": "evals_api_v1_evals_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Evals Api V1 Evals Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Evals",
+    "tags": [
+     "evals"
+    ]
+   }
+  },
+  "/api/v1/halt": {
+   "get": {
+    "operationId": "get_halt_api_v1_halt_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HaltState"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Halt",
+    "tags": [
+     "governance"
+    ]
+   },
+   "post": {
+    "description": "Engage or clear the halt. Clearing is a deliberate human act and is\nattributed to the authenticated person, like every other decision.",
+    "operationId": "set_halt_api_v1_halt_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/HaltIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HaltState"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Set Halt",
+    "tags": [
+     "governance"
+    ]
+   }
+  },
+  "/api/v1/inbox": {
+   "get": {
+    "operationId": "list_inbox_api_v1_inbox_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "status",
+      "required": false,
+      "schema": {
+       "default": "pending",
+       "pattern": "^(pending|all)$",
+       "title": "Status",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/InboxItem"
+         },
+         "title": "Response List Inbox Api V1 Inbox Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "List Inbox",
+    "tags": [
+     "inbox"
+    ]
+   }
+  },
+  "/api/v1/inbox/{item_id}/decision": {
+   "post": {
+    "description": "Approve or decline a paused lab submission. The decider is the\nauthenticated person, never a field in the body.",
+    "operationId": "decide_api_v1_inbox__item_id__decision_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "item_id",
+      "required": true,
+      "schema": {
+       "title": "Item Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DecisionIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InboxItem"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Decide",
+    "tags": [
+     "inbox"
+    ]
+   }
+  },
   "/api/v1/programs": {
    "get": {
     "operationId": "list_programs_api_v1_programs_get",
@@ -2514,6 +3306,45 @@
      }
     },
     "summary": "List Programs",
+    "tags": [
+     "programs"
+    ]
+   },
+   "post": {
+    "operationId": "create_program_api_v1_programs_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ProgramCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProgramSummary"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create Program",
     "tags": [
      "programs"
     ]
@@ -2556,6 +3387,59 @@
      }
     },
     "summary": "Get Program",
+    "tags": [
+     "programs"
+    ]
+   }
+  },
+  "/api/v1/programs/{slug}/campaigns": {
+   "post": {
+    "description": "Start a campaign against the program's gate. Default autonomy is\n`gate`: every lab submission waits for a human approval.",
+    "operationId": "launch_campaign_api_v1_programs__slug__campaigns_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "slug",
+      "required": true,
+      "schema": {
+       "title": "Slug",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CampaignCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignSummary"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Launch Campaign",
     "tags": [
      "programs"
     ]

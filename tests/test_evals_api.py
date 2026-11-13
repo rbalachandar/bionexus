@@ -55,7 +55,7 @@ def test_api_evals_endpoint():
     from bionexus.api.app import app
 
     with TestClient(app) as c:
-        r = c.get("/api/evals")
+        r = c.get("/api/v1/evals")
         assert r.status_code == 200
         body = r.json()
         assert body["available"] is True

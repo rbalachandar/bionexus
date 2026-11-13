@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Inbox, Layers, Plus, TriangleAlert } from 'lucide-react'
 import { useToday } from '../../api/hooks'
@@ -7,11 +8,13 @@ import { Tag } from '../../ui/Chip'
 import { StatusTag, when } from '../../routes/Campaigns'
 import { MiniOutcome, OutcomeCounts } from '../campaign/MiniOutcome'
 import { goalLine } from '../program/goal'
+import { NewProgramDialog } from '../launch/NewProgramDialog'
 
 const TONE = { ok: 'text-ok', warn: 'text-warn', neutral: 'text-muted' }
 
 export default function TodayPage() {
   const { data, isLoading, error } = useToday()
+  const [np, setNp] = useState(false)
   if (isLoading) return <div className="mx-auto max-w-6xl space-y-4 p-6"><Skeleton className="h-8 w-40" /><Skeleton className="h-28" /><Skeleton className="h-48" /></div>
   if (error || !data) return <div className="mx-auto max-w-3xl p-10"><EmptyState title="Could not load" hint={(error as Error | null)?.message} /></div>
   const { attention: a, programs, standalone } = data
@@ -19,6 +22,7 @@ export default function TodayPage() {
 
   return (
     <div className="mx-auto max-w-6xl p-6">
+      <NewProgramDialog open={np} onOpenChange={setNp} />
       <div className="mb-4 flex items-baseline gap-3">
         <h1 className="text-xl font-semibold tracking-tight">Today</h1>
         <span className="text-sm text-muted">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
@@ -37,9 +41,9 @@ export default function TodayPage() {
               </Link></li>
             )}
             {a.abstentions.map((n) => (
-              <li key={n.campaign_id}><Link to={`/campaigns/${n.campaign_id}`} className="flex items-start gap-3 px-4 py-3 text-sm hover:bg-sunken">
+              <li key={n.campaign_id}><Link to="/inbox" className="flex items-start gap-3 px-4 py-3 text-sm hover:bg-sunken">
                 <TriangleAlert size={16} className="mt-0.5 shrink-0 text-abstain" />
-                <span><b>{n.candidates.join(', ')}</b> abstained in “{n.campaign_title}” — the data can’t say which side of the gate they’re on. More replicates near the gate would resolve it.</span>
+                <span><b>{n.candidates.join(', ')}</b> abstained in “{n.campaign_title}” — the data can’t say which side of the gate they’re on. Decide: follow up, accept, or drop.</span>
               </Link></li>
             ))}
           </ul>
@@ -48,7 +52,7 @@ export default function TodayPage() {
 
       <div className="mb-3 flex items-center">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Programs</h2>
-        <Button asChild size="sm" variant="secondary" className="ml-auto"><Link to="/programs/new"><Plus size={14} /> New program</Link></Button>
+        <Button size="sm" variant="secondary" className="ml-auto" onClick={() => setNp(true)}><Plus size={14} /> New program</Button>
       </div>
       {!programs.length ? (
         <Card><EmptyState icon={<Layers size={28} />} title="No programs yet"

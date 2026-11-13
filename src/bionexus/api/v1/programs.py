@@ -12,8 +12,9 @@ from fastapi import APIRouter, HTTPException
 
 from bionexus import program as program_cfg
 from bionexus.api.v1 import schemas as S
-from bionexus.api.v1.campaigns import (_funnel, _load, _status, _summary_of,
-                                       _ws)
+from bionexus.api.launch import spawn_campaign
+from bionexus.api.v1.campaigns import (_funnel, _load, _reviews, _status,
+                                       _summary_of, _ws)
 from bionexus.views.ids import row_status
 
 router = APIRouter(tags=["programs"])
@@ -46,7 +47,8 @@ def _gate(doc: dict) -> S.Gate:
 def _digest(eid: str):
     """(CampaignDigest, [hypotheses]) for one campaign — no chain verify."""
     ws, row, detail, branch, recs = _load(eid)
-    hyps = [_summary_of(c) for c in detail.get("cards") or []]
+    reviews = _reviews(recs)
+    hyps = [_summary_of(c, None, reviews) for c in detail.get("cards") or []]
     status = _status(detail.get("status") or row_status(row), recs)
     return S.CampaignDigest(
         id=eid, title=detail.get("objective") or row.get("question") or eid,
@@ -68,11 +70,55 @@ def _best(hyps, direction: str, cid: str, title: str) -> S.BestResult | None:
                         observed=pick.verdict.observed, ci=pick.verdict.ci)
 
 
+def _next_steps(p, digests, goal: S.Goal, gate: S.Gate,
+                unresolved: list[str]) -> list[S.NextStep]:
+    """What a sensible scientist would do next — from the evidence alone."""
+    from bionexus.api.v1.campaigns import pending_approvals
+    steps: list[S.NextStep] = []
+    waiting = 0
+    for link in program_cfg.links_for(p["slug"]):
+        try:
+            _, _, detail, _, _ = _load(link["eid"])
+        except HTTPException:
+            continue
+        waiting += len(pending_approvals(
+            (detail.get("agent") or {}).get("problem_id")))
+    if waiting:
+        steps.append(S.NextStep(
+            kind="inbox", action="inbox",
+            title=f"{waiting} lab submission{'s are' if waiting > 1 else ' is'} waiting for you",
+            detail="A campaign is paused at the gate until you approve or decline."))
+    if unresolved:
+        steps.append(S.NextStep(
+            kind="follow_up", action="launch", candidates=unresolved,
+            title=f"Resolve {len(unresolved)} inconclusive candidate{'s' if len(unresolved) > 1 else ''}",
+            detail=f"{', '.join(unresolved)}: the interval straddles the gate. "
+                   "A follow-up with more replicates near the gate would settle it."))
+    running = sum(d.status in _RUNNING for d in digests)
+    if not digests:
+        steps.append(S.NextStep(kind="start", action="launch",
+                                title="Start the first campaign",
+                                detail=f"Test candidates against {gate.label or 'the gate'}."))
+    elif goal.met and goal.best:
+        steps.append(S.NextStep(
+            kind="milestone", action="new_program",
+            title=f"Goal met by {goal.best.candidate}",
+            detail="Next: confirm it in an orthogonal assay, or open a follow-on program "
+                   "with a tighter gate (for example a lead-stage potency bar)."))
+    elif not running and goal.judged:
+        steps.append(S.NextStep(
+            kind="expand", action="launch",
+            title="No candidate meets the gate yet",
+            detail=f"{goal.refuted} of {goal.judged} judged candidates were refuted. "
+                   "Propose new candidates or a different scaffold."))
+    return steps
+
+
 def _program(p: dict, with_detail: bool):
     doc = p.get("program") or {}
     gate = _gate(doc)
     direction = gate.direction or "min"
-    digests, results, all_best = [], [], []
+    digests, results, all_best, unresolved = [], [], [], []
     for link in program_cfg.links_for(p["slug"]):
         if link["role"] != "leaf":
             continue                      # campaign roots are containers
@@ -85,6 +131,9 @@ def _program(p: dict, with_detail: bool):
         if dg.best:
             all_best.append(dg.best)
         for h in hyps:
+            if h.state == "abstained" and (h.review is None
+                                           or h.review.decision == "follow_up"):
+                unresolved.append(h.head)
             if h.verdict and h.verdict.observed is not None:
                 results.append(S.ProgramResult(
                     hypothesis_id=h.id, campaign_id=dg.id, campaign_title=dg.title,
@@ -109,7 +158,9 @@ def _program(p: dict, with_detail: bool):
     if not with_detail:
         return S.ProgramSummary(**base)
     digests.sort(key=lambda d: -(d.updated_at or 0))
-    return S.ProgramDetail(**base, campaign_list=digests, results=results)
+    return S.ProgramDetail(
+        **base, campaign_list=digests, results=results,
+        next_steps=_next_steps(p, digests, goal, gate, unresolved))
 
 
 @router.get("/programs", response_model=list[S.ProgramSummary])
@@ -127,6 +178,60 @@ def get_program(slug: str) -> S.ProgramDetail:
     return _program(p, True)
 
 
+def collect():
+    """[(CampaignDigest, [HypothesisSummary])] for every live campaign."""
+    out = []
+    for row in _ws().ongoing() + _ws().finished(500):
+        if (row.get("payload") or {}).get("archived"):
+            continue
+        try:
+            out.append(_digest(row["id"]))
+        except HTTPException:
+            continue
+    return out
+
+
+@router.post("/programs", response_model=S.ProgramSummary, status_code=201)
+def create_program(body: S.ProgramCreate) -> S.ProgramSummary:
+    slug = program_cfg._slug(body.name)
+    if any(p["slug"] == slug for p in program_cfg.list_programs()):
+        raise HTTPException(409, S.Problem(
+            type="program-exists", title="A program with this name exists",
+            detail=slug).model_dump())
+    program_cfg.save_program_record(
+        {"program": body.name, "custom": True, "objective": body.objective,
+         "modality": body.modality, "metric": body.metric,
+         "direction": body.direction, "gate_value": body.gate_value,
+         "unit": body.unit, "mode": "autonomous"}, slug)
+    p = next(x for x in program_cfg.list_programs() if x["slug"] == slug)
+    return _program(p, False)
+
+
+@router.post("/programs/{slug}/campaigns", response_model=S.CampaignSummary,
+             status_code=201)
+def launch_campaign(slug: str, body: S.CampaignCreate) -> S.CampaignSummary:
+    """Start a campaign against the program's gate. Default autonomy is
+    `gate`: every lab submission waits for a human approval."""
+    p = next((x for x in program_cfg.list_programs() if x["slug"] == slug), None)
+    if p is None:
+        raise HTTPException(404, S.Problem(
+            type="program-not-found", title="Program not found",
+            detail=slug).model_dump())
+    doc = {**(p.get("program") or {}), "autonomy": body.autonomy,
+           "k": body.k, "rounds": body.rounds,
+           "candidates": ",".join(c.strip() for c in body.candidates if c.strip())}
+    if body.objective:
+        doc["objective"] = body.objective
+    cid = spawn_campaign(doc, p["name"])
+    if cid is None:
+        raise HTTPException(500, S.Problem(
+            type="launch-failed", title="Campaign did not start").model_dump())
+    return S.CampaignSummary(
+        id=cid, title=doc.get("objective") or p["name"], status="running",
+        autonomy=body.autonomy,
+        program=S.ProgramRef(slug=slug, name=p["name"]))
+
+
 @router.get("/today", response_model=S.Today)
 def today() -> S.Today:
     """The home screen: what needs me, how each program is doing, and the
@@ -137,22 +242,14 @@ def today() -> S.Today:
     programs = [_program(p, False) for p in program_cfg.list_programs()]
     linked = {l["eid"] for p in program_cfg.list_programs()
               for l in program_cfg.links_for(p["slug"])}
-    ws = _ws()
     standalone, abstentions, running = [], [], 0
-    rows = ws.ongoing() + ws.finished(500)
-    for row in rows:
-        if (row.get("payload") or {}).get("archived"):
-            continue
-        try:
-            dg, hyps = _digest(row["id"])
-        except HTTPException:
-            continue
+    for dg, hyps in collect():
         running += dg.status in _RUNNING
-        abst = [h.head for h in hyps if h.state == "abstained"]
+        abst = [h.head for h in hyps if h.state == "abstained" and h.review is None]
         if abst:
             abstentions.append(S.AbstentionNote(
                 campaign_id=dg.id, campaign_title=dg.title, candidates=abst))
-        if row["id"] not in linked:
+        if dg.id not in linked:
             standalone.append(dg)
     standalone.sort(key=lambda d: -(d.updated_at or 0))
     return S.Today(

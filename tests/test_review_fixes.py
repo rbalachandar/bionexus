@@ -135,11 +135,11 @@ def test_api_refuses_cross_origin_writes_and_requires_token(monkeypatch):
     from fastapi.testclient import TestClient
     from bionexus.api.app import app
     c = TestClient(app)
-    r = c.post("/api/halt", headers={"Origin": "https://evil.example"})
+    r = c.post("/api/v1/halt", json={"halted": True}, headers={"Origin": "https://evil.example"})
     assert r.status_code == 403
     monkeypatch.setenv("BIONEXUS_API_TOKEN", "s3cret")
-    assert c.post("/api/halt").status_code == 401
-    ok = c.post("/api/halt", headers={"X-BioNexus-Token": "s3cret"})
+    assert c.post("/api/v1/halt", json={"halted": True}).status_code == 401
+    ok = c.post("/api/v1/halt", json={"halted": False}, headers={"X-BioNexus-Token": "s3cret"})
     assert ok.status_code != 401
     assert c.get("/api/system/health",
                  headers={"Host": "evil.example"}).status_code == 403
@@ -245,9 +245,9 @@ def test_approval_identity_comes_from_the_token_not_the_body(monkeypatch):
     box = ApprovalInbox(str(APPROVALS_FILE))
     aid = box.request("assay C1")
     c = TestClient(app)
-    assert c.post(f"/api/approvals/{aid}/decide", json={"approve": True}
+    assert c.post(f"/api/v1/inbox/{aid}/decision", json={"approve": True}
                   ).status_code == 401                      # no token
-    r = c.post(f"/api/approvals/{aid}/decide",
+    r = c.post(f"/api/v1/inbox/{aid}/decision",
                json={"approve": True, "by": "mallory"},
                headers={"X-BioNexus-Token": "tok-b"})
     assert r.status_code == 200

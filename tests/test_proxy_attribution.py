@@ -38,17 +38,6 @@ def test_criteria_carry_proxy_of_in_the_chain_payload():
     assert "4 rungs" in crit.evidence_line()
 
 
-def test_program_rollup_prints_evidence_distance():
-    from bionexus.views import program_verdict
-    trees = [{"root_id": "r",
-              "nodes": [{"id": "r", "parent": None, "status": "achieved",
-                         "metric": "ic50_um", "objective": "potent"}],
-              "rollup": {"r": "achieved"}}]
-    v = program_verdict(trees)
-    assert v["evidence_distance"] and "4 rungs" in v["evidence_distance"]
-    assert "clinical" in v["evidence_distance"]
-
-
 def test_card_gate_label_carries_rungs():
     from bionexus.adapters.store.sqlite import SqliteProvenanceStore
     from bionexus.core.contracts import Envelope, EventType

@@ -6,10 +6,13 @@ lives in this file.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+import re
+
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from bionexus import views
 from bionexus.api.v1 import schemas as S
+from bionexus.api.v1.deps import who
 from bionexus.views import ids as _ids
 from bionexus.views.experiment import _branch_records, _problem_id
 from bionexus.views.ids import row_status
@@ -86,6 +89,14 @@ def summarize(rec) -> tuple[str, str, str | None]:
         obs = d.get("observed")
         return ("verdict", f"{cand or '?'}: {word}"
                 + (f" — observed {obs}" if obs is not None else ""), cand)
+    if et == "gate_decision" and d.get("kind") == "human_approval":
+        verb = "approved" if d.get("approve") else "declined"
+        return ("review", f"{rec.actor.id} {verb} the lab submission “{d.get('title', '')}”", cand)
+    if et == "gate_decision" and d.get("kind") == "human_review":
+        verb = {"follow_up": "follow up", "accept": "accept as inconclusive",
+                "drop": "drop"}.get(d.get("decision"), d.get("decision"))
+        return ("review", f"{rec.actor.id} decided to {verb} {cand or '?'}"
+                + (f" — “{d['note']}”" if d.get("note") else ""), cand)
     if et == "gate_decision":
         kind = d.get("kind", "gate")
         reason = d.get("reason") or d.get("action") or ""
@@ -109,6 +120,29 @@ def _ts(rec) -> float | None:
     return getattr(getattr(rec, "envelope", None), "created_at", None)
 
 
+ROLE = {
+    "campaign": "Campaign orchestrator — proposes, selects, tests and judges",
+    "synthesis": "Make — synthesis and batch QC",
+    "bioprocess": "Make — bioprocess stability QC",
+    "reviewer": "Independent reviewer — audits every verdict",
+    "llm-reviewer": "Advisory LLM reviewer — can only add flags",
+    "safety": "Safety gate — refuses unsafe submissions",
+    "planner": "Planner — decomposes the objective into sub-problems",
+    "program": "Program registry",
+}
+
+
+def _actor(rec) -> tuple[str, str, str | None]:
+    a = rec.actor
+    return a.id, a.kind.value, a.model_version
+
+
+def _role(aid: str, kind: str) -> str:
+    if kind == "human":
+        return "Scientist — your decisions"
+    return ROLE.get(aid, aid)
+
+
 _QUIET = {"proposed", "event"}      # kept in provenance, hidden in the feed
 
 
@@ -119,7 +153,7 @@ def activity_items(recs, limit: int = 50) -> list[S.ActivityItem]:
         if kind in _QUIET:
             continue
         out.append(S.ActivityItem(ts=_ts(r), kind=kind, text=text,
-                                  candidate=cand))
+                                  candidate=cand, actor=_actor(r)[0]))
     return list(reversed(out))[:limit]
 
 
@@ -181,7 +215,23 @@ def _why_rounds(recs, detail_rounds) -> list[S.Round]:
     return out
 
 
-def _summary_of(card, gate_label: str | None = None) -> S.HypothesisSummary:
+def _reviews(recs) -> dict[str, S.Review]:
+    """Latest human decision per hypothesis id (and candidate)."""
+    out: dict[str, S.Review] = {}
+    for r in recs:
+        d = r.decision or {}
+        if d.get("kind") != "human_review" or not d.get("decision"):
+            continue
+        rv = S.Review(decision=d["decision"], note=d.get("note", ""),
+                      by=r.actor.id, ts=_ts(r))
+        for k in (d.get("hypothesis_id"), d.get("candidate")):
+            if k:
+                out[str(k)] = rv
+    return out
+
+
+def _summary_of(card, gate_label: str | None = None,
+                reviews: dict | None = None) -> S.HypothesisSummary:
     v = card.get("verdict")
     verdict = None
     if v and v.get("status"):
@@ -200,7 +250,9 @@ def _summary_of(card, gate_label: str | None = None) -> S.HypothesisSummary:
         state=_norm(card["state"]), stage=card.get("stage") or "",
         round=card.get("round"), verdict=verdict,
         gate_label=gate_label or card.get("gate_label"),
-        selected=bool(card.get("selected")))
+        selected=bool(card.get("selected")),
+        review=(reviews or {}).get(card["key"])
+        or (reviews or {}).get(str(card.get("candidate"))))
 
 
 def _funnel(hyps: list[S.HypothesisSummary]) -> S.Funnel:
@@ -234,11 +286,12 @@ def _gate(recs, cards, detail) -> S.Gate:
     for c in detail.get("constraints") or []:
         if c.get("limit") is not None:
             direction = "max" if ">=" in (c.get("description") or "") else "min"
-            sym = "≥" if direction == "max" else "≤"
-            unit = f" {c['unit']}" if c.get("unit") else ""
+            label = criteria_label(c.get("name"), direction, c["limit"])
+            if c.get("unit") and "(" not in label:
+                label += f" {c['unit']}"
             return S.Gate(metric=c.get("name"), direction=direction,
                           threshold=float(c["limit"]), unit=c.get("unit"),
-                          label=f"{c.get('name')} {sym} {c['limit']}{unit}")
+                          label=label)
     g = ((detail.get("program") or {}).get("gate")) or {}
     if g.get("value") is not None:
         return S.Gate(metric=g.get("metric"), direction=g.get("direction"),
@@ -288,6 +341,39 @@ def _status(raw: str, recs) -> str:
                     for r in recs):
         return "completed"
     return raw
+
+
+_PID = re.compile(r"\[problem/([^\]]+)\]")
+
+
+def campaign_for_problem(pid: str) -> tuple[str, str] | None:
+    """(campaign id, title) whose agent runs the problem branch `pid`."""
+    ws = _ws()
+    try:                      # a running campaign announces its branch itself
+        from bionexus.autoloop import announced_branches
+        announced = {v: k for k, v in announced_branches().items()}
+    except Exception:
+        announced = {}
+    for e in ws.ongoing() + ws.finished(500):
+        ag = (e.get("payload") or {}).get("agent") or {}
+        if ag.get("problem_id") == pid or announced.get(pid) == e["id"]:
+            return e["id"], e.get("question") or e["id"]
+    return None
+
+
+def pending_approvals(problem_id: str | None) -> list[S.ApprovalRef]:
+    """Lab submissions of THIS campaign waiting for a human (gate autonomy)."""
+    if not problem_id:
+        return []
+    from bionexus.approvals import ApprovalInbox
+    from bionexus.paths import APPROVALS_FILE
+    out = []
+    for k, v in ApprovalInbox(str(APPROVALS_FILE)).state().items():
+        m = _PID.search(v.get("title", ""))
+        if v.get("status") == "pending" and m and m.group(1) == problem_id:
+            out.append(S.ApprovalRef(id=k, title=v["title"],
+                                     detail=v.get("detail", ""), ts=v.get("ts")))
+    return out
 
 
 def _load(eid: str):
@@ -342,11 +428,14 @@ def get_campaign(eid: str) -> S.CampaignDetail:
     gate = _gate(recs, cards, detail)
     rounds = _why_rounds(recs, detail.get("rounds") or [])
     tested_cands = {c for r in rounds for c in r.candidates}
-    hyps = [_summary_of(c, gate.label) for c in cards]
+    reviews = _reviews(recs)
+    hyps = [_summary_of(c, gate.label, reviews) for c in cards]
     runs = sum(1 for r in recs if r.event_type.value == "lab_run"
                and (r.decision or {}).get("run_id"))
     progs = _program_index()
+    pid = (detail.get("agent") or {}).get("problem_id")
     return S.CampaignDetail(
+        awaiting_approvals=pending_approvals(pid),
         id=eid, title=row.get("question") or eid,
         status=_status(detail.get("status") or row_status(row), recs),
         autonomy=(detail.get("agent") or {}).get("autonomy"),
@@ -373,7 +462,8 @@ def get_hypothesis(eid: str, hid: str) -> S.HypothesisDetail:
         raise HTTPException(404, S.Problem(
             type="hypothesis-not-found", title="Hypothesis not found",
             detail=hid).model_dump())
-    base = _summary_of(card, _gate(recs, detail.get("cards") or [], detail).label)
+    base = _summary_of(card, _gate(recs, detail.get("cards") or [], detail).label,
+                       _reviews(recs))
     cand = card.get("candidate")
     mine = [r for r in recs
             if (r.decision or {}).get("hypothesis_id") == hid
@@ -392,7 +482,7 @@ def get_hypothesis(eid: str, hid: str) -> S.HypothesisDetail:
     for r in mine:
         kind, text, c = summarize(r)
         events.append(S.ActivityItem(ts=_ts(r), kind=kind, text=text,
-                                     candidate=c))
+                                     candidate=c, actor=_actor(r)[0]))
     return S.HypothesisDetail(
         **base.model_dump(), rationale=card.get("rationale"),
         predicted=card.get("predicted"), predicted_by=card.get("predicted_by"),
@@ -479,15 +569,66 @@ def get_activity(eid: str, limit: int = Query(50, ge=1, le=500)
 
 
 @router.get("/{eid}/provenance", response_model=S.ProvenanceView)
-def get_provenance(eid: str, limit: int = Query(500, ge=1, le=5000)
+def get_provenance(eid: str, limit: int = Query(500, ge=1, le=5000),
+                   actor: str | None = Query(None, description="only this agent / person")
                    ) -> S.ProvenanceView:
     _, _, _, branch, recs = _load(eid)
     items = []
-    for r in recs[-limit:]:
+    for r in recs:
+        aid, kind, model = _actor(r)
+        if actor and aid != actor:
+            continue
         _, text, _ = summarize(r)
-        items.append(S.ProvenanceRecord(ts=_ts(r), event=r.event_type.value,
-                                        summary=text))
-    return S.ProvenanceView(chain=_chain(branch, recs), records=items)
+        items.append(S.ProvenanceRecord(
+            ts=_ts(r), event=r.event_type.value, summary=text, actor=aid,
+            actor_kind=kind, model_version=model, detail=r.decision))
+    return S.ProvenanceView(chain=_chain(branch, recs), records=items[-limit:])
+
+
+@router.get("/{eid}/agents", response_model=list[S.AgentSummary])
+def get_agents(eid: str) -> list[S.AgentSummary]:
+    """Who acted in this campaign — each agent/service/person with what it did."""
+    _, _, _, _, recs = _load(eid)
+    by: dict[str, dict] = {}
+    for r in recs:
+        aid, kind, model = _actor(r)
+        e = by.setdefault(aid, {"kind": kind, "model": model, "n": 0,
+                                "ts": None, "text": ""})
+        e["n"] += 1
+        e["model"] = e["model"] or model
+        _, text, _ = summarize(r)
+        e["ts"], e["text"] = _ts(r), text
+    out = [S.AgentSummary(id=k, kind=v["kind"], role=_role(k, v["kind"]),
+                          model_version=v["model"], events=v["n"],
+                          last_ts=v["ts"], last_text=v["text"])
+           for k, v in by.items()]
+    return sorted(out, key=lambda a: -a.events)
+
+
+@router.post("/{eid}/hypotheses/{hid}/review", response_model=S.Review)
+def review_hypothesis(eid: str, hid: str, body: S.ReviewIn,
+                      request: Request) -> S.Review:
+    """Record the scientist's decision on a hypothesis. Append-only and sealed
+    in the same hash chain as everything the agents did."""
+    from bionexus.adapters.store.sqlite import get_store
+    from bionexus.core.contracts import Actor, ActorKind, Envelope, EventType
+    from bionexus.core.interfaces import record_for
+    _, _, detail, branch, recs = _load(eid)
+    card = next((c for c in detail.get("cards") or [] if c["key"] == hid), None)
+    if card is None or not branch:
+        raise HTTPException(404, S.Problem(
+            type="hypothesis-not-found", title="Hypothesis not found",
+            detail=hid).model_dump())
+    user = who(request)
+    rec = record_for(
+        Envelope(experiment_branch_id=branch), EventType.gate_decision,
+        Actor(kind=ActorKind.human, id=user),
+        decision={"kind": "human_review", "hypothesis_id": hid,
+                  "candidate": card.get("candidate"),
+                  "decision": body.decision, "note": body.note[:500]})
+    get_store(str(_ids.PROVENANCE_DB)).append(rec)
+    return S.Review(decision=body.decision, note=body.note[:500], by=user,
+                    ts=_ts(rec))
 
 
 @router.post("/{eid}/archive", response_model=S.CampaignSummary)
