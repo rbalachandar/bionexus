@@ -480,3 +480,100 @@ class Authority(BaseModel):
     sops_pending: list[Sop]
     halt: HaltState
     safety_rules: str = Field("", description="the toxicophore rule-set version the gate cites")
+
+
+# ------------------------------------------------------------------ analyze
+class AnalysisDiagnostic(BaseModel):
+    severity: Literal["info", "warning", "blocker"]
+    code: str
+    message: str
+
+
+class AnalysisPreview(BaseModel):
+    """What the system understood from the file, before any fit."""
+    format: str | None = None
+    n_wells: int = 0
+    n_controls: int = 0
+    z_prime: float | None = None
+    z_kind: str | None = None
+    samples: list[str] = []
+    has_doses: bool = False
+    evidence_origin: str = "unknown"
+    needs_confirmation: list[str] = []
+    diagnostics: list[AnalysisDiagnostic] = []
+
+
+class AnalysisCompound(BaseModel):
+    entity: str
+    call: Literal["validated", "invalidated", "inconclusive", "no_call"] | None = None
+    reason: str | None = None
+    ic50_um: float | None = None
+    ci: Interval | None = None
+    curve: Curve | None = None
+
+
+class AnalysisResult(BaseModel):
+    state: str
+    z_prime: float | None = None
+    z_kind: str | None = None
+    z_note: str | None = None
+    qc_hold: bool = False
+    refused: bool = Field(False, description="regime or normalization refusal: no numbers are claimed")
+    note: str | None = None
+    gate: Gate | None = None
+    compounds: list[AnalysisCompound] = []
+
+
+class AnalysisReviewEntry(BaseModel):
+    action: Literal["acknowledge", "comment", "override"]
+    reason: str = ""
+    target: str = ""
+    by: str
+    ts: float
+
+
+class AnalysisAttachment(BaseModel):
+    campaign_id: str
+    candidate: str | None = None
+    by: str
+    ts: float
+
+
+class AnalysisSummary(BaseModel):
+    id: str
+    filename: str | None = None
+    state: str
+    updated_at: float | None = None
+
+
+class AnalysisView(BaseModel):
+    id: str
+    filename: str | None = None
+    sha256: str | None = None
+    state: str
+    revision: int
+    preview: AnalysisPreview
+    result: AnalysisResult | None = None
+    reviews: list[AnalysisReviewEntry] = []
+    attachments: list[AnalysisAttachment] = []
+
+
+class AnalysisRun(BaseModel):
+    """What the scientist confirms before the fit. Without a threshold the run
+    is estimate-only: intervals are drawn, no verdict is claimed."""
+    threshold: float | None = Field(None, description="IC50 gate, in the data's concentration unit")
+    direction: Literal["min", "max"] = "min"
+    max_response: float | None = Field(None, description="known assay ceiling, if the top plateau is known")
+    evidence_origin: Literal["measured", "historical", "simulated", "predicted", "unknown"] | None = None
+
+
+class AnalysisReviewIn(BaseModel):
+    action: Literal["acknowledge", "comment", "override"]
+    reason: str = Field("", max_length=1000)
+    target: str = ""
+
+
+class AnalysisAttachIn(BaseModel):
+    campaign_id: str
+    candidate: str | None = None
+    note: str = Field("", max_length=500)

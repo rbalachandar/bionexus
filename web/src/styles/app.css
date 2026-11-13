@@ -1,7 +1,4 @@
-@layer legacy, theme, base, components, utilities;
-/* legacy screens' global CSS sits in the LOWEST layer so it can never override
-   the new utilities; deleted together with the legacy screens */
-@import "./tokens.css" layer(legacy);
+@layer theme, base, components, utilities;
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";

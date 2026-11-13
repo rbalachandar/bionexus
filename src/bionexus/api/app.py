@@ -70,11 +70,6 @@ def _api_tokens() -> dict[str, str]:
 from bionexus.api.v1 import router as v1_router  # noqa: E402
 app.include_router(v1_router)
 
-# generic analysis lifecycle (upload -> preview -> configure -> analyze ->
-# review), modality-neutral; being rebuilt on v1 (docs/WORKBENCH-REDESIGN.md)
-from bionexus.api.analyses import router as analyses_router  # noqa: E402
-app.include_router(analyses_router)
-
 
 @app.get("/api/system/health")
 def health() -> dict:

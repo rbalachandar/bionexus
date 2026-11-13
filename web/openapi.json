@@ -134,6 +134,586 @@
     "title": "AgentSummary",
     "type": "object"
    },
+   "AnalysisAttachIn": {
+    "properties": {
+     "campaign_id": {
+      "title": "Campaign Id",
+      "type": "string"
+     },
+     "candidate": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Candidate"
+     },
+     "note": {
+      "default": "",
+      "maxLength": 500,
+      "title": "Note",
+      "type": "string"
+     }
+    },
+    "required": [
+     "campaign_id"
+    ],
+    "title": "AnalysisAttachIn",
+    "type": "object"
+   },
+   "AnalysisAttachment": {
+    "properties": {
+     "by": {
+      "title": "By",
+      "type": "string"
+     },
+     "campaign_id": {
+      "title": "Campaign Id",
+      "type": "string"
+     },
+     "candidate": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Candidate"
+     },
+     "ts": {
+      "title": "Ts",
+      "type": "number"
+     }
+    },
+    "required": [
+     "campaign_id",
+     "by",
+     "ts"
+    ],
+    "title": "AnalysisAttachment",
+    "type": "object"
+   },
+   "AnalysisCompound": {
+    "properties": {
+     "call": {
+      "anyOf": [
+       {
+        "enum": [
+         "validated",
+         "invalidated",
+         "inconclusive",
+         "no_call"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Call"
+     },
+     "ci": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "maxItems": 2,
+        "minItems": 2,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ci"
+     },
+     "curve": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Curve"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "entity": {
+      "title": "Entity",
+      "type": "string"
+     },
+     "ic50_um": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ic50 Um"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     }
+    },
+    "required": [
+     "entity"
+    ],
+    "title": "AnalysisCompound",
+    "type": "object"
+   },
+   "AnalysisDiagnostic": {
+    "properties": {
+     "code": {
+      "title": "Code",
+      "type": "string"
+     },
+     "message": {
+      "title": "Message",
+      "type": "string"
+     },
+     "severity": {
+      "enum": [
+       "info",
+       "warning",
+       "blocker"
+      ],
+      "title": "Severity",
+      "type": "string"
+     }
+    },
+    "required": [
+     "severity",
+     "code",
+     "message"
+    ],
+    "title": "AnalysisDiagnostic",
+    "type": "object"
+   },
+   "AnalysisPreview": {
+    "description": "What the system understood from the file, before any fit.",
+    "properties": {
+     "diagnostics": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/AnalysisDiagnostic"
+      },
+      "title": "Diagnostics",
+      "type": "array"
+     },
+     "evidence_origin": {
+      "default": "unknown",
+      "title": "Evidence Origin",
+      "type": "string"
+     },
+     "format": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Format"
+     },
+     "has_doses": {
+      "default": false,
+      "title": "Has Doses",
+      "type": "boolean"
+     },
+     "n_controls": {
+      "default": 0,
+      "title": "N Controls",
+      "type": "integer"
+     },
+     "n_wells": {
+      "default": 0,
+      "title": "N Wells",
+      "type": "integer"
+     },
+     "needs_confirmation": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Needs Confirmation",
+      "type": "array"
+     },
+     "samples": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Samples",
+      "type": "array"
+     },
+     "z_kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Z Kind"
+     },
+     "z_prime": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Z Prime"
+     }
+    },
+    "title": "AnalysisPreview",
+    "type": "object"
+   },
+   "AnalysisResult": {
+    "properties": {
+     "compounds": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/AnalysisCompound"
+      },
+      "title": "Compounds",
+      "type": "array"
+     },
+     "gate": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Gate"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "qc_hold": {
+      "default": false,
+      "title": "Qc Hold",
+      "type": "boolean"
+     },
+     "refused": {
+      "default": false,
+      "description": "regime or normalization refusal: no numbers are claimed",
+      "title": "Refused",
+      "type": "boolean"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     },
+     "z_kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Z Kind"
+     },
+     "z_note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Z Note"
+     },
+     "z_prime": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Z Prime"
+     }
+    },
+    "required": [
+     "state"
+    ],
+    "title": "AnalysisResult",
+    "type": "object"
+   },
+   "AnalysisReviewEntry": {
+    "properties": {
+     "action": {
+      "enum": [
+       "acknowledge",
+       "comment",
+       "override"
+      ],
+      "title": "Action",
+      "type": "string"
+     },
+     "by": {
+      "title": "By",
+      "type": "string"
+     },
+     "reason": {
+      "default": "",
+      "title": "Reason",
+      "type": "string"
+     },
+     "target": {
+      "default": "",
+      "title": "Target",
+      "type": "string"
+     },
+     "ts": {
+      "title": "Ts",
+      "type": "number"
+     }
+    },
+    "required": [
+     "action",
+     "by",
+     "ts"
+    ],
+    "title": "AnalysisReviewEntry",
+    "type": "object"
+   },
+   "AnalysisReviewIn": {
+    "properties": {
+     "action": {
+      "enum": [
+       "acknowledge",
+       "comment",
+       "override"
+      ],
+      "title": "Action",
+      "type": "string"
+     },
+     "reason": {
+      "default": "",
+      "maxLength": 1000,
+      "title": "Reason",
+      "type": "string"
+     },
+     "target": {
+      "default": "",
+      "title": "Target",
+      "type": "string"
+     }
+    },
+    "required": [
+     "action"
+    ],
+    "title": "AnalysisReviewIn",
+    "type": "object"
+   },
+   "AnalysisRun": {
+    "description": "What the scientist confirms before the fit. Without a threshold the run\nis estimate-only: intervals are drawn, no verdict is claimed.",
+    "properties": {
+     "direction": {
+      "default": "min",
+      "enum": [
+       "min",
+       "max"
+      ],
+      "title": "Direction",
+      "type": "string"
+     },
+     "evidence_origin": {
+      "anyOf": [
+       {
+        "enum": [
+         "measured",
+         "historical",
+         "simulated",
+         "predicted",
+         "unknown"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Evidence Origin"
+     },
+     "max_response": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "known assay ceiling, if the top plateau is known",
+      "title": "Max Response"
+     },
+     "threshold": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "IC50 gate, in the data's concentration unit",
+      "title": "Threshold"
+     }
+    },
+    "title": "AnalysisRun",
+    "type": "object"
+   },
+   "AnalysisSummary": {
+    "properties": {
+     "filename": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Filename"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     },
+     "updated_at": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Updated At"
+     }
+    },
+    "required": [
+     "id",
+     "state"
+    ],
+    "title": "AnalysisSummary",
+    "type": "object"
+   },
+   "AnalysisView": {
+    "properties": {
+     "attachments": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/AnalysisAttachment"
+      },
+      "title": "Attachments",
+      "type": "array"
+     },
+     "filename": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Filename"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "preview": {
+      "$ref": "#/components/schemas/AnalysisPreview"
+     },
+     "result": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/AnalysisResult"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "reviews": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/AnalysisReviewEntry"
+      },
+      "title": "Reviews",
+      "type": "array"
+     },
+     "revision": {
+      "title": "Revision",
+      "type": "integer"
+     },
+     "sha256": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sha256"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "state",
+     "revision",
+     "preview"
+    ],
+    "title": "AnalysisView",
+    "type": "object"
+   },
    "AnchorCheck": {
     "description": "The ledger measured against the latest anchor.",
     "properties": {
@@ -459,13 +1039,8 @@
     "title": "BestResult",
     "type": "object"
    },
-   "Body_create_analysis_api_analyses_post": {
+   "Body_create_analysis_api_v1_analyses_post": {
     "properties": {
-     "config": {
-      "default": "{}",
-      "title": "Config",
-      "type": "string"
-     },
      "file": {
       "contentMediaType": "application/octet-stream",
       "title": "File",
@@ -482,17 +1057,12 @@
        }
       ],
       "title": "Layout"
-     },
-     "profile": {
-      "default": "plate_assay",
-      "title": "Profile",
-      "type": "string"
      }
     },
     "required": [
      "file"
     ],
-    "title": "Body_create_analysis_api_analyses_post",
+    "title": "Body_create_analysis_api_v1_analyses_post",
     "type": "object"
    },
    "BranchInfo": {
@@ -1137,16 +1707,6 @@
     ],
     "title": "DecisionIn",
     "type": "object"
-   },
-   "DispositionAction": {
-    "description": "What a human did with a computed call. Acknowledgement is NOT\northogonal experimental confirmation \u2014 'confirmed' stays reserved for\nthe campaign confirmation-agreement semantics.",
-    "enum": [
-     "acknowledge",
-     "comment",
-     "override"
-    ],
-    "title": "DispositionAction",
-    "type": "string"
    },
    "EvalSummary": {
     "properties": {
@@ -2540,33 +3100,6 @@
     "title": "Review",
     "type": "object"
    },
-   "ReviewBody": {
-    "properties": {
-     "action": {
-      "$ref": "#/components/schemas/DispositionAction"
-     },
-     "actor": {
-      "default": "scientist",
-      "title": "Actor",
-      "type": "string"
-     },
-     "reason": {
-      "default": "",
-      "title": "Reason",
-      "type": "string"
-     },
-     "target": {
-      "default": "",
-      "title": "Target",
-      "type": "string"
-     }
-    },
-    "required": [
-     "action"
-    ],
-    "title": "ReviewBody",
-    "type": "object"
-   },
    "ReviewFinding": {
     "properties": {
      "candidate": {
@@ -3013,6 +3546,355 @@
  },
  "openapi": "3.1.0",
  "paths": {
+  "/api/v1/analyses": {
+   "get": {
+    "operationId": "list_analyses_api_v1_analyses_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/AnalysisSummary"
+         },
+         "title": "Response List Analyses Api V1 Analyses Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Analyses",
+    "tags": [
+     "analyze"
+    ]
+   },
+   "post": {
+    "description": "Store the file (bound by digest), detect what it is. No fit, no verdict.",
+    "operationId": "create_analysis_api_v1_analyses_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_create_analysis_api_v1_analyses_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AnalysisView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create Analysis",
+    "tags": [
+     "analyze"
+    ]
+   }
+  },
+  "/api/v1/analyses/{aid}": {
+   "get": {
+    "operationId": "get_analysis_api_v1_analyses__aid__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "aid",
+      "required": true,
+      "schema": {
+       "title": "Aid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AnalysisView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Analysis",
+    "tags": [
+     "analyze"
+    ]
+   }
+  },
+  "/api/v1/analyses/{aid}/attach": {
+   "post": {
+    "description": "Cite this analysis in a campaign's ledger as supporting evidence. It is\ncontext for the people reading the campaign: it does not change any\nverdict, and simulated/predicted data cannot be attached as measured.",
+    "operationId": "attach_api_v1_analyses__aid__attach_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "aid",
+      "required": true,
+      "schema": {
+       "title": "Aid",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AnalysisAttachIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AnalysisView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Attach",
+    "tags": [
+     "analyze"
+    ]
+   }
+  },
+  "/api/v1/analyses/{aid}/export.csv": {
+   "get": {
+    "description": "Raw and normalized values side by side, with the call and reason per row.",
+    "operationId": "export_csv_api_v1_analyses__aid__export_csv_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "aid",
+      "required": true,
+      "schema": {
+       "title": "Aid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Export Csv",
+    "tags": [
+     "analyze"
+    ]
+   }
+  },
+  "/api/v1/analyses/{aid}/report": {
+   "get": {
+    "operationId": "report_api_v1_analyses__aid__report_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "aid",
+      "required": true,
+      "schema": {
+       "title": "Aid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "text/html": {
+        "schema": {
+         "type": "string"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Report",
+    "tags": [
+     "analyze"
+    ]
+   }
+  },
+  "/api/v1/analyses/{aid}/review": {
+   "post": {
+    "description": "A human disposition, beside the computed call \u2014 never overwriting it.",
+    "operationId": "review_api_v1_analyses__aid__review_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "aid",
+      "required": true,
+      "schema": {
+       "title": "Aid",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AnalysisReviewIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AnalysisView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Review",
+    "tags": [
+     "analyze"
+    ]
+   }
+  },
+  "/api/v1/analyses/{aid}/run": {
+   "post": {
+    "description": "Confirm the interpretation and fit. A changed confirmation opens a new\nimmutable revision. QC holds and regime refusals come back as states.",
+    "operationId": "run_analysis_api_v1_analyses__aid__run_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "aid",
+      "required": true,
+      "schema": {
+       "title": "Aid",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AnalysisRun"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AnalysisView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Run Analysis",
+    "tags": [
+     "analyze"
+    ]
+   }
+  },
   "/api/v1/campaigns": {
    "get": {
     "operationId": "list_campaigns_api_v1_campaigns_get",

@@ -115,7 +115,7 @@ plain-language verdict explanation and next step, live activity) · **4 done** (
 abstentions, follow-up / new-campaign / new-program dialogs with `gate` autonomy by
 default, agents + full trace per actor, deterministic "what next"; legacy Workspace /
 Program / Experiment / Wizard / Approvals screens and ~800 lines of old API removed) ·
-5 next: rebuild Analyze (still legacy), Evidence (Verify, report) and Lab.
+**5 done** (Evidence: verify / anchor / exports; Lab: honest instrument badges, authority policy, SOP sign-off; Analyze: drop a plate file → curves with IC50 ± CI, QC, abstentions → your decision → attach as evidence; legacy Analysis screen, `/api/analyses` and the legacy CSS layer removed) · 6 next: polish (Playwright e2e, accessibility, README screenshots), Lab instrument Test-connection / configure.
 
 1. **API v1 for campaigns**: pydantic response models, `/campaigns`, hypothesis,
    activity, events, provenance; OpenAPI export; tests on the golden campaign.
@@ -139,4 +139,4 @@ Program / Experiment / Wizard / Approvals screens and ~800 lines of old API remo
   model-drafted brief on top of v1 if/when a model is configured for the workbench.
 - `/api/wizard/*`, `/api/programs*`, `/api/experiments*`, `/api/approvals*`,
   `/api/instruments`, `/api/taste`, `/api/events` (SSE): replaced by `/api/v1/*` (the UI
-  polls). `/api/analyses/*` stays until Analyze is rebuilt.
+  polls). `/api/analyses/*` → `/api/v1/analyses/*` (Analyze rebuilt).

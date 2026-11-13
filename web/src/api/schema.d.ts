@@ -4,6 +4,144 @@
  */
 
 export interface paths {
+    "/api/v1/analyses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Analyses */
+        get: operations["list_analyses_api_v1_analyses_get"];
+        put?: never;
+        /**
+         * Create Analysis
+         * @description Store the file (bound by digest), detect what it is. No fit, no verdict.
+         */
+        post: operations["create_analysis_api_v1_analyses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{aid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Analysis */
+        get: operations["get_analysis_api_v1_analyses__aid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{aid}/attach": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Attach
+         * @description Cite this analysis in a campaign's ledger as supporting evidence. It is
+         *     context for the people reading the campaign: it does not change any
+         *     verdict, and simulated/predicted data cannot be attached as measured.
+         */
+        post: operations["attach_api_v1_analyses__aid__attach_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{aid}/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Csv
+         * @description Raw and normalized values side by side, with the call and reason per row.
+         */
+        get: operations["export_csv_api_v1_analyses__aid__export_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{aid}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report */
+        get: operations["report_api_v1_analyses__aid__report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{aid}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review
+         * @description A human disposition, beside the computed call — never overwriting it.
+         */
+        post: operations["review_api_v1_analyses__aid__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{aid}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Analysis
+         * @description Confirm the interpretation and fit. A changed confirmation opens a new
+         *     immutable revision. QC holds and regime refusals come back as states.
+         */
+        post: operations["run_analysis_api_v1_analyses__aid__run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns": {
         parameters: {
             query?: never;
@@ -522,6 +660,233 @@ export interface components {
             /** Role */
             role: string;
         };
+        /** AnalysisAttachIn */
+        AnalysisAttachIn: {
+            /** Campaign Id */
+            campaign_id: string;
+            /** Candidate */
+            candidate?: string | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** AnalysisAttachment */
+        AnalysisAttachment: {
+            /** By */
+            by: string;
+            /** Campaign Id */
+            campaign_id: string;
+            /** Candidate */
+            candidate?: string | null;
+            /** Ts */
+            ts: number;
+        };
+        /** AnalysisCompound */
+        AnalysisCompound: {
+            /** Call */
+            call?: ("validated" | "invalidated" | "inconclusive" | "no_call") | null;
+            /** Ci */
+            ci?: number[] | null;
+            curve?: components["schemas"]["Curve"] | null;
+            /** Entity */
+            entity: string;
+            /** Ic50 Um */
+            ic50_um?: number | null;
+            /** Reason */
+            reason?: string | null;
+        };
+        /** AnalysisDiagnostic */
+        AnalysisDiagnostic: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "blocker";
+        };
+        /**
+         * AnalysisPreview
+         * @description What the system understood from the file, before any fit.
+         */
+        AnalysisPreview: {
+            /**
+             * Diagnostics
+             * @default []
+             */
+            diagnostics: components["schemas"]["AnalysisDiagnostic"][];
+            /**
+             * Evidence Origin
+             * @default unknown
+             */
+            evidence_origin: string;
+            /** Format */
+            format?: string | null;
+            /**
+             * Has Doses
+             * @default false
+             */
+            has_doses: boolean;
+            /**
+             * N Controls
+             * @default 0
+             */
+            n_controls: number;
+            /**
+             * N Wells
+             * @default 0
+             */
+            n_wells: number;
+            /**
+             * Needs Confirmation
+             * @default []
+             */
+            needs_confirmation: string[];
+            /**
+             * Samples
+             * @default []
+             */
+            samples: string[];
+            /** Z Kind */
+            z_kind?: string | null;
+            /** Z Prime */
+            z_prime?: number | null;
+        };
+        /** AnalysisResult */
+        AnalysisResult: {
+            /**
+             * Compounds
+             * @default []
+             */
+            compounds: components["schemas"]["AnalysisCompound"][];
+            gate?: components["schemas"]["Gate"] | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Qc Hold
+             * @default false
+             */
+            qc_hold: boolean;
+            /**
+             * Refused
+             * @description regime or normalization refusal: no numbers are claimed
+             * @default false
+             */
+            refused: boolean;
+            /** State */
+            state: string;
+            /** Z Kind */
+            z_kind?: string | null;
+            /** Z Note */
+            z_note?: string | null;
+            /** Z Prime */
+            z_prime?: number | null;
+        };
+        /** AnalysisReviewEntry */
+        AnalysisReviewEntry: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "acknowledge" | "comment" | "override";
+            /** By */
+            by: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /**
+             * Target
+             * @default
+             */
+            target: string;
+            /** Ts */
+            ts: number;
+        };
+        /** AnalysisReviewIn */
+        AnalysisReviewIn: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "acknowledge" | "comment" | "override";
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /**
+             * Target
+             * @default
+             */
+            target: string;
+        };
+        /**
+         * AnalysisRun
+         * @description What the scientist confirms before the fit. Without a threshold the run
+         *     is estimate-only: intervals are drawn, no verdict is claimed.
+         */
+        AnalysisRun: {
+            /**
+             * Direction
+             * @default min
+             * @enum {string}
+             */
+            direction: "min" | "max";
+            /** Evidence Origin */
+            evidence_origin?: ("measured" | "historical" | "simulated" | "predicted" | "unknown") | null;
+            /**
+             * Max Response
+             * @description known assay ceiling, if the top plateau is known
+             */
+            max_response?: number | null;
+            /**
+             * Threshold
+             * @description IC50 gate, in the data's concentration unit
+             */
+            threshold?: number | null;
+        };
+        /** AnalysisSummary */
+        AnalysisSummary: {
+            /** Filename */
+            filename?: string | null;
+            /** Id */
+            id: string;
+            /** State */
+            state: string;
+            /** Updated At */
+            updated_at?: number | null;
+        };
+        /** AnalysisView */
+        AnalysisView: {
+            /**
+             * Attachments
+             * @default []
+             */
+            attachments: components["schemas"]["AnalysisAttachment"][];
+            /** Filename */
+            filename?: string | null;
+            /** Id */
+            id: string;
+            preview: components["schemas"]["AnalysisPreview"];
+            result?: components["schemas"]["AnalysisResult"] | null;
+            /**
+             * Reviews
+             * @default []
+             */
+            reviews: components["schemas"]["AnalysisReviewEntry"][];
+            /** Revision */
+            revision: number;
+            /** Sha256 */
+            sha256?: string | null;
+            /** State */
+            state: string;
+        };
         /**
          * AnchorCheck
          * @description The ledger measured against the latest anchor.
@@ -647,22 +1012,12 @@ export interface components {
             /** State */
             state: string;
         };
-        /** Body_create_analysis_api_analyses_post */
-        Body_create_analysis_api_analyses_post: {
-            /**
-             * Config
-             * @default {}
-             */
-            config: string;
+        /** Body_create_analysis_api_v1_analyses_post */
+        Body_create_analysis_api_v1_analyses_post: {
             /** File */
             file: string;
             /** Layout */
             layout?: string | null;
-            /**
-             * Profile
-             * @default plate_assay
-             */
-            profile: string;
         };
         /** BranchInfo */
         BranchInfo: {
@@ -884,14 +1239,6 @@ export interface components {
              */
             note: string;
         };
-        /**
-         * DispositionAction
-         * @description What a human did with a computed call. Acknowledgement is NOT
-         *     orthogonal experimental confirmation — 'confirmed' stays reserved for
-         *     the campaign confirmation-agreement semantics.
-         * @enum {string}
-         */
-        DispositionAction: "acknowledge" | "comment" | "override";
         /** EvalSummary */
         EvalSummary: {
             /** All Pass */
@@ -1425,25 +1772,6 @@ export interface components {
             /** Ts */
             ts?: number | null;
         };
-        /** ReviewBody */
-        ReviewBody: {
-            action: components["schemas"]["DispositionAction"];
-            /**
-             * Actor
-             * @default scientist
-             */
-            actor: string;
-            /**
-             * Reason
-             * @default
-             */
-            reason: string;
-            /**
-             * Target
-             * @default
-             */
-            target: string;
-        };
         /** ReviewFinding */
         ReviewFinding: {
             /** Candidate */
@@ -1609,6 +1937,257 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_analyses_api_v1_analyses_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisSummary"][];
+                };
+            };
+        };
+    };
+    create_analysis_api_v1_analyses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_create_analysis_api_v1_analyses_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_analysis_api_v1_analyses__aid__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                aid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attach_api_v1_analyses__aid__attach_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                aid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalysisAttachIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_csv_api_v1_analyses__aid__export_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                aid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_api_v1_analyses__aid__report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                aid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_api_v1_analyses__aid__review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                aid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalysisReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_analysis_api_v1_analyses__aid__run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                aid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalysisRun"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_campaigns_api_v1_campaigns_get: {
         parameters: {
             query?: {

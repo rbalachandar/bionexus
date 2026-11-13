@@ -172,3 +172,45 @@ export function useApproveSop() {
     onSuccess: (d) => qc.setQueryData(['authority'], d),
   })
 }
+
+// ---- Analyze
+export const useAnalyses = () =>
+  useQuery({ queryKey: ['analyses'], queryFn: () => unwrap(api.GET('/api/v1/analyses')) })
+
+export const useAnalysis = (id: string | undefined) =>
+  useQuery({
+    queryKey: ['analysis', id],
+    enabled: !!id,
+    queryFn: () => unwrap(api.GET('/api/v1/analyses/{aid}', { params: { path: { aid: id! } } })),
+  })
+
+export function useUploadAnalysis() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ file, layout }: { file: File; layout?: File }) => {
+      const fd = new FormData()
+      fd.append('file', file)
+      if (layout) fd.append('layout', layout)
+      const r = await window.fetch('/api/v1/analyses', { method: 'POST', body: fd })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j?.detail?.detail || j?.detail?.title || `${r.status}`)
+      return j as Schemas['AnalysisView']
+    },
+    onSuccess: (d) => { qc.setQueryData(['analysis', d.id], d); qc.invalidateQueries({ queryKey: ['analyses'] }) },
+  })
+}
+
+function useAnalysisMutation<V>(fn: (id: string, v: V) => Promise<Schemas['AnalysisView']>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, v }: { id: string; v: V }) => fn(id, v),
+    onSuccess: (d) => { qc.setQueryData(['analysis', d.id], d); qc.invalidateQueries({ queryKey: ['analyses'] }) },
+  })
+}
+
+export const useRunAnalysis = () => useAnalysisMutation<Schemas['AnalysisRun']>((id, body) =>
+  unwrap(api.POST('/api/v1/analyses/{aid}/run', { params: { path: { aid: id } }, body })))
+export const useReviewAnalysis = () => useAnalysisMutation<Schemas['AnalysisReviewIn']>((id, body) =>
+  unwrap(api.POST('/api/v1/analyses/{aid}/review', { params: { path: { aid: id } }, body })))
+export const useAttachAnalysis = () => useAnalysisMutation<Schemas['AnalysisAttachIn']>((id, body) =>
+  unwrap(api.POST('/api/v1/analyses/{aid}/attach', { params: { path: { aid: id } }, body })))
