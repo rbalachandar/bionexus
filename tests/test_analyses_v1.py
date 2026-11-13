@@ -64,6 +64,14 @@ def test_run_without_gate_is_estimate_only(client):
     assert all(c["ic50_um"] for c in r["compounds"])
 
 
+def test_inferred_plateau_is_flagged_and_known_ceiling_is_not(client):
+    aid = _up(client).json()["id"]
+    inferred = client.post(f"/api/v1/analyses/{aid}/run", json={"threshold": 10}).json()["result"]
+    assert all(c["top_known"] is False for c in inferred["compounds"])
+    known = client.post(f"/api/v1/analyses/{aid}/run", json=GATE).json()["result"]
+    assert all(c["top_known"] is True for c in known["compounds"])
+
+
 def test_changed_gate_opens_new_revision(client, analyzed):
     r = client.post(f"/api/v1/analyses/{analyzed}/run", json={**GATE, "threshold": 1.0}).json()
     assert r["revision"] == 3

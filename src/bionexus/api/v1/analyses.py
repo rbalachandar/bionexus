@@ -129,7 +129,8 @@ def _result(doc: dict) -> S.AnalysisResult | None:
         ci = c.get("ic50_ci")
         out.append(S.AnalysisCompound(
             entity=entity, call=k.get("call"), reason=k.get("reason"), ic50_um=c.get("ic50_um"),
-            ci=list(ci) if ci else None,
+            ci=list(ci) if ci else None, n_points=c.get("n_points"),
+            top_known=(c.get("fit_quality") == "known-max") if c.get("fit_quality") in ("known-max", "observed-max") else None,
             curve=_curve(entity, c, r.get("wells") or [], cfg.get("max_response"))))
     refused = bool(r.get("regime_refused") or r.get("normalization_refused"))
     return S.AnalysisResult(

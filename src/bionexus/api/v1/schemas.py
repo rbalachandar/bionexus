@@ -509,6 +509,8 @@ class AnalysisCompound(BaseModel):
     reason: str | None = None
     ic50_um: float | None = None
     ci: Interval | None = None
+    n_points: int | None = None
+    top_known: bool | None = Field(None, description="False: the plateau was inferred from the data, so the call depends on that assumption")
     curve: Curve | None = None
 
 

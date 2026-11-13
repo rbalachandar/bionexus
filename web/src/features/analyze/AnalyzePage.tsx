@@ -129,7 +129,7 @@ function Confirm({ a }: { a: View }) {
           </Select>
         </Field>
         <Field label="Gate value (µM)"><Input inputMode="decimal" placeholder="e.g. 10" value={t} onChange={(e) => setT(e.target.value)} /></Field>
-        <Field label="Assay ceiling" hint="optional: known top response"><Input inputMode="decimal" placeholder="e.g. 100" value={top} onChange={(e) => setTop(e.target.value)} /></Field>
+        <Field label="Assay ceiling" hint="optional: blank = inferred from the data"><Input inputMode="decimal" placeholder="e.g. 100" value={top} onChange={(e) => setTop(e.target.value)} /></Field>
         <Field label="Where did the data come from?">
           <Select value={origin} onChange={(e) => setOrigin(e.target.value)}>{ORIGINS.map((o) => <option key={o}>{o}</option>)}</Select>
         </Field>
@@ -158,6 +158,12 @@ function CompoundBlock({ c, gate }: { c: Compound; gate: number | null }) {
         {c.call ? <StateChip state={CALL[c.call] ?? 'proposed'} /> : <Tag>estimate only</Tag>}
         {c.call && <span className="text-xs text-muted">{CALL_WORDS[c.call]}</span>}
       </div>
+      {c.top_known === false && (
+        <p className="mb-1.5 flex items-start gap-2 rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          <AlertTriangle size={13} className="mt-px shrink-0" aria-hidden />
+          The top plateau was inferred from only {c.n_points ?? 'a few'} points, so this call depends on that assumption. If you know the assay’s maximum response, enter it as the assay ceiling in step 2 and re-run.
+        </p>
+      )}
       {c.curve ? <CurveCard c={{ ...c.curve, label: c.entity, run_id: 'this plate' }} gate={gate} />
         : <p className="rounded-md border border-line px-3 py-2 text-xs text-muted">No usable dose–response points for {c.entity}{c.ic50_um == null ? ' — no IC50 claimed' : ''}.</p>}
     </div>

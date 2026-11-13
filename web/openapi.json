@@ -258,6 +258,17 @@
       ],
       "title": "Ic50 Um"
      },
+     "n_points": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "N Points"
+     },
      "reason": {
       "anyOf": [
        {
@@ -268,6 +279,18 @@
        }
       ],
       "title": "Reason"
+     },
+     "top_known": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "False: the plateau was inferred from the data, so the call depends on that assumption",
+      "title": "Top Known"
      }
     },
     "required": [

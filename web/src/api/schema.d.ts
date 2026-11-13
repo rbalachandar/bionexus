@@ -694,8 +694,15 @@ export interface components {
             entity: string;
             /** Ic50 Um */
             ic50_um?: number | null;
+            /** N Points */
+            n_points?: number | null;
             /** Reason */
             reason?: string | null;
+            /**
+             * Top Known
+             * @description False: the plateau was inferred from the data, so the call depends on that assumption
+             */
+            top_known?: boolean | null;
         };
         /** AnalysisDiagnostic */
         AnalysisDiagnostic: {
