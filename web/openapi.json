@@ -134,6 +134,81 @@
     "title": "AgentSummary",
     "type": "object"
    },
+   "AnchorCheck": {
+    "description": "The ledger measured against the latest anchor.",
+    "properties": {
+     "anchored_root": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Anchored Root"
+     },
+     "appended_since_anchor": {
+      "title": "Appended Since Anchor",
+      "type": "integer"
+     },
+     "content_tampered": {
+      "title": "Content Tampered",
+      "type": "boolean"
+     },
+     "current_root": {
+      "title": "Current Root",
+      "type": "string"
+     },
+     "match": {
+      "description": "everything the anchor committed to is unchanged",
+      "title": "Match",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "match",
+     "appended_since_anchor",
+     "content_tampered",
+     "current_root"
+    ],
+    "title": "AnchorCheck",
+    "type": "object"
+   },
+   "AnchorEntry": {
+    "properties": {
+     "merkle_root": {
+      "title": "Merkle Root",
+      "type": "string"
+     },
+     "published": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Published"
+     },
+     "records": {
+      "title": "Records",
+      "type": "integer"
+     },
+     "ts": {
+      "title": "Ts",
+      "type": "number"
+     }
+    },
+    "required": [
+     "ts",
+     "records",
+     "merkle_root"
+    ],
+    "title": "AnchorEntry",
+    "type": "object"
+   },
    "AnchorStatus": {
     "properties": {
      "age_s": {
@@ -168,6 +243,37 @@
      "records"
     ],
     "title": "AnchorStatus",
+    "type": "object"
+   },
+   "AnchorView": {
+    "properties": {
+     "anchors": {
+      "items": {
+       "$ref": "#/components/schemas/AnchorEntry"
+      },
+      "title": "Anchors",
+      "type": "array"
+     },
+     "check": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/AnchorCheck"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "note": {
+      "default": "",
+      "title": "Note",
+      "type": "string"
+     }
+    },
+    "required": [
+     "anchors"
+    ],
+    "title": "AnchorView",
     "type": "object"
    },
    "ApprovalRef": {
@@ -234,6 +340,68 @@
      "halted"
     ],
     "title": "Attention",
+    "type": "object"
+   },
+   "Authority": {
+    "properties": {
+     "halt": {
+      "$ref": "#/components/schemas/HaltState"
+     },
+     "rules": {
+      "items": {
+       "$ref": "#/components/schemas/AuthorityRule"
+      },
+      "title": "Rules",
+      "type": "array"
+     },
+     "safety_rules": {
+      "default": "",
+      "description": "the toxicophore rule-set version the gate cites",
+      "title": "Safety Rules",
+      "type": "string"
+     },
+     "sops_pending": {
+      "items": {
+       "$ref": "#/components/schemas/Sop"
+      },
+      "title": "Sops Pending",
+      "type": "array"
+     }
+    },
+    "required": [
+     "rules",
+     "sops_pending",
+     "halt"
+    ],
+    "title": "Authority",
+    "type": "object"
+   },
+   "AuthorityRule": {
+    "properties": {
+     "column": {
+      "enum": [
+       "autonomous",
+       "human",
+       "never"
+      ],
+      "title": "Column",
+      "type": "string"
+     },
+     "custom": {
+      "default": false,
+      "title": "Custom",
+      "type": "boolean"
+     },
+     "when": {
+      "title": "When",
+      "type": "string"
+     }
+    },
+    "required": [
+     "column",
+     "when"
+    ],
+    "title": "AuthorityRule",
     "type": "object"
    },
    "BestResult": {
@@ -325,6 +493,61 @@
      "file"
     ],
     "title": "Body_create_analysis_api_analyses_post",
+    "type": "object"
+   },
+   "BranchInfo": {
+    "properties": {
+     "campaign_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Id"
+     },
+     "campaign_title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Title"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "campaign",
+       "program",
+       "other"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "records": {
+      "title": "Records",
+      "type": "integer"
+     },
+     "verified": {
+      "title": "Verified",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "id",
+     "kind",
+     "records",
+     "verified"
+    ],
+    "title": "BranchInfo",
     "type": "object"
    },
    "Budget": {
@@ -1622,6 +1845,126 @@
     "title": "InboxItem",
     "type": "object"
    },
+   "Instrument": {
+    "properties": {
+     "assay_types": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Assay Types",
+      "type": "array"
+     },
+     "hardware_validated": {
+      "description": "verified against a physical device",
+      "title": "Hardware Validated",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "installed": {
+      "default": true,
+      "title": "Installed",
+      "type": "boolean"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "readouts": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Readouts",
+      "type": "array"
+     },
+     "requires_network": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Requires Network"
+     },
+     "simulated": {
+      "description": "ALL output is synthetic",
+      "title": "Simulated",
+      "type": "boolean"
+     },
+     "vendor": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Vendor"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "kind",
+     "simulated",
+     "hardware_validated"
+    ],
+    "title": "Instrument",
+    "type": "object"
+   },
+   "LedgerView": {
+    "properties": {
+     "branches": {
+      "items": {
+       "$ref": "#/components/schemas/BranchInfo"
+      },
+      "title": "Branches",
+      "type": "array"
+     },
+     "chain": {
+      "$ref": "#/components/schemas/ChainStatus"
+     },
+     "checked_at": {
+      "title": "Checked At",
+      "type": "number"
+     },
+     "verified_in_ms": {
+      "description": "how long the full re-hash took",
+      "title": "Verified In Ms",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "chain",
+     "branches",
+     "verified_in_ms",
+     "checked_at"
+    ],
+    "title": "LedgerView",
+    "type": "object"
+   },
    "NextStep": {
     "description": "A rule-based recommendation \u2014 deterministic, always available, no model needed.",
     "properties": {
@@ -2353,6 +2696,35 @@
      "candidates"
     ],
     "title": "Round",
+    "type": "object"
+   },
+   "Sop": {
+    "properties": {
+     "assay": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Assay"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "objective": {
+      "title": "Objective",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "objective"
+    ],
+    "title": "Sop",
     "type": "object"
    },
    "SystemStatus": {
@@ -3169,6 +3541,142 @@
     ]
    }
   },
+  "/api/v1/evidence/anchor": {
+   "get": {
+    "operationId": "get_anchor_api_v1_evidence_anchor_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AnchorView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Anchor",
+    "tags": [
+     "evidence"
+    ]
+   },
+   "post": {
+    "description": "Commit the ledger's Merkle root (appended to the local anchor log).",
+    "operationId": "create_anchor_api_v1_evidence_anchor_post",
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AnchorView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Create Anchor",
+    "tags": [
+     "evidence"
+    ]
+   }
+  },
+  "/api/v1/evidence/export/{eid}": {
+   "get": {
+    "description": "A campaign's record as a shareable file.",
+    "operationId": "export_api_v1_evidence_export__eid__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "eid",
+      "required": true,
+      "schema": {
+       "title": "Eid",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "kind",
+      "required": false,
+      "schema": {
+       "default": "report",
+       "pattern": "^(report|notebook|eln)$",
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Export",
+    "tags": [
+     "evidence"
+    ]
+   }
+  },
+  "/api/v1/evidence/ledger": {
+   "get": {
+    "operationId": "ledger_api_v1_evidence_ledger_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LedgerView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Ledger",
+    "tags": [
+     "evidence"
+    ]
+   }
+  },
+  "/api/v1/evidence/verify": {
+   "post": {
+    "description": "Re-hash every record from its stored payload, right now.",
+    "operationId": "verify_api_v1_evidence_verify_post",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LedgerView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Verify",
+    "tags": [
+     "evidence"
+    ]
+   }
+  },
   "/api/v1/halt": {
    "get": {
     "operationId": "get_halt_api_v1_halt_get",
@@ -3328,6 +3836,95 @@
     "summary": "Decide",
     "tags": [
      "inbox"
+    ]
+   }
+  },
+  "/api/v1/lab/authority": {
+   "get": {
+    "operationId": "authority_api_v1_lab_authority_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Authority"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Authority",
+    "tags": [
+     "lab"
+    ]
+   }
+  },
+  "/api/v1/lab/instruments": {
+   "get": {
+    "operationId": "instruments_api_v1_lab_instruments_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/Instrument"
+         },
+         "title": "Response Instruments Api V1 Lab Instruments Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Instruments",
+    "tags": [
+     "lab"
+    ]
+   }
+  },
+  "/api/v1/lab/sops/{sop_id}/approve": {
+   "post": {
+    "description": "Sign off a recurring procedure: from now on it may run unattended.\nAttributed to the authenticated person.",
+    "operationId": "approve_sop_api_v1_lab_sops__sop_id__approve_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "sop_id",
+      "required": true,
+      "schema": {
+       "title": "Sop Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Authority"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Approve Sop",
+    "tags": [
+     "lab"
     ]
    }
   },

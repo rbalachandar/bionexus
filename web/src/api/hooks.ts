@@ -131,3 +131,44 @@ export function useLaunchCampaign(slug: string) {
     onSuccess: refresh,
   })
 }
+
+export const useLedger = () =>
+  useQuery({ queryKey: ['ledger'], queryFn: () => unwrap(api.GET('/api/v1/evidence/ledger')) })
+
+export function useVerifyLedger() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => unwrap(api.POST('/api/v1/evidence/verify')),
+    onSuccess: (d) => { qc.setQueryData(['ledger'], d); qc.invalidateQueries({ queryKey: ['system-status'] }) },
+  })
+}
+
+export const useAnchor = () =>
+  useQuery({ queryKey: ['anchor'], queryFn: () => unwrap(api.GET('/api/v1/evidence/anchor')) })
+
+export function useCreateAnchor() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => unwrap(api.POST('/api/v1/evidence/anchor')),
+    onSuccess: (d) => { qc.setQueryData(['anchor'], d); qc.invalidateQueries({ queryKey: ['system-status'] }) },
+  })
+}
+
+export type EvalTask = { task: string; suite: string; score: number; passed: boolean; skipped: boolean; honest_deduction: boolean; notes: string }
+export type Evals = { available: boolean; mean: number; all_pass: boolean; pass_bar: number; n_tasks: number; tasks: EvalTask[]; run_line: string }
+export const useEvals = () =>
+  useQuery({ queryKey: ['evals'], queryFn: () => unwrap(api.GET('/api/v1/evals')) as Promise<Evals> })
+
+export const useInstruments = () =>
+  useQuery({ queryKey: ['instruments'], queryFn: () => unwrap(api.GET('/api/v1/lab/instruments')) })
+
+export const useAuthority = () =>
+  useQuery({ queryKey: ['authority'], queryFn: () => unwrap(api.GET('/api/v1/lab/authority')), refetchInterval: 10_000 })
+
+export function useApproveSop() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => unwrap(api.POST('/api/v1/lab/sops/{sop_id}/approve', { params: { path: { sop_id: id } } })),
+    onSuccess: (d) => qc.setQueryData(['authority'], d),
+  })
+}

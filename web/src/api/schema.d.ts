@@ -186,6 +186,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/evidence/anchor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Anchor */
+        get: operations["get_anchor_api_v1_evidence_anchor_get"];
+        put?: never;
+        /**
+         * Create Anchor
+         * @description Commit the ledger's Merkle root (appended to the local anchor log).
+         */
+        post: operations["create_anchor_api_v1_evidence_anchor_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evidence/export/{eid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export
+         * @description A campaign's record as a shareable file.
+         */
+        get: operations["export_api_v1_evidence_export__eid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evidence/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ledger */
+        get: operations["ledger_api_v1_evidence_ledger_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evidence/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify
+         * @description Re-hash every record from its stored payload, right now.
+         */
+        post: operations["verify_api_v1_evidence_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/halt": {
         parameters: {
             query?: never;
@@ -240,6 +318,61 @@ export interface paths {
          *     authenticated person, never a field in the body.
          */
         post: operations["decide_api_v1_inbox__item_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/authority": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Authority */
+        get: operations["authority_api_v1_lab_authority_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/instruments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Instruments */
+        get: operations["instruments_api_v1_lab_instruments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/sops/{sop_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Sop
+         * @description Sign off a recurring procedure: from now on it may run unattended.
+         *     Attributed to the authenticated person.
+         */
+        post: operations["approve_sop_api_v1_lab_sops__sop_id__approve_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -389,6 +522,36 @@ export interface components {
             /** Role */
             role: string;
         };
+        /**
+         * AnchorCheck
+         * @description The ledger measured against the latest anchor.
+         */
+        AnchorCheck: {
+            /** Anchored Root */
+            anchored_root?: string | null;
+            /** Appended Since Anchor */
+            appended_since_anchor: number;
+            /** Content Tampered */
+            content_tampered: boolean;
+            /** Current Root */
+            current_root: string;
+            /**
+             * Match
+             * @description everything the anchor committed to is unchanged
+             */
+            match: boolean;
+        };
+        /** AnchorEntry */
+        AnchorEntry: {
+            /** Merkle Root */
+            merkle_root: string;
+            /** Published */
+            published?: boolean | null;
+            /** Records */
+            records: number;
+            /** Ts */
+            ts: number;
+        };
         /** AnchorStatus */
         AnchorStatus: {
             /**
@@ -400,6 +563,17 @@ export interface components {
             published?: boolean | null;
             /** Records */
             records: number;
+        };
+        /** AnchorView */
+        AnchorView: {
+            /** Anchors */
+            anchors: components["schemas"]["AnchorEntry"][];
+            check?: components["schemas"]["AnchorCheck"] | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** ApprovalRef */
         ApprovalRef: {
@@ -428,6 +602,35 @@ export interface components {
             pending_approvals: number;
             /** Running */
             running: number;
+        };
+        /** Authority */
+        Authority: {
+            halt: components["schemas"]["HaltState"];
+            /** Rules */
+            rules: components["schemas"]["AuthorityRule"][];
+            /**
+             * Safety Rules
+             * @description the toxicophore rule-set version the gate cites
+             * @default
+             */
+            safety_rules: string;
+            /** Sops Pending */
+            sops_pending: components["schemas"]["Sop"][];
+        };
+        /** AuthorityRule */
+        AuthorityRule: {
+            /**
+             * Column
+             * @enum {string}
+             */
+            column: "autonomous" | "human" | "never";
+            /**
+             * Custom
+             * @default false
+             */
+            custom: boolean;
+            /** When */
+            when: string;
         };
         /** BestResult */
         BestResult: {
@@ -460,6 +663,24 @@ export interface components {
              * @default plate_assay
              */
             profile: string;
+        };
+        /** BranchInfo */
+        BranchInfo: {
+            /** Campaign Id */
+            campaign_id?: string | null;
+            /** Campaign Title */
+            campaign_title?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "campaign" | "program" | "other";
+            /** Records */
+            records: number;
+            /** Verified */
+            verified: boolean;
         };
         /** Budget */
         Budget: {
@@ -930,6 +1151,59 @@ export interface components {
             /** Ts */
             ts?: number | null;
         };
+        /** Instrument */
+        Instrument: {
+            /**
+             * Assay Types
+             * @default []
+             */
+            assay_types: string[];
+            /**
+             * Hardware Validated
+             * @description verified against a physical device
+             */
+            hardware_validated: boolean;
+            /** Id */
+            id: string;
+            /**
+             * Installed
+             * @default true
+             */
+            installed: boolean;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /**
+             * Readouts
+             * @default []
+             */
+            readouts: string[];
+            /** Requires Network */
+            requires_network?: boolean | null;
+            /**
+             * Simulated
+             * @description ALL output is synthetic
+             */
+            simulated: boolean;
+            /** Vendor */
+            vendor?: string | null;
+        };
+        /** LedgerView */
+        LedgerView: {
+            /** Branches */
+            branches: components["schemas"]["BranchInfo"][];
+            chain: components["schemas"]["ChainStatus"];
+            /** Checked At */
+            checked_at: number;
+            /**
+             * Verified In Ms
+             * @description how long the full re-hash took
+             */
+            verified_in_ms: number;
+        };
         /**
          * NextStep
          * @description A rule-based recommendation — deterministic, always available, no model needed.
@@ -1228,6 +1502,15 @@ export interface components {
                 [key: string]: string;
             };
             why?: components["schemas"]["Why"] | null;
+        };
+        /** Sop */
+        Sop: {
+            /** Assay */
+            assay?: string | null;
+            /** Id */
+            id: string;
+            /** Objective */
+            objective: string;
         };
         /**
          * SystemStatus
@@ -1642,6 +1925,119 @@ export interface operations {
             };
         };
     };
+    get_anchor_api_v1_evidence_anchor_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnchorView"];
+                };
+            };
+        };
+    };
+    create_anchor_api_v1_evidence_anchor_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnchorView"];
+                };
+            };
+        };
+    };
+    export_api_v1_evidence_export__eid__get: {
+        parameters: {
+            query?: {
+                kind?: string;
+            };
+            header?: never;
+            path: {
+                eid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ledger_api_v1_evidence_ledger_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerView"];
+                };
+            };
+        };
+    };
+    verify_api_v1_evidence_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerView"];
+                };
+            };
+        };
+    };
     get_halt_api_v1_halt_get: {
         parameters: {
             query?: never;
@@ -1748,6 +2144,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InboxItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    authority_api_v1_lab_authority_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Authority"];
+                };
+            };
+        };
+    };
+    instruments_api_v1_lab_instruments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instrument"][];
+                };
+            };
+        };
+    };
+    approve_sop_api_v1_lab_sops__sop_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Authority"];
                 };
             };
             /** @description Validation Error */

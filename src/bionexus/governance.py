@@ -165,6 +165,24 @@ class AuthorizationMatrix:
             self.extra = json.loads(Path(path).read_text())
         self.sops = SopRegistry()
 
+    # the standing policy, in the order classify() applies it — kept beside the
+    # code so the workbench shows what the gate really does (a test pins them)
+    DEFAULT_POLICY = (
+        ("never", "Dual-use (DURC) content: a select agent or regulated toxin"),
+        ("never", "Biosafety level 3 or higher"),
+        ("human", "Biosafety level 2 material needs a named approval"),
+        ("human", "A recurring procedure, until a human signs off its SOP"),
+        ("autonomous", "Everything else, within the safety gate"),
+    )
+
+    def describe(self) -> list[dict]:
+        """Operator-added rules first (they win), then the standing policy."""
+        rules = [{"column": r.get("column", "human"),
+                  "when": r.get("text") or r.get("name", "custom rule"),
+                  "custom": True} for r in self.extra]
+        return rules + [{"column": c, "when": w, "custom": False}
+                        for c, w in self.DEFAULT_POLICY]
+
     def classify(self, protocol) -> tuple[str, str]:
         """-> (column, reason)."""
         blob = " ".join([protocol.title]

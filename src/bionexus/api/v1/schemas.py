@@ -409,3 +409,74 @@ class HaltState(BaseModel):
 class HaltIn(BaseModel):
     halted: bool
     reason: str = ""
+
+
+class BranchInfo(BaseModel):
+    id: str
+    kind: Literal["campaign", "program", "other"]
+    records: int
+    verified: bool
+    campaign_id: str | None = None
+    campaign_title: str | None = None
+
+
+class LedgerView(BaseModel):
+    chain: ChainStatus
+    branches: list[BranchInfo]
+    verified_in_ms: int = Field(description="how long the full re-hash took")
+    checked_at: float
+
+
+class AnchorEntry(BaseModel):
+    ts: float
+    records: int
+    merkle_root: str
+    published: bool | None = None
+
+
+class AnchorCheck(BaseModel):
+    """The ledger measured against the latest anchor."""
+    match: bool = Field(description="everything the anchor committed to is unchanged")
+    appended_since_anchor: int
+    content_tampered: bool
+    current_root: str
+    anchored_root: str | None = None
+
+
+class AnchorView(BaseModel):
+    anchors: list[AnchorEntry]
+    check: AnchorCheck | None = None
+    note: str = ""
+
+
+class Instrument(BaseModel):
+    id: str
+    name: str
+    kind: str
+    vendor: str | None = None
+    simulated: bool = Field(description="ALL output is synthetic")
+    hardware_validated: bool = Field(description="verified against a physical device")
+    installed: bool = True
+    requires_network: bool | None = None
+    assay_types: list[str] = []
+    readouts: list[str] = []
+    note: str | None = None
+
+
+class AuthorityRule(BaseModel):
+    column: Literal["autonomous", "human", "never"]
+    when: str
+    custom: bool = False
+
+
+class Sop(BaseModel):
+    id: str
+    objective: str
+    assay: str | None = None
+
+
+class Authority(BaseModel):
+    rules: list[AuthorityRule]
+    sops_pending: list[Sop]
+    halt: HaltState
+    safety_rules: str = Field("", description="the toxicophore rule-set version the gate cites")

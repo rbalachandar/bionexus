@@ -315,3 +315,57 @@ def test_next_steps_are_deterministic_and_actionable(client, seeded):
     fu = [n for n in p["next_steps"] if n["kind"] == "follow_up"]
     # AD1 abstained (earlier tests may have recorded a decision on it)
     assert all(n["action"] == "launch" and n["candidates"] for n in fu)
+
+
+def test_evidence_ledger_verify_anchor_and_exports(client, seeded, tmp_path, monkeypatch):
+    monkeypatch.setattr("bionexus.anchor.ANCHORS", tmp_path / "anchors.json")
+    led = client.post("/api/v1/evidence/verify").json()
+    assert led["chain"]["verified"] is True and led["chain"]["records"] > 20
+    camp = [b for b in led["branches"] if b["kind"] == "campaign"
+            and b["campaign_id"] == seeded["eid"]]
+    assert camp and camp[0]["verified"] is True
+    # no anchor yet -> an honest note, no check
+    a = client.get("/api/v1/evidence/anchor").json()
+    assert a["anchors"] == [] and "PUBLISHED" in a["note"]
+    a = client.post("/api/v1/evidence/anchor").json()
+    assert len(a["anchors"]) == 1 and a["check"]["match"] is True
+    assert a["check"]["appended_since_anchor"] == 0
+    # exports
+    base = f"/api/v1/evidence/export/{seeded['eid']}"
+    assert "<html" in client.get(base + "?kind=report").text.lower()
+    assert "<html" in client.get(base + "?kind=notebook").text.lower()
+    eln = client.get(base + "?kind=eln")
+    assert eln.status_code == 200 and "text/csv" in eln.headers["content-type"]
+    assert client.get("/api/v1/evidence/export/nope").status_code == 404
+
+
+def test_lab_lists_instruments_with_honest_labels_and_authority(client):
+    ins = client.get("/api/v1/lab/instruments").json()
+    assert ins and all("simulated" in i and "hardware_validated" in i for i in ins)
+    sim = next(i for i in ins if i["id"] == "bionexus-virtual-lab")
+    assert sim["simulated"] is True and sim["hardware_validated"] is False
+    a = client.get("/api/v1/lab/authority").json()
+    cols = [r["column"] for r in a["rules"]]
+    assert cols[0] == "never" and cols[-1] == "autonomous"
+    assert a["halt"]["halted"] is False and a["safety_rules"]
+
+
+def test_authority_description_matches_what_classify_does():
+    """The Lab screen shows DEFAULT_POLICY; pin it to the real classifier."""
+    from bionexus.core.contracts import (ProtocolOp, ProtocolStep, ProtocolSubmission, ReagentSpec,
+                                         SampleKind, SampleSpec, Envelope)
+    from bionexus.governance import AuthorizationMatrix
+    m = AuthorizationMatrix()
+
+    def proto(bsl):
+        return ProtocolSubmission(
+            envelope=Envelope(experiment_branch_id="b"), title="assay",
+            assay_type="binding", steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense, params={"volume_ul": 50})],
+            samples=[SampleSpec(sample_id="S", kind=SampleKind.compound,
+                                concentration="1uM")],
+            reagents=[ReagentSpec(name="buffer", amount="1 mL", bsl_level=bsl)])
+    assert m.classify(proto(1))[0] == "autonomous"
+    assert m.classify(proto(2))[0] == "human"
+    assert m.classify(proto(3))[0] == "never"
+    cols = [c for c, _ in AuthorizationMatrix.DEFAULT_POLICY]
+    assert cols == ["never", "never", "human", "human", "autonomous"]
