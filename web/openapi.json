@@ -1088,6 +1088,41 @@
     "title": "Body_create_analysis_api_v1_analyses_post",
     "type": "object"
    },
+   "Body_submit_results_api_v1_campaigns__eid__results_post": {
+    "properties": {
+     "dry_run": {
+      "default": true,
+      "title": "Dry Run",
+      "type": "boolean"
+     },
+     "file": {
+      "contentMediaType": "application/octet-stream",
+      "title": "File",
+      "type": "string"
+     },
+     "max_response": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Response"
+     },
+     "origin": {
+      "default": "measured",
+      "title": "Origin",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file"
+    ],
+    "title": "Body_submit_results_api_v1_campaigns__eid__results_post",
+    "type": "object"
+   },
    "BranchInfo": {
     "properties": {
      "campaign_id": {
@@ -3071,6 +3106,217 @@
     "title": "Refusal",
     "type": "object"
    },
+   "ResultMatch": {
+    "properties": {
+     "candidate": {
+      "title": "Candidate",
+      "type": "string"
+     },
+     "gate": {
+      "description": "the pre-registered criterion this plate will be judged against",
+      "title": "Gate",
+      "type": "string"
+     },
+     "hypothesis_id": {
+      "title": "Hypothesis Id",
+      "type": "string"
+     },
+     "statement": {
+      "title": "Statement",
+      "type": "string"
+     }
+    },
+    "required": [
+     "hypothesis_id",
+     "candidate",
+     "statement",
+     "gate"
+    ],
+    "title": "ResultMatch",
+    "type": "object"
+   },
+   "ResultVerdict": {
+    "properties": {
+     "candidate": {
+      "title": "Candidate",
+      "type": "string"
+     },
+     "hypothesis_id": {
+      "title": "Hypothesis Id",
+      "type": "string"
+     },
+     "observed": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Observed"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "hypothesis_id",
+     "candidate",
+     "status"
+    ],
+    "title": "ResultVerdict",
+    "type": "object"
+   },
+   "ResultsOutcome": {
+    "properties": {
+     "failure": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Failure"
+     },
+     "messages": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Messages",
+      "type": "array"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     },
+     "verdicts": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ResultVerdict"
+      },
+      "title": "Verdicts",
+      "type": "array"
+     }
+    },
+    "required": [
+     "run_id"
+    ],
+    "title": "ResultsOutcome",
+    "type": "object"
+   },
+   "ResultsPreview": {
+    "description": "What submitting this file to the campaign WOULD do. Nothing is written.",
+    "properties": {
+     "already_judged": {
+      "default": [],
+      "description": "candidates that already have a verdict and are left alone",
+      "items": {
+       "type": "string"
+      },
+      "title": "Already Judged",
+      "type": "array"
+     },
+     "already_submitted": {
+      "default": false,
+      "title": "Already Submitted",
+      "type": "boolean"
+     },
+     "failure": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "a physical failure mode: no verdicts will be derived",
+      "title": "Failure"
+     },
+     "filename": {
+      "title": "Filename",
+      "type": "string"
+     },
+     "in_file_only": {
+      "default": [],
+      "description": "samples in the file with no open hypothesis",
+      "items": {
+       "type": "string"
+      },
+      "title": "In File Only",
+      "type": "array"
+     },
+     "matches": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ResultMatch"
+      },
+      "title": "Matches",
+      "type": "array"
+     },
+     "n_wells": {
+      "title": "N Wells",
+      "type": "integer"
+     },
+     "qc_ok": {
+      "default": true,
+      "title": "Qc Ok",
+      "type": "boolean"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     },
+     "sha256": {
+      "title": "Sha256",
+      "type": "string"
+     },
+     "waiting_for_data": {
+      "default": [],
+      "description": "open hypotheses this file has no data for",
+      "items": {
+       "type": "string"
+      },
+      "title": "Waiting For Data",
+      "type": "array"
+     },
+     "z_kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Z Kind"
+     },
+     "z_prime": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Z Prime"
+     }
+    },
+    "required": [
+     "run_id",
+     "filename",
+     "sha256",
+     "n_wells"
+    ],
+    "title": "ResultsPreview",
+    "type": "object"
+   },
    "Review": {
     "description": "A scientist's recorded decision on a hypothesis (sealed in provenance).",
     "properties": {
@@ -4418,6 +4664,67 @@
      }
     },
     "summary": "Get Provenance",
+    "tags": [
+     "campaigns"
+    ]
+   }
+  },
+  "/api/v1/campaigns/{eid}/results": {
+   "post": {
+    "description": "dry_run=true (default): show which open hypotheses this plate would be judged against.\ndry_run=false: seal the submission, then judge. Idempotent per file digest.",
+    "operationId": "submit_results_api_v1_campaigns__eid__results_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "eid",
+      "required": true,
+      "schema": {
+       "title": "Eid",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_submit_results_api_v1_campaigns__eid__results_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "anyOf": [
+          {
+           "$ref": "#/components/schemas/ResultsPreview"
+          },
+          {
+           "$ref": "#/components/schemas/ResultsOutcome"
+          }
+         ],
+         "title": "Response Submit Results Api V1 Campaigns  Eid  Results Post"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Submit Results",
     "tags": [
      "campaigns"
     ]

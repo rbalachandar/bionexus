@@ -579,3 +579,42 @@ class AnalysisAttachIn(BaseModel):
     campaign_id: str
     candidate: str | None = None
     note: str = Field("", max_length=500)
+
+
+# ------------------------------------------------------------ submit results
+class ResultMatch(BaseModel):
+    hypothesis_id: str
+    candidate: str
+    statement: str
+    gate: str = Field(description="the pre-registered criterion this plate will be judged against")
+
+
+class ResultsPreview(BaseModel):
+    """What submitting this file to the campaign WOULD do. Nothing is written."""
+    run_id: str
+    filename: str
+    sha256: str
+    n_wells: int
+    z_prime: float | None = None
+    z_kind: str | None = None
+    qc_ok: bool = True
+    failure: str | None = Field(None, description="a physical failure mode: no verdicts will be derived")
+    matches: list[ResultMatch] = []
+    in_file_only: list[str] = Field([], description="samples in the file with no open hypothesis")
+    waiting_for_data: list[str] = Field([], description="open hypotheses this file has no data for")
+    already_judged: list[str] = Field([], description="candidates that already have a verdict and are left alone")
+    already_submitted: bool = False
+
+
+class ResultVerdict(BaseModel):
+    hypothesis_id: str
+    candidate: str
+    status: str
+    observed: float | None = None
+
+
+class ResultsOutcome(BaseModel):
+    run_id: str
+    verdicts: list[ResultVerdict] = []
+    failure: str | None = None
+    messages: list[str] = []

@@ -204,6 +204,44 @@ class HypothesisTracker:
         self.hypotheses: dict[str, Hypothesis] = {}
         self.on_verdict = on_verdict      # flywheel hook (best-effort)
 
+    @classmethod
+    def resume(cls, store: ProvenanceStore, actor: Actor, branch_id: str,
+               on_verdict: Callable[[Any], None] | None = None
+               ) -> "HypothesisTracker":
+        """Rebuild a campaign's hypotheses from its ledger branch so new
+        evidence can be judged by the SAME verdict code a live run uses.
+
+        Each proposal restores its pre-registered criteria; later verdict
+        records restore status/observed value, so a hypothesis that was
+        already judged is never silently re-judged (it stays non-open)."""
+        t = cls(store, actor, on_verdict=on_verdict)
+        verdict_events = {"hypothesis_validated", "hypothesis_invalidated",
+                          "hypothesis_inconclusive"}
+        for r in store.branch_records(branch_id):
+            ev, d = r.event_type.value, r.decision or {}
+            hid = r.artifact.artifact_id if r.artifact else None
+            if ev == "hypothesis_proposed" and hid and d.get("criteria"):
+                meta = r.artifact.metadata or {}
+                h = Hypothesis(
+                    hypothesis_id=hid, branch_id=branch_id,
+                    statement=d.get("statement", ""), mechanism=d.get("mechanism", ""),
+                    refutation_condition=d.get("refutation_condition", ""),
+                    candidate=str(meta.get("candidate") or d.get("candidate") or ""),
+                    assay_type=str(meta.get("assay") or ""),
+                    predicted=d.get("predicted", ""),
+                    criteria=SuccessCriteria(**d["criteria"]),
+                    problem_id=branch_id.split("/", 1)[-1],
+                    family=d.get("family") or None)
+                t.hypotheses[hid] = h
+            elif ev in verdict_events and hid in t.hypotheses:
+                h = t.hypotheses[hid]
+                h.status = d.get("verdict") or h.status
+                h.observed_value = d.get("observed")
+                ci = d.get("observed_ci")
+                h.observed_ci = tuple(ci) if ci else None
+                h.evidence_run_id = d.get("evidence_run_id")
+        return t
+
     def define_experiment(
         self,
         problem: ProblemStatement,

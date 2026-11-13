@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ClipboardCheck, ShieldCheck, ShieldX, TriangleAlert } from 'lucide-react'
+import { ChevronLeft, ClipboardCheck, ShieldCheck, ShieldX, TriangleAlert, Upload } from 'lucide-react'
 import { useCampaign } from '../../api/hooks'
 import { Card, CardHeader, EmptyState, Skeleton } from '../../ui/Card'
+import { Button } from '../../ui/Button'
 import { Tag } from '../../ui/Chip'
 import { StatusTag } from '../../routes/Campaigns'
 import { ApprovalCard } from '../inbox/ApprovalCard'
@@ -12,6 +13,7 @@ import { HypothesisDrawer } from './HypothesisDrawer'
 import { OutcomeBar } from './OutcomeBar'
 import { ResultsTable } from './ResultsTable'
 import { RoundsTimeline } from './RoundsTimeline'
+import { SubmitResultsDialog } from './SubmitResultsDialog'
 import { sig } from './format'
 
 /** Keyed by id so state (the open drawer, ?h=) never leaks from one campaign to the next. */
@@ -24,6 +26,7 @@ function CampaignView({ id }: { id: string }) {
   const { data: d, isLoading, error } = useCampaign(id)
   const [qs] = useSearchParams()
   const [open, setOpen] = useState<string | null>(qs.get('h'))
+  const [submitting, setSubmitting] = useState(false)
 
   if (isLoading) return <div className="mx-auto max-w-7xl space-y-4 p-6"><Skeleton className="h-10 w-2/3" /><Skeleton className="h-24" /><Skeleton className="h-72" /></div>
   if (error || !d) return <div className="mx-auto max-w-3xl p-10"><EmptyState title="Campaign not found" hint={(error as Error | null)?.message ?? 'It may have been archived.'} /></div>
@@ -38,7 +41,8 @@ function CampaignView({ id }: { id: string }) {
         {d.gate.label && <Tag className="num !text-xs">gate {d.gate.label}</Tag>}
         {d.program && <Tag tone="accent">{d.program.name}</Tag>}
         {d.autonomy && <Tag>{d.autonomy}</Tag>}
-        <span className="num ml-auto flex items-center gap-4 text-xs text-muted">
+        <Button size="sm" className="ml-auto" onClick={() => setSubmitting(true)}><Upload size={13} />Submit results</Button>
+        <span className="num flex items-center gap-4 text-xs text-muted">
           <span>{d.budget.runs_used}{d.budget.runs_max ? ` / ${d.budget.runs_max}` : ''} lab runs</span>
           <span className={d.chain.verified ? 'flex items-center gap-1' : 'flex items-center gap-1 font-medium text-bad'}>
             {d.chain.verified ? <ShieldCheck size={14} className="text-ok" /> : <ShieldX size={14} />}
@@ -47,6 +51,7 @@ function CampaignView({ id }: { id: string }) {
         </span>
       </div>
 
+      <SubmitResultsDialog id={d.id} open={submitting} onOpenChange={setSubmitting} />
       {!!d.awaiting_approvals.length && (
         <Card className="mb-4 border-warn/50 bg-warn-soft">
           <div className="px-4 pt-3 text-sm font-semibold text-warn">Waiting for you — the agent has paused</div>

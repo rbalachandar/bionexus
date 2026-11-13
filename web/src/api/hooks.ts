@@ -214,3 +214,29 @@ export const useReviewAnalysis = () => useAnalysisMutation<Schemas['AnalysisRevi
   unwrap(api.POST('/api/v1/analyses/{aid}/review', { params: { path: { aid: id } }, body })))
 export const useAttachAnalysis = () => useAnalysisMutation<Schemas['AnalysisAttachIn']>((id, body) =>
   unwrap(api.POST('/api/v1/analyses/{aid}/attach', { params: { path: { aid: id } }, body })))
+
+// ---- submit measured results to a campaign
+type ResultsPreview = Schemas['ResultsPreview']
+type ResultsOutcome = Schemas['ResultsOutcome']
+
+async function postResults(id: string, file: File, origin: string, dryRun: boolean): Promise<unknown> {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('origin', origin)
+  fd.append('dry_run', String(dryRun))
+  const r = await window.fetch(`/api/v1/campaigns/${id}/results`, { method: 'POST', body: fd })
+  const j = await r.json()
+  if (!r.ok) throw new Error(j?.detail?.detail || j?.detail?.title || `${r.status}`)
+  return j
+}
+
+export const usePreviewResults = (id: string) =>
+  useMutation({ mutationFn: ({ file, origin }: { file: File; origin: string }) => postResults(id, file, origin, true) as Promise<ResultsPreview> })
+
+export function useSubmitResults(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ file, origin }: { file: File; origin: string }) => postResults(id, file, origin, false) as Promise<ResultsOutcome>,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['campaign', id] }); qc.invalidateQueries({ queryKey: ['campaigns'] }); qc.invalidateQueries({ queryKey: ['today'] }) },
+  })
+}

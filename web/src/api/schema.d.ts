@@ -307,6 +307,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/{eid}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Results
+         * @description dry_run=true (default): show which open hypotheses this plate would be judged against.
+         *     dry_run=false: seal the submission, then judge. Idempotent per file digest.
+         */
+        post: operations["submit_results_api_v1_campaigns__eid__results_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/evals": {
         parameters: {
             query?: never;
@@ -1025,6 +1046,23 @@ export interface components {
             file: string;
             /** Layout */
             layout?: string | null;
+        };
+        /** Body_submit_results_api_v1_campaigns__eid__results_post */
+        Body_submit_results_api_v1_campaigns__eid__results_post: {
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /** File */
+            file: string;
+            /** Max Response */
+            max_response?: number | null;
+            /**
+             * Origin
+             * @default measured
+             */
+            origin: string;
         };
         /** BranchInfo */
         BranchInfo: {
@@ -1754,6 +1792,104 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** ResultMatch */
+        ResultMatch: {
+            /** Candidate */
+            candidate: string;
+            /**
+             * Gate
+             * @description the pre-registered criterion this plate will be judged against
+             */
+            gate: string;
+            /** Hypothesis Id */
+            hypothesis_id: string;
+            /** Statement */
+            statement: string;
+        };
+        /** ResultVerdict */
+        ResultVerdict: {
+            /** Candidate */
+            candidate: string;
+            /** Hypothesis Id */
+            hypothesis_id: string;
+            /** Observed */
+            observed?: number | null;
+            /** Status */
+            status: string;
+        };
+        /** ResultsOutcome */
+        ResultsOutcome: {
+            /** Failure */
+            failure?: string | null;
+            /**
+             * Messages
+             * @default []
+             */
+            messages: string[];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Verdicts
+             * @default []
+             */
+            verdicts: components["schemas"]["ResultVerdict"][];
+        };
+        /**
+         * ResultsPreview
+         * @description What submitting this file to the campaign WOULD do. Nothing is written.
+         */
+        ResultsPreview: {
+            /**
+             * Already Judged
+             * @description candidates that already have a verdict and are left alone
+             * @default []
+             */
+            already_judged: string[];
+            /**
+             * Already Submitted
+             * @default false
+             */
+            already_submitted: boolean;
+            /**
+             * Failure
+             * @description a physical failure mode: no verdicts will be derived
+             */
+            failure?: string | null;
+            /** Filename */
+            filename: string;
+            /**
+             * In File Only
+             * @description samples in the file with no open hypothesis
+             * @default []
+             */
+            in_file_only: string[];
+            /**
+             * Matches
+             * @default []
+             */
+            matches: components["schemas"]["ResultMatch"][];
+            /** N Wells */
+            n_wells: number;
+            /**
+             * Qc Ok
+             * @default true
+             */
+            qc_ok: boolean;
+            /** Run Id */
+            run_id: string;
+            /** Sha256 */
+            sha256: string;
+            /**
+             * Waiting For Data
+             * @description open hypotheses this file has no data for
+             * @default []
+             */
+            waiting_for_data: string[];
+            /** Z Kind */
+            z_kind?: string | null;
+            /** Z Prime */
+            z_prime?: number | null;
+        };
         /**
          * Review
          * @description A scientist's recorded decision on a hypothesis (sealed in provenance).
@@ -2476,6 +2612,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProvenanceView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_results_api_v1_campaigns__eid__results_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_submit_results_api_v1_campaigns__eid__results_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultsPreview"] | components["schemas"]["ResultsOutcome"];
                 };
             };
             /** @description Validation Error */

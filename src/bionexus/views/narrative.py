@@ -232,10 +232,16 @@ def _trust(recs, out, advs, durc, last) -> None:
 
 def _evidence(recs, out, last, data_dir) -> None:
     # evidence: recorded plate files for this branch's runs
+    # a plate is evidence whether the lab ran it or a person submitted it
     run_ids = {d.get("run_id") for r in recs
-               if (d := r.decision or {})
-               and r.event_type.value == "lab_run" and d.get("run_id")}
+               if (d := r.decision or {}) and d.get("run_id")
+               and (r.event_type.value == "lab_run"
+                    or d.get("kind") == "results_submitted")}
     run2cand: dict[str, str] = {}
+    for r in recs:        # a verdict names the run it was judged on
+        d = r.decision or {}
+        if d.get("verdict") and d.get("evidence_run_id") and _candidate(r):
+            run2cand.setdefault(d["evidence_run_id"], _candidate(r))
     for r in recs:
         d = r.decision or {}
         if r.event_type.value == "hypothesis_tested" and d.get("run_id"):

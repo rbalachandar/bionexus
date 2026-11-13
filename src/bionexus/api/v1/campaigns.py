@@ -97,6 +97,12 @@ def summarize(rec) -> tuple[str, str, str | None]:
                 "drop": "drop"}.get(d.get("decision"), d.get("decision"))
         return ("review", f"{rec.actor.id} decided to {verb} {cand or '?'}"
                 + (f" — “{d['note']}”" if d.get("note") else ""), cand)
+    if et == "gate_decision" and d.get("kind") == "results_submitted":
+        return ("run", f"{rec.actor.id} submitted a plate ({d.get('original_name', '?')}) — judging "
+                f"{', '.join(d.get('candidates') or []) or 'nothing'}", None)
+    if et == "gate_decision" and d.get("kind") == "analysis_attached":
+        return ("review", f"{rec.actor.id} attached analysis {d.get('analysis_id', '?')} as evidence"
+                + (f" for {d['candidate']}" if d.get("candidate") else ""), d.get("candidate"))
     if et == "gate_decision":
         kind = d.get("kind", "gate")
         reason = d.get("reason") or d.get("action") or ""
