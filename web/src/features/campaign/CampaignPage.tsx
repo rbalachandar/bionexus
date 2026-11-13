@@ -14,8 +14,13 @@ import { ResultsTable } from './ResultsTable'
 import { RoundsTimeline } from './RoundsTimeline'
 import { sig } from './format'
 
+/** Keyed by id so state (the open drawer, ?h=) never leaks from one campaign to the next. */
 export default function CampaignPage() {
   const { id = '' } = useParams()
+  return <CampaignView key={id} id={id} />
+}
+
+function CampaignView({ id }: { id: string }) {
   const { data: d, isLoading, error } = useCampaign(id)
   const [qs] = useSearchParams()
   const [open, setOpen] = useState<string | null>(qs.get('h'))

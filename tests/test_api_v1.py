@@ -250,6 +250,10 @@ def test_human_review_is_sealed_and_clears_the_attention_item(client, seeded):
     assert ab2["review"]["decision"] == "follow_up"
     inbox = client.get("/api/v1/inbox").json()
     assert not any(i["kind"] == "review" and i["hypothesis_id"] == ab["id"] for i in inbox)
+    # ...but the decision stays visible in the history, with who decided
+    hist = client.get("/api/v1/inbox?status=all").json()
+    done = next(i for i in hist if i["kind"] == "review" and i["hypothesis_id"] == ab["id"])
+    assert done["status"] == "reviewed" and done["decided_by"] == "local-user"
     act = client.get(f"/api/v1/campaigns/{seeded['eid']}/activity").json()
     assert any("decided to follow up" in a["text"] for a in act)
 

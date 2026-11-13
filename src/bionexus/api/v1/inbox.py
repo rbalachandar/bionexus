@@ -32,23 +32,36 @@ def _approval_items() -> list[S.InboxItem]:
     return out
 
 
+_VERB = {"follow_up": "followed up", "accept": "accepted as inconclusive",
+         "drop": "dropped"}
+
+
 def _review_items() -> list[S.InboxItem]:
     out = []
     for dg, hyps in collect():
         for h in hyps:
-            if h.state == "abstained" and h.review is None:
-                v = h.verdict
-                rng = (f" [{v.ci[0]:.3g} – {v.ci[1]:.3g}]"
-                       if v and v.ci else "")
+            if h.state != "abstained":
+                continue
+            v = h.verdict
+            rng = f" [{v.ci[0]:.3g} – {v.ci[1]:.3g}]" if v and v.ci else ""
+            base = dict(id=f"rev:{dg.id}:{h.id}", kind="review",
+                        campaign_id=dg.id, campaign_title=dg.title,
+                        hypothesis_id=h.id, candidate=h.head)
+            if h.review is None:
                 out.append(S.InboxItem(
-                    id=f"rev:{dg.id}:{h.id}", kind="review",
-                    title=f"{h.head} abstained",
+                    **base, title=f"{h.head} abstained", ts=dg.updated_at,
                     detail=(f"{v.unit_label or 'value'} {v.observed:.3g}{rng}: "
                             "the interval straddles the gate. Follow up, accept "
                             "the abstention, or drop it." if v and v.observed
-                            is not None else "No claim either way."),
-                    ts=dg.updated_at, campaign_id=dg.id, campaign_title=dg.title,
-                    hypothesis_id=h.id, candidate=h.head))
+                            is not None else "No claim either way.")))
+            else:
+                r = h.review
+                out.append(S.InboxItem(
+                    **base, status="reviewed", ts=r.ts, decided_by=r.by,
+                    decision=r.decision,
+                    follow_up_campaign_id=r.follow_up_campaign_id,
+                    title=f"{h.head}: {_VERB[r.decision]}",
+                    detail=(f"“{r.note}”" if r.note else "")))
     return out
 
 

@@ -109,8 +109,8 @@ export function useDecideApproval() {
 export function useReviewHypothesis(campaignId: string) {
   const refresh = useRefresh()
   return useMutation({
-    mutationFn: (v: { hid: string; decision: Schemas['ReviewIn']['decision']; note: string }) =>
-      unwrap(api.POST('/api/v1/campaigns/{eid}/hypotheses/{hid}/review', { params: { path: { eid: campaignId, hid: v.hid } }, body: { decision: v.decision, note: v.note } })),
+    mutationFn: (v: { hid: string; decision: Schemas['ReviewIn']['decision']; note: string; followUpCampaignId?: string }) =>
+      unwrap(api.POST('/api/v1/campaigns/{eid}/hypotheses/{hid}/review', { params: { path: { eid: campaignId, hid: v.hid } }, body: { decision: v.decision, note: v.note, follow_up_campaign_id: v.followUpCampaignId ?? null } })),
     onSuccess: refresh,
   })
 }

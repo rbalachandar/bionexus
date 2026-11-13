@@ -5,8 +5,9 @@ import { LaunchCampaignDialog } from './LaunchCampaignDialog'
 
 /** "Follow up" on candidates that came back inconclusive: a new campaign in
  *  the SAME program, so the new data is judged against the same gate. */
-export function FollowUpDialog({ open, onOpenChange, campaignId, candidates }: {
+export function FollowUpDialog({ open, onOpenChange, campaignId, candidates, onLaunched }: {
   open: boolean; onOpenChange: (o: boolean) => void; campaignId: string; candidates: string[]
+  onLaunched?: (campaignId: string) => Promise<unknown> | void
 }) {
   const { data: c } = useCampaign(campaignId)
   if (!open) return null
@@ -20,5 +21,5 @@ export function FollowUpDialog({ open, onOpenChange, campaignId, candidates }: {
     )
   if (!c?.program) return null
   return <LaunchCampaignDialog open onOpenChange={onOpenChange} slug={c.program.slug} title="Follow up"
-    defaults={{ objective: `Follow-up: resolve ${candidates.join(', ')}`, candidates }} />
+    defaults={{ objective: `Follow-up: resolve ${candidates.join(', ')}`, candidates }} onLaunched={onLaunched} />
 }

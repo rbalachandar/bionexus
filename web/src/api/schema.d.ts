@@ -902,11 +902,15 @@ export interface components {
             candidate?: string | null;
             /** Decided By */
             decided_by?: string | null;
+            /** Decision */
+            decision?: string | null;
             /**
              * Detail
              * @default
              */
             detail: string;
+            /** Follow Up Campaign Id */
+            follow_up_campaign_id?: string | null;
             /** Hypothesis Id */
             hypothesis_id?: string | null;
             /** Id */
@@ -1135,6 +1139,11 @@ export interface components {
              */
             decision: "follow_up" | "accept" | "drop";
             /**
+             * Follow Up Campaign Id
+             * @description the campaign started to follow up
+             */
+            follow_up_campaign_id?: string | null;
+            /**
              * Note
              * @default
              */
@@ -1179,6 +1188,8 @@ export interface components {
              * @enum {string}
              */
             decision: "follow_up" | "accept" | "drop";
+            /** Follow Up Campaign Id */
+            follow_up_campaign_id?: string | null;
             /**
              * Note
              * @default

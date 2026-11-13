@@ -66,6 +66,7 @@ class Review(BaseModel):
     note: str = ""
     by: str
     ts: float | None = None
+    follow_up_campaign_id: str | None = Field(None, description="the campaign started to follow up")
 
 
 class HypothesisSummary(BaseModel):
@@ -354,6 +355,7 @@ class AgentSummary(BaseModel):
 class ReviewIn(BaseModel):
     decision: Literal["follow_up", "accept", "drop"]
     note: str = ""
+    follow_up_campaign_id: str | None = None
 
 
 InboxKind = Literal["approval", "review"]
@@ -371,6 +373,8 @@ class InboxItem(BaseModel):
     campaign_title: str | None = None
     hypothesis_id: str | None = None
     candidate: str | None = None
+    decision: str | None = None
+    follow_up_campaign_id: str | None = None
 
 
 class DecisionIn(BaseModel):

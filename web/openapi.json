@@ -1543,10 +1543,32 @@
       ],
       "title": "Decided By"
      },
+     "decision": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Decision"
+     },
      "detail": {
       "default": "",
       "title": "Detail",
       "type": "string"
+     },
+     "follow_up_campaign_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Follow Up Campaign Id"
      },
      "hypothesis_id": {
       "anyOf": [
@@ -2139,6 +2161,18 @@
       "title": "Decision",
       "type": "string"
      },
+     "follow_up_campaign_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "the campaign started to follow up",
+      "title": "Follow Up Campaign Id"
+     },
      "note": {
       "default": "",
       "title": "Note",
@@ -2234,6 +2268,17 @@
       ],
       "title": "Decision",
       "type": "string"
+     },
+     "follow_up_campaign_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Follow Up Campaign Id"
      },
      "note": {
       "default": "",

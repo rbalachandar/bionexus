@@ -223,7 +223,8 @@ def _reviews(recs) -> dict[str, S.Review]:
         if d.get("kind") != "human_review" or not d.get("decision"):
             continue
         rv = S.Review(decision=d["decision"], note=d.get("note", ""),
-                      by=r.actor.id, ts=_ts(r))
+                      by=r.actor.id, ts=_ts(r),
+                      follow_up_campaign_id=d.get("follow_up_campaign_id"))
         for k in (d.get("hypothesis_id"), d.get("candidate")):
             if k:
                 out[str(k)] = rv
@@ -625,10 +626,12 @@ def review_hypothesis(eid: str, hid: str, body: S.ReviewIn,
         Actor(kind=ActorKind.human, id=user),
         decision={"kind": "human_review", "hypothesis_id": hid,
                   "candidate": card.get("candidate"),
-                  "decision": body.decision, "note": body.note[:500]})
+                  "decision": body.decision, "note": body.note[:500],
+                  "follow_up_campaign_id": body.follow_up_campaign_id})
     get_store(str(_ids.PROVENANCE_DB)).append(rec)
     return S.Review(decision=body.decision, note=body.note[:500], by=user,
-                    ts=_ts(rec))
+                    ts=_ts(rec),
+                    follow_up_campaign_id=body.follow_up_campaign_id)
 
 
 @router.post("/{eid}/archive", response_model=S.CampaignSummary)

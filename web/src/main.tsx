@@ -1,10 +1,11 @@
 import './api/auth'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom'
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './styles/app.css'
 import Shell from './app/Shell'
+import { ToastProvider } from './app/toast'
 import Campaigns from './routes/Campaigns'
 import CampaignPage from './features/campaign/CampaignPage'
 import Soon from './routes/Soon'
@@ -23,10 +24,16 @@ const ToCampaign = () => <Navigate to={`/campaigns/${useParams().eid}`} replace 
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } })
 
+function Toasts({ children }: { children: React.ReactNode }) {
+  const nav = useNavigate()
+  return <ToastProvider onNavigate={nav}>{children}</ToastProvider>
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
       <BrowserRouter>
+       <Toasts>
         <Routes>
           <Route element={<Shell />}>
             <Route path="/" element={<TodayPage />} />
@@ -45,6 +52,7 @@ export default function App() {
                   </Route>
           </Route>
         </Routes>
+       </Toasts>
       </BrowserRouter>
     </QueryClientProvider>
   )

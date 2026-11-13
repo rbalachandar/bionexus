@@ -4,6 +4,7 @@ import { useLaunchCampaign } from '../../api/hooks'
 import { Button } from '../../ui/Button'
 import { Dialog, DialogContent } from '../../ui/Dialog'
 import { Field, Input, Select, Textarea } from '../../ui/Field'
+import { useToast } from '../../app/toast'
 
 const AUTONOMY = {
   gate: 'Ask me first — every lab submission waits for my approval',
@@ -12,10 +13,12 @@ const AUTONOMY = {
 } as const
 
 /** Start a campaign against a program's gate. Defaults to the safest mode. */
-export function LaunchCampaignDialog({ open, onOpenChange, slug, title = 'New campaign', defaults }: {
+export function LaunchCampaignDialog({ open, onOpenChange, slug, title = 'New campaign', defaults, onLaunched }: {
   open: boolean; onOpenChange: (o: boolean) => void; slug: string; title?: string
   defaults?: { objective?: string; candidates?: string[] }
+  onLaunched?: (campaignId: string) => Promise<unknown> | void
 }) {
+  const toast = useToast()
   const nav = useNavigate()
   const launch = useLaunchCampaign(slug)
   const [objective, setObjective] = useState(defaults?.objective ?? '')
@@ -27,7 +30,14 @@ export function LaunchCampaignDialog({ open, onOpenChange, slug, title = 'New ca
   const list = cands.split(/[\n,]+/).map((c) => c.trim()).filter(Boolean)
   const submit = () => launch.mutate(
     { objective: objective || null, candidates: list, autonomy, rounds, k: Math.max(1, Math.min(list.length || 2, 4)) },
-    { onSuccess: (c) => { onOpenChange(false); nav(`/campaigns/${c.id}`) } })
+    {
+      onSuccess: async (c) => {
+        await onLaunched?.(c.id)
+        onOpenChange(false)
+        toast({ tone: 'ok', text: autonomy === 'gate' ? 'Campaign started. It will pause and ask for your approval before anything reaches the lab.' : 'Campaign started.' })
+        nav(`/campaigns/${c.id}`)
+      },
+    })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

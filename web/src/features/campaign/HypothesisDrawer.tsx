@@ -1,13 +1,11 @@
 import * as D from '@radix-ui/react-dialog'
 import * as Tabs from '@radix-ui/react-tabs'
 import { X } from 'lucide-react'
-import { useState } from 'react'
 import { useCurves, useHypothesis } from '../../api/hooks'
 import { StateChip, Tag, type State } from '../../ui/Chip'
 import { Skeleton } from '../../ui/Card'
 import { CurveCard } from './CurvePlot'
 import { ReviewControls } from '../inbox/ReviewControls'
-import { FollowUpDialog } from '../launch/FollowUpDialog'
 import { ago, explain, sig, suggestion, unitOf, type Detail, type Hyp } from './format'
 
 const tab = 'border-b-2 border-transparent px-3 py-2 text-sm text-muted hover:text-ink data-[state=active]:border-accent data-[state=active]:font-medium data-[state=active]:text-ink'
@@ -19,7 +17,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export function HypothesisDrawer({ campaign, hid, onClose }: { campaign: Detail; hid: string | null; onClose: () => void }) {
   const { data: h } = useHypothesis(campaign.id, hid)
   const curves = useCurves(campaign.id, hid)
-  const [fu, setFu] = useState(false)
   const unit = unitOf(campaign.gate.label) || 'µM'
   const summary: Hyp | undefined = h
   const tip = summary ? suggestion(summary, campaign.gate) : null
@@ -61,8 +58,7 @@ export function HypothesisDrawer({ campaign, hid, onClose }: { campaign: Detail;
                   {h.state === 'abstained' && (
                     <div className="mb-4 rounded-lg border border-abstain/30 p-3">
                       <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-abstain">Your decision</div>
-                      <ReviewControls campaignId={campaign.id} hid={h.id} review={h.review} onFollowUp={() => setFu(true)} />
-                      <FollowUpDialog open={fu} onOpenChange={setFu} campaignId={campaign.id} candidates={[h.head]} />
+                      <ReviewControls campaignId={campaign.id} hid={h.id} candidate={h.head} review={h.review} />
                     </div>
                   )}
                   {h.refutation_condition && (
