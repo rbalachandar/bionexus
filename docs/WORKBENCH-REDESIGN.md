@@ -108,7 +108,10 @@ tokens). One event stream. Errors are RFC 7807-style `{type, title, detail}`.
 
 Status: **1 done** (API v1 campaigns) · **2 done** (foundation: Tailwind tokens +
 Radix primitives, shell with Halt / trust strip / ⌘K, generated client,
-`/api/v1/system/status`, campaigns list, dark + light) · 3 next.
+`/api/v1/system/status`, campaigns list, dark + light) · **3 done** (campaign
+cockpit: outcome bar, interval-vs-gate forest plot on a log axis, rounds timeline
+with why-this-plate, evidence drawer with the recorded dose–response curve + QC,
+plain-language verdict explanation and next step, live activity) · 4 next.
 
 1. **API v1 for campaigns**: pydantic response models, `/campaigns`, hypothesis,
    activity, events, provenance; OpenAPI export; tests on the golden campaign.

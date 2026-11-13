@@ -147,7 +147,9 @@ def _why_rounds(recs, detail_rounds) -> list[S.Round]:
         if sel:
             why = S.Why(
                 policy=sel.get("policy"),
-                policy_version=sel.get("policy_version"), k=sel.get("k"),
+                policy_version=(str(sel["policy_version"])
+                                if sel.get("policy_version") is not None else None),
+                k=sel.get("k"),
                 target=sel.get("target"), direction=sel.get("direction"),
                 note=sel.get("note", ""),
                 picks=[S.Pick(candidate=p["candidate"],
@@ -188,7 +190,7 @@ def _summary_of(card, gate_label: str | None = None) -> S.HypothesisSummary:
             ci = v.get("ci")
             verdict = S.Verdict(
                 status=status, observed=v.get("observed"),
-                ci=tuple(ci) if ci else None, unit_label=v.get("unit_label"),
+                ci=list(ci) if ci else None, unit_label=v.get("unit_label"),
                 margin=v.get("margin") or None,
                 extrapolation=bool(v.get("extrapolation")))
     return S.HypothesisSummary(
@@ -276,6 +278,18 @@ def _chain(branch: str | None, recs) -> S.ChainStatus:
                          problems=problems[:10])
 
 
+def _status(raw: str, recs) -> str:
+    """The registry status lags (a launched campaign stays 'executing' for
+    ever when no log marker exists); the ledger knows: the autonomous loop
+    writes its reviewer report last, so its presence means the campaign is
+    complete."""
+    if raw in ("executing", "running", "interrupted", "verdict recorded") \
+            and any((r.decision or {}).get("kind") == "review_report"
+                    for r in recs):
+        return "completed"
+    return raw
+
+
 def _load(eid: str):
     ws = _ws()
     row = ws.get(eid)
@@ -305,6 +319,9 @@ def list_campaigns(program: str | None = Query(None),
         ag = payload.get("agent") or {}
         pref = progs.get(e["id"])
         st = row_status(e)
+        if st in ("executing", "running", "interrupted") and ag.get("problem_id"):
+            st = _status(st, _branch_records(f"problem/{ag['problem_id']}",
+                                             _ids.PROVENANCE_DB))
         if program and (not pref or pref.slug != program):
             continue
         if status and st != status:
@@ -323,13 +340,15 @@ def get_campaign(eid: str) -> S.CampaignDetail:
     ws, row, detail, branch, recs = _load(eid)
     cards = detail.get("cards") or []
     gate = _gate(recs, cards, detail)
+    rounds = _why_rounds(recs, detail.get("rounds") or [])
+    tested_cands = {c for r in rounds for c in r.candidates}
     hyps = [_summary_of(c, gate.label) for c in cards]
     runs = sum(1 for r in recs if r.event_type.value == "lab_run"
                and (r.decision or {}).get("run_id"))
     progs = _program_index()
     return S.CampaignDetail(
         id=eid, title=row.get("question") or eid,
-        status=detail.get("status") or row_status(row),
+        status=_status(detail.get("status") or row_status(row), recs),
         autonomy=(detail.get("agent") or {}).get("autonomy"),
         program=progs.get(eid), updated_at=row.get("updated_at"),
         problem_id=(detail.get("agent") or {}).get("problem_id"),
@@ -337,12 +356,12 @@ def get_campaign(eid: str) -> S.CampaignDetail:
         gate=gate,
         budget=S.Budget(runs_used=runs,
                         runs_max=(detail.get("spec") or {}).get("run_budget")),
-        funnel=_funnel(hyps), rounds=_why_rounds(
-            recs, detail.get("rounds") or []),
+        funnel=_funnel(hyps), rounds=rounds,
         hypotheses=hyps,
         eliminated=[S.Refusal(candidate=str(x.get("candidate")),
                               reason=x.get("reason") or "not selected")
-                    for x in detail.get("eliminated") or []],
+                    for x in detail.get("eliminated") or []
+                    if str(x.get("candidate")) not in tested_cands],
         reviewer=_reviewer(recs), chain=_chain(branch, recs))
 
 
@@ -383,6 +402,73 @@ def get_hypothesis(eid: str, hid: str) -> S.HypothesisDetail:
         citation_status=card.get("citation_status"),
         evidence=card.get("evidence"), derivation=deriv, evidence_runs=runs,
         events=events)
+
+
+@router.get("/{eid}/hypotheses/{hid}/curves", response_model=S.CurveSet)
+def get_curves(eid: str, hid: str) -> S.CurveSet:
+    """The recorded dose–response data behind a verdict: every plate point,
+    the fit with its interval, and the plate's QC — so a scientist can LOOK at
+    the evidence, not only read the number."""
+    import math
+
+    from bionexus.fitting import hill_fit, hill_response
+    from bionexus.labread import read_plate
+    from bionexus.paths import DATA_DIR
+    _, _, detail, branch, recs = _load(eid)
+    card = next((c for c in detail.get("cards") or [] if c["key"] == hid), None)
+    if card is None:
+        raise HTTPException(404, S.Problem(
+            type="hypothesis-not-found", title="Hypothesis not found",
+            detail=hid).model_dump())
+    cand = card.get("candidate")
+    items = views.narrative_data(recs, [], str(DATA_DIR)).get(
+        "evidence", {}).get("curves", [])
+    mine = sorted((i for i in items if i.get("candidate") == cand),
+                  key=lambda i: i["run_id"])
+    out = S.CurveSet(candidate=cand)
+    for n, it in enumerate(mine):
+        try:
+            res = read_plate(it["path"])
+        except Exception as exc:        # unreadable evidence file: say so
+            out.note = f"could not read {it['run_id']}: {str(exc)[:80]}"
+            continue
+        pts = [(float(r["conc_um"]), float(r["value"]))
+               for r in (m if isinstance(m, dict) else m.model_dump()
+                         for m in res.records)
+               if r.get("sample") == cand and not r.get("control")
+               and isinstance(r.get("conc_um"), (int, float))
+               and isinstance(r.get("value"), (int, float))]
+        if not pts:
+            continue
+        comp = (res.analysis.get("compounds") or {}).get(cand) or {}
+        fit = None
+        if comp:
+            line: list[S.CurvePoint] = []
+            hf = hill_fit(pts, None)
+            if comp.get("ic50_um") and hf:
+                lo, hi = min(c for c, _ in pts) / 1.6, max(c for c, _ in pts) * 1.6
+                for i in range(60):
+                    c = lo * (hi / lo) ** (i / 59)
+                    line.append(S.CurvePoint(
+                        conc_um=c, value=hill_response(c, comp["ic50_um"],
+                                                       hf["top"])))
+            ci = comp.get("ic50_ci")
+            fit = S.CurveFit(
+                ic50_um=comp.get("ic50_um"),
+                ci=list(ci) if ci else None, top=hf["top"] if hf else None,
+                method=comp.get("fit_method"), model=comp.get("fit_model"),
+                right_censored=bool(comp.get("right_censored")),
+                left_censored=bool(comp.get("left_censored")), line=line)
+        out.curves.append(S.Curve(
+            run_id=it["run_id"],
+            label="Primary screen" if n == 0 else f"Confirmation {n}",
+            points=[S.CurvePoint(conc_um=c, value=v) for c, v in sorted(pts)],
+            fit=fit, z_prime=res.z_prime,
+            z_kind=(res.analysis or {}).get("z_prime_kind"),
+            unit=getattr(res, "response_unit", None)))
+    if not out.curves and not out.note:
+        out.note = "no recorded plate file found for this candidate"
+    return out
 
 
 @router.get("/{eid}/activity", response_model=list[S.ActivityItem])

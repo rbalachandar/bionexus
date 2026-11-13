@@ -19,7 +19,29 @@ export const useCampaign = (id: string) =>
   useQuery({
     queryKey: ['campaign', id],
     queryFn: () => unwrap(api.GET('/api/v1/campaigns/{eid}', { params: { path: { eid: id } } })),
+    // poll fast while the campaign is live, slowly once it has settled
+    refetchInterval: (q) => (q.state.data?.status === 'running' ? 2_000 : 10_000),
+  })
+
+export const useActivity = (id: string, limit = 25) =>
+  useQuery({
+    queryKey: ['activity', id, limit],
+    queryFn: () => unwrap(api.GET('/api/v1/campaigns/{eid}/activity', { params: { path: { eid: id }, query: { limit } } })),
     refetchInterval: 4_000,
+  })
+
+export const useHypothesis = (id: string, hid: string | null) =>
+  useQuery({
+    queryKey: ['hypothesis', id, hid],
+    enabled: !!hid,
+    queryFn: () => unwrap(api.GET('/api/v1/campaigns/{eid}/hypotheses/{hid}', { params: { path: { eid: id, hid: hid! } } })),
+  })
+
+export const useCurves = (id: string, hid: string | null) =>
+  useQuery({
+    queryKey: ['curves', id, hid],
+    enabled: !!hid,
+    queryFn: () => unwrap(api.GET('/api/v1/campaigns/{eid}/hypotheses/{hid}/curves', { params: { path: { eid: id, hid: hid! } } })),
   })
 
 /** Halt/resume (legacy endpoint until the v1 governance resource lands). */

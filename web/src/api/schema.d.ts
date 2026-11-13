@@ -89,6 +89,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/{eid}/hypotheses/{hid}/curves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Curves
+         * @description The recorded dose–response data behind a verdict: every plate point,
+         *     the fit with its interval, and the plate's QC — so a scientist can LOOK at
+         *     the evidence, not only read the number.
+         */
+        get: operations["get_curves_api_v1_campaigns__eid__hypotheses__hid__curves_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{eid}/provenance": {
         parameters: {
             query?: never;
@@ -249,6 +271,76 @@ export interface components {
             records: number;
             /** Verified */
             verified: boolean;
+        };
+        /** Curve */
+        Curve: {
+            fit?: components["schemas"]["CurveFit"] | null;
+            /** Label */
+            label: string;
+            /** Points */
+            points: components["schemas"]["CurvePoint"][];
+            /** Run Id */
+            run_id: string;
+            /** Unit */
+            unit?: string | null;
+            /** Z Kind */
+            z_kind?: string | null;
+            /** Z Prime */
+            z_prime?: number | null;
+        };
+        /** CurveFit */
+        CurveFit: {
+            /** Ci */
+            ci?: number[] | null;
+            /** Ic50 Um */
+            ic50_um?: number | null;
+            /**
+             * Left Censored
+             * @default false
+             */
+            left_censored: boolean;
+            /**
+             * Line
+             * @description the fitted curve, sampled for plotting
+             * @default []
+             */
+            line: components["schemas"]["CurvePoint"][];
+            /** Method */
+            method?: string | null;
+            /**
+             * Model
+             * @description what the curve model is (slope/bottom fixed)
+             */
+            model?: string | null;
+            /**
+             * Right Censored
+             * @default false
+             */
+            right_censored: boolean;
+            /**
+             * Top
+             * @description known or fitted plateau
+             */
+            top?: number | null;
+        };
+        /** CurvePoint */
+        CurvePoint: {
+            /** Conc Um */
+            conc_um: number;
+            /** Value */
+            value: number;
+        };
+        /** CurveSet */
+        CurveSet: {
+            /** Candidate */
+            candidate?: string | null;
+            /**
+             * Curves
+             * @default []
+             */
+            curves: components["schemas"]["Curve"][];
+            /** Note */
+            note?: string | null;
         };
         /**
          * DispositionAction
@@ -621,10 +713,7 @@ export interface components {
         /** Verdict */
         Verdict: {
             /** Ci */
-            ci?: [
-                number,
-                number
-            ] | null;
+            ci?: number[] | null;
             /**
              * Extrapolation
              * @default false
@@ -829,6 +918,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HypothesisDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_curves_api_v1_campaigns__eid__hypotheses__hid__curves_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eid: string;
+                hid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurveSet"];
                 };
             };
             /** @description Validation Error */

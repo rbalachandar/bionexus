@@ -12,6 +12,7 @@ from bionexus.api.app import app  # noqa: E402
 from bionexus.autoloop import CampaignConfig, run_campaign  # noqa: E402
 from bionexus.core.hypothesis import Constraint, ProblemStatement  # noqa: E402
 from bionexus.flywheel import Flywheel  # noqa: E402
+from bionexus.paths import DATA_DIR  # noqa: E402
 from bionexus.wizard_store import WizardStore  # noqa: E402
 
 SPECS = [("AD1", 2.0, True), ("H1", 5.0, False), ("H2", 8.0, False),
@@ -32,7 +33,7 @@ def seeded(tmp_path_factory):
         Constraint(name="potency", description="IC50", kind="hard",
                    limit=20.0, unit="uM")])
     cfg = CampaignConfig(problem=problem, hypotheses=hyps, k=3, rounds=2,
-                         autonomy="act", inbox=str(tmp / "inbox"),
+                         autonomy="act", inbox=str(DATA_DIR / "inbox"),
                          poll_secs=0.05, seed=5,
                          flywheel=Flywheel(":memory:"))
     report = run_campaign(cfg, SimulatorLab(seed=3), store,
@@ -42,6 +43,44 @@ def seeded(tmp_path_factory):
     ws.register_agent(eid, "find IC50<=20", log="", autonomy="act")
     ws.link_problem(eid, report.problem_id)
     return {"eid": eid, "db": store_path, "report": report}
+
+
+@pytest.fixture(scope="module")
+def seeded_ei(tmp_path_factory):
+    """A campaign whose batches were chosen by EI acquisition (has an AD veto)."""
+    tmp = tmp_path_factory.mktemp("v1ei")
+    store = SqliteProvenanceStore(str(tmp / "prov.db"))
+    hyps = [{"statement": f"{c} binds", "candidate": c,
+             "assay_type": "binding", "predicted": f"{pv} uM",
+             "predicted_value": pv,
+             "metadata": {"predicted_sd": 0.2, "extrapolation": ad}}
+            for c, pv, ad in SPECS]
+    problem = ProblemStatement(objective="find IC50<=20", constraints=[
+        Constraint(name="potency", description="IC50", kind="hard",
+                   limit=20.0, unit="uM")])
+    cfg = CampaignConfig(problem=problem, hypotheses=hyps, k=2, rounds=2,
+                         autonomy="act", inbox=str(DATA_DIR / "inbox"),
+                         poll_secs=0.05, seed=7, acquisition="bo-ei",
+                         flywheel=Flywheel(":memory:"))
+    report = run_campaign(cfg, SimulatorLab(seed=3), store,
+                          notify=lambda m: None)
+    ws = WizardStore()
+    eid = f"ei-{report.problem_id}"
+    ws.register_agent(eid, "find IC50<=20 (EI)", log="", autonomy="act")
+    ws.link_problem(eid, report.problem_id)
+    return {"eid": eid, "db": str(tmp / "prov.db")}
+
+
+def test_acquisition_rounds_explain_picks_and_ad_veto(seeded_ei, monkeypatch):
+    monkeypatch.setattr("bionexus.views.ids.PROVENANCE_DB", seeded_ei["db"])
+    with TestClient(app) as c:
+        d = c.get(f"/api/v1/campaigns/{seeded_ei['eid']}")
+    assert d.status_code == 200, d.text
+    r1 = d.json()["rounds"][0]["why"]
+    assert r1["policy"] == "bo-ei" and r1["picks"]
+    assert all(p["score"] is not None for p in r1["picks"])
+    veto = next(x for x in r1["refusals"] if x["candidate"] == "AD1")
+    assert "extrapolation" in veto["reason"]
 
 
 @pytest.fixture()
@@ -123,3 +162,30 @@ def test_system_status_for_the_trust_strip(client):
     s = client.get("/api/v1/system/status").json()
     assert s["halted"] is False and s["pending_approvals"] >= 0
     assert s["chain"]["verified"] is True and s["chain"]["records"] > 0
+
+
+def test_curves_return_points_fit_and_qc(client, seeded):
+    d = client.get(f"/api/v1/campaigns/{seeded['eid']}").json()
+    h1 = next(h for h in d["hypotheses"] if h["candidate"] == "H1")
+    c = client.get(f"/api/v1/campaigns/{seeded['eid']}/hypotheses/{h1['id']}/curves").json()
+    assert c["candidate"] == "H1" and c["curves"]
+    cur = c["curves"][0]
+    assert cur["label"] == "Primary screen" and len(cur["points"]) >= 4
+    assert cur["fit"]["ic50_um"] > 0 and len(cur["fit"]["line"]) == 60
+    assert cur["fit"]["ci"] and cur["z_prime"] is not None
+    # a confirmed verdict is judged on the LATEST measurement: the last curve's
+    # IC50 is the number the verdict shows
+    last = c["curves"][-1]
+    assert last["label"].startswith("Confirmation")
+    assert abs(last["fit"]["ic50_um"] - h1["verdict"]["observed"]) \
+        / h1["verdict"]["observed"] < 0.05
+
+
+def test_status_comes_from_the_ledger_and_eliminated_excludes_tested(client, seeded):
+    d = client.get(f"/api/v1/campaigns/{seeded['eid']}").json()
+    assert d["status"] == "completed"
+    tested = {c for r in d["rounds"] for c in r["candidates"]}
+    assert not ({e["candidate"] for e in d["eliminated"]} & tested)
+    row = next(r for r in client.get("/api/v1/campaigns").json()
+               if r["id"] == seeded["eid"])
+    assert row["status"] == "completed"

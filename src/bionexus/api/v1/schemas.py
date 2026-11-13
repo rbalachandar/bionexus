@@ -2,13 +2,17 @@
 contract. The TypeScript client is GENERATED from the OpenAPI these produce."""
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
 State = Literal["confirmed", "validated", "abstained", "refuted", "refused",
                 "in_lab", "selected", "not_selected", "proposed"]
 VerdictStatus = Literal["confirmed", "validated", "abstained", "refuted"]
+
+
+# a 2-element [low, high] pair; a plain list keeps the generated TS type simple
+Interval = Annotated[list[float], Field(min_length=2, max_length=2)]
 
 
 class Problem(BaseModel):
@@ -50,7 +54,7 @@ class Funnel(BaseModel):
 class Verdict(BaseModel):
     status: VerdictStatus
     observed: float | None = None
-    ci: tuple[float, float] | None = None
+    ci: Interval | None = None
     unit_label: str | None = None
     margin: str | None = None
     extrapolation: bool = False
@@ -195,3 +199,35 @@ class SystemStatus(BaseModel):
     chain: ChainStatus
     anchor: AnchorStatus | None = None
     eval: EvalSummary | None = None
+
+
+class CurvePoint(BaseModel):
+    conc_um: float
+    value: float
+
+
+class CurveFit(BaseModel):
+    ic50_um: float | None = None
+    ci: Interval | None = None
+    top: float | None = Field(None, description="known or fitted plateau")
+    method: str | None = None
+    model: str | None = Field(None, description="what the curve model is (slope/bottom fixed)")
+    right_censored: bool = False
+    left_censored: bool = False
+    line: list[CurvePoint] = Field([], description="the fitted curve, sampled for plotting")
+
+
+class Curve(BaseModel):
+    run_id: str
+    label: str
+    points: list[CurvePoint]
+    fit: CurveFit | None = None
+    z_prime: float | None = None
+    z_kind: str | None = None
+    unit: str | None = None
+
+
+class CurveSet(BaseModel):
+    candidate: str | None = None
+    curves: list[Curve] = []
+    note: str | None = None

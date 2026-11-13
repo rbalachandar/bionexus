@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './styles/app.css'
 import Shell from './app/Shell'
 import Campaigns from './routes/Campaigns'
-import CampaignPage from './routes/CampaignPage'
+import CampaignPage from './features/campaign/CampaignPage'
 import Soon from './routes/Soon'
 // legacy screens, retired as each is rebuilt (see docs/WORKBENCH-REDESIGN.md)
 import Workspace from './routes/Workspace'
@@ -18,7 +18,7 @@ import Experiment from './routes/Experiment'
 
 /** Padding the legacy screens used to get from their own shell. */
 const LegacyFrame = () => (
-  <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 40px 48px' }}><Outlet /></div>
+  <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 40px 48px', zoom: 1.2 }}><Outlet /></div>
 )
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } })

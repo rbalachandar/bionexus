@@ -149,8 +149,9 @@ def _hill_sse(log_ic50: float, pts: list[tuple[float, float]],
     return sse
 
 
-def _hill_fit_ic50(pts: list[tuple[float, float]],
-                   max_response: float | None) -> float | None:
+def _hill_fit_params(pts: list[tuple[float, float]],
+                     max_response: float | None
+                     ) -> tuple[float, float] | None:
     """Least-squares Hill fit by grid search, refined once.
 
     max_response given  -> 2-param fit (IC50 only).
@@ -158,7 +159,7 @@ def _hill_fit_ic50(pts: list[tuple[float, float]],
       grid-search the max multiplier over the observed top response (1x–4x).
       Pretending the observed max is the true max biases IC50 toward the
       potent side — the classic right-censoring trap.
-    Returns IC50 in µM or None."""
+    Returns (IC50 in µM, fitted top) or None."""
     import math
 
     if len(pts) < 2:
@@ -187,7 +188,7 @@ def _hill_fit_ic50(pts: list[tuple[float, float]],
                 s = _hill_sse(g, pts, top * m)
                 if s < sse0:
                     sse0, g0, m0 = s, g, m
-        return 10 ** g0
+        return 10 ** g0, top * m0
     if max_response <= 0:
         return None
     best, best_sse = None, float("inf")
@@ -203,7 +204,23 @@ def _hill_fit_ic50(pts: list[tuple[float, float]],
             best, best_sse = g, s
     if best_sse >= float("inf"):
         return None
-    return 10 ** best
+    return 10 ** best, max_response
+
+
+def _hill_fit_ic50(pts: list[tuple[float, float]],
+                   max_response: float | None) -> float | None:
+    """IC50 (µM) of the least-squares Hill fit, or None."""
+    fit = _hill_fit_params(pts, max_response)
+    return fit[0] if fit else None
+
+
+def hill_fit(points: list[tuple[float, float]],
+             max_response: float | None = 100.0) -> dict[str, float] | None:
+    """{ic50, top} of the slope-1 / bottom-0 fit — what a plot needs to draw
+    the fitted curve (top is the known maximum, or the fitted plateau)."""
+    pts = sorted((c, v) for c, v in points if v is not None)
+    fit = _hill_fit_params(pts, max_response)
+    return {"ic50": fit[0], "top": fit[1]} if fit else None
 
 
 def fit_ic50(points: list[tuple[float, float]], max_response: float = 100.0) -> float | None:

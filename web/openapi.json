@@ -382,6 +382,216 @@
     "title": "ChainStatus",
     "type": "object"
    },
+   "Curve": {
+    "properties": {
+     "fit": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/CurveFit"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "points": {
+      "items": {
+       "$ref": "#/components/schemas/CurvePoint"
+      },
+      "title": "Points",
+      "type": "array"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     },
+     "unit": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Unit"
+     },
+     "z_kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Z Kind"
+     },
+     "z_prime": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Z Prime"
+     }
+    },
+    "required": [
+     "run_id",
+     "label",
+     "points"
+    ],
+    "title": "Curve",
+    "type": "object"
+   },
+   "CurveFit": {
+    "properties": {
+     "ci": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "maxItems": 2,
+        "minItems": 2,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ci"
+     },
+     "ic50_um": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ic50 Um"
+     },
+     "left_censored": {
+      "default": false,
+      "title": "Left Censored",
+      "type": "boolean"
+     },
+     "line": {
+      "default": [],
+      "description": "the fitted curve, sampled for plotting",
+      "items": {
+       "$ref": "#/components/schemas/CurvePoint"
+      },
+      "title": "Line",
+      "type": "array"
+     },
+     "method": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Method"
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "what the curve model is (slope/bottom fixed)",
+      "title": "Model"
+     },
+     "right_censored": {
+      "default": false,
+      "title": "Right Censored",
+      "type": "boolean"
+     },
+     "top": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "known or fitted plateau",
+      "title": "Top"
+     }
+    },
+    "title": "CurveFit",
+    "type": "object"
+   },
+   "CurvePoint": {
+    "properties": {
+     "conc_um": {
+      "title": "Conc Um",
+      "type": "number"
+     },
+     "value": {
+      "title": "Value",
+      "type": "number"
+     }
+    },
+    "required": [
+     "conc_um",
+     "value"
+    ],
+    "title": "CurvePoint",
+    "type": "object"
+   },
+   "CurveSet": {
+    "properties": {
+     "candidate": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Candidate"
+     },
+     "curves": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/Curve"
+      },
+      "title": "Curves",
+      "type": "array"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     }
+    },
+    "title": "CurveSet",
+    "type": "object"
+   },
    "DispositionAction": {
     "description": "What a human did with a computed call. Acknowledgement is NOT\northogonal experimental confirmation \u2014 'confirmed' stays reserved for\nthe campaign confirmation-agreement semantics.",
     "enum": [
@@ -1276,16 +1486,11 @@
      "ci": {
       "anyOf": [
        {
+        "items": {
+         "type": "number"
+        },
         "maxItems": 2,
         "minItems": 2,
-        "prefixItems": [
-         {
-          "type": "number"
-         },
-         {
-          "type": "number"
-         }
-        ],
         "type": "array"
        },
        {
@@ -1707,6 +1912,58 @@
      }
     },
     "summary": "Get Hypothesis",
+    "tags": [
+     "campaigns"
+    ]
+   }
+  },
+  "/api/v1/campaigns/{eid}/hypotheses/{hid}/curves": {
+   "get": {
+    "description": "The recorded dose\u2013response data behind a verdict: every plate point,\nthe fit with its interval, and the plate's QC \u2014 so a scientist can LOOK at\nthe evidence, not only read the number.",
+    "operationId": "get_curves_api_v1_campaigns__eid__hypotheses__hid__curves_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "eid",
+      "required": true,
+      "schema": {
+       "title": "Eid",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "hid",
+      "required": true,
+      "schema": {
+       "title": "Hid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CurveSet"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Curves",
     "tags": [
      "campaigns"
     ]
