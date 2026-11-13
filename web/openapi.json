@@ -1229,6 +1229,16 @@
       "title": "K",
       "type": "integer"
      },
+     "mode": {
+      "default": "agent",
+      "description": "'hand': you run the plate yourself and submit it; candidates are required",
+      "enum": [
+       "agent",
+       "hand"
+      ],
+      "title": "Mode",
+      "type": "string"
+     },
      "objective": {
       "anyOf": [
        {
@@ -2590,10 +2600,22 @@
       "enum": [
        "inbox",
        "launch",
-       "new_program"
+       "new_program",
+       "open_campaign"
       ],
       "title": "Action",
       "type": "string"
+     },
+     "campaign_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Id"
      },
      "candidates": {
       "default": [],
@@ -2614,7 +2636,8 @@
        "follow_up",
        "start",
        "expand",
-       "milestone"
+       "milestone",
+       "submit_results"
       ],
       "title": "Kind",
       "type": "string"

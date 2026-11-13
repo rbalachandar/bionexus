@@ -1107,6 +1107,13 @@ export interface components {
              * @default 2
              */
             k: number;
+            /**
+             * Mode
+             * @description 'hand': you run the plate yourself and submit it; candidates are required
+             * @default agent
+             * @enum {string}
+             */
+            mode: "agent" | "hand";
             /** Objective */
             objective?: string | null;
             /**
@@ -1605,7 +1612,9 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "inbox" | "launch" | "new_program";
+            action: "inbox" | "launch" | "new_program" | "open_campaign";
+            /** Campaign Id */
+            campaign_id?: string | null;
             /**
              * Candidates
              * @default []
@@ -1620,7 +1629,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "inbox" | "follow_up" | "start" | "expand" | "milestone";
+            kind: "inbox" | "follow_up" | "start" | "expand" | "milestone" | "submit_results";
             /** Title */
             title: string;
         };

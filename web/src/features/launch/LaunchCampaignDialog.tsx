@@ -25,16 +25,17 @@ export function LaunchCampaignDialog({ open, onOpenChange, slug, title = 'New ca
   const [cands, setCands] = useState((defaults?.candidates ?? []).join('\n'))
   const [autonomy, setAutonomy] = useState<keyof typeof AUTONOMY>('gate')
   const [rounds, setRounds] = useState(2)
+  const [hand, setHand] = useState(false)
   useEffect(() => { if (open) { setObjective(defaults?.objective ?? ''); setCands((defaults?.candidates ?? []).join('\n')) } }, [open])  // eslint-disable-line
 
   const list = cands.split(/[\n,]+/).map((c) => c.trim()).filter(Boolean)
   const submit = () => launch.mutate(
-    { objective: objective || null, candidates: list, autonomy, rounds, k: Math.max(1, Math.min(list.length || 2, 4)) },
+    { objective: objective || null, candidates: list, mode: hand ? 'hand' : 'agent', autonomy, rounds, k: Math.max(1, Math.min(list.length || 2, 4)) },
     {
       onSuccess: async (c) => {
         await onLaunched?.(c.id)
         onOpenChange(false)
-        toast({ tone: 'ok', text: autonomy === 'gate' ? 'Campaign started. It will pause and ask for your approval before anything reaches the lab.' : 'Campaign started.' })
+        toast({ tone: 'ok', text: hand ? 'Campaign created. Its gate is registered — run the plate, then use Submit results.' : autonomy === 'gate' ? 'Campaign started. It will pause and ask for your approval before anything reaches the lab.' : 'Campaign started.' })
         nav(`/campaigns/${c.id}`)
       },
     })
@@ -46,6 +47,11 @@ export function LaunchCampaignDialog({ open, onOpenChange, slug, title = 'New ca
         <Field label="Candidates" hint={list.length ? `${list.length} candidate${list.length > 1 ? 's' : ''}` : 'One per line or comma-separated. Leave empty to let the hypothesis agent propose them (needs a configured model).'}>
           <Textarea value={cands} onChange={(e) => setCands(e.target.value)} placeholder="EG-02&#10;EG-03" />
         </Field>
+        <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-md border border-line px-3 py-2 text-sm">
+          <input type="checkbox" className="mt-1" checked={hand} onChange={(e) => setHand(e.target.checked)} />
+          <span><b>I’ll run the experiment myself</b><span className="block text-xs text-muted">No agent, no lab submission. The gate is registered on each candidate now; you run the plate and submit the CSV, and it is judged against that gate.</span></span>
+        </label>
+        {hand ? !list.length && <p className="mb-3 text-xs text-warn">Name at least one candidate.</p> : (
         <div className="grid grid-cols-[1fr_90px] gap-3">
           <Field label="How much should the agent do on its own?">
             <Select value={autonomy} onChange={(e) => setAutonomy(e.target.value as keyof typeof AUTONOMY)}>
@@ -53,11 +59,11 @@ export function LaunchCampaignDialog({ open, onOpenChange, slug, title = 'New ca
             </Select>
           </Field>
           <Field label="Rounds"><Input type="number" min={1} max={8} value={rounds} onChange={(e) => setRounds(Number(e.target.value))} /></Field>
-        </div>
+        </div>)}
         {launch.error && <p role="alert" className="mb-2 text-xs text-bad">{(launch.error as Error).message}</p>}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button variant="primary" disabled={launch.isPending} onClick={submit}>{launch.isPending ? 'Starting…' : 'Start campaign'}</Button>
+          <Button variant="primary" disabled={launch.isPending || (hand && !list.length)} onClick={submit}>{launch.isPending ? 'Starting…' : hand ? 'Create campaign' : 'Start campaign'}</Button>
         </div>
       </DialogContent>
     </Dialog>

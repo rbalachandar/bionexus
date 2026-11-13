@@ -105,3 +105,30 @@ def test_non_csv_and_unreadable_are_typed(camp):
     c, eid, _ = camp
     assert _post(c, eid, True, name="x.xlsx").json()["detail"]["type"] == "rejected-upload"
     assert _post(c, eid, True, content="not a plate\n,,\n").status_code == 422
+
+
+def test_hand_run_campaign_registers_the_gate_then_judges_a_submitted_plate(tmp_path, monkeypatch):
+    from bionexus import program as program_cfg
+    db = str(tmp_path / "prov.db")
+    monkeypatch.setattr("bionexus.views.ids.PROVENANCE_DB", db)
+    name = f"Hand Prog {tmp_path.name}"
+    program_cfg.save_program_record(
+        {"program": name, "custom": True, "objective": "sub-10 uM binder", "modality": "small molecule",
+         "metric": "ic50_um", "direction": "min", "gate_value": 10, "unit": "µM", "mode": "autonomous"})
+    slug = program_cfg._slug(name)
+    with TestClient(app) as c:
+        bad = c.post(f"/api/v1/programs/{slug}/campaigns", json={"mode": "hand", "candidates": []})
+        assert bad.status_code == 422 and bad.json()["detail"]["type"] == "candidates-required"
+        made = c.post(f"/api/v1/programs/{slug}/campaigns",
+                      json={"mode": "hand", "candidates": ["C1", "BORD", "C1", " "], "objective": "bench plate 1"})
+        assert made.status_code == 201 and made.json()["status"] == "awaiting_results"
+        eid = made.json()["id"]
+        d = c.get(f"/api/v1/campaigns/{eid}").json()
+        assert d["status"] == "awaiting_results" and d["autonomy"] == "observe"
+        assert sorted(h["head"] for h in d["hypotheses"]) == ["BORD", "C1"]      # de-duplicated
+        assert d["gate"]["threshold"] == 10
+        steps = c.get(f"/api/v1/programs/{slug}").json()["next_steps"]
+        assert any(s["kind"] == "submit_results" and s["campaign_id"] == eid for s in steps)
+        out = _post(c, eid, False).json()
+        assert {v["candidate"]: v["status"] for v in out["verdicts"]}["C1"] == "validated"
+        assert c.get(f"/api/v1/campaigns/{eid}").json()["status"] == "completed"

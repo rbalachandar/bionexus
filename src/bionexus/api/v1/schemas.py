@@ -309,11 +309,12 @@ class ProgramResult(BaseModel):
 
 class NextStep(BaseModel):
     """A rule-based recommendation — deterministic, always available, no model needed."""
-    kind: Literal["inbox", "follow_up", "start", "expand", "milestone"]
+    kind: Literal["inbox", "follow_up", "start", "expand", "milestone", "submit_results"]
     title: str
     detail: str = ""
-    action: Literal["inbox", "launch", "new_program"]
+    action: Literal["inbox", "launch", "new_program", "open_campaign"]
     candidates: list[str] = []
+    campaign_id: str | None = None
 
 
 class ProgramDetail(ProgramSummary):
@@ -395,6 +396,8 @@ class ProgramCreate(BaseModel):
 class CampaignCreate(BaseModel):
     objective: str | None = None
     candidates: list[str] = []
+    mode: Literal["agent", "hand"] = Field(
+        "agent", description="'hand': you run the plate yourself and submit it; candidates are required")
     autonomy: Literal["observe", "gate", "act"] = "gate"
     k: int = Field(2, ge=1, le=12)
     rounds: int = Field(2, ge=1, le=8)

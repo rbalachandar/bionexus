@@ -86,7 +86,7 @@ export function RoundsTimeline({ d, onOpen }: { d: Detail; onOpen: (hid: string)
           </li>
         )
       })}
-      {!d.rounds.length && <li className="py-6 text-center text-sm text-faint">No round has started yet.</li>}
+      {!d.rounds.length && <li className="py-6 text-center text-sm text-faint">{d.status === 'awaiting_results' ? 'No rounds: you run the plate, then submit it.' : 'No round has started yet.'}</li>}
     </ol>
   )
 }

@@ -8,10 +8,11 @@ the best result so far".
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from bionexus import program as program_cfg
 from bionexus.api.v1 import schemas as S
+from bionexus.api.v1.deps import who
 from bionexus.api.launch import spawn_campaign
 from bionexus.api.v1.campaigns import (_funnel, _load, _reviews, _status,
                                        _summary_of, _ws)
@@ -94,6 +95,13 @@ def _next_steps(p, digests, goal: S.Goal, gate: S.Gate,
             title=f"Resolve {len(unresolved)} inconclusive candidate{'s' if len(unresolved) > 1 else ''}",
             detail=f"{', '.join(unresolved)}: the interval straddles the gate. "
                    "A follow-up with more replicates near the gate would settle it."))
+    for d in digests:
+        if d.status == "awaiting_results":
+            steps.append(S.NextStep(
+                kind="submit_results", action="open_campaign", campaign_id=d.id,
+                title=f"Submit plate results for “{d.title}”",
+                detail="Its gate is registered. Run the plate, export a CSV, and submit it: "
+                       "it is judged against that gate."))
     running = sum(d.status in _RUNNING for d in digests)
     if not digests:
         steps.append(S.NextStep(kind="start", action="launch",
@@ -207,9 +215,58 @@ def create_program(body: S.ProgramCreate) -> S.ProgramSummary:
     return _program(p, False)
 
 
+def _hand_run(p: dict, doc: dict, body: S.CampaignCreate, user: str) -> S.CampaignSummary:
+    """A campaign the scientist runs at the bench: the program's gate is
+    pre-registered on every candidate NOW; plates are submitted later and judged
+    by that gate (see results.py). Nothing is spawned."""
+    import time
+    import uuid
+
+    from bionexus.adapters.store.sqlite import get_store
+    from bionexus.core.contracts import Actor, ActorKind, Envelope, EventType
+    from bionexus.core.hypothesis import (Constraint, HypothesisTracker, ProblemStatement,
+                                          SuccessCriteria)
+    from bionexus.core.interfaces import record_for
+    from bionexus.views import ids as _ids
+    cands = list(dict.fromkeys(c.strip() for c in body.candidates if c.strip()))
+    if not cands:
+        raise HTTPException(422, S.Problem(
+            type="candidates-required", title="Name the candidates you will test",
+            detail="A hand-run campaign needs at least one candidate.").model_dump())
+    gate = _gate(doc)
+    if gate.threshold is None:
+        raise HTTPException(409, S.Problem(
+            type="no-gate", title="This program has no numeric gate",
+            detail="Set the program's success criterion first.").model_dump())
+    objective = body.objective or doc.get("objective") or p["name"]
+    pid = f"prob-{uuid.uuid4().hex[:8]}"
+    branch = f"problem/{pid}"
+    store = get_store(str(_ids.PROVENANCE_DB))
+    actor = Actor(kind=ActorKind.human, id=user)
+    t = HypothesisTracker(store, actor)
+    t.define_problem(ProblemStatement(problem_id=pid, objective=objective, constraints=[Constraint(
+        name=gate.metric or "ic50_um", description=gate.label or "gate", kind="hard",
+        limit=gate.threshold, unit=gate.unit or "uM")]), environment={"mode": "hand-run"})
+    crit = SuccessCriteria(metric=gate.metric or "ic50_um", direction=gate.direction or "min",
+                           threshold=gate.threshold)
+    for c in cands:
+        t.propose(f"{c} meets the gate: {gate.label}", c, "binding", "not predicted — measured by hand",
+                  None, criteria=crit, branch_id=branch)
+    store.append(record_for(Envelope(experiment_branch_id=branch), EventType.gate_decision, actor, decision={
+        "kind": "hand_run", "candidates": cands, "gate": gate.label,
+        "note": "criteria registered before any data; plates are submitted by a person and judged against them"}))
+    cid = f"hand-{int(time.time())}-{uuid.uuid4().hex[:4]}"
+    ws = _ws()
+    ws.register_agent(cid, objective, "", autonomy="observe")
+    ws.link_problem(cid, pid)
+    program_cfg.link_leaf(p["name"], cid, campaign_root=None, question=objective, status="executing")
+    return S.CampaignSummary(id=cid, title=objective, status="awaiting_results", autonomy="observe",
+                             program=S.ProgramRef(slug=p["slug"], name=p["name"]))
+
+
 @router.post("/programs/{slug}/campaigns", response_model=S.CampaignSummary,
              status_code=201)
-def launch_campaign(slug: str, body: S.CampaignCreate) -> S.CampaignSummary:
+def launch_campaign(slug: str, body: S.CampaignCreate, request: Request) -> S.CampaignSummary:
     """Start a campaign against the program's gate. Default autonomy is
     `gate`: every lab submission waits for a human approval."""
     p = next((x for x in program_cfg.list_programs() if x["slug"] == slug), None)
@@ -217,6 +274,8 @@ def launch_campaign(slug: str, body: S.CampaignCreate) -> S.CampaignSummary:
         raise HTTPException(404, S.Problem(
             type="program-not-found", title="Program not found",
             detail=slug).model_dump())
+    if body.mode == "hand":
+        return _hand_run(p, p.get("program") or {}, body, who(request))
     doc = {**(p.get("program") or {}), "autonomy": body.autonomy,
            "k": body.k, "rounds": body.rounds,
            "candidates": ",".join(c.strip() for c in body.candidates if c.strip())}

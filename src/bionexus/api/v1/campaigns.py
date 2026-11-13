@@ -97,6 +97,9 @@ def summarize(rec) -> tuple[str, str, str | None]:
                 "drop": "drop"}.get(d.get("decision"), d.get("decision"))
         return ("review", f"{rec.actor.id} decided to {verb} {cand or '?'}"
                 + (f" — “{d['note']}”" if d.get("note") else ""), cand)
+    if et == "gate_decision" and d.get("kind") == "hand_run":
+        return ("run", f"{rec.actor.id} registered a hand-run campaign for "
+                f"{', '.join(d.get('candidates') or [])} against {d.get('gate', 'the gate')}", None)
     if et == "gate_decision" and d.get("kind") == "results_submitted":
         return ("run", f"{rec.actor.id} submitted a plate ({d.get('original_name', '?')}) — judging "
                 f"{', '.join(d.get('candidates') or []) or 'nothing'}", None)
@@ -343,6 +346,14 @@ def _status(raw: str, recs) -> str:
     ever when no log marker exists); the ledger knows: the autonomous loop
     writes its reviewer report last, so its presence means the campaign is
     complete."""
+    if any((r.decision or {}).get("kind") == "hand_run" for r in recs):
+        # nothing is running: the person runs the plate, so the campaign is
+        # either waiting for their data or done
+        judged = {r.artifact.artifact_id for r in recs if r.artifact and r.event_type.value in (
+            "hypothesis_validated", "hypothesis_invalidated", "hypothesis_inconclusive")}
+        proposed = {r.artifact.artifact_id for r in recs
+                    if r.artifact and r.event_type.value == "hypothesis_proposed"}
+        return "awaiting_results" if proposed - judged else "completed"
     if raw in ("executing", "running", "interrupted", "verdict recorded") \
             and any((r.decision or {}).get("kind") == "review_report"
                     for r in recs):

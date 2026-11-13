@@ -66,10 +66,11 @@ export default function ProgramPage() {
                 <div className="min-w-0 flex-1"><div className="text-sm font-medium">{n.title}</div><div className="text-xs text-muted">{n.detail}</div></div>
                 <Button size="sm" variant="secondary" onClick={() => {
                   if (n.action === 'inbox') nav('/inbox')
+                  else if (n.action === 'open_campaign') nav(`/campaigns/${n.campaign_id}`)
                   else if (n.action === 'new_program') setNp(true)
                   else if (n.kind === 'follow_up') setFollow(n.candidates)
                   else setLaunch(true)
-                }}>{n.action === 'inbox' ? 'Open inbox' : n.action === 'new_program' ? 'New program' : n.kind === 'follow_up' ? 'Follow up' : 'New campaign'} <ArrowRight size={13} /></Button>
+                }}>{n.action === 'inbox' ? 'Open inbox' : n.action === 'open_campaign' ? 'Open campaign' : n.action === 'new_program' ? 'New program' : n.kind === 'follow_up' ? 'Follow up' : 'New campaign'} <ArrowRight size={13} /></Button>
               </li>
             ))}
           </ul>
