@@ -231,3 +231,79 @@ class CurveSet(BaseModel):
     candidate: str | None = None
     curves: list[Curve] = []
     note: str | None = None
+
+
+class BestResult(BaseModel):
+    campaign_id: str
+    campaign_title: str
+    candidate: str
+    state: str
+    observed: float | None = None
+    ci: Interval | None = None
+
+
+class Goal(BaseModel):
+    """Progress against the program's pre-registered gate, across ALL its campaigns."""
+    met: bool = Field(description="at least one candidate is claimed (validated/confirmed)")
+    best: BestResult | None = Field(None, description="best claimed result, else the closest judged one")
+    claimed: int = 0
+    refuted: int = 0
+    abstained: int = 0
+    judged: int = 0
+
+
+class CampaignDigest(BaseModel):
+    id: str
+    title: str
+    status: str
+    updated_at: float | None = None
+    funnel: Funnel
+    best: BestResult | None = None
+
+
+class ProgramSummary(BaseModel):
+    slug: str
+    name: str
+    objective: str | None = None
+    modality: str | None = None
+    mode: str | None = None
+    gate: Gate
+    goal: Goal
+    campaigns: int
+    running: int
+    updated_at: float | None = None
+
+
+class ProgramResult(BaseModel):
+    hypothesis_id: str
+    campaign_id: str
+    campaign_title: str
+    candidate: str
+    state: str
+    observed: float | None = None
+    ci: Interval | None = None
+
+
+class ProgramDetail(ProgramSummary):
+    campaign_list: list[CampaignDigest] = []
+    results: list[ProgramResult] = []
+
+
+class AbstentionNote(BaseModel):
+    campaign_id: str
+    campaign_title: str
+    candidates: list[str]
+
+
+class Attention(BaseModel):
+    """What needs the scientist right now."""
+    pending_approvals: int
+    abstentions: list[AbstentionNote]
+    running: int
+    halted: bool
+
+
+class Today(BaseModel):
+    attention: Attention
+    programs: list[ProgramSummary]
+    standalone: list[CampaignDigest]

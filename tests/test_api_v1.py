@@ -189,3 +189,36 @@ def test_status_comes_from_the_ledger_and_eliminated_excludes_tested(client, see
     row = next(r for r in client.get("/api/v1/campaigns").json()
                if r["id"] == seeded["eid"])
     assert row["status"] == "completed"
+
+
+def _ensure_program(seeded):
+    from bionexus import program as program_cfg
+    program_cfg.save_program_record(
+        {"program": "V1 Prog", "custom": True, "objective": "sub-20 uM binder",
+         "modality": "small molecule", "metric": "ic50_um", "direction": "min",
+         "gate_value": 20, "unit": "µM", "mode": "autonomous"})
+    program_cfg.link_leaf("V1 Prog", seeded["eid"], campaign_root="x",
+                          question="find IC50<=20")
+
+
+def test_program_aggregates_its_campaigns_against_one_gate(client, seeded):
+    _ensure_program(seeded)
+    p = client.get("/api/v1/programs/v1-prog").json()
+    assert p["campaigns"] == 1 and p["gate"]["threshold"] == 20.0
+    assert p["goal"]["met"] is True and p["goal"]["claimed"] == 2
+    assert p["goal"]["best"]["state"] in ("confirmed", "validated")
+    assert p["goal"]["best"]["observed"] < 20          # direction-aware: lowest IC50
+    assert p["campaign_list"][0]["status"] == "completed"
+    assert p["results"] and all(r["campaign_id"] == seeded["eid"] for r in p["results"])
+    assert client.get("/api/v1/programs/nope").status_code == 404
+
+
+def test_today_surfaces_programs_attention_and_standalone(client, seeded):
+    _ensure_program(seeded)
+    t = client.get("/api/v1/today").json()
+    assert any(p["slug"] == "v1-prog" for p in t["programs"])
+    ab = [a for a in t["attention"]["abstentions"] if a["campaign_id"] == seeded["eid"]]
+    assert ab and "AD1" in ab[0]["candidates"]
+    assert t["attention"]["halted"] is False
+    # the campaign is linked to a program, so it is not 'standalone'
+    assert all(c["id"] != seeded["eid"] for c in t["standalone"])

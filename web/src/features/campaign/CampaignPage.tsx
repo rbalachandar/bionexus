@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ClipboardCheck, ShieldCheck, ShieldX, TriangleAlert } from 'lucide-react'
 import { useCampaign } from '../../api/hooks'
 import { Card, CardHeader, EmptyState, Skeleton } from '../../ui/Card'
@@ -15,7 +15,8 @@ import { sig } from './format'
 export default function CampaignPage() {
   const { id = '' } = useParams()
   const { data: d, isLoading, error } = useCampaign(id)
-  const [open, setOpen] = useState<string | null>(null)
+  const [qs] = useSearchParams()
+  const [open, setOpen] = useState<string | null>(qs.get('h'))
 
   if (isLoading) return <div className="mx-auto max-w-7xl space-y-4 p-6"><Skeleton className="h-10 w-2/3" /><Skeleton className="h-24" /><Skeleton className="h-72" /></div>
   if (error || !d) return <div className="mx-auto max-w-3xl p-10"><EmptyState title="Campaign not found" hint={(error as Error | null)?.message ?? 'It may have been archived.'} /></div>
@@ -71,7 +72,7 @@ export default function CampaignPage() {
         <div className="space-y-4 lg:col-span-8">
           <Card>
             <CardHeader title="Results" hint="click a candidate for the evidence" />
-            <ResultsTable d={d} onOpen={(h) => setOpen(h.id)} selected={open} />
+            <ResultsTable hyps={d.hypotheses} gate={d.gate} onOpen={(h) => setOpen(h.id)} selected={open} />
           </Card>
           {d.reviewer && (
             <Card className="flex items-start gap-3 px-4 py-3 text-sm">

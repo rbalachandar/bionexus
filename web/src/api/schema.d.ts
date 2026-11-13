@@ -128,6 +128,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/programs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Programs */
+        get: operations["list_programs_api_v1_programs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/programs/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Program */
+        get: operations["get_program_api_v1_programs__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/status": {
         parameters: {
             query?: never;
@@ -145,10 +179,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Today
+         * @description The home screen: what needs me, how each program is doing, and the
+         *     campaigns that belong to no program.
+         */
+        get: operations["today_api_v1_today_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AbstentionNote */
+        AbstentionNote: {
+            /** Campaign Id */
+            campaign_id: string;
+            /** Campaign Title */
+            campaign_title: string;
+            /** Candidates */
+            candidates: string[];
+        };
         /** ActivityItem */
         ActivityItem: {
             /** Candidate */
@@ -171,6 +235,35 @@ export interface components {
             published?: boolean | null;
             /** Records */
             records: number;
+        };
+        /**
+         * Attention
+         * @description What needs the scientist right now.
+         */
+        Attention: {
+            /** Abstentions */
+            abstentions: components["schemas"]["AbstentionNote"][];
+            /** Halted */
+            halted: boolean;
+            /** Pending Approvals */
+            pending_approvals: number;
+            /** Running */
+            running: number;
+        };
+        /** BestResult */
+        BestResult: {
+            /** Campaign Id */
+            campaign_id: string;
+            /** Campaign Title */
+            campaign_title: string;
+            /** Candidate */
+            candidate: string;
+            /** Ci */
+            ci?: number[] | null;
+            /** Observed */
+            observed?: number | null;
+            /** State */
+            state: string;
         };
         /** Body_create_analysis_api_analyses_post */
         Body_create_analysis_api_analyses_post: {
@@ -235,6 +328,19 @@ export interface components {
              * @default []
              */
             rounds: components["schemas"]["Round"][];
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+            /** Updated At */
+            updated_at?: number | null;
+        };
+        /** CampaignDigest */
+        CampaignDigest: {
+            best?: components["schemas"]["BestResult"] | null;
+            funnel: components["schemas"]["Funnel"];
+            /** Id */
+            id: string;
             /** Status */
             status: string;
             /** Title */
@@ -410,6 +516,39 @@ export interface components {
             /** Unit */
             unit?: string | null;
         };
+        /**
+         * Goal
+         * @description Progress against the program's pre-registered gate, across ALL its campaigns.
+         */
+        Goal: {
+            /**
+             * Abstained
+             * @default 0
+             */
+            abstained: number;
+            /** @description best claimed result, else the closest judged one */
+            best?: components["schemas"]["BestResult"] | null;
+            /**
+             * Claimed
+             * @default 0
+             */
+            claimed: number;
+            /**
+             * Judged
+             * @default 0
+             */
+            judged: number;
+            /**
+             * Met
+             * @description at least one candidate is claimed (validated/confirmed)
+             */
+            met: boolean;
+            /**
+             * Refuted
+             * @default 0
+             */
+            refuted: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -528,6 +667,37 @@ export interface components {
             /** Sd */
             sd?: number | null;
         };
+        /** ProgramDetail */
+        ProgramDetail: {
+            /**
+             * Campaign List
+             * @default []
+             */
+            campaign_list: components["schemas"]["CampaignDigest"][];
+            /** Campaigns */
+            campaigns: number;
+            gate: components["schemas"]["Gate"];
+            goal: components["schemas"]["Goal"];
+            /** Modality */
+            modality?: string | null;
+            /** Mode */
+            mode?: string | null;
+            /** Name */
+            name: string;
+            /** Objective */
+            objective?: string | null;
+            /**
+             * Results
+             * @default []
+             */
+            results: components["schemas"]["ProgramResult"][];
+            /** Running */
+            running: number;
+            /** Slug */
+            slug: string;
+            /** Updated At */
+            updated_at?: number | null;
+        };
         /** ProgramIn */
         ProgramIn: {
             /**
@@ -596,6 +766,44 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+        };
+        /** ProgramResult */
+        ProgramResult: {
+            /** Campaign Id */
+            campaign_id: string;
+            /** Campaign Title */
+            campaign_title: string;
+            /** Candidate */
+            candidate: string;
+            /** Ci */
+            ci?: number[] | null;
+            /** Hypothesis Id */
+            hypothesis_id: string;
+            /** Observed */
+            observed?: number | null;
+            /** State */
+            state: string;
+        };
+        /** ProgramSummary */
+        ProgramSummary: {
+            /** Campaigns */
+            campaigns: number;
+            gate: components["schemas"]["Gate"];
+            goal: components["schemas"]["Goal"];
+            /** Modality */
+            modality?: string | null;
+            /** Mode */
+            mode?: string | null;
+            /** Name */
+            name: string;
+            /** Objective */
+            objective?: string | null;
+            /** Running */
+            running: number;
+            /** Slug */
+            slug: string;
+            /** Updated At */
+            updated_at?: number | null;
         };
         /** ProvenanceRecord */
         ProvenanceRecord: {
@@ -696,6 +904,14 @@ export interface components {
             halted: boolean;
             /** Pending Approvals */
             pending_approvals: number;
+        };
+        /** Today */
+        Today: {
+            attention: components["schemas"]["Attention"];
+            /** Programs */
+            programs: components["schemas"]["ProgramSummary"][];
+            /** Standalone */
+            standalone: components["schemas"]["CampaignDigest"][];
         };
         /** ValidationError */
         ValidationError: {
@@ -996,6 +1212,57 @@ export interface operations {
             };
         };
     };
+    list_programs_api_v1_programs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramSummary"][];
+                };
+            };
+        };
+    };
+    get_program_api_v1_programs__slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     status_api_v1_system_status_get: {
         parameters: {
             query?: never;
@@ -1012,6 +1279,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemStatus"];
+                };
+            };
+        };
+    };
+    today_api_v1_today_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Today"];
                 };
             };
         };

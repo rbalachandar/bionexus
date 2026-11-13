@@ -20,3 +20,4 @@ bionexuslab-*.whl
 
 # local UI screenshots
 web/.shots/
+.sample/

@@ -2,8 +2,10 @@
 from fastapi import APIRouter
 
 from bionexus.api.v1.campaigns import router as campaigns_router
+from bionexus.api.v1.programs import router as programs_router
 from bionexus.api.v1.system import router as system_router
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(campaigns_router)
+router.include_router(programs_router)
 router.include_router(system_router)

@@ -58,3 +58,17 @@ export function useHalt() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['system-status'] }),
   })
 }
+
+export const useToday = () =>
+  useQuery({
+    queryKey: ['today'],
+    queryFn: () => unwrap(api.GET('/api/v1/today')),
+    refetchInterval: 6_000,
+  })
+
+export const useProgram = (slug: string) =>
+  useQuery({
+    queryKey: ['program', slug],
+    queryFn: () => unwrap(api.GET('/api/v1/programs/{slug}', { params: { path: { slug } } })),
+    refetchInterval: 6_000,
+  })

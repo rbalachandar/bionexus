@@ -1,6 +1,32 @@
 {
  "components": {
   "schemas": {
+   "AbstentionNote": {
+    "properties": {
+     "campaign_id": {
+      "title": "Campaign Id",
+      "type": "string"
+     },
+     "campaign_title": {
+      "title": "Campaign Title",
+      "type": "string"
+     },
+     "candidates": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Candidates",
+      "type": "array"
+     }
+    },
+    "required": [
+     "campaign_id",
+     "campaign_title",
+     "candidates"
+    ],
+    "title": "AbstentionNote",
+    "type": "object"
+   },
    "ActivityItem": {
     "properties": {
      "candidate": {
@@ -75,6 +101,93 @@
      "records"
     ],
     "title": "AnchorStatus",
+    "type": "object"
+   },
+   "Attention": {
+    "description": "What needs the scientist right now.",
+    "properties": {
+     "abstentions": {
+      "items": {
+       "$ref": "#/components/schemas/AbstentionNote"
+      },
+      "title": "Abstentions",
+      "type": "array"
+     },
+     "halted": {
+      "title": "Halted",
+      "type": "boolean"
+     },
+     "pending_approvals": {
+      "title": "Pending Approvals",
+      "type": "integer"
+     },
+     "running": {
+      "title": "Running",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "pending_approvals",
+     "abstentions",
+     "running",
+     "halted"
+    ],
+    "title": "Attention",
+    "type": "object"
+   },
+   "BestResult": {
+    "properties": {
+     "campaign_id": {
+      "title": "Campaign Id",
+      "type": "string"
+     },
+     "campaign_title": {
+      "title": "Campaign Title",
+      "type": "string"
+     },
+     "candidate": {
+      "title": "Candidate",
+      "type": "string"
+     },
+     "ci": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "maxItems": 2,
+        "minItems": 2,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ci"
+     },
+     "observed": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Observed"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     }
+    },
+    "required": [
+     "campaign_id",
+     "campaign_title",
+     "candidate",
+     "state"
+    ],
+    "title": "BestResult",
     "type": "object"
    },
    "Body_create_analysis_api_analyses_post": {
@@ -287,6 +400,54 @@
      "chain"
     ],
     "title": "CampaignDetail",
+    "type": "object"
+   },
+   "CampaignDigest": {
+    "properties": {
+     "best": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/BestResult"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "funnel": {
+      "$ref": "#/components/schemas/Funnel"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     },
+     "updated_at": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Updated At"
+     }
+    },
+    "required": [
+     "id",
+     "title",
+     "status",
+     "funnel"
+    ],
+    "title": "CampaignDigest",
     "type": "object"
    },
    "CampaignSummary": {
@@ -740,6 +901,52 @@
     "title": "Gate",
     "type": "object"
    },
+   "Goal": {
+    "description": "Progress against the program's pre-registered gate, across ALL its campaigns.",
+    "properties": {
+     "abstained": {
+      "default": 0,
+      "title": "Abstained",
+      "type": "integer"
+     },
+     "best": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/BestResult"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "best claimed result, else the closest judged one"
+     },
+     "claimed": {
+      "default": 0,
+      "title": "Claimed",
+      "type": "integer"
+     },
+     "judged": {
+      "default": 0,
+      "title": "Judged",
+      "type": "integer"
+     },
+     "met": {
+      "description": "at least one candidate is claimed (validated/confirmed)",
+      "title": "Met",
+      "type": "boolean"
+     },
+     "refuted": {
+      "default": 0,
+      "title": "Refuted",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "met"
+    ],
+    "title": "Goal",
+    "type": "object"
+   },
    "HTTPValidationError": {
     "properties": {
      "detail": {
@@ -1109,6 +1316,102 @@
     "title": "Pick",
     "type": "object"
    },
+   "ProgramDetail": {
+    "properties": {
+     "campaign_list": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/CampaignDigest"
+      },
+      "title": "Campaign List",
+      "type": "array"
+     },
+     "campaigns": {
+      "title": "Campaigns",
+      "type": "integer"
+     },
+     "gate": {
+      "$ref": "#/components/schemas/Gate"
+     },
+     "goal": {
+      "$ref": "#/components/schemas/Goal"
+     },
+     "modality": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Modality"
+     },
+     "mode": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mode"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "objective": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Objective"
+     },
+     "results": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ProgramResult"
+      },
+      "title": "Results",
+      "type": "array"
+     },
+     "running": {
+      "title": "Running",
+      "type": "integer"
+     },
+     "slug": {
+      "title": "Slug",
+      "type": "string"
+     },
+     "updated_at": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Updated At"
+     }
+    },
+    "required": [
+     "slug",
+     "name",
+     "gate",
+     "goal",
+     "campaigns",
+     "running"
+    ],
+    "title": "ProgramDetail",
+    "type": "object"
+   },
    "ProgramIn": {
     "additionalProperties": true,
     "properties": {
@@ -1194,6 +1497,146 @@
      "name"
     ],
     "title": "ProgramRef",
+    "type": "object"
+   },
+   "ProgramResult": {
+    "properties": {
+     "campaign_id": {
+      "title": "Campaign Id",
+      "type": "string"
+     },
+     "campaign_title": {
+      "title": "Campaign Title",
+      "type": "string"
+     },
+     "candidate": {
+      "title": "Candidate",
+      "type": "string"
+     },
+     "ci": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "maxItems": 2,
+        "minItems": 2,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ci"
+     },
+     "hypothesis_id": {
+      "title": "Hypothesis Id",
+      "type": "string"
+     },
+     "observed": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Observed"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     }
+    },
+    "required": [
+     "hypothesis_id",
+     "campaign_id",
+     "campaign_title",
+     "candidate",
+     "state"
+    ],
+    "title": "ProgramResult",
+    "type": "object"
+   },
+   "ProgramSummary": {
+    "properties": {
+     "campaigns": {
+      "title": "Campaigns",
+      "type": "integer"
+     },
+     "gate": {
+      "$ref": "#/components/schemas/Gate"
+     },
+     "goal": {
+      "$ref": "#/components/schemas/Goal"
+     },
+     "modality": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Modality"
+     },
+     "mode": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mode"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "objective": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Objective"
+     },
+     "running": {
+      "title": "Running",
+      "type": "integer"
+     },
+     "slug": {
+      "title": "Slug",
+      "type": "string"
+     },
+     "updated_at": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Updated At"
+     }
+    },
+    "required": [
+     "slug",
+     "name",
+     "gate",
+     "goal",
+     "campaigns",
+     "running"
+    ],
+    "title": "ProgramSummary",
     "type": "object"
    },
    "ProvenanceRecord": {
@@ -1439,6 +1882,34 @@
      "chain"
     ],
     "title": "SystemStatus",
+    "type": "object"
+   },
+   "Today": {
+    "properties": {
+     "attention": {
+      "$ref": "#/components/schemas/Attention"
+     },
+     "programs": {
+      "items": {
+       "$ref": "#/components/schemas/ProgramSummary"
+      },
+      "title": "Programs",
+      "type": "array"
+     },
+     "standalone": {
+      "items": {
+       "$ref": "#/components/schemas/CampaignDigest"
+      },
+      "title": "Standalone",
+      "type": "array"
+     }
+    },
+    "required": [
+     "attention",
+     "programs",
+     "standalone"
+    ],
+    "title": "Today",
     "type": "object"
    },
    "ValidationError": {
@@ -2023,6 +2494,73 @@
     ]
    }
   },
+  "/api/v1/programs": {
+   "get": {
+    "operationId": "list_programs_api_v1_programs_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ProgramSummary"
+         },
+         "title": "Response List Programs Api V1 Programs Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Programs",
+    "tags": [
+     "programs"
+    ]
+   }
+  },
+  "/api/v1/programs/{slug}": {
+   "get": {
+    "operationId": "get_program_api_v1_programs__slug__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "slug",
+      "required": true,
+      "schema": {
+       "title": "Slug",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProgramDetail"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Program",
+    "tags": [
+     "programs"
+    ]
+   }
+  },
   "/api/v1/system/status": {
    "get": {
     "operationId": "status_api_v1_system_status_get",
@@ -2041,6 +2579,28 @@
     "summary": "Status",
     "tags": [
      "system"
+    ]
+   }
+  },
+  "/api/v1/today": {
+   "get": {
+    "description": "The home screen: what needs me, how each program is doing, and the\ncampaigns that belong to no program.",
+    "operationId": "today_api_v1_today_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Today"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Today",
+    "tags": [
+     "programs"
     ]
    }
   }
