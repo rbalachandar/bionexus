@@ -15,8 +15,20 @@ Deliberately *not*: helices, molecules, flasks, charts, gradients.
 
 ## The wordmark
 
-`proef` in Inter (medium, tight tracking), Delft blue on light and pale blue-white on dark.
-No ornament: the mark carries the idea.
+`proef.` in Inter (medium, tight tracking), Delft blue on light and pale blue-white on dark, with an
+**orange full stop** that repeats the accent of the mark. Lowercase on purpose: the p and f give the
+word its rhythm, and it sits quietly beside the hairline grid.
+
+## How to write the name
+
+| Where | Form | Example |
+|---|---|---|
+| The logo / wordmark | lowercase, with the orange full stop | `proef.` |
+| Anything technical | lowercase, no full stop | `pip install proef`, `proef campaign …`, `import proef`, `PROEF_DATA_DIR`, `proef.db` |
+| Prose and headings | capital P, no full stop | "Proef runs the experiment and a scientist decides." |
+
+The full stop belongs to the logo only. Never write "Proef." as the name: it collides with sentence
+punctuation and breaks every technical identifier.
 
 ## Colour
 

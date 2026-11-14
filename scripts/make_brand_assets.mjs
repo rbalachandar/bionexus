@@ -4,7 +4,7 @@
  *
  *   mark      a hairline Mondrian grid: every cell is one hypothesis experiment. Most are
  *             untested or settled in quiet blues; the single orange cell is the result.
- *   wordmark  "proef" in Inter, Delft blue (light) / pale blue-white (dark)
+ *   wordmark  "proef." in Inter, Delft blue (light) / pale blue-white (dark), with an orange full stop
  *
  * Usage:  node scripts/make_brand_assets.mjs     (needs web/node_modules: Playwright + Inter)
  */
@@ -38,7 +38,7 @@ function mark(t, { small = false } = {}) {
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">${o}</svg>`
 }
-const word = (t, size) => `<span class="w" style="font-size:${size}px;color:${t.text}">proef</span>`
+const word = (t, size) => `<span class="w" style="font-size:${size}px;color:${t.text}">proef<i style="color:${ACCENT};font-style:normal">.</i></span>`
 const tile = (t, px, small) => `<div style="width:${px}px;height:${px}px;border-radius:${px * .23}px;background:${t.bg};display:flex;align-items:center;justify-content:center"><div style="width:${px * .8}px">${mark(t, { small })}</div></div>`
 const lockup = (t, w = 260, size = 200) => `<div style="display:flex;align-items:center;gap:40px"><div style="width:${w}px">${mark(t)}</div>${word(t, size)}</div>`
 
