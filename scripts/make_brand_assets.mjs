@@ -30,16 +30,20 @@ const CELLS = [['A', 24, 24, 52, 104], ['B', 24, 128, 52, 88], ['C', 76, 24, 140
 
 /** hairline = the full grid with 1px-ish edges; small = plain filled blocks that survive 16–32 px. */
 function mark(t, { small = false } = {}) {
-  const fill = { A: t.A, D: ACCENT, G: t.G, F: t.F }
+  // small sizes: every block must stay visible on the navy tile, so the deep cell is lifted
+  const lightTile = t === T.light
+  const fill = small
+    ? (lightTile ? { A: '#1f3a8a', D: ACCENT, G: '#bcd0f2', F: '#6f93d6' } : { A: '#2b4fc4', D: ACCENT, G: '#cfdcfa', F: '#5b7fe0' })
+    : { A: t.A, D: ACCENT, G: t.G, F: t.F }
   let o = ''
   for (const [k, x, y, w, h] of CELLS) {
-    if (small) { if (fill[k]) o += `<rect x="${x + 3}" y="${y + 3}" width="${w - 6}" height="${h - 6}" rx="3" fill="${fill[k]}"/>` }
+    if (small) { if (fill[k]) o += `<rect x="${x + 2.5}" y="${y + 2.5}" width="${w - 5}" height="${h - 5}" rx="2" fill="${fill[k]}"/>` }
     else o += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill[k] ?? 'none'}" stroke="${t.line}" stroke-width="1.3"/>`
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">${o}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${small ? '20 20 200 200' : '0 0 240 240'}">${o}</svg>`
 }
 const word = (t, size) => `<span class="w" style="font-size:${size}px;color:${t.text}">proef<i style="color:${ACCENT};font-style:normal">.</i></span>`
-const tile = (t, px, small) => `<div style="width:${px}px;height:${px}px;border-radius:${px * .23}px;background:${t.bg};display:flex;align-items:center;justify-content:center"><div style="width:${px * .8}px">${mark(t, { small })}</div></div>`
+const tile = (t, px, small) => `<div style="width:${px}px;height:${px}px;border-radius:${px * .23}px;background:${t.bg};box-sizing:border-box;${t === T.light ? 'border:2px solid #e3dfd2;' : ''}display:flex;align-items:center;justify-content:center"><div style="width:${px * (small ? .74 : .8)}px">${mark(t, { small })}</div></div>`
 const lockup = (t, w = 260, size = 200) => `<div style="display:flex;align-items:center;gap:40px"><div style="width:${w}px">${mark(t)}</div>${word(t, size)}</div>`
 
 const assets = {
@@ -48,6 +52,7 @@ const assets = {
   'proef-mark-tile.png': [tile(T.dark, 512, false)],
   'proef-mark-tile-light.png': [tile(T.light, 512, false)],
   'favicon.png': [tile(T.dark, 128, true)],
+  'favicon-light.png': [tile(T.light, 128, true)],
   'proef-wordmark.png': [word(T.light, 200)],
   'proef-wordmark-onDark.png': [word(T.dark, 200)],
   'proef-lockup.png': [lockup(T.light)],
@@ -69,4 +74,5 @@ for (const n of Object.keys(assets)) {
   console.log('wrote', n)
 }
 await p.locator('[id="favicon.png"]').screenshot({ path: join(ROOT, 'web/public/proef-mark.png'), omitBackground: true })   // header + browser tab
+await p.locator('[id="favicon-light.png"]').screenshot({ path: join(ROOT, 'web/public/proef-mark-light.png'), omitBackground: true })   // header icon in the light theme
 await b.close()

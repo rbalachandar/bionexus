@@ -23,9 +23,10 @@ function Rail() {
   const { data } = useSystemStatus()
   return (
     <aside className="flex w-14 shrink-0 flex-col border-r border-line bg-surface lg:w-52">
-      <div className="flex h-12 items-center gap-2 border-b border-line px-3.5">
-        <img src="/proef-mark.png" alt="" width={22} height={22} />
-        <span className="hidden text-[15px] font-semibold tracking-tight lg:inline">proef<span aria-hidden className="text-[#ff8a1f]">.</span></span>
+      <div className="flex h-12 items-center gap-2.5 border-b border-line px-3.5">
+        <img src="/proef-mark-light.png" alt="" width={30} height={30} className="dark:hidden" />
+        <img src="/proef-mark.png" alt="" width={30} height={30} className="hidden dark:block" />
+        <span className="hidden text-[17px] font-semibold tracking-tight lg:inline">proef<span aria-hidden className="font-bold text-[#ff8a1f]">.</span></span>
       </div>
       <nav className="flex flex-col gap-0.5 p-2" aria-label="Sections">
         {NAV.map(({ to, label, icon: Icon, ...rest }) => (
