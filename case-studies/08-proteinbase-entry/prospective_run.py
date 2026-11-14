@@ -25,7 +25,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(ROOT / "src"))
 
 from entry_gates import check_sequence                      # noqa: E402
-from bionexus.adapters.lab.protein_design import (          # noqa: E402
+from proef.adapters.lab.protein_design import (          # noqa: E402
     ProteinDesignLabAdapter,
 )
 

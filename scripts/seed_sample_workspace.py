@@ -18,18 +18,18 @@ ROOT = Path(__file__).resolve().parents[1]
 target = Path(sys.argv[1] if len(sys.argv) > 1 else ".sample").resolve()
 target.mkdir(parents=True, exist_ok=True)
 os.chdir(target)
-os.environ["BIONEXUS_DATA_DIR"] = str(target / ".data")
+os.environ["PROEF_DATA_DIR"] = str(target / ".data")
 sys.path.insert(0, str(ROOT / "src"))
 
-from bionexus.adapters.lab.simulator import SimulatorLab  # noqa: E402
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore  # noqa: E402
-from bionexus.autoloop import CampaignConfig, run_campaign  # noqa: E402
-from bionexus.core.hypothesis import Constraint, ProblemStatement  # noqa: E402
-from bionexus.flywheel import Flywheel  # noqa: E402
-from bionexus.paths import DATA_DIR  # noqa: E402
-from bionexus.wizard_store import WizardStore  # noqa: E402
+from proef.adapters.lab.simulator import SimulatorLab  # noqa: E402
+from proef.adapters.store.sqlite import SqliteProvenanceStore  # noqa: E402
+from proef.autoloop import CampaignConfig, run_campaign  # noqa: E402
+from proef.core.hypothesis import Constraint, ProblemStatement  # noqa: E402
+from proef.flywheel import Flywheel  # noqa: E402
+from proef.paths import DATA_DIR  # noqa: E402
+from proef.wizard_store import WizardStore  # noqa: E402
 
-store = SqliteProvenanceStore("bionexus.db")
+store = SqliteProvenanceStore("proef.db")
 ws = WizardStore()
 
 
@@ -56,7 +56,7 @@ def campaign(eid, objective, specs, seed, acquisition=None, k=3, rounds=2, lab_s
     return rep.problem_id
 
 
-from bionexus import program as programs  # noqa: E402
+from proef import program as programs  # noqa: E402
 
 
 def program(name, objective, campaigns):

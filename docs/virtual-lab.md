@@ -1,6 +1,6 @@
 # The Virtual Lab
 
-BioNexus's simulated lab is a stand-in for real instruments — same `LabAdapter`
+Proef's simulated lab is a stand-in for real instruments — same `LabAdapter`
 contract, layered realism. Agents never know (or need to know) which is which.
 
 ## Layers of simulation
@@ -42,7 +42,7 @@ how well agents *measure* — never wire it into agent-facing tools.
 
 ## Vision-LLM readout (evaluation harness)
 
-`bionexus/vision.py`: well micrographs are
+`proef/vision.py`: well micrographs are
 encoded as PNGs (jointly normalized to preserve relative brightness across the
 dose series) and shown to a multimodal model, which estimates fluorescence; its
 estimates are fit with the same curve model as the pipeline. Comparing

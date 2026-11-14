@@ -4,12 +4,12 @@ from __future__ import annotations
 import threading
 from types import SimpleNamespace as NS
 
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.contracts import Envelope, EventType
-from bionexus.core.hypothesis import (HypothesisTracker, ProblemStatement,
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.contracts import Envelope, EventType
+from proef.core.hypothesis import (HypothesisTracker, ProblemStatement,
                                       SuccessCriteria)
-from bionexus.core.interfaces import record_for, system_actor
-from bionexus.labread import fit_ic50_ci, replicate_ci
+from proef.core.interfaces import record_for, system_actor
+from proef.labread import fit_ic50_ci, replicate_ci
 
 
 def _hyp(metric, threshold=20.0):
@@ -83,7 +83,7 @@ def test_ic50_ci_is_wider_with_df_correction():
 
 
 def test_ceiling_pinned_ic50_is_right_censored():
-    from bionexus.labread import analyze_records
+    from proef.labread import analyze_records
     recs = [{"well": f"A{i}", "sample": "W", "control": False, "conc_um": c, "value": v}
             for i, (c, v) in enumerate([(0.5, 0.2), (2, 0.4), (10, 0.9),
                                         (40, 1.8)], 1)]
@@ -94,7 +94,7 @@ def test_ceiling_pinned_ic50_is_right_censored():
 
 
 def test_docker_env_flags_precede_image():
-    from bionexus.adapters.sandbox.docker import DockerSandbox
+    from proef.adapters.sandbox.docker import DockerSandbox
 
     class R:
         binary = "docker"
@@ -133,13 +133,13 @@ def test_concurrent_writers_do_not_fork_the_chain(tmp_path):
 
 def test_api_refuses_cross_origin_writes_and_requires_token(monkeypatch):
     from fastapi.testclient import TestClient
-    from bionexus.api.app import app
+    from proef.api.app import app
     c = TestClient(app)
     r = c.post("/api/v1/halt", json={"halted": True}, headers={"Origin": "https://evil.example"})
     assert r.status_code == 403
-    monkeypatch.setenv("BIONEXUS_API_TOKEN", "s3cret")
+    monkeypatch.setenv("PROEF_API_TOKEN", "s3cret")
     assert c.post("/api/v1/halt", json={"halted": True}).status_code == 401
-    ok = c.post("/api/v1/halt", json={"halted": False}, headers={"X-BioNexus-Token": "s3cret"})
+    ok = c.post("/api/v1/halt", json={"halted": False}, headers={"X-Proef-Token": "s3cret"})
     assert ok.status_code != 401
     assert c.get("/api/system/health",
                  headers={"Host": "evil.example"}).status_code == 403
@@ -147,7 +147,7 @@ def test_api_refuses_cross_origin_writes_and_requires_token(monkeypatch):
 
 def test_budget_fails_closed_when_store_unreadable():
     import pytest
-    from bionexus.autoloop import ResourceBudget
+    from proef.autoloop import ResourceBudget
 
     class Broken:
         def branch_records(self, b):
@@ -174,7 +174,7 @@ def test_hash_covers_actor_not_just_decision(tmp_path):
 
 
 def test_registry_priority_and_tie_warning(caplog):
-    from bionexus.core.registry import Registry
+    from proef.core.registry import Registry
 
     class A:
         capabilities = ["c.fm.predict_property"]
@@ -195,7 +195,7 @@ def test_registry_priority_and_tie_warning(caplog):
 
 
 def test_simulator_only_devices_are_in_the_catalog_and_labelled():
-    from bionexus.labselect import load_catalog
+    from proef.labselect import load_catalog
     cat = {i["id"]: i for i in load_catalog()["instruments"]}
     for iid in ("lcms-simulator", "hcs-microscope-simulator"):
         assert cat[iid]["simulated"] is True
@@ -203,7 +203,7 @@ def test_simulator_only_devices_are_in_the_catalog_and_labelled():
 
 
 def test_docker_user_is_opt_in_flag():
-    from bionexus.adapters.sandbox.docker import DockerSandbox
+    from proef.adapters.sandbox.docker import DockerSandbox
 
     class R:
         binary = "docker"
@@ -223,25 +223,25 @@ def test_docker_user_is_opt_in_flag():
 
 
 def test_sandbox_worker_rebuilds_the_hosts_tool_set():
-    from bionexus.core.registry import Registry
-    from bionexus.sandboxd import _build_registry
-    from bionexus.adapters.bio.structure_score import StructureScorer
+    from proef.core.registry import Registry
+    from proef.sandboxd import _build_registry
+    from proef.adapters.bio.structure_score import StructureScorer
     host = Registry()
     host.register_tool(StructureScorer())
     paths = host.tool_paths()
-    assert paths == ["bionexus.adapters.bio.structure_score:StructureScorer"]
+    assert paths == ["proef.adapters.bio.structure_score:StructureScorer"]
     worker = _build_registry(paths)
-    assert "bionexus.adapters.bio.structure_score:StructureScorer" in \
+    assert "proef.adapters.bio.structure_score:StructureScorer" in \
         worker.tool_paths()
 
 
 def test_approval_identity_comes_from_the_token_not_the_body(monkeypatch):
     import json
     from fastapi.testclient import TestClient
-    from bionexus.api.app import app
-    from bionexus.approvals import ApprovalInbox
-    from bionexus.paths import APPROVALS_FILE
-    monkeypatch.setenv("BIONEXUS_API_TOKENS", "alice:tok-a,bob:tok-b")
+    from proef.api.app import app
+    from proef.approvals import ApprovalInbox
+    from proef.paths import APPROVALS_FILE
+    monkeypatch.setenv("PROEF_API_TOKENS", "alice:tok-a,bob:tok-b")
     box = ApprovalInbox(str(APPROVALS_FILE))
     aid = box.request("assay C1")
     c = TestClient(app)
@@ -249,7 +249,7 @@ def test_approval_identity_comes_from_the_token_not_the_body(monkeypatch):
                   ).status_code == 401                      # no token
     r = c.post(f"/api/v1/inbox/{aid}/decision",
                json={"approve": True, "by": "mallory"},
-               headers={"X-BioNexus-Token": "tok-b"})
+               headers={"X-Proef-Token": "tok-b"})
     assert r.status_code == 200
     events = [json.loads(l) for l in
               box.path.read_text().splitlines() if l.strip()]
@@ -261,9 +261,9 @@ def test_approval_identity_comes_from_the_token_not_the_body(monkeypatch):
 def test_lab_pool_campaign_keeps_its_own_branch_name(tmp_path):
     """Lab selection used to write to problem/<id> before the unique-branch
     check, so every pooled campaign looked like a re-run and got '-2'."""
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.autoloop import CampaignConfig, run_campaign
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.autoloop import CampaignConfig, run_campaign
+    from proef.core.hypothesis import Constraint, ProblemStatement
     store = SqliteProvenanceStore()
     problem = ProblemStatement(objective="find IC50<=20", problem_id="prob-x",
                                constraints=[Constraint(

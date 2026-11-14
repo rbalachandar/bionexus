@@ -1,4 +1,4 @@
-# BioNexus — brand
+# Proef — brand
 
 ## The mark: the gated loop
 
@@ -9,11 +9,11 @@ Three shapes, one argument:
   one non-bypassable gate to count; the accent colour marks it as the
   active element
 - **Nexus dot** — the centre where verified evidence becomes recorded
-  knowledge; also the period in `bionexus.`
+  knowledge; also the period in `proef.`
 
 ## The wordmark: the mark hides in the word
 
-`bionexus.` is drawn as a custom geometric monoline (same stroke weight and
+`proef.` is drawn as a custom geometric monoline (same stroke weight and
 round caps as the mark) — and the **o is the gated loop**: ring, gate bar
 rising like an ascender, nexus dot at its center. The i-dot and the final
 period are teal: three accents, one system. The word *is* the argument.
@@ -24,19 +24,19 @@ favicon, single-colour etching, dark mode, embroidery.
 
 ## Assets (all derived from the banner — never hand-edit)
 
-Source of truth: `assets/logo/bionexus-banner.png` (dark navy card,
-matrix-grid icon with coral path dots, "bionexus." wordmark).
+Source of truth: `assets/logo/proef-banner.png` (dark navy card,
+matrix-grid icon with coral path dots, "proef." wordmark).
 Regenerate everything with `python scripts/make_brand_assets.py`:
 
 | File | Use |
 |---|---|
-| `bionexus-banner.png` | README / social — the canonical banner (icon + title + subtitle) |
-| `bionexus-mark.png` | icon only, transparent — light surfaces (workbench header) |
-| `bionexus-mark-tile.png` | icon on its navy panel — chips, avatars |
-| `bionexus-wordmark.png` | title only, ink recolor — light surfaces |
-| `bionexus-wordmark-onDark.png` | title only, original white + coral — dark surfaces |
-| `bionexus-lockup.png` | icon + title, light-surface recolor |
-| `bionexus-lockup-onDark.png` | icon + title, original colors |
+| `proef-banner.png` | README / social — the canonical banner (icon + title + subtitle) |
+| `proef-mark.png` | icon only, transparent — light surfaces (workbench header) |
+| `proef-mark-tile.png` | icon on its navy panel — chips, avatars |
+| `proef-wordmark.png` | title only, ink recolor — light surfaces |
+| `proef-wordmark-onDark.png` | title only, original white + coral — dark surfaces |
+| `proef-lockup.png` | icon + title, light-surface recolor |
+| `proef-lockup-onDark.png` | icon + title, original colors |
 | `favicon.png` | browser tab — icon on a navy rounded square |
 
 ## Palette

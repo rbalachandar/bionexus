@@ -1,20 +1,20 @@
 """S-T1.3 institutional memory: ELN CSV -> flywheel + provenance chain.
 
-`bn ingest` is the inverse of `bn prove --eln`. The contract: what the
-lab killed BEFORE BioNexus must show up in ALREADY RULED OUT and drag
+`proef ingest` is the inverse of `proef prove --eln`. The contract: what the
+lab killed BEFORE Proef must show up in ALREADY RULED OUT and drag
 family priors — stamped imported, sealed-checksummed, nothing silently
 dropped.
 """
 from pathlib import Path
 
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.contracts import Envelope, EventType
-from bionexus.core.hypothesis import Constraint, HypothesisTracker, \
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.contracts import Envelope, EventType
+from proef.core.hypothesis import Constraint, HypothesisTracker, \
     ProblemStatement
-from bionexus.core.interfaces import record_for, system_actor
-from bionexus.eln import export_eln
-from bionexus.flywheel import Flywheel
-from bionexus.ingest import ingest_eln
+from proef.core.interfaces import record_for, system_actor
+from proef.eln import export_eln
+from proef.flywheel import Flywheel
+from proef.ingest import ingest_eln
 
 
 def _exported_chain(tmp_path):
@@ -119,7 +119,7 @@ def test_cli_ingest_wired(tmp_path):
     import subprocess, sys
     csv_path, _ = _exported_chain(tmp_path)
     out = subprocess.run(
-        [sys.executable, "-m", "bionexus.cli", "ingest", str(csv_path),
+        [sys.executable, "-m", "proef.cli", "ingest", str(csv_path),
          "--flywheel-db", str(tmp_path / "fw6.db"), "--no-chain"],
         capture_output=True, text=True, cwd=Path(__file__).parent.parent)
     assert out.returncode == 0

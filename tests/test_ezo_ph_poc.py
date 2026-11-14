@@ -11,11 +11,11 @@ import json
 
 import pytest
 
-from bionexus.adapters.devices.ezo_ph import EzoPHLine, EzoPHProbe
-from bionexus.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
+from proef.adapters.devices.ezo_ph import EzoPHLine, EzoPHProbe
+from proef.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
                                      ProtocolSubmission, SampleKind,
                                      SampleSpec)
-from bionexus.core.hypothesis import SuccessCriteria
+from proef.core.hypothesis import SuccessCriteria
 
 GATE = SuccessCriteria(metric="ph", direction="max", threshold=7.20)
 TRUTH = 7.35          # compliant with the gate, if you trust the probe

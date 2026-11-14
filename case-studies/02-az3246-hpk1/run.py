@@ -12,7 +12,7 @@ Training data: ~29.7k other HPK1 (MAP4K1, CHEMBL5749) binding measurements in
 ChEMBL, excluding this document. Evaluation uses the paper's real published
 values only.
 
-    BIONEXUS_LLM_* / ANTHROPIC_* env required.
+    PROEF_LLM_* / ANTHROPIC_* env required.
     python run.py   (from this directory)
 """
 from __future__ import annotations
@@ -25,13 +25,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF
-from bionexus.benchmark import spearman
-from bionexus.core.contracts import (
+from proef.adapters.models.sklearn_policy import MorganFingerprintRF
+from proef.benchmark import spearman
+from proef.core.contracts import (
     Envelope, EventType, ToolInvocation,
 )
-from bionexus.core.hypothesis import Constraint, HypothesisTracker, ProblemStatement
-from bionexus.core.interfaces import record_for, system_actor
+from proef.core.hypothesis import Constraint, HypothesisTracker, ProblemStatement
+from proef.core.interfaces import record_for, system_actor
 
 PAPER_DOC = "CHEMBL6103590"
 PAPER_ASSAY = "CHEMBL6105768"
@@ -62,14 +62,14 @@ def chembl_json(path: str) -> dict:
 
 def main() -> None:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
-    from bionexus import fixtures
+    from proef import fixtures
     restored = fixtures.materialize(Path(__file__).parent)
     if restored:
         print(f"[fixtures] restored {restored} frozen data file(s) — "
               f"byte-reproducible run")
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.adapters.models.anthropic_provider import AnthropicProvider
-    from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF as _M  # noqa
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.adapters.models.anthropic_provider import AnthropicProvider
+    from proef.adapters.models.sklearn_policy import MorganFingerprintRF as _M  # noqa
 
     store = SqliteProvenanceStore(Path(__file__).parent / "case_study.db")
     actor = system_actor("case-study-02")
@@ -104,7 +104,7 @@ def main() -> None:
 
     # variant probe: never-published near-twins of paper compounds — if the
     # model maps them to this paper, it memorized the series
-    from bionexus.probes import variant_contamination
+    from proef.probes import variant_contamination
     vc = variant_contamination(
         agent_model,
         ["az3246", "hpk1", "map4k1", "pyrazine carboxamide",
@@ -317,7 +317,7 @@ SERIES
           "(pyrazine-carboxamide core identified)")
     print(f"  Q2 results:        {'PASS' if q2_pass else 'FAIL'} "
           f"(model rho={sp_model:+.3f}, agent rho={sp_agent:+.3f})")
-    print(f"  provenance: bn prove {BRANCH} --db case_study.db "
+    print(f"  provenance: proef prove {BRANCH} --db case_study.db "
           f"({len(store.branch_records(BRANCH))} records)")
 
 

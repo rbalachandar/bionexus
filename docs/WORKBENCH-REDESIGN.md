@@ -134,7 +134,7 @@ Program / Experiment / Wizard / Approvals screens and ~800 lines of old API remo
 
 - The LLM-drafted **program brief** and the problem-tree **program verdict / termination
   policy** were API+UI features of the old workspace. The engine modules remain
-  (`problem_tree`, `bn campaign plan`), but they are no longer surfaced; the new
+  (`problem_tree`, `proef campaign plan`), but they are no longer surfaced; the new
   program page shows deterministic **What next** recommendations instead. Restore the
   model-drafted brief on top of v1 if/when a model is configured for the workbench.
 - `/api/wizard/*`, `/api/programs*`, `/api/experiments*`, `/api/approvals*`,

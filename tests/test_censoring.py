@@ -3,12 +3,12 @@ measurable window must yield an EXPLICIT abstention — never a silent
 'tested' (implicit claim) and never a floor-pinned number dressed as IC50."""
 import pytest
 
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.hypothesis import (HypothesisTracker, ProblemStatement,
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.hypothesis import (HypothesisTracker, ProblemStatement,
                                       SuccessCriteria)
-from bionexus.core.interfaces import system_actor
-from bionexus.labread import analyze_records
-from bionexus.watch import AutoAnalysisAgent, LabEvent
+from proef.core.interfaces import system_actor
+from proef.labread import analyze_records
+from proef.watch import AutoAnalysisAgent, LabEvent
 
 
 def _saturated_records(cand="EG-X", doses=(0.003, 0.01, 0.03, 0.1, 0.3, 1.0)):
@@ -38,7 +38,7 @@ def test_censored_plate_abstains_explicitly(tmp_path):
     """watch.handle: right- OR left-censored -> status inconclusive,
     recorded as a verdict (hypothesis_inconclusive) with the censoring
     reason in derivation.method."""
-    from bionexus.labread import PlateResult
+    from proef.labread import PlateResult
     import csv
 
     db = str(tmp_path / "p.db")

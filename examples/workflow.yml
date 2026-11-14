@@ -1,4 +1,4 @@
-# BioNexus workflow — run with: bn campaign auto examples/workflow.yml
+# Proef workflow — run with: proef campaign auto examples/workflow.yml
 problem:
   objective: "Identify active HPK1 inhibitors from the compound series"
   constraints:
@@ -17,7 +17,7 @@ lab:
   seed: 42
 
 store:
-  path: bionexus.db
+  path: proef.db
 
 hypotheses:
   - statement: "C-101 binds HPK1 with IC50 <= 20 uM"

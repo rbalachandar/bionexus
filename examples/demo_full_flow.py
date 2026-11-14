@@ -1,4 +1,4 @@
-"""BioNexus — the definitive full-flow demo.
+"""Proef — the definitive full-flow demo.
 
 Runs the complete scientific method end to end, combining every layer:
 
@@ -25,30 +25,30 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from bionexus.adapters.admet import get_admet_predictor
-from bionexus.adapters.lab.imaging import ImagingSimulatorLab
-from bionexus.adapters.lab.simulator import SimulatorLab, parse_concentration_um
-from bionexus.adapters.models.openai_compat import OpenAICompatProvider
-from bionexus.adapters.retrosynthesis import SimulatedRetrosynthesis
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.contracts import (
+from proef.adapters.admet import get_admet_predictor
+from proef.adapters.lab.imaging import ImagingSimulatorLab
+from proef.adapters.lab.simulator import SimulatorLab, parse_concentration_um
+from proef.adapters.models.openai_compat import OpenAICompatProvider
+from proef.adapters.retrosynthesis import SimulatedRetrosynthesis
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.contracts import (
     AssayResult, Envelope, EventType, InstrumentInfo, Measurement,
     ProtocolOp, ProtocolStep, ProtocolSubmission, ReagentSpec, RunStatus,
     SampleKind, SampleSpec, ToolInvocation,
 )
-from bionexus.core.hypothesis import (
+from proef.core.hypothesis import (
     Constraint, ExperimentDesign, HypothesisTracker, ProblemStatement,
     SuccessCriteria,
 )
-from bionexus.core.interfaces import record_for, system_actor
-from bionexus.core.registry import Registry
-from bionexus.core.safety import LabGateway, MaxBslRule, MaxStepsRule, SafetyEngine
-from bionexus.experiment import (
+from proef.core.interfaces import record_for, system_actor
+from proef.core.registry import Registry
+from proef.core.safety import LabGateway, MaxBslRule, MaxStepsRule, SafetyEngine
+from proef.experiment import (
     BiologicalSystem, ClaimType, DeliveryConditions, ExperimentDefinition,
     Intervention, ReadoutSpec,
 )
-from bionexus.readiness import review_experiment
-from bionexus.tpp import Criterion, CriterionCategory, CriterionPhase, TPP
+from proef.readiness import review_experiment
+from proef.tpp import Criterion, CriterionCategory, CriterionPhase, TPP
 
 ACTIVE_PIC50 = 6.5
 CONCS = ["0.5uM", "2uM", "10uM", "40uM"]
@@ -63,7 +63,7 @@ def main() -> None:
 
     lab = SimulatorLab(seed=42)
     safety = SafetyEngine(rules=[MaxBslRule(2), MaxStepsRule(50)])
-    from bionexus.governance import execution_governance
+    from proef.governance import execution_governance
     gateway = LabGateway(lab, safety, store, actor,
                          governance=execution_governance())
 
@@ -233,8 +233,8 @@ def main() -> None:
         event_counts[r.event_type.value] = event_counts.get(r.event_type.value, 0) + 1
     for ev, count in sorted(event_counts.items()):
         say(f"    {ev}: {count}")
-    say(f"\n  verify: bn prove full-flow --db full_flow.db")
-    say(f"  diary:  bn diary full-flow --db full_flow.db --html diary.html")
+    say(f"\n  verify: proef prove full-flow --db full_flow.db")
+    say(f"  diary:  proef diary full-flow --db full_flow.db --html diary.html")
 
 
 def standard_small_molecule_tpp(name, target, ic50_nm=50):
@@ -253,12 +253,12 @@ def standard_small_molecule_tpp(name, target, ic50_nm=50):
     )
 
 
-from bionexus.adapters.models.openai_compat import OpenAICompatProvider  # noqa: E402
-from bionexus.adapters.admet import get_admet_predictor  # noqa: E402
-from bionexus.adapters.retrosynthesis import SimulatedRetrosynthesis  # noqa: E402
-from bionexus.core.safety import LabGateway, MaxBslRule, MaxStepsRule, SafetyEngine  # noqa: E402
-from bionexus.tpp import CriterionPhase  # noqa: E402
-from bionexus.adapters.lab.simulator import SimulatorLab  # noqa: E402
+from proef.adapters.models.openai_compat import OpenAICompatProvider  # noqa: E402
+from proef.adapters.admet import get_admet_predictor  # noqa: E402
+from proef.adapters.retrosynthesis import SimulatedRetrosynthesis  # noqa: E402
+from proef.core.safety import LabGateway, MaxBslRule, MaxStepsRule, SafetyEngine  # noqa: E402
+from proef.tpp import CriterionPhase  # noqa: E402
+from proef.adapters.lab.simulator import SimulatorLab  # noqa: E402
 
 if __name__ == "__main__":
     main()

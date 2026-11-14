@@ -1,14 +1,14 @@
 {
-  "name": "bionexus",
+  "name": "proef",
   "version": "0.1.0",
   "description": "Agentic drug discovery: problem-driven hypothesis campaigns, safety-gated lab execution, device-aware agents, tamper-evident provenance.",
   "skills": [
-    "skills/bionexus",
-    "skills/bionexus-campaign",
-    "skills/bionexus-labread",
-    "skills/bionexus-labwatch",
-    "skills/bionexus-opentrons"
+    "skills/proef",
+    "skills/proef-campaign",
+    "skills/proef-labread",
+    "skills/proef-labwatch",
+    "skills/proef-opentrons"
   ],
   "license": "Apache-2.0",
-  "homepage": "https://github.com/rbalachandar/bionexus"
+  "homepage": "https://github.com/rbalachandar/proef"
 }

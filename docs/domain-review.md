@@ -1,4 +1,4 @@
-# Domain Review — BioNexus Flow vs. Real Drug Discovery
+# Domain Review — Proef Flow vs. Real Drug Discovery
 
 Thorough comparison of the framework/campaign flow against the actual drug
 discovery & development cycle, with gaps and the fixes applied.
@@ -16,7 +16,7 @@ discovery & development cycle, with gaps and the fixes applied.
 | 6. Clinical | Ph I safety/PK → Ph II PoC/dosing → Ph III confirmatory → MAA/NDA | futility/efficacy boundaries per phase |
 | Throughout | Hypothesis records, ELN, decision gates, reps & backups | — |
 
-## Review of what BioNexus had — and what was wrong
+## Review of what Proef had — and what was wrong
 
 | Area | Before | Problem | Fix |
 |---|---|---|---|

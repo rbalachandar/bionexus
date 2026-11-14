@@ -2,10 +2,10 @@
 distillation, and the sweep fan-out harness."""
 from pathlib import Path
 
-from bionexus.adapters.lab.simulator import SimulatorLab
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.contracts import Artifact, ArtifactKind, Envelope, EventType
-from bionexus.core.interfaces import record_for, system_actor
+from proef.adapters.lab.simulator import SimulatorLab
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.contracts import Artifact, ArtifactKind, Envelope, EventType
+from proef.core.interfaces import record_for, system_actor
 
 
 def _seed_portfolio(store, base="prob-taste"):
@@ -50,8 +50,8 @@ def _seed_portfolio(store, base="prob-taste"):
 def test_graveyard_read_model(tmp_path):
     """experiment_detail.eliminated lists rejected hypotheses with the
     filter's recorded reasons (latest decision per candidate wins)."""
-    from bionexus.views import experiment_detail
-    from bionexus.wizard_store import WizardStore
+    from proef.views import experiment_detail
+    from proef.wizard_store import WizardStore
 
     ws = WizardStore()
     ws.register_agent("gy-exp-1", "obj", log="", autonomy="act")
@@ -74,7 +74,7 @@ def test_taste_report_and_amendments(tmp_path):
     """Taste distillation: accept-rate deltas by feature, deterministic
     advisory amendments; rich-vs-bare seeds make mechanism/citation the
     winning features and surface the never-selected bare pattern."""
-    from bionexus.taste import render_taste, taste_report
+    from proef.taste import render_taste, taste_report
 
     store = SqliteProvenanceStore(str(tmp_path / "prov.db"))
     for i in range(4):            # 4 portfolios: enough sample for deltas
@@ -91,8 +91,8 @@ def test_taste_report_and_amendments(tmp_path):
 def test_sweep_fan_and_rollup(tmp_path):
     """Sweep partitions the pool across shards, merges verdicts, and
     writes a sweep-rollup record on the parent branch."""
-    from bionexus.core.hypothesis import ProblemStatement
-    from bionexus.sweep import run_sweep
+    from proef.core.hypothesis import ProblemStatement
+    from proef.sweep import run_sweep
 
     store = SqliteProvenanceStore(str(tmp_path / "prov.db"))
     problem = ProblemStatement(objective="find potent compounds",

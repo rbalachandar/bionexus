@@ -1,10 +1,10 @@
 """provenance: every predicted number states WHO/WHAT produced it."""
-from bionexus import proxy  # noqa: F401  (ensures module importable)
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.hypothesis import (Constraint, HypothesisTracker,
+from proef import proxy  # noqa: F401  (ensures module importable)
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.hypothesis import (Constraint, HypothesisTracker,
                                       ProblemStatement)
-from bionexus.core.interfaces import system_actor
-from bionexus.views import pipeline_cards
+from proef.core.interfaces import system_actor
+from proef.views import pipeline_cards
 
 PB = {"source": "model", "policy": "char3gram-ridge-v1",
       "ad": {"extrapolation": True, "nn_tanimoto": 0.21}}

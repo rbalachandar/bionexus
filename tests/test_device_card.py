@@ -1,5 +1,5 @@
 """Device card tests — structured capabilities + operator knowledge."""
-from bionexus.core.device_card import (DeviceCard, builtin_card, load_card,
+from proef.core.device_card import (DeviceCard, builtin_card, load_card,
                                        save_operator_tags, to_agent_text)
 
 
@@ -12,7 +12,7 @@ def test_builtin_card_from_capabilities():
 
 
 def test_operator_tags_merge_dedupe(tmp_path, monkeypatch):
-    monkeypatch.setattr("bionexus.core.device_card.DEVICE_DIR", tmp_path)
+    monkeypatch.setattr("proef.core.device_card.DEVICE_DIR", tmp_path)
     card = builtin_card("d1", "Device 1", {"assays": ["binding"]})
     card = save_operator_tags("d1", ["note A", "note B"], base=card)
     card = save_operator_tags("d1", ["note A", "note C"], base=card)
@@ -33,7 +33,7 @@ def test_agent_text_contains_all_sections():
 
 
 def test_load_card_missing_returns_base(tmp_path, monkeypatch):
-    monkeypatch.setattr("bionexus.core.device_card.DEVICE_DIR", tmp_path)
+    monkeypatch.setattr("proef.core.device_card.DEVICE_DIR", tmp_path)
     base = builtin_card("d3", "Device 3", {})
     assert load_card("d3", base=base) is base
     assert load_card("nope") is None

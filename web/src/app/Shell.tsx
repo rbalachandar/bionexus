@@ -24,8 +24,8 @@ function Rail() {
   return (
     <aside className="flex w-14 shrink-0 flex-col border-r border-line bg-surface lg:w-52">
       <div className="flex h-12 items-center gap-2 border-b border-line px-3.5">
-        <img src="/bionexus-mark.png" alt="" width={22} height={22} />
-        <span className="hidden text-[15px] font-semibold tracking-tight lg:inline">bionexus</span>
+        <img src="/proef-mark.png" alt="" width={22} height={22} />
+        <span className="hidden text-[15px] font-semibold tracking-tight lg:inline">proef</span>
       </div>
       <nav className="flex flex-col gap-0.5 p-2" aria-label="Sections">
         {NAV.map(({ to, label, icon: Icon, ...rest }) => (
@@ -63,14 +63,14 @@ function TrustStrip() {
         </span>
       </Tip>
       <Tip label={anchor ? 'Merkle root of the ledger. An anchor protects you only once it is published somewhere you do not control.'
-        : 'No anchor yet — run `bn anchor` and publish the root to make the record externally checkable.'}>
+        : 'No anchor yet — run `proef anchor` and publish the root to make the record externally checkable.'}>
         <span className="flex items-center gap-1.5">
           {anchor ? <>Anchored <span className="num">{ago(anchor.age_s)}</span>{anchor.published === false && <Tag tone="warn">unpublished</Tag>}</>
             : <Tag tone="warn">not anchored</Tag>}
         </span>
       </Tip>
       {ev && (
-        <Tip label="Deterministic eval suite (bn eval). Scores below 1.0 are honest deductions, not hidden.">
+        <Tip label="Deterministic eval suite (proef eval). Scores below 1.0 are honest deductions, not hidden.">
           <span>Graded <span className="num">{ev.mean.toFixed(3)}</span> · <span className="num">{ev.tasks}</span> tasks{ev.all_pass ? '' : ' · failing'}</span>
         </Tip>
       )}

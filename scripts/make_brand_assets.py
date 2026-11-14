@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Derive the BioNexus logo asset family from the canonical banner.
+"""Derive the Proef logo asset family from the canonical banner.
 
-Single source of truth: assets/logo/bionexus-banner.png (dark card,
-matrix-grid icon, "bionexus." wordmark). Everything else is generated:
+Single source of truth: assets/logo/proef-banner.png (dark card,
+matrix-grid icon, "proef." wordmark). Everything else is generated:
 
-  bionexus-mark.png           icon only, transparent (light surfaces)
-  bionexus-mark-tile.png      icon on its navy tile (as in the banner)
-  bionexus-wordmark.png       title only, ink recolor (light surfaces)
-  bionexus-wordmark-onDark.png title only, original white/coral
-  bionexus-lockup.png         icon + title, light-surface recolor
-  bionexus-lockup-onDark.png  icon + title, original colors
+  proef-mark.png           icon only, transparent (light surfaces)
+  proef-mark-tile.png      icon on its navy tile (as in the banner)
+  proef-wordmark.png       title only, ink recolor (light surfaces)
+  proef-wordmark-onDark.png title only, original white/coral
+  proef-lockup.png         icon + title, light-surface recolor
+  proef-lockup-onDark.png  icon + title, original colors
   favicon.png                 icon centered on a navy rounded square
 
 Usage: python scripts/make_brand_assets.py
@@ -20,7 +20,7 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 LOGO = ROOT / "assets" / "logo"
-BANNER = LOGO / "bionexus-banner.png"
+BANNER = LOGO / "proef-banner.png"
 
 NAVY = (0x0d, 0x11, 0x17)
 CARD = (0x19, 0x1e, 0x26)
@@ -117,11 +117,11 @@ def main():
                 word.putpixel((x, y), (*p, 255))
 
     # --- write the family.
-    # NOTE: bionexus-mark.png and bionexus-wordmark.png are hand-cropped
+    # NOTE: proef-mark.png and proef-wordmark.png are hand-cropped
     # from the banner (operator-provided, keep the white path on the navy
     # panel) — this script never overwrites them; it only generates the
     # derived variants below.
-    word.save(LOGO / "bionexus-wordmark-onDark.png")
+    word.save(LOGO / "proef-wordmark-onDark.png")
 
     def lockup(light):
         gap = 36
@@ -134,13 +134,13 @@ def main():
                                     (canvas.size[1] - wl.size[1]) // 2))
         return canvas
 
-    lockup(light=True).save(LOGO / "bionexus-lockup.png")
-    lockup(light=False).save(LOGO / "bionexus-lockup-onDark.png")
+    lockup(light=True).save(LOGO / "proef-lockup.png")
+    lockup(light=False).save(LOGO / "proef-lockup-onDark.png")
 
     # tile: icon centered on its navy card (as it appears in the banner)
     tile = Image.new("RGBA", (icon.size[0] + 28, icon.size[1] + 28), (*CARD, 255))
     tile.alpha_composite(icon, (14, 14))
-    tile.save(LOGO / "bionexus-mark-tile.png")
+    tile.save(LOGO / "proef-mark-tile.png")
 
     # favicon: icon on a navy rounded square
     side = max(icon.size) + 28

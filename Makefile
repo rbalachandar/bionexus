@@ -16,17 +16,17 @@ reset-data:         ## back up then wipe local provenance + workbench state
 
 api:                ## backend + built SPA on :8000
 	cd web && npm run build
-	PYTHONPATH=src $(UVICORN) bionexus.api.app:app --port $(or $(PORT),8000)
+	PYTHONPATH=src $(UVICORN) proef.api.app:app --port $(or $(PORT),8000)
 
 api-dev:            ## backend only (auto-reload)
-	PYTHONPATH=src $(UVICORN) bionexus.api.app:app --port 8000 --reload
+	PYTHONPATH=src $(UVICORN) proef.api.app:app --port 8000 --reload
 
 web-dev:            ## Vite dev server on :5173 (proxies /api to :8000)
 	cd web && npm run dev
 
 sample:            ## seed ./.sample with two simulated campaigns and run the workbench on :8000
 	$(PY) scripts/seed_sample_workspace.py .sample
-	cd .sample && BIONEXUS_DATA_DIR=.data ../$(UVICORN) bionexus.api.app:app --port $(or $(PORT),8000)
+	cd .sample && PROEF_DATA_DIR=.data ../$(UVICORN) proef.api.app:app --port $(or $(PORT),8000)
 
 api-types:          ## regenerate the typed TS client from the backend's OpenAPI
 	$(PY) scripts/export_openapi.py && cd web && npm run gen:api

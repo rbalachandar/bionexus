@@ -1,9 +1,9 @@
-"""bn demo — the moment must LAND, every run, on the real machinery."""
+"""proef demo — the moment must LAND, every run, on the real machinery."""
 import subprocess
 import sys
 from pathlib import Path
 
-from bionexus.demo import DEMO_GATE_UM, EXPECTED, run_demo
+from proef.demo import DEMO_GATE_UM, EXPECTED, run_demo
 
 
 def test_demo_engineers_the_two_moments(tmp_path):
@@ -38,7 +38,7 @@ def test_demo_is_deterministic(tmp_path):
 
 def test_cli_demo_exit_zero(tmp_path):
     out = subprocess.run(
-        [sys.executable, "-m", "bionexus.cli", "demo", "--quiet",
+        [sys.executable, "-m", "proef.cli", "demo", "--quiet",
          "--db", str(tmp_path / "c.db")],
         capture_output=True, text=True, cwd=Path(__file__).parent.parent)
     assert out.returncode == 0

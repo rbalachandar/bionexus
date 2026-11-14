@@ -1,12 +1,12 @@
-"""ProteinDesignLabAdapter — protein binder design through BioNexus's
+"""ProteinDesignLabAdapter — protein binder design through Proef's
 hypothesis pipeline. All quality-passing designs become hypotheses;
 budget constrains screening, not proposing."""
 import pytest
 
-from bionexus.adapters.lab.protein_design import ProteinDesignLabAdapter
-from bionexus.core.hypothesis import Constraint, HypothesisTracker, ProblemStatement
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.interfaces import system_actor
+from proef.adapters.lab.protein_design import ProteinDesignLabAdapter
+from proef.core.hypothesis import Constraint, HypothesisTracker, ProblemStatement
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.interfaces import system_actor
 
 
 def _make_tracker():

@@ -1,7 +1,7 @@
 # Real vendor plate-reader exports (parser fixtures)
 
 These are **genuine instrument export files from real labs**, used unmodified
-as fixtures so `bionexus.labread` is hardened against vendor dirt rather than
+as fixtures so `proef.labread` is hardened against vendor dirt rather than
 an idealized CSV. Retrieved 2026-10-04 from open-source R-package test corpora;
 both are MIT-licensed, so redistribution here is permitted with attribution.
 

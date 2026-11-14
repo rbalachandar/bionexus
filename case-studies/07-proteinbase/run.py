@@ -83,10 +83,10 @@ def main():
 
     # 5) applicability domain transfer: a domain fitted to Nipah-tested
     # chemistry, applied to EGFR-tested chemistry (aa 3-gram basis —
-    # bionexus.ad is string-agnostic). A cross-target claim should ARRIVE
+    # proef.ad is string-agnostic). A cross-target claim should ARRIVE
     # stamped extrapolation; the in-target control measures the stamp's
     # false-alarm floor.
-    from bionexus.ad import ApplicabilityDomain
+    from proef.ad import ApplicabilityDomain
     nip_seqs = [proteins[x["protein_id"]]["seq"] for x in pairs
                 if x["target"] == "nipah-glycoprotein-g"
                 and proteins.get(x["protein_id"], {}).get("seq")]

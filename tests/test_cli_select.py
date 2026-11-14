@@ -1,8 +1,8 @@
-"""`bn campaign select` — the what-would-run preview: prints the EI batch and every
+"""`proef campaign select` — the what-would-run preview: prints the EI batch and every
 refusal, submits nothing, and is the same policy path a campaign runs."""
 import json
 
-from bionexus.cli import main
+from proef.cli import main
 
 CFG = {
     "problem": {"objective": "find IC50<=20", "constraints": [
@@ -44,16 +44,16 @@ def test_select_prints_batch_and_refusals(tmp_path, capsys):
 
 def test_select_submits_nothing_leaves_no_state(tmp_path, monkeypatch, capsys):
     # a preview must not touch the real provenance db: run in an empty cwd
-    # and assert no bionexus.db appears (select uses an in-memory store)
+    # and assert no proef.db appears (select uses an in-memory store)
     work = tmp_path / "cwd"
     work.mkdir()
     monkeypatch.chdir(work)
-    monkeypatch.setenv("BIONEXUS_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("PROEF_DATA_DIR", str(tmp_path / "data"))
     cfg = _write(tmp_path)
     rc = main(["campaign", "select", cfg])
     assert rc == 0
     assert "Picks" in capsys.readouterr().out
-    assert not (work / "bionexus.db").exists()
+    assert not (work / "proef.db").exists()
 
 
 def test_select_needs_a_source(capsys):

@@ -7,12 +7,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from bionexus import citations
-from bionexus.adapters.lab.simulator import SimulatorLab
-from bionexus.adapters.models.assayloop_ranker import AssayLoopRanker
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.autoloop import CampaignConfig, run_campaign
-from bionexus.core.hypothesis import Constraint, ProblemStatement
+from proef import citations
+from proef.adapters.lab.simulator import SimulatorLab
+from proef.adapters.models.assayloop_ranker import AssayLoopRanker
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.autoloop import CampaignConfig, run_campaign
+from proef.core.hypothesis import Constraint, ProblemStatement
 
 
 class ObservedIC50Policy:

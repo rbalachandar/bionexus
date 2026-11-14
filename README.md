@@ -1,15 +1,15 @@
 <p align="center">
-  <img src="assets/logo/bionexus-banner.png" alt="BioNexus — agentic science framework" width="640">
+  <img src="assets/logo/proef-banner.png" alt="Proef — agentic science framework" width="640">
 </p>
 
-[![ci](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml/badge.svg)](https://github.com/rbalachandar/bionexus/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/bionexuslab)](https://pypi.org/project/bionexuslab/)
-[![Python](https://img.shields.io/pypi/pyversions/bionexuslab)](https://pypi.org/project/bionexuslab/)
+[![ci](https://github.com/rbalachandar/proef/actions/workflows/ci.yml/badge.svg)](https://github.com/rbalachandar/proef/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/proef)](https://pypi.org/project/proef/)
+[![Python](https://img.shields.io/pypi/pyversions/proef)](https://pypi.org/project/proef/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-![bn demo](assets/demo/bn-demo.gif)
+![proef demo](assets/demo/bn-demo.gif)
 
-BioNexus is an open-source framework in which AI agents run the scientific
+Proef is an open-source framework in which AI agents run the scientific
 method end to end: given a research problem and its constraints, agents propose
 a portfolio of hypotheses, select the ones worth testing, design experiments,
 execute them on simulated or real laboratory equipment, observe the results as
@@ -17,7 +17,7 @@ they arrive, and deliver verdicts against criteria that were registered before
 the experiment ran. A scientist can use it manually, step by step, as a daily
 analysis tool — and hand stages of the loop to an agent as trust grows.
 
-BioNexus is built on three principles:
+Proef is built on three principles:
 
 - **Safety enforcement.** The only path from an agent to a lab is the
   gateway: every submission passes a policy engine the agent
@@ -46,7 +46,7 @@ reasoning.
 **Contents:** [Installation](#installation) · [CLI](#cli) ·
 [Evals](#evaluation-suite) ·
 [Case studies](#case-studies) ·
-[Using BioNexus](#using-bionexus) · [The virtual lab](#the-virtual-lab) ·
+[Using Proef](#using-proef) · [The virtual lab](#the-virtual-lab) ·
 [Five core interfaces](#five-core-interfaces) · [Agent Skills and MCP](#agent-skills-and-mcp) ·
 [Architecture](#architecture) · [Documentation](#documentation) ·
 [Architectural principles](#architectural-principles) · [References](#references--sources)
@@ -54,9 +54,9 @@ reasoning.
 ## Installation
 
 ```sh
-pip install bionexuslab                 # core (pydantic only) + the `bn` CLI
-pip install "bionexuslab[api]"          # + the web workbench (FastAPI)
-pip install "bionexuslab[dev]"          # + test dependencies
+pip install proef                 # core (pydantic only) + the `proef` CLI
+pip install "proef[api]"          # + the web workbench (FastAPI)
+pip install "proef[dev]"          # + test dependencies
 ```
 
 Optional extras: `[api]` (workbench) · `[bio-rdkit]` · `[lab-xlsx]` (read
@@ -74,64 +74,64 @@ make api           # workbench on :8000 (API + built SPA)
 
 ## CLI
 
-Every capability is a `bn` command; the same functionality is available as a
-Python API (see [Using BioNexus](#using-bionexus)).
+Every capability is a `proef` command; the same functionality is available as a
+Python API (see [Using Proef](#using-proef)).
 
 ```sh
 # first run
-bn demo                                # abstains on a borderline CI and refutes a
+proef demo                                # abstains on a borderline CI and refutes a
                                        # planted false hit (real machinery,
                                        # simulated numbers)
 
 # analyze data
-bn read results.csv --csv out.csv      # auto-analyze an instrument export
-bn read plate.csv --layout map.csv \
+proef read results.csv --csv out.csv      # auto-analyze an instrument export
+proef read plate.csv --layout map.csv \
         --normalize pct_inhibition     # join a plate map; %INH vs the plate's
                                        # own blank + full-inhibition controls
-bn ingest legacy-eln.csv               # institutional memory: pre-BioNexus kills
+proef ingest legacy-eln.csv               # institutional memory: pre-Proef kills
                                        # enter ALREADY RULED OUT + family priors
-bn connect scan <share>                # detect instruments writing into a folder
-bn connect describe <device>           # interview you into an agent-readable device card
-bn watch <outbox>                      # agent notices device outputs as they land
+proef connect scan <share>                # detect instruments writing into a folder
+proef connect describe <device>           # interview you into an agent-readable device card
+proef watch <outbox>                      # agent notices device outputs as they land
 
 # run campaigns
-bn templates                           # campaign presets — no JSON needed
-bn campaign auto --template dose-response-screen --field compounds=C1,C2,C3
-bn campaign auto campaign.json --dose-design adaptive   # Bayesian sequential dosing
+proef templates                           # campaign presets — no JSON needed
+proef campaign auto --template dose-response-screen --field compounds=C1,C2,C3
+proef campaign auto campaign.json --dose-design adaptive   # Bayesian sequential dosing
                                        # (typically 3 wells, not 4)
-bn campaign auto examples/campaign.json --acquisition bo-ei --dry-run
+proef campaign auto examples/campaign.json --acquisition bo-ei --dry-run
                                        # EI batch selection: shows the next batch +
                                        # every refusal (AD vetoes, diversity,
                                        # budget) — submits nothing
-bn campaign select campaign.json       # the same what-would-run preview from a
+proef campaign select campaign.json       # the same what-would-run preview from a
                                        # config; no state written
-bn campaign plan --objective "potent AND selective AND soluble" \
+proef campaign plan --objective "potent AND selective AND soluble" \
         --model anthropic --run-budget 20   # decompose into a guarded problem tree
-bn campaign run examples/workflow.yml  # tournament + assay on the configured lab
-bn campaign reproduce <branch>         # replay a recorded experiment, diff verdicts
+proef campaign run examples/workflow.yml  # tournament + assay on the configured lab
+proef campaign reproduce <branch>         # replay a recorded experiment, diff verdicts
 make api                               # the web workbench on :8000 (API + SPA)
 
 # audit and govern
-bn diary <branch>                      # campaign as a lab-notebook narrative
-bn prove <branch> --html out.html      # tamper-evident provenance + shareable report
-bn prove <branch> --eln out.csv        # ELN-ready export (Benchling/SISSYO-friendly)
-bn anchor [--publish-cmd CMD]          # Merkle-root the store; PUBLISH the root
+proef diary <branch>                      # campaign as a lab-notebook narrative
+proef prove <branch> --html out.html      # tamper-evident provenance + shareable report
+proef prove <branch> --eln out.csv        # ELN-ready export (Benchling/SISSYO-friendly)
+proef anchor [--publish-cmd CMD]          # Merkle-root the store; PUBLISH the root
                                        # (an unpublished anchor protects nothing)
-bn anchor --verify                     # does the store still match the anchored root?
-bn halt --engage --reason "spill"      # operator stop-condition outside the agent's reach
-bn halt --clear                        # only a human clears it
-bn sop list                            # agent-proposed recurring procedures awaiting sign-off
-bn sop approve <sop-id> --by "lab lead"  # sign-off turns a procedure into standing policy
-bn why char-ridge train.csv CCCCCO     # attribution panel: per-prediction drivers,
+proef anchor --verify                     # does the store still match the anchored root?
+proef halt --engage --reason "spill"      # operator stop-condition outside the agent's reach
+proef halt --clear                        # only a human clears it
+proef sop list                            # agent-proposed recurring procedures awaiting sign-off
+proef sop approve <sop-id> --by "lab lead"  # sign-off turns a procedure into standing policy
+proef why char-ridge train.csv CCCCCO     # attribution panel: per-prediction drivers,
                                        # caveats + applicability domain
 
 # measure and extend
-bn eval --all                          # scored task suite + leaderboard
-bn eval --suite epistemics,models      # run tiers separately
-bn fixtures verify <study-dir>         # byte-reproducible case-study data
-bn mcp                                 # MCP server: drive BioNexus from Claude/Cursor
-bn new-adapter lab my_robot            # scaffold a tested LabAdapter
-bn skills list                         # discovered Agent Skills (theirs and ours)
+proef eval --all                          # scored task suite + leaderboard
+proef eval --suite epistemics,models      # run tiers separately
+proef fixtures verify <study-dir>         # byte-reproducible case-study data
+proef mcp                                 # MCP server: drive Proef from Claude/Cursor
+proef new-adapter lab my_robot            # scaffold a tested LabAdapter
+proef skills list                         # discovered Agent Skills (theirs and ours)
 ```
 
 ## Case studies
@@ -153,7 +153,7 @@ limitations.
 
 ## Evaluation suite
 
-`bn eval` runs scored tasks against seeded ground truth — deterministic,
+`proef eval` runs scored tasks against seeded ground truth — deterministic,
 offline, and run in CI. A score below 1.0 is kept as reported: an honest
 abstention is graded down, not counted as a pass. The latest full run is 25
 tasks, mean 0.947, all passing ([`evals/leaderboard.md`](evals/leaderboard.md));
@@ -164,7 +164,7 @@ CI fails if any score drops below the pass bar.
 | **epistemics** (15) | reasoning under uncertainty | hit recovery vs truth · verdict honesty (abstain where the CI straddles the gate) · confirmation coverage · falsifiability · adaptive dosing · EI acquisition (must honour the applicability-domain gate) · flywheel memory |
 | **models** (6) | baseline model quality | Lipophilicity, ESOL, HIV, Caco2, HIA, BBB on scaffold folds, frozen in-repo, against a random floor |
 | **reproductions** (2) | published-paper reruns | frozen data fixtures |
-| **agent** (2, opt-in) | end-to-end triage | workflows with one verifiable answer — exact refusal map, no refused compound tested, no wrong confirm, byte-exact reruns; graded deterministically, no LLM judge (`bn eval --suite agent`) |
+| **agent** (2, opt-in) | end-to-end triage | workflows with one verifiable answer — exact refusal map, no refused compound tested, no wrong confirm, byte-exact reruns; graded deterministically, no LLM judge (`proef eval --suite agent`) |
 
 ```
 epistemics — mean 0.969 · 15/15 tasks pass
@@ -192,14 +192,14 @@ confidence. The full table (two dozen rows) is in
 | Uncertainty vetoes certainty | a 95% CI straddling the gate abstains, on any metric |
 | Pre-registered claims | every hypothesis records its predicted and **refuted-if** clauses before data arrives |
 | Molecular safety gate | 18 curated toxicophore rules (versioned); hard classes always refuse; electrophilic warheads pass only with declared covalent intent |
-| Execution governance | enforced in gateway code, outside the agent: an operator halt it cannot lift (`bn halt`), an autonomous / human-approved / never authorization matrix, SOP sign-off for anything recurring |
+| Execution governance | enforced in gateway code, outside the agent: an operator halt it cannot lift (`proef halt`), an autonomous / human-approved / never authorization matrix, SOP sign-off for anything recurring |
 | Provenance physics | the hash chain is engine-enforced and recomputed on read; verdict reading is payload-driven, recency-wins |
 | Physical-fault honesty | saturated plates, dark reads and device errors are flagged for inspection, never retried blindly or turned into verdicts |
 | Input trust boundary | junk or adversarial instrument files degrade to "unreadable, no verdicts changed"; injection-shaped sample names cannot reach the gate as instructions |
 
-## Using BioNexus
+## Using Proef
 
-BioNexus supports two working styles on the same engine: use it by hand as a
+Proef supports two working styles on the same engine: use it by hand as a
 daily analysis tool, or hand stages of the loop to an agent as trust grows. The
 loop is **modality-agnostic**: the program defines the objective in your own
 terms (any metric, unit, direction), Make words production per modality,
@@ -208,28 +208,28 @@ gate.
 
 ### Analyze an instrument export yourself
 
-`bn read` auto-detects long CSV/TSV/XLSX tables, plate grids, kinetic tables
+`proef read` auto-detects long CSV/TSV/XLSX tables, plate grids, kinetic tables
 (Tecan, BioTek) and `.npy` images. IC50 fits carry confidence intervals; Z′ is
 computed only when the plate has both control classes (otherwise it is reported
 as the `Z'~` heuristic); reader, serial and date are kept for provenance.
 
 ```sh
-bn campaign auto examples/campaign.json         # a campaign drops an export per run
-bn read .data/inbox/<problem-id>/sim-42-001.csv
+proef campaign auto examples/campaign.json         # a campaign drops an export per run
+proef read .data/inbox/<problem-id>/sim-42-001.csv
 # plate: sim-42-001.csv [long] | wells: 14 | controls: 2 | Z'~ 0.959 (control-spread heuristic)
 # compound        IC50 (uM)  points  note
 # C-103                5.30      12  observed-max
 
-bn read tests/data/instruments/biotek_1steptimer.csv
+proef read tests/data/instruments/biotek_1steptimer.csv
 # plate: biotek_1steptimer.csv [kinetic] | wells: 1536 | ... | reader: Synergy HTX (2206293D)
 # (a bare grid: no compound identity, no concentration series — reported as such)
 
-bn read tests/data/instruments/tecan_ON1.csv --layout tests/data/instruments/plate_layout_96.csv
+proef read tests/data/instruments/tecan_ON1.csv --layout tests/data/instruments/plate_layout_96.csv
 # plate: tecan_ON1.csv [kinetic] | wells: 192 | ... | edge-effect -0.0 (OD600:600)
 # joins well -> sample/concentration from the plate map, fits what it can
 
-bn read tests/data/instruments/tecan_ON1.csv --normalize pct_inhibition
-# bn: error: cannot normalize to %inhibition: need >=2 blank AND >=2
+proef read tests/data/instruments/tecan_ON1.csv --normalize pct_inhibition
+# proef: error: cannot normalize to %inhibition: need >=2 blank AND >=2
 # full-inhibition control wells — raw values kept
 # (the refusal path: this plate has no control-class wells)
 ```
@@ -240,7 +240,7 @@ refuses when those are missing. Three genuine vendor exports ship in
 `tests/data/instruments/` so you can try the parser on real output first.
 
 ```python
-from bionexus.labread import read_plate
+from proef.labread import read_plate
 r = read_plate("my_results.csv")   # long/grid/xlsx/imaging evidence
 print(r)                           # IC50 table + Z' — no configuration
 svg = r.curve_svg("C-101")         # fitted dose–response curve
@@ -251,16 +251,16 @@ svg = r.curve_svg("C-101")         # fitted dose–response curve
 ### Try the virtual lab
 
 ```sh
-bn demo                                   # guided first run: abstains on a borderline CI, refutes a planted false hit
+proef demo                                   # guided first run: abstains on a borderline CI, refutes a planted false hit
 python examples/demo_full_flow.py         # one round, end to end: tournament → safety gate → virtual lab → analysis → provenance
 ```
 
 ### Hand the full campaign to the agent
 
 ```sh
-bn templates                              # list presets
-bn campaign auto --template dose-response-screen --field compounds=C1,C2,C3
-bn campaign auto campaign.json            # or your own config
+proef templates                              # list presets
+proef campaign auto --template dose-response-screen --field compounds=C1,C2,C3
+proef campaign auto campaign.json            # or your own config
 ```
 
 <details><summary>campaign.json — an example problem statement</summary>
@@ -299,17 +299,17 @@ bn campaign auto campaign.json            # or your own config
  "verdicts": {"C-103": "confirmed", "C-101": "confirmed"}}
 ```
 
-Abridged output of `bn campaign auto examples/campaign.json`; the simulator is seeded, so reruns reproduce these numbers.
+Abridged output of `proef campaign auto examples/campaign.json`; the simulator is seeded, so reruns reproduce these numbers.
 
 ### Let the agent watch your instruments
 
-With `bn watch` on an instrument outbox, no files get shuttled: when a reader
+With `proef watch` on an instrument outbox, no files get shuttled: when a reader
 exports a result the agent reads it, updates open hypotheses against their
-pre-registered criteria, and recommends the next step. `bn connect scan` finds
+pre-registered criteria, and recommends the next step. `proef connect scan` finds
 which instrument writes into a folder.
 
 ```sh
-bn connect scan tests/data/instruments
+proef connect scan tests/data/instruments
 # scanned 6 files in tests/data/instruments
 #   kinetic x3   e.g. biotek_1steptimer.csv
 #   grid   x1   e.g. plate_layout_96.csv
@@ -320,14 +320,14 @@ bn connect scan tests/data/instruments
 ### Declare your instrument fence
 
 The program creator declares a **pool of permitted instruments** (`labs:` in the
-campaign config, by id from `bionexus/instruments.json` or as inline
+campaign config, by id from `proef/instruments.json` or as inline
 adapter/MCP entries). The matcher then picks **within** that pool from each
 experiment's declared needs (assay types, readouts, BSL ceiling), preferring
 hardware-validated over simulated. Under gate autonomy a real choice between
 instruments is confirmed by a human. The choice, and why each other instrument
 was declined, is sealed into the branch before anything runs; with no capable
 instrument the campaign refuses rather than falling back to simulation
-(`bionexus.labselect`).
+(`proef.labselect`).
 
 ### Configure agent authority and limits
 
@@ -339,8 +339,8 @@ instrument the campaign refuses rather than falling back to simulation
 
 - **Round breadth** is schedulable: `"k": [4, 2, 1]` screens wide first, then narrows as the flywheel discounts failed families.
 - **Verdicts are uncertainty-aware:** a fitted IC50 whose 95% CI straddles the threshold is `inconclusive`. An orthogonal confirmation verifies the *direction* of the preliminary verdict: agreement confirms hits and refutes non-hits; disagreement on a claimed hit refutes it.
-- **Adaptive dosing** (`--dose-design adaptive`) lets a Bayesian posterior pick each next concentration (3 adaptive wells beat a fixed 4-point series in `bn eval`).
-- **A `ResourceBudget`** (lab runs, hypotheses, confirmations, wall clock) is enforced at submission and generation time. `bn prove <problem-id> --html report.html` renders the whole chain as a shareable audit.
+- **Adaptive dosing** (`--dose-design adaptive`) lets a Bayesian posterior pick each next concentration (3 adaptive wells beat a fixed 4-point series in `proef eval`).
+- **A `ResourceBudget`** (lab runs, hypotheses, confirmations, wall clock) is enforced at submission and generation time. `proef prove <problem-id> --html report.html` renders the whole chain as a shareable audit.
 
 ### The scientist's workbench
 
@@ -354,15 +354,15 @@ instrument the campaign refuses rather than falling back to simulation
 - **Experiment pages:** the DMTA funnel and one card per hypothesis — state, observed value **with its 95% CI drawn against the gate**, the prediction's source, mechanism, and the pre-registered **refuted-if** clause.
 - **The record:** hash-chained provenance, a sandbox receipt when the run was sandboxed, evidence curves re-rendered from recorded run files, the reviewer audit, and every harness decision (halts, authorization column, SOP sign-offs, fault classification). Experiments are archived (recoverable); a purge removes them from the workbench registry only — the provenance ledger keeps the audit trail.
 - **Series view:** hypotheses grouped by family or chemotype with per-series rollups and a matched-pair SAR table whose calls carry CIs.
-- **Try it on real data:** `bn demo` seeds the abstain-and-refute cascade; `case-studies/08-proteinbase-entry/seed_workbench.py` seeds the PD-L1 design campaign.
+- **Try it on real data:** `proef demo` seeds the abstain-and-refute cascade; `case-studies/08-proteinbase-entry/seed_workbench.py` seeds the PD-L1 design campaign.
 
-Also: `bn diary <branch>` writes the record as a static lab-notebook HTML file, and `bn read --csv out.csv` writes standardized results for Excel/GraphPad.
+Also: `proef diary <branch>` writes the record as a static lab-notebook HTML file, and `proef read --csv out.csv` writes standardized results for Excel/GraphPad.
 
 ### The DMTA cycle — scientific decision layer
 
-BioNexus models Design–Make–Test–Analyze as first-class objects:
+Proef models Design–Make–Test–Analyze as first-class objects:
 
-- **Target Product Profile** — the program defines winning in your own terms (objective, metric, unit, direction, gate); small-molecule programs can add phased criteria (hit → lead → candidate → clinical) in `bionexus.tpp`.
+- **Target Product Profile** — the program defines winning in your own terms (objective, metric, unit, direction, gate); small-molecule programs can add phased criteria (hit → lead → candidate → clinical) in `proef.tpp`.
 - **Experiment Definition** — the full manifest: intervention, biological system, readout capabilities, denominators, expected intermediates.
 - **Readiness Review** — runs *before* the safety gate and can block an experiment that would be unsafe to *interpret* (missing denominator, mimetic vs authentic modification, unmeasured delivery variance).
 - **Program hierarchy** — Program ▸ Problem ▸ Hypothesis ▸ Experiment, with the gate inherited downward.
@@ -370,12 +370,12 @@ BioNexus models Design–Make–Test–Analyze as first-class objects:
 
 External database adapters: ChEMBL, Open Targets, PubMed. Benchmark datasets: MoleculeNet, TDC, DOCKSTRING ([`docs/benchmarks.md`](docs/benchmarks.md)).
 
-### How a campaign runs — who acts, and what BioNexus enforces
+### How a campaign runs — who acts, and what Proef enforces
 
-When you run `bn campaign auto`, here is what happens to one compound, step by
+When you run `proef campaign auto`, here is what happens to one compound, step by
 step, and which layer is responsible at each point:
 
-| Step | Who acts | What happens | What BioNexus enforces |
+| Step | Who acts | What happens | What Proef enforces |
 |---|---|---|---|
 | 1. Problem setup | **Problem definition** | Decomposes the objective into constraints | Records problem + constraints as the provenance root |
 | 2. Hypothesis proposal | **Hypothesis agent** using the `rdkit` **skill** | Generates analogs with SAR rationale | Validates schema, dedupes, records rationale; injects skill guidance |
@@ -387,17 +387,17 @@ step, and which layer is responsible at each point:
 | 7. Device event | **DeviceMonitor** | Notices the export appeared | Triggers agent analysis automatically |
 | 8. Analysis | **Analysis agent** + `labread` | Fits IC50s, checks QC, flags artifacts | Records measurements + QC flags as provenance |
 | 9. Verdict | **Analysis** against pre-registered criteria | VALIDATED / INVALIDATED / INCONCLUSIVE — a CI straddling the gate or a QC failure abstains | Records the verdict with evidence, criteria and confidence interval |
-| 10. Audit | **ProvenanceStore** | Renders the full chain | `bn prove` verifies the hash chain; `bn anchor` makes it externally checkable |
+| 10. Audit | **ProvenanceStore** | Renders the full chain | `proef prove` verifies the hash chain; `proef anchor` makes it externally checkable |
 
 **Division of labor.** The intelligence comes from the models: the LLM derives
-the SAR hypothesis, the QSAR model makes the calibrated prediction. BioNexus
+the SAR hypothesis, the QSAR model makes the calibrated prediction. Proef
 is the layer that makes those results executable, bounded, measurable and
 auditable. Skills teach the agent *how* (domain knowledge from Scientific Agent
-Skills or the `bionexus` skill); tools let it *act* (`run_assay`,
+Skills or the `proef` skill); tools let it *act* (`run_assay`,
 `propose_hypothesis`, via MCP or direct Python); the gates decide *whether*
 (SafetyEngine, governance, readiness review); provenance records *what
 happened*. Each layer is independently swappable, but they only produce
-trustworthy science when composed through the BioNexus flow.
+trustworthy science when composed through the Proef flow.
 
 Four things cut across the steps rather than sitting in one:
 
@@ -408,7 +408,7 @@ Four things cut across the steps rather than sitting in one:
   later portfolio, and the hypothesis agent is told what the lab already
   ruled out.
 - **Accountability** — hash-chained provenance plus Merkle anchoring.
-- **Measurement** — `bn eval`: a scored, deterministic task suite in CI (see
+- **Measurement** — `proef eval`: a scored, deterministic task suite in CI (see
   [Evaluation suite](#evaluation-suite)).
 
 ## The virtual lab
@@ -428,7 +428,7 @@ data. See [`docs/virtual-lab.md`](docs/virtual-lab.md).
 ## Five core interfaces
 
 Everything implements one of five interfaces; adapters are opt-in and
-interchangeable. The contracts are the pydantic models in `bionexus.core.contracts`.
+interchangeable. The contracts are the pydantic models in `proef.core.contracts`.
 
 | Interface | Adapters today |
 |---|---|
@@ -447,11 +447,11 @@ in [`docs/ROADMAP.md`](docs/ROADMAP.md)).
 
 ## Agent Skills and MCP
 
-BioNexus ships as an [Agent Skills](https://agentskills.io/) package
+Proef ships as an [Agent Skills](https://agentskills.io/) package
 (`skills/`, `plugin.json`) and exposes its tools over MCP:
 
 ```json
-{"bionexus": {"command": "bn", "args": ["mcp"]}}
+{"proef": {"command": "proef", "args": ["mcp"]}}
 ```
 
 It also *consumes* MCP instrument servers through `McpLabAdapter`: typed tool
@@ -461,9 +461,9 @@ servers (a Mettler Toledo balance and an IKA hotplate); nothing is
 hardware-validated yet.
 
 It composes with [Scientific Agent Skills](https://github.com/K-Dense-AI/scientific-agent-skills):
-those teach an agent *how* to author protocols and query databases; BioNexus
+those teach an agent *how* to author protocols and query databases; Proef
 decides *whether they run* and records what happened. Skills shipped here:
-`bionexus` · `bionexus-labread` · `bionexus-labwatch` · `bionexus-campaign` · `bionexus-opentrons`.
+`proef` · `proef-labread` · `proef-labwatch` · `proef-campaign` · `proef-opentrons`.
 
 ## Architecture
 
@@ -527,7 +527,7 @@ More: [design iteration loop](diagrams/svg/02-iteration-loop.svg) ·
 ## Contributing
 
 Start with [`docs/ADAPTERS.md`](docs/ADAPTERS.md) and
-`bn new-adapter` — every adapter scaffold is born with a passing test.
+`proef new-adapter` — every adapter scaffold is born with a passing test.
 Interface changes go through an ADR; see
 [`docs/stability.md`](docs/stability.md). Apache-2.0.
 
@@ -549,5 +549,5 @@ folded into this design — is in [`docs/research-landscape.md`](docs/research-l
 - OpenAI + Retro Biosciences — [GPT-4b micro protein engineering, MIT Tech Review](https://www.technologyreview.com/2024/12/09/1108188/openai-model-for-protein-engineering-gpt-4b-micro-retro-biosciences/)
 - Chai Discovery — [chai-1/chai-2 structure & antibody models](https://www.chaidiscovery.com/)
 - OpenSandbox — [production sandbox runtime](https://github.com/opensandbox-group/OpenSandbox) — supported Sandbox adapter target (gVisor/Kata/Firecracker, egress control, K8s)
-- Scientific Agent Skills (K-Dense) — [163 validated scientific agent skills](https://github.com/K-Dense-AI/scientific-agent-skills) — complementary knowledge layer; BioNexus tools are exposed via MCP and the Agent Skills standard · [LabMCP](https://github.com/K-Dense-AI/lab-instrument-mcps) — 32 lab-instrument MCP servers (Opentrons, SiLA 2, balances, pumps, spectrometers…) each manual-derived with a simulator for every instrument and a community hardware-verification program; the candidate device-transport layer for ROADMAP S-T4 (BioNexus keeps governance; per-instrument manuals stay upstream)
-- OpenAI — [GPT-Rosalind & Rosalind Workbench](https://openai.com/gpt-rosalind/) ([announcement](https://developers.openai.com/blog/rosalind-workbench)) — closed vertical competitor; see [positioning analysis](docs/research-landscape.md#rosalind-what-it-changes-and-where-bionexus-stands)
+- Scientific Agent Skills (K-Dense) — [163 validated scientific agent skills](https://github.com/K-Dense-AI/scientific-agent-skills) — complementary knowledge layer; Proef tools are exposed via MCP and the Agent Skills standard · [LabMCP](https://github.com/K-Dense-AI/lab-instrument-mcps) — 32 lab-instrument MCP servers (Opentrons, SiLA 2, balances, pumps, spectrometers…) each manual-derived with a simulator for every instrument and a community hardware-verification program; the candidate device-transport layer for ROADMAP S-T4 (Proef keeps governance; per-instrument manuals stay upstream)
+- OpenAI — [GPT-Rosalind & Rosalind Workbench](https://openai.com/gpt-rosalind/) ([announcement](https://developers.openai.com/blog/rosalind-workbench)) — closed vertical competitor; see [positioning analysis](docs/research-landscape.md#rosalind-what-it-changes-and-where-proef-stands)

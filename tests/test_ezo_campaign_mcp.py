@@ -14,17 +14,17 @@ from pathlib import Path
 
 import pytest
 
-from bionexus.adapters.devices.ezo_ph import EzoPHLine, EzoPHProbe
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
+from proef.adapters.devices.ezo_ph import EzoPHLine, EzoPHProbe
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
                                      ProtocolSubmission, ReagentSpec,
                                      SampleKind, SampleSpec)
-from bionexus.core.hypothesis import (Constraint, HypothesisTracker,
+from proef.core.hypothesis import (Constraint, HypothesisTracker,
                                       ProblemStatement, SuccessCriteria)
-from bionexus.core.interfaces import system_actor
-from bionexus.core.safety import LabGateway, SafetyEngine
-from bionexus.labselect import build_pool
-from bionexus.mcp_instrument import McpError, McpLabAdapter
+from proef.core.interfaces import system_actor
+from proef.core.safety import LabGateway, SafetyEngine
+from proef.labselect import build_pool
+from proef.mcp_instrument import McpError, McpLabAdapter
 
 CRIT = SuccessCriteria(metric="ph", direction="max", threshold=7.20)
 
@@ -157,7 +157,7 @@ def test_real_labmcp_server_balance_campaign():
     vocabulary a profile can describe are in; instruments without a
     declared read-only value tool are refused, never guessed."""
     import shutil
-    from bionexus.labselect import available_instruments
+    from proef.labselect import available_instruments
     if not any(e["id"] == "labmcp-mettler-toledo" and e["installed"]
                for e in available_instruments()):
         pytest.skip("labmcp-mettler-toledo not installed "
@@ -182,7 +182,7 @@ def test_real_labmcp_server_balance_campaign():
 def test_profile_cannot_smuggle_a_mutating_read_tool():
     """A profile that LIES — pointing read_tool at a mutating verb — is
     vetoed by the SERVER's annotation, not our trust in the profile."""
-    from bionexus.labselect import _catalog_entry, available_instruments
+    from proef.labselect import _catalog_entry, available_instruments
     if not any(e["id"] == "labmcp-mettler-toledo" and e["installed"]
                for e in available_instruments()):
         pytest.skip("labmcp-mettler-toledo not installed")

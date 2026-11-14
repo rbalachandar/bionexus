@@ -19,7 +19,7 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install pydantic pytest fastapi httpx python-multipart && pip install -e . --no-deps
       - name: Unit suite (offline — live docker contract has its own job)
-        env: {BN_SKIP_DOCKER: "1"}
+        env: {PROEF_SKIP_DOCKER: "1"}
         run: python -m pytest tests/ -q    # includes the anti-bloat import scan
 
   api:  # web backend: endpoints + SSE over seeded stores
@@ -54,13 +54,13 @@ jobs:
       - name: Full flow (all layers)
         run: python examples/demo_full_flow.py
       - name: Provenance audit
-        run: python -m bionexus.cli prove full-flow --db full_flow.db
+        run: python -m proef.cli prove full-flow --db full_flow.db
       # - name: Template campaign
-      #   run: python -m bionexus.cli campaign auto examples/workflow.yml --db bionexus.db
+      #   run: python -m proef.cli campaign auto examples/workflow.yml --db proef.db
       # - name: Provenance audit (template)
-      #   run: python -m bionexus.cli prove demo-run --db bionexus.db
+      #   run: python -m proef.cli prove demo-run --db proef.db
       - name: Test suite
-        env: {BN_SKIP_DOCKER: "1"}
+        env: {PROEF_SKIP_DOCKER: "1"}
         run: python -m pytest tests/ -q
 
   eval:  # T1: the measurable claim — epistemics + model tiers, offline
@@ -77,11 +77,11 @@ jobs:
           curl -sL https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/delaney-processed.csv -o .data/esol.csv
           curl -sL https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/HIV.csv -o .data/hiv.csv
       - name: Eval suite (epistemics + models)
-        run: python -m bionexus.cli eval --suite epistemics,models
+        run: python -m proef.cli eval --suite epistemics,models
       - name: Provenance anchoring roundtrip
         run: |
-          python -m bionexus.cli anchor --db bionexus.db || true
-          python -m bionexus.cli eval --task hit-recovery >/dev/null
+          python -m proef.cli anchor --db proef.db || true
+          python -m proef.cli eval --task hit-recovery >/dev/null
 
   fixtures:  # byte-reproducible case-study data
     runs-on: ubuntu-latest
@@ -91,16 +91,16 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install pydantic && pip install -e . --no-deps
       - run: |
-          python -m bionexus.cli fixtures verify case-studies/01-egfr-blind-reproduction
-          python -m bionexus.cli fixtures verify case-studies/02-az3246-hpk1
-          python -m bionexus.cli fixtures verify case-studies/03-multi-paper
-          python -m bionexus.cli fixtures verify case-studies/04-prospective-hit2lead
-          python -m bionexus.cli fixtures verify case-studies/05-paper-pilot
-          python -m bionexus.cli fixtures verify case-studies/06-ncats-deposit
-          python -m bionexus.cli fixtures verify case-studies/07-proteinbase
+          python -m proef.cli fixtures verify case-studies/01-egfr-blind-reproduction
+          python -m proef.cli fixtures verify case-studies/02-az3246-hpk1
+          python -m proef.cli fixtures verify case-studies/03-multi-paper
+          python -m proef.cli fixtures verify case-studies/04-prospective-hit2lead
+          python -m proef.cli fixtures verify case-studies/05-paper-pilot
+          python -m proef.cli fixtures verify case-studies/06-ncats-deposit
+          python -m proef.cli fixtures verify case-studies/07-proteinbase
       - name: materialize restores caches
         run: |
-          python -m bionexus.cli fixtures materialize case-studies/01-egfr-blind-reproduction
+          python -m proef.cli fixtures materialize case-studies/01-egfr-blind-reproduction
           test -s .data/chembl_CHEMBL203.csv
 
   case-study:  # blind reproduction of a published paper (real ChEMBL data)
@@ -115,7 +115,7 @@ jobs:
 
   sandbox-docker:  # S-T3 2b: live-kernel verification — no daemon = fail loud
     runs-on: ubuntu-latest
-    env: {BN_REQUIRE_DOCKER: "1"}
+    env: {PROEF_REQUIRE_DOCKER: "1"}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -128,8 +128,8 @@ jobs:
       - name: Build the in-sandbox worker image
         run: |
           python -m pip wheel . -w dist --no-deps
-          cp dist/bionexuslab-*.whl .
-          docker build -t bionexus-sandbox:ci -f Dockerfile.sandbox .
+          cp dist/proef-*.whl .
+          docker build -t proef-sandbox:ci -f Dockerfile.sandbox .
       - name: Session e2e — tools AND lab ops inside a real container
-        env: {BN_SANDBOX_IMAGE: "bionexus-sandbox:ci"}
+        env: {PROEF_SANDBOX_IMAGE: "proef-sandbox:ci"}
         run: python -m pytest tests/test_sandbox_docker_live.py -q --tb=short -k session

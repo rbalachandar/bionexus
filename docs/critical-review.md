@@ -1,4 +1,4 @@
-# Critical Review — BioNexus (independent-perspective exercise)
+# Critical Review — Proef (independent-perspective exercise)
 
 An deliberately unsympathetic review of the repository's idea, concept, flow,
 and execution, written from five outside perspectives. The point is to say what
@@ -39,8 +39,8 @@ a skeptical outsider would say — not what the maintainer wants to hear.
 **What doesn't**
 - **Docs-to-substance ratio is inverted.** ~15 polished docs/diagram files for
   ~3k lines of code. The polish reads as marketing for a pre-product.
-- **The naming is a mess:** GitHub repo `bionexus`, PyPI `bionexuslab`, import
-  `bionexus`, and a *different, unrelated* `bionexus` already on PyPI.
+- **The naming is a mess:** GitHub repo `proef`, PyPI `proef`, import
+  `proef`, and a *different, unrelated* `proef` already on PyPI.
   Discoverability and trust both suffer.
 - **Circularity everywhere in the demos.** The agent validates hypotheses
   against a simulator whose ground truth the same ecosystem defined. The
@@ -104,7 +104,7 @@ a skeptical outsider would say — not what the maintainer wants to hear.
   sending data to a vendor — that's the open lane.
 - The moat candidate is real: **safety + provenance + lab abstraction** is what
   model vendors will not open. Ownership of the "does-this-run" layer could
-  make BioNexus the standard substrate other people's agents plug into.
+  make Proef the standard substrate other people's agents plug into.
 - MCP-first distribution is the correct wedge: tools travel to where the
   agents already are.
 

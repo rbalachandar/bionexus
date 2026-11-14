@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from bionexus.api.app import app  # noqa: E402
+from proef.api.app import app  # noqa: E402
 
 doc = app.openapi()
 # the typed workbench contract only; the legacy routes are being retired

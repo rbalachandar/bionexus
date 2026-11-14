@@ -13,8 +13,8 @@ from pathlib import Path
 
 sys.path.insert(0, "src")
 
-from bionexus.adapters.lab.imaging import ImagingSimulatorLab, true_ic50_um
-from bionexus.core.contracts import (
+from proef.adapters.lab.imaging import ImagingSimulatorLab, true_ic50_um
+from proef.core.contracts import (
     Envelope, ProtocolOp, ProtocolStep, ProtocolSubmission,
     ReagentSpec, SampleKind, SampleSpec,
 )

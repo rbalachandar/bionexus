@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 TS=$(date +%Y%m%d-%H%M%S)
 mkdir -p .data
 ITEMS=""
-for f in bionexus.db bionexus.db-wal bionexus.db-shm .data/wizard.db .data/wizard.db-wal \
+for f in proef.db proef.db-wal proef.db-shm .data/wizard.db .data/wizard.db-wal \
          .data/wizard.db-shm .data/anchors.json .data/approvals.jsonl .data/campaigns \
          .data/analyses .data/exports .data/demo.db; do
   [ -e "$f" ] && ITEMS="$ITEMS $f"

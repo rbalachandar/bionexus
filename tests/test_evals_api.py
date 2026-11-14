@@ -6,7 +6,7 @@ import pytest
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
 
-from bionexus.evals.harness import leaderboard_payload  # noqa: E402
+from proef.evals.harness import leaderboard_payload  # noqa: E402
 
 
 def test_leaderboard_reads_committed_run():
@@ -24,16 +24,16 @@ def test_leaderboard_reads_committed_run():
 
 
 def test_leaderboard_degrades_gracefully(tmp_path, monkeypatch):
-    monkeypatch.setenv("BIONEXUS_EVALS_DIR", str(tmp_path))  # empty -> missing
+    monkeypatch.setenv("PROEF_EVALS_DIR", str(tmp_path))  # empty -> missing
     p = leaderboard_payload()
     assert p["available"] is False
-    assert "bn eval" in p["reason"]
+    assert "proef eval" in p["reason"]
     assert p["tasks"] == [] and p["mean"] is None
 
 
 def test_leaderboard_survives_corrupt_artifacts(tmp_path, monkeypatch):
     (tmp_path / "results.json").write_text("{not json")
-    monkeypatch.setenv("BIONEXUS_EVALS_DIR", str(tmp_path))
+    monkeypatch.setenv("PROEF_EVALS_DIR", str(tmp_path))
     p = leaderboard_payload()
     assert p["available"] is False and "results.json" in p["reason"]
 
@@ -44,7 +44,7 @@ def test_leaderboard_reflects_failing_run(tmp_path, monkeypatch):
          "metrics": {"duration_s": 1.0}, "notes": "under bar"},
         {"task": "verdict-honesty", "score": 1.0, "passed": True,
          "metrics": {}, "notes": "ok"}]))
-    monkeypatch.setenv("BIONEXUS_EVALS_DIR", str(tmp_path))
+    monkeypatch.setenv("PROEF_EVALS_DIR", str(tmp_path))
     p = leaderboard_payload()
     assert p["available"] and p["all_pass"] is False
     assert p["failing"] == ["hit-recovery"]
@@ -52,7 +52,7 @@ def test_leaderboard_reflects_failing_run(tmp_path, monkeypatch):
 
 
 def test_api_evals_endpoint():
-    from bionexus.api.app import app
+    from proef.api.app import app
 
     with TestClient(app) as c:
         r = c.get("/api/v1/evals")

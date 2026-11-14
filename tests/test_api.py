@@ -6,10 +6,10 @@ import pytest
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
 
-from bionexus import program as program_cfg  # noqa: E402
-from bionexus.api.app import app  # noqa: E402
-from bionexus.views import PROVENANCE_DB  # noqa: E402
-from bionexus.wizard_store import WizardStore  # noqa: E402
+from proef import program as program_cfg  # noqa: E402
+from proef.api.app import app  # noqa: E402
+from proef.views import PROVENANCE_DB  # noqa: E402
+from proef.wizard_store import WizardStore  # noqa: E402
 
 
 @pytest.fixture()
@@ -31,9 +31,9 @@ def client(tmp_path, monkeypatch):
     program_cfg.record_launch("Api-1", "prob-api1", "api objective")
     program_cfg.link_leaf("Api-1", eid, campaign_root="prob-api1",
                           question="api objective", status="executing")
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import Envelope, EventType
-    from bionexus.core.interfaces import record_for, system_actor
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import Envelope, EventType
+    from proef.core.interfaces import record_for, system_actor
     store = SqliteProvenanceStore(str(tmp_path / "prov.db"))
     store.append(record_for(
         Envelope(experiment_branch_id="problem/prob-api1"),
@@ -41,7 +41,7 @@ def client(tmp_path, monkeypatch):
         decision={"objective": "registered objective",
                   "constraints": [{"name": "strength_mpa",
                                    "description": ">= 70 MPa"}]}))
-    monkeypatch.setattr("bionexus.views.ids.PROVENANCE_DB",
+    monkeypatch.setattr("proef.views.ids.PROVENANCE_DB",
                         str(tmp_path / "prov.db"))
     # routes capture the constant at call time via views; patch there
     with TestClient(app) as c:
@@ -55,14 +55,14 @@ def test_health(client):
 
 def client_get_workspace():
     from fastapi.testclient import TestClient
-    from bionexus.api.app import app
+    from proef.api.app import app
     with TestClient(app) as c:
         return c.get("/api/programs").json()
 
 
 def test_spawn_plan_forwards_program_fence(monkeypatch, tmp_path):
     """The fence the creator ticked must reach the leaf campaigns."""
-    import bionexus.api.launch as L
+    import proef.api.launch as L
     seen = {}
 
     class P:
@@ -81,12 +81,12 @@ def test_spawn_plan_forwards_program_fence(monkeypatch, tmp_path):
     i = seen["cmd"].index("--labs-json")
     assert json.loads(seen["cmd"][i + 1])[0]["instrument"] == \
         "bionexus-virtual-lab"
-    import bionexus.program as pcfg
+    import proef.program as pcfg
     pcfg.delete_program("FenceTestProg")
 
 
 def test_empty_fence_defaults_to_virtual_lab_poolspec():
-    from bionexus.cli import _campaign_from_doc
+    from proef.cli import _campaign_from_doc
     doc = {
         "problem": {"objective": "o", "constraints": [],
                     "success_metric": "s"},

@@ -3,7 +3,7 @@
 **The question.** Small molecules were reproduced against a lab's own calls
 (CS05/06). Adaptyv Bio's [Proteinbase](https://proteinbase.com) publishes
 every tested protein design — binders AND misses — under identical
-protocols (ODC-By). Can BioNexus's machinery (1) reproduce competition-level
+protocols (ODC-By). Can Proef's machinery (1) reproduce competition-level
 measurements on this third modality, and (2) do anything USEFUL there —
 specifically the question behind the competition-entry idea: *could our
 selection machinery pick better test-slots than computed confidence does?*
@@ -45,7 +45,7 @@ already-tested pools; the 405-slot Nipah allocation mixed comp ranks,
 expert review and community vote.)
 
 **2. Applicability-domain: calibration was the first-order problem — now
-quantile floors are in (`bionexus.ad`, `floor="auto"`).** The fixed 0.5
+quantile floors are in (`proef.ad`, `floor="auto"`).** The fixed 0.5
 Tanimoto floor flags 96.6% of cross-target (EGFR) sequences as
 extrapolation… and would flag most of the domain's own members under a
 leave-one-out test: designed binders against ONE target share only

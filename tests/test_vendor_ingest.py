@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from bionexus.labread import (bind_layout, detect_format, extract_instrument_meta,
+from proef.labread import (bind_layout, detect_format, extract_instrument_meta,
                               read_plate, _rows_from_csv, _well_columns)
 
 DATA = Path(__file__).parent / "data" / "instruments"
@@ -161,7 +161,7 @@ LONG_QC = (
 
 
 def test_real_zprime_requires_both_control_classes(tmp_path):
-    from bionexus.labread import control_class
+    from proef.labread import control_class
     assert (control_class("blank"), control_class("pos"), control_class("cip")) == \
            ("neg", "pos", None)
     f = tmp_path / "p.csv"

@@ -1,4 +1,4 @@
-# BioNexus Workbench — UX Flow & Story
+# Proef Workbench — UX Flow & Story
 
 Design authority for the workbench UI — today the React app in `web/` (the
 Streamlit-era modules `Overview.py`/`story.py`/`webview.py`/`narrative.py`
@@ -161,7 +161,7 @@ problem tree (flywheel/problem-tree already model this).
 
 - No dual banners or repeated global state per section.
 - No walls of JSON in primary sections (JSON belongs to the trace log
-  and `bn prove` reports).
+  and `proef prove` reports).
 - No color-only meaning: color always pairs with an icon and a word
   (accessibility + print).
 - No redesign-by-PR: changes to flow or vocabulary update this document

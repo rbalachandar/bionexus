@@ -1,6 +1,6 @@
 """BoTorch GP posterior provider (optional extra).
 
-The provider must be (a) genuinely optional — importing bionexus and the
+The provider must be (a) genuinely optional — importing proef and the
 default campaign path never touch botorch — and (b) deterministic: same
 fit -> same (mean, sd), so a GP posterior can ride the reproducibility
 story without breaking byte-exact replay.
@@ -18,14 +18,14 @@ TRAIN = ([("CCO", 3.0), ("CCN", 4.0), ("c1ccccc1", 7.0), ("CCCCO", 2.5),
 
 def test_import_does_not_require_botorch():
     # the module pulls torch/botorch lazily inside fit/predict, so importing
-    # it (or bionexus) must not demand the extra — the minimal-core contract
-    import bionexus.adapters.models.gp_policy as gp
+    # it (or proef) must not demand the extra — the minimal-core contract
+    import proef.adapters.models.gp_policy as gp
     assert hasattr(gp, "GaussianProcessPolicy")
 
 
 @pytest.mark.skipif(not _HAS_BOTORCH, reason="botorch not installed")
 def test_gp_returns_mean_and_positive_sd():
-    from bionexus.adapters.models.gp_policy import GaussianProcessPolicy
+    from proef.adapters.models.gp_policy import GaussianProcessPolicy
     gp = GaussianProcessPolicy(noise="fixed", lengthscale=64.0, seed=0)
     gp.fit(TRAIN)
     mu, sd = gp.predict_with_sd("c1ccc2c(c1)ccc1ccccc12")   # far: big PAH
@@ -36,7 +36,7 @@ def test_gp_returns_mean_and_positive_sd():
 
 @pytest.mark.skipif(not _HAS_BOTORCH, reason="botorch not installed")
 def test_gp_is_deterministic_for_a_seed():
-    from bionexus.adapters.models.gp_policy import GaussianProcessPolicy
+    from proef.adapters.models.gp_policy import GaussianProcessPolicy
     a = GaussianProcessPolicy(noise="fixed", lengthscale=64.0, seed=0)
     a.fit(TRAIN)
     b = GaussianProcessPolicy(noise="fixed", lengthscale=64.0, seed=0)
@@ -46,7 +46,7 @@ def test_gp_is_deterministic_for_a_seed():
 
 @pytest.mark.skipif(not _HAS_BOTORCH, reason="botorch not installed")
 def test_gp_exposes_ad_stamp_like_sklearn_policy():
-    from bionexus.adapters.models.gp_policy import GaussianProcessPolicy
+    from proef.adapters.models.gp_policy import GaussianProcessPolicy
     gp = GaussianProcessPolicy(noise="fixed", seed=0)
     gp.fit(TRAIN)
     mu, stamp = gp.predict_with_ad("CCO")

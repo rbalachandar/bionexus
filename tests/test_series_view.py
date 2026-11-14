@@ -3,7 +3,7 @@ import pytest
 
 pytest.importorskip("rdkit", reason="chemotype grouping is the rdkit backend")
 
-from bionexus.series import build_series, chemotype_key, matched_pairs, series_summary
+from proef.series import build_series, chemotype_key, matched_pairs, series_summary
 
 B1 = "Cc1ccc(NC(=O)c2ccccc2)cc1"      # acetanilide benzanilide
 B2 = "COc1ccc(NC(=O)c2ccccc2)cc1"     # one O further: same Murcko scaffold
@@ -71,11 +71,11 @@ def test_abstentions_are_counted_never_averaged():
 
 
 def test_series_summary_from_campaign_chain():
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.autoloop import CampaignConfig, run_campaign
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
-    from bionexus.views import series_view
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.autoloop import CampaignConfig, run_campaign
+    from proef.core.hypothesis import Constraint, ProblemStatement
+    from proef.views import series_view
 
     problem = ProblemStatement(objective="series view", constraints=[
         Constraint(name="potency", description="d", kind="hard", limit=60.0,
@@ -103,7 +103,7 @@ def test_series_summary_from_campaign_chain():
     assert tot["proposed"] == 1       # SAR-1 refused at Make, still VISIBLE
     assert chem and all(c["n_members"] < 3 for c in chem)
 
-    from bionexus.diary import build_diary_html
+    from proef.diary import build_diary_html
     html = build_diary_html(recs, f"problem/{rep.problem_id}")
     assert "Series view" in html and "grouping:" in html
     assert "SAR-" in html
@@ -114,11 +114,11 @@ def test_series_summary_from_campaign_chain():
 
 
 def _family_chain(kind="series", retain_fold=3.2):
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import Envelope, EventType
-    from bionexus.core.hypothesis import (Constraint, HypothesisTracker,
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import Envelope, EventType
+    from proef.core.hypothesis import (Constraint, HypothesisTracker,
                                           ProblemStatement)
-    from bionexus.core.interfaces import record_for, system_actor
+    from proef.core.interfaces import record_for, system_actor
 
     store = SqliteProvenanceStore(":memory:")
     tr = HypothesisTracker(store, system_actor("t"))
@@ -155,7 +155,7 @@ def _family_chain(kind="series", retain_fold=3.2):
 
 
 def resolve1(store, branch):
-    from bionexus.series import resolve_series_claims
+    from proef.series import resolve_series_claims
     out = resolve_series_claims(store.branch_records(branch))
     assert len(out) == 1
     return out[0]
@@ -198,7 +198,7 @@ def test_mechanistic_family_rollup_abstains_when_members_do():
 
 
 def test_family_series_rows_carry_claim_status_in_summary():
-    from bionexus.series import series_summary
+    from proef.series import series_summary
     store, branch, vd, H = _family_chain()
     vd("RB-1", H["RB-1"], "confirmed", 1.0, [0.8, 1.3])
     vd("RB-2", H["RB-2"], "confirmed", 1.5, [1.2, 1.9])
@@ -212,7 +212,7 @@ def test_family_series_rows_carry_claim_status_in_summary():
 
 
 def test_no_family_claims_yields_no_derivation():
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.series import resolve_series_claims
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.series import resolve_series_claims
     st = SqliteProvenanceStore(":memory:")
     assert resolve_series_claims(st.branch_records("problem/none")) == []

@@ -1,7 +1,7 @@
 """Tests for the wizard experiment store (persistent DMTA state)."""
 import pytest
 
-from bionexus.wizard_store import WizardStore
+from proef.wizard_store import WizardStore
 
 
 def test_create_update_roundtrip(tmp_path):
@@ -54,9 +54,9 @@ def test_get_missing(tmp_path):
 
 
 def test_wizard_chain_records(tmp_path, monkeypatch):
-    from bionexus.core.contracts import EventType
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.wizard_chain import record_wizard_event
+    from proef.core.contracts import EventType
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.wizard_chain import record_wizard_event
     db = str(tmp_path / "chain.db")
     record_wizard_event("e1", EventType.experiment_defined,
                         {"statement": "q"}, db_path=db)

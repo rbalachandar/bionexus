@@ -14,17 +14,17 @@ consolidation). Two distinct concerns, deliberately kept separate:
 |---|---|
 | Uncertainty vetoes certainty | a 95% CI straddling the gate abstains on any metric — IC50, %-inhibition, ipTM alike; near-gate point estimates do not earn a decisive verdict (CS05: 14 abstentions; CS08: 6) |
 | Pre-registered claims | every hypothesis records its predicted and **refuted-if** clauses before data arrives; verdicts are read against the pre-registered condition — CS08's control clauses ("if this validates, the score's ranking value is refuted") evaluated true, in the chain |
-| Proxy-evidence ladder | every metric declares what it stands for; verdicts carry their evidence distance (`bn why`), and chains that do not reach the target claim (`ipTM → binding affinity`) are labeled unresolved |
+| Proxy-evidence ladder | every metric declares what it stands for; verdicts carry their evidence distance (`proef why`), and chains that do not reach the target claim (`ipTM → binding affinity`) are labeled unresolved |
 | Provenance physics | the hash chain is engine-enforced and recomputed on read (`verify_chain`); verdict reading is payload-driven, recency-wins — the read path is verified like the write path |
 | Molecular safety gate | 18+ curated toxicophore SMARTS (versioned data file — refusals cite the rule version); hard classes always refuse; electrophilic warheads pass **only** with declared covalent intent in the hypothesis |
-| Execution governance | enforced in gateway code, outside the agent's tool surface: an operator halt switch it cannot lift (`bn halt`), a three-column authorization matrix (autonomous / human-approved / never — DURC and BSL-3+ default to never), and SOP sign-off before anything recurring runs unattended; every decision is a provenance record |
+| Execution governance | enforced in gateway code, outside the agent's tool surface: an operator halt switch it cannot lift (`proef halt`), a three-column authorization matrix (autonomous / human-approved / never — DURC and BSL-3+ default to never), and SOP sign-off before anything recurring runs unattended; every decision is a provenance record |
 | Physical-fault honesty | saturated plates, dark reads, negative values, and device errors are classified as **physical** failures before any retry — flagged for operator inspection, not re-queried blindly and not turned into verdicts |
 | DURC screening | campaigns naming select agents / regulated toxins are refused before any work, and the refusal is recorded |
 | Citation enforcement | PMIDs/DOIs resolved against PubMed; a fabricated reference ranks below no citation at all; offline checks never falsely accuse |
 | Makeability is a gate | before Make allocates a batch, a named-reaction rule corpus plans routes (how many, how long, at what cost, modeled yield); a compound whose routes all fail the yield/lead-time floors is refused with a `no_viable_route` provenance record — batch numbers are drawn from the chosen route and every plan is stamped simulated |
 | Series discipline | proposed→tested→judged grouped by family or Murcko chemotype (grouping backend stamped); matched-pair SAR deltas carry propagated CIs and abstain when straddling the retention band; a series claim's verdict is derived only from its members and cannot aggregate past what its data supports |
-| Institutional memory | `bn ingest` folds pre-BioNexus ELN outcomes into ALREADY RULED OUT and family priors — stamped `imported`, sha256-sealed against the export sidecar; a CSV edited after export imports as unsealed, with a warning |
-| `bn campaign reproduce` | the execution environment (lab, version, seed, concentrations) is in the provenance root — replay a branch, diff verdicts |
+| Institutional memory | `proef ingest` folds pre-Proef ELN outcomes into ALREADY RULED OUT and family priors — stamped `imported`, sha256-sealed against the export sidecar; a CSV edited after export imports as unsealed, with a warning |
+| `proef campaign reproduce` | the execution environment (lab, version, seed, concentrations) is in the provenance root — replay a branch, diff verdicts |
 | Fault tolerance | junk/adversarial instrument files degrade to "unreadable, no verdicts changed" — no crashes, no verdicts from noise |
 | Input trust boundary | instrument labels are sanitized data; injection-shaped sample names cannot reach the gate as instructions (tested) |
 | Verdict stability | same ground truth, N noise draws — verdicts that flip are flagged borderline, not averaged away |
@@ -63,7 +63,7 @@ agent API can modify them or mark a protocol approved.
 ## Operator configuration
 
 ```python
-from bionexus.core.safety import SafetyEngine, MaxBslRule, ForbiddenComboRule
+from proef.core.safety import SafetyEngine, MaxBslRule, ForbiddenComboRule
 
 safety = SafetyEngine(rules=[
     MaxBslRule(max_bsl=1),                                    # strict lab
@@ -80,7 +80,7 @@ design.
 ## Provenance
 
 Every approved run writes a `lab_run` ProvenanceRecord (P5); every gate decision
-writes a `gate_decision` record. Combined with the hash chain, `bn prove
+writes a `gate_decision` record. Combined with the hash chain, `proef prove
 <branch>` gives a tamper-evident history of who submitted what and what was
 approved — the audit trail regulators ask for.
 
@@ -137,7 +137,7 @@ the agent.
 |---|---|---|---|
 | Hallucinated protocol | Agent invents an unsafe reagent combination | SafetyEngine forbidden-combo rules reject with reason; agent must revise through the same gate | ✅ enforced |
 | Scope creep | Agent orders 100 extra assay steps | MaxStepsRule; throughput caps in Lab State Manager | ✅ enforced |
-| Provenance tampering | Agent rewrites history to hide a failure | Hash chain (sha256, prev-link); `bn prove` detects breaks; store is append-only | ✅ enforced |
+| Provenance tampering | Agent rewrites history to hide a failure | Hash chain (sha256, prev-link); `proef prove` detects breaks; store is append-only | ✅ enforced |
 | Gate bypass | Agent marks its own candidate approved | Gates are core-side events requiring an approver actor outside the agent | ✅ enforced |
 | Prompt-injected exfiltration | Malicious dataset content steers agent to send data out | Sandboxes have no network unless granted; lab adapters are local/operator-configured. The **OpenSandbox adapter** supports per-sandbox egress controls and a credential vault (secrets never enter the workload) — the recommended isolation tier for untrusted agent code | ✅ with OpenSandbox/AgentENV; ⚠️ Local/Docker are operator-trust |
 | Data poisoning | Adversarial "results" enter the flywheel | Flywheel examples only from gateway-approved runs; provenance links every label to a run id | ✅ structural |
@@ -160,8 +160,8 @@ public issue with exploit details).
 ## API access and approver identity
 
 The workbench API is a local control surface. Writes are refused from
-non-local `Host`/`Origin` headers. Set `BIONEXUS_API_TOKENS="alice:tok1,bob:tok2"`
-(or the single `BIONEXUS_API_TOKEN`) to require `X-BioNexus-Token` on every
+non-local `Host`/`Origin` headers. Set `PROEF_API_TOKENS="alice:tok1,bob:tok2"`
+(or the single `PROEF_API_TOKEN`) to require `X-Proef-Token` on every
 write; approvals and halts are then attributed to the **token's owner**
 server-side — the `by` field in a request body is ignored. In the browser run
 `localStorage.setItem('bn_token', '<token>')` once. With no tokens configured

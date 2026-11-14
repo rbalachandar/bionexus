@@ -3,12 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from bionexus.adapters.lab.recording import PlaybackLab, RecordingLab
-from bionexus.adapters.lab.simulator import SimulatorLab
-from bionexus.adapters.models.anthropic_provider import AnthropicProvider
-from bionexus.adapters.sandbox.agentenv import AgentEnvClient, AgentEnvSandbox
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.contracts import (
+from proef.adapters.lab.recording import PlaybackLab, RecordingLab
+from proef.adapters.lab.simulator import SimulatorLab
+from proef.adapters.models.anthropic_provider import AnthropicProvider
+from proef.adapters.sandbox.agentenv import AgentEnvClient, AgentEnvSandbox
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.contracts import (
     Envelope,
     ProtocolOp,
     ProtocolStep,
@@ -18,8 +18,8 @@ from bionexus.core.contracts import (
     SampleSpec,
     ToolInvocation,
 )
-from bionexus.core.interfaces import record_for, system_actor
-from bionexus.core.safety import SafetyEngine, LabGateway
+from proef.core.interfaces import record_for, system_actor
+from proef.core.safety import SafetyEngine, LabGateway
 
 BRANCH = "b-ext"
 RECORD = Path("tests/_recording.json")
@@ -72,7 +72,7 @@ def test_playback_rejects_unrecorded_protocol(tmp_path):
 # ---- T4.1 anthropic provider (P3) ---------------------------------------------
 
 def test_anthropic_stub_deterministic(monkeypatch):
-    for var in ("BIONEXUS_LLM_MODEL", "BIONEXUS_LLM_TOKEN", "BIONEXUS_LLM_BASE_URL",
+    for var in ("PROEF_LLM_MODEL", "PROEF_LLM_TOKEN", "PROEF_LLM_BASE_URL",
                 "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY"):
         monkeypatch.delenv(var, raising=False)
     provider = AnthropicProvider(model="stub-claude")  # forced offline stub
@@ -101,7 +101,7 @@ class _FakeTransport:
 
 
 def test_agentenv_sandbox_snapshot_fork(monkeypatch):
-    from bionexus.adapters.sandbox import agentenv as mod
+    from proef.adapters.sandbox import agentenv as mod
 
     store = SqliteProvenanceStore()
     client = AgentEnvClient("http://localhost:0")
@@ -121,8 +121,8 @@ def test_agentenv_sandbox_snapshot_fork(monkeypatch):
 # ---- T4.4 flywheel ----------------------------------------------------------------
 
 def test_hypothesis_lifecycle_recorded(tmp_path):
-    from bionexus.core.hypothesis import HypothesisTracker
-    from bionexus.core.contracts import EventType as ET
+    from proef.core.hypothesis import HypothesisTracker
+    from proef.core.contracts import EventType as ET
 
     store = SqliteProvenanceStore()
     tracker = HypothesisTracker(store, system_actor())
@@ -142,7 +142,7 @@ def test_hypothesis_lifecycle_recorded(tmp_path):
 # ---- domain realism: dose-response, counterscreen, MPO ------------------------
 
 def test_dose_response_monotonic_and_ic50_present():
-    from bionexus.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.lab.simulator import SimulatorLab
     lab = SimulatorLab(seed=11)
     p = ProtocolSubmission(
         envelope=env(), title="dr", assay_type="binding",
@@ -157,7 +157,7 @@ def test_dose_response_monotonic_and_ic50_present():
 
 
 def test_countscreen_flags_interferers():
-    from bionexus.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.lab.simulator import SimulatorLab
     lab = SimulatorLab(seed=11)
     comps = [f"X{i}" for i in range(24)]
     p = ProtocolSubmission(
@@ -187,18 +187,18 @@ def test_mpo_score_bounds():
 # ---- MCP server ------------------------------------------------------------------
 
 def test_mcp_session_initialize_and_tools():
-    from bionexus.mcp_server import McpSession
+    from proef.mcp_server import McpSession
 
     s = McpSession()
     init = s.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
-    assert init["result"]["serverInfo"]["name"] == "bionexus"
+    assert init["result"]["serverInfo"]["name"] == "proef"
     tools = s.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
     names = {t["name"] for t in tools["result"]["tools"]}
     assert {"generate_candidates", "run_assay", "propose_hypothesis", "list_lab_capabilities"} <= names
 
 
 def test_mcp_tool_calls():
-    from bionexus.mcp_server import McpSession
+    from proef.mcp_server import McpSession
 
     s = McpSession()
     call = lambda n, a: s.handle({"jsonrpc": "2.0", "id": 3, "method": "tools/call",
@@ -221,9 +221,9 @@ def test_mcp_tool_calls():
 
 def test_report_html(tmp_path):
     import subprocess, sys
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import Envelope, EventType
-    from bionexus.core.interfaces import record_for, system_actor
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import Envelope, EventType
+    from proef.core.interfaces import record_for, system_actor
 
     db = tmp_path / "test.db"
     store = SqliteProvenanceStore(str(db))
@@ -239,19 +239,19 @@ def test_report_html(tmp_path):
 
     out = tmp_path / "report.html"
     r = subprocess.run(
-        [sys.executable, "-m", "bionexus.cli", "prove", "report-test",
+        [sys.executable, "-m", "proef.cli", "prove", "report-test",
          "--db", str(db), "--html", str(out)],
         capture_output=True, text=True)
     assert "chain intact" in r.stdout, f"prove stdout: {r.stdout[:300]}\nstderr: {r.stderr[:300]}"
     assert out.exists(), f"report not created; prove stdout: {r.stdout[:200]}"
     html = out.read_text()
-    assert "BioNexus" in html
+    assert "Proef" in html
     assert "lab_run" in html
 
 # ---- benchmark harness (offline fixture) -----------------------------------------
 
 def test_benchmark_harness_offline(tmp_path):
-    from bionexus.benchmark import CharRidgePolicy, MeanPolicy, RandomPolicy, run_benchmark
+    from proef.benchmark import CharRidgePolicy, MeanPolicy, RandomPolicy, run_benchmark
 
     class FixtureDataset:
         name, task = "fixture", "regression"
@@ -273,7 +273,7 @@ def test_benchmark_harness_offline(tmp_path):
 # ---- benchmark metrics + LLM policy parsing ---------------------------------------
 
 def test_roc_auc_correct_with_ties():
-    from bionexus.benchmark import roc_auc
+    from proef.benchmark import roc_auc
     assert roc_auc([0.9, 0.8, 0.7, 0.1], [1, 1, 0, 0]) == 1.0
     assert roc_auc([0.1, 0.2, 0.7, 0.9], [1, 1, 0, 0]) == 0.0
     assert roc_auc([0.5, 0.5, 0.5, 0.5], [1, 1, 0, 0]) == 0.5  # ties -> chance
@@ -281,7 +281,7 @@ def test_roc_auc_correct_with_ties():
 
 
 def test_llm_policy_parse_only():
-    from bionexus.adapters.models.llm_policy import AnthropicLLMPolicy
+    from proef.adapters.models.llm_policy import AnthropicLLMPolicy
     assert AnthropicLLMPolicy._parse('{"value": -1.42}') == -1.42
     assert AnthropicLLMPolicy._parse("The answer is 3.54 (logD).") == 3.54
     try:
@@ -296,7 +296,7 @@ def test_llm_policy_parse_only():
 
 def test_imaging_lab_recovers_ic50_and_qc(tmp_path):
     np = pytest.importorskip("numpy")
-    from bionexus.adapters.lab.imaging import ImagingSimulatorLab, true_ic50_um
+    from proef.adapters.lab.imaging import ImagingSimulatorLab, true_ic50_um
 
     lab = ImagingSimulatorLab(seed=5, image_dir=str(tmp_path / "imgs"))
     p = ProtocolSubmission(
@@ -321,7 +321,7 @@ def test_imaging_lab_recovers_ic50_and_qc(tmp_path):
 
 def test_imaging_lab_dose_response_monotonic(tmp_path):
     pytest.importorskip("numpy")
-    from bionexus.adapters.lab.imaging import (ImagingPlateReader, true_ic50_um,
+    from proef.adapters.lab.imaging import (ImagingPlateReader, true_ic50_um,
                                                hill_response)
     dev = ImagingPlateReader(seed=9)
     concs = [0.5, 2.0, 10.0, 40.0]
@@ -336,8 +336,8 @@ def test_imaging_lab_dose_response_monotonic(tmp_path):
 
 def test_liquid_handler_low_volume_and_carryover(tmp_path):
     np = pytest.importorskip("numpy")
-    from bionexus.adapters.lab.devices import LiquidHandlerSim
-    from bionexus.core.contracts import ProtocolOp as PO
+    from proef.adapters.lab.devices import LiquidHandlerSim
+    from proef.core.contracts import ProtocolOp as PO
 
     lh = LiquidHandlerSim(seed=3)
     steps = [ProtocolStep(seq=1, op=PO.dispense, params={"volume_ul": 100}),
@@ -355,7 +355,7 @@ def test_liquid_handler_low_volume_and_carryover(tmp_path):
 
 def test_sequencer_calls_planted_mutation(tmp_path):
     pytest.importorskip("numpy")
-    from bionexus.adapters.lab.devices import SequencerSim
+    from proef.adapters.lab.devices import SequencerSim
 
     seq = SequencerSim(seed=2)
     ref = "ACGT" * 15
@@ -367,9 +367,9 @@ def test_sequencer_calls_planted_mutation(tmp_path):
 
 
 def test_hypothesis_design_and_inconclusive(tmp_path):
-    from bionexus.core.hypothesis import (ExperimentDesign, HypothesisTracker,
+    from proef.core.hypothesis import (ExperimentDesign, HypothesisTracker,
                                           SuccessCriteria)
-    from bionexus.core.contracts import AssayResult, Envelope, InstrumentInfo, RunStatus
+    from proef.core.contracts import AssayResult, Envelope, InstrumentInfo, RunStatus
 
     store = SqliteProvenanceStore()
     tracker = HypothesisTracker(store, system_actor())
@@ -395,7 +395,7 @@ def test_hypothesis_design_and_inconclusive(tmp_path):
 # ---- scaffold + release readiness ---------------------------------------------------
 
 def test_new_adapter_scaffold_lab(tmp_path):
-    from bionexus.scaffold import scaffold
+    from proef.scaffold import scaffold
 
     target = scaffold("lab", "my_robot", tmp_path)
     mod = target / "my_robot_adapter.py"
@@ -406,7 +406,7 @@ def test_new_adapter_scaffold_lab(tmp_path):
 
 
 def test_new_adapter_scaffold_tool(tmp_path):
-    from bionexus.scaffold import scaffold
+    from proef.scaffold import scaffold
 
     target = scaffold("tool", "my_docking", tmp_path, cap="e.sim.docking")
     src = (target / "my_docking_adapter.py").read_text()
@@ -415,7 +415,7 @@ def test_new_adapter_scaffold_tool(tmp_path):
 
 def test_agent_notices_device_output(tmp_path):
     import time as _time
-    from bionexus.watch import AutoAnalysisAgent, DeviceMonitor
+    from proef.watch import AutoAnalysisAgent, DeviceMonitor
 
     inbox = tmp_path / "outbox"
     messages = []
@@ -437,9 +437,9 @@ def test_agent_notices_device_output(tmp_path):
 
 
 def test_agent_closes_loop_with_safety_gated_confirmation(tmp_path):
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.core.safety import LabGateway, MaxStepsRule, SafetyEngine
-    from bionexus.watch import AutoAnalysisAgent, DeviceMonitor
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.core.safety import LabGateway, MaxStepsRule, SafetyEngine
+    from proef.watch import AutoAnalysisAgent, DeviceMonitor
 
     inbox = tmp_path / "outbox"
     store = SqliteProvenanceStore()
@@ -469,8 +469,8 @@ def test_agent_closes_loop_with_safety_gated_confirmation(tmp_path):
 
 
 def test_problem_to_portfolio_flow(tmp_path):
-    from bionexus.core.contracts import EventType as ET
-    from bionexus.core.hypothesis import (Constraint, HypothesisTracker,
+    from proef.core.contracts import EventType as ET
+    from proef.core.hypothesis import (Constraint, HypothesisTracker,
                                           ProblemStatement)
 
     store = SqliteProvenanceStore()
@@ -496,9 +496,9 @@ def test_problem_to_portfolio_flow(tmp_path):
 
 
 def test_autoloop_full_flow_act_and_observe(tmp_path):
-    from bionexus.autoloop import CampaignConfig, run_campaign
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    from proef.autoloop import CampaignConfig, run_campaign
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.core.hypothesis import Constraint, ProblemStatement
 
     problem = ProblemStatement(
         objective="find binder",
@@ -558,9 +558,9 @@ def test_opentrons_conformance_vs_simulated_robot():
     import time
     import urllib.error
     import urllib.request
-    from bionexus.adapters.lab.opentrons import OpentronsLab, compile_protocol
-    from bionexus.adapters.lab.ot2_sim import SimulatedRobot
-    from bionexus.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
+    from proef.adapters.lab.opentrons import OpentronsLab, compile_protocol
+    from proef.adapters.lab.ot2_sim import SimulatedRobot
+    from proef.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
                                          ProtocolSubmission)
 
     p = ProtocolSubmission(
@@ -596,8 +596,8 @@ def test_opentrons_conformance_vs_simulated_robot():
             assert e.code == 400
 
 def test_plate_reader_share_parses_auto_export(tmp_path):
-    from bionexus.adapters.lab.plate_reader_share import PlateReaderShare
-    from bionexus.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
+    from proef.adapters.lab.plate_reader_share import PlateReaderShare
+    from proef.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
                                          ProtocolSubmission, ReagentSpec,
                                          SampleKind, SampleSpec)
 
@@ -630,14 +630,14 @@ def test_plate_reader_share_parses_auto_export(tmp_path):
 def test_skill_md_valid_and_plugin_json():
     import json as _json
     import re as _re
-    import bionexus.skills as _sk
+    import proef.skills as _sk
     print("SKILLS MODULE:", _sk.__file__)
-    from bionexus.skills import _parse_frontmatter
-    skill = Path("skills/bionexus/SKILL.md").read_text()
+    from proef.skills import _parse_frontmatter
+    skill = Path("skills/proef/SKILL.md").read_text()
     assert skill.startswith("---"), "SKILL.md needs frontmatter"
     fm = _parse_frontmatter(skill)  # yaml-or-fallback, like agents do
     print("FM:", fm)
-    assert fm["name"] == "bionexus"
+    assert fm["name"] == "proef"
     assert fm["metadata"]["version"] == "0.1.0"
     for skill_md in Path("skills").glob("*/SKILL.md"):
         fm2 = _parse_frontmatter(skill_md.read_text())
@@ -649,7 +649,7 @@ def test_skill_md_valid_and_plugin_json():
 
 
 def test_install_skills_from_local_checkout(tmp_path):
-    from bionexus.skills import install_skills, load_skill_instructions
+    from proef.skills import install_skills, load_skill_instructions
     # fake a local checkout of the skills repo
     repo = tmp_path / "repo"
     (repo / "skills" / "rdkit").mkdir(parents=True)
@@ -664,12 +664,12 @@ def test_install_skills_from_local_checkout(tmp_path):
 
 def test_skill_discovery_and_role_resolution(tmp_path):
     import pathlib as _pl
-    from bionexus.skills import discover_skills, guidance_for, recommend_for_role
+    from proef.skills import discover_skills, guidance_for, recommend_for_role
 
-    # discover bundled bionexus skills
+    # discover bundled proef skills
     found = discover_skills()
-    assert "bionexus" in found and "bionexus-labread" in found
-    assert found["bionexus-labread"]["source"] in ("bionexus", "skills")
+    assert "proef" in found and "proef-labread" in found
+    assert found["proef-labread"]["source"] in ("proef", "skills")
 
     # discover installed external skills (standard ~/.agents/skills convention)
     ext = tmp_path / ".agents" / "skills" / "rdkit"
@@ -694,7 +694,7 @@ def test_skill_discovery_and_role_resolution(tmp_path):
 def test_gray_png_valid(tmp_path):
     pytest.importorskip("numpy")
     import struct
-    from bionexus.vision import gray_png
+    from proef.vision import gray_png
     import numpy as np
     a = np.random.default_rng(0).integers(0, 255, (24, 24), dtype=np.uint8)
     png = gray_png(a)
@@ -705,7 +705,7 @@ def test_gray_png_valid(tmp_path):
 
 def test_vision_response_parsing():
     import re
-    from bionexus.vision import VisionWellReader
+    from proef.vision import VisionWellReader
     text = '{"values": [15, 40, 65, 90]}'
     m = re.search(r"\[[^\]]*\]", text, re.S)
     values = [float(x) for x in re.findall(r"-?\d+(?:\.\d+)?", m.group(0))]
@@ -716,8 +716,8 @@ def test_vision_response_parsing():
 
 
 def test_hypothesis_families_and_diversity_cap(tmp_path):
-    from bionexus.core.contracts import EventType as ET
-    from bionexus.core.hypothesis import (Constraint, HypothesisTracker,
+    from proef.core.contracts import EventType as ET
+    from proef.core.hypothesis import (Constraint, HypothesisTracker,
                                           ProblemStatement)
 
     store = SqliteProvenanceStore()
@@ -750,9 +750,9 @@ def test_hypothesis_families_and_diversity_cap(tmp_path):
 
 
 def test_resource_budget_caps_runs_and_records_exhaustion(tmp_path):
-    from bionexus.autoloop import CampaignConfig, ResourceBudget, run_campaign
-    from bionexus.core.contracts import EventType as ET
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    from proef.autoloop import CampaignConfig, ResourceBudget, run_campaign
+    from proef.core.contracts import EventType as ET
+    from proef.core.hypothesis import Constraint, ProblemStatement
 
     problem = ProblemStatement(
         objective="find binder",
@@ -778,14 +778,14 @@ def test_resource_budget_caps_runs_and_records_exhaustion(tmp_path):
 
 
 def test_hypothesis_agent_dedup_and_total_cap(tmp_path):
-    from bionexus.adapters.models.openai_compat import OpenAICompatProvider
-    from bionexus.core.hypothesis import HypothesisTracker, ProblemStatement
-    from bionexus.hypothesis_agent import propose_families_with_agent
+    from proef.adapters.models.openai_compat import OpenAICompatProvider
+    from proef.core.hypothesis import HypothesisTracker, ProblemStatement
+    from proef.hypothesis_agent import propose_families_with_agent
 
     class Scripted:
         name, model_version = "scripted", "s1"
         def generate(self, inv, prompt, **kw):
-            from bionexus.core.contracts import ToolResult
+            from proef.core.contracts import ToolResult
             text = json.dumps({"families": [{"family": "A",
                 "parent_statement": "A works", "kind": "mechanistic",
                 "confidence": 0.9, "variants": [
@@ -867,10 +867,10 @@ def test_agentenv_adapter_against_mock_http_server(tmp_path):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-        from bionexus.adapters.sandbox.agentenv import (AgentEnvClient,
+        from proef.adapters.sandbox.agentenv import (AgentEnvClient,
                                                         AgentEnvSandbox)
-        from bionexus.core.interfaces import record_for, system_actor
-        from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+        from proef.core.interfaces import record_for, system_actor
+        from proef.adapters.store.sqlite import SqliteProvenanceStore
 
         client = AgentEnvClient(f"http://127.0.0.1:{server.server_port}")
         store = SqliteProvenanceStore()
@@ -903,7 +903,7 @@ class _FakeDocker:
             self._n += 1
             return f"cont-{self._n}"
         if args[0] == "commit":
-            return "bionexus/branch:snap-1"
+            return "proef/branch:snap-1"
         return ""
     def run_capped(self, timeout, *args, input=None):
         self.calls.append(list(args))
@@ -913,14 +913,14 @@ class _FakeDocker:
 
 
 def test_docker_sandbox_snapshot_fork_destroy():
-    from bionexus.adapters.sandbox.docker import DockerRunner, DockerSandbox
+    from proef.adapters.sandbox.docker import DockerRunner, DockerSandbox
     store = SqliteProvenanceStore()
     runner = _FakeDocker()
     sbx = DockerSandbox(image="python:3.12-slim", branch_id="root",
                         store=store, actor=system_actor(), runner=runner)
     assert sbx.container_id == "cont-1"
     tag = sbx.snapshot()
-    assert tag.startswith("bionexus/root:")
+    assert tag.startswith("proef/root:")
     assert runner.calls[-1][:2] == ["commit", "cont-1"]
     child = sbx.fork(tag)
     assert child.image == tag and child.parent_branch_id == "root"
@@ -959,8 +959,8 @@ class _FakeOpenSandboxClient:
 
 
 def test_opensandbox_adapter_lifecycle(tmp_path):
-    from bionexus.adapters.sandbox.opensandbox import OpenSandboxSandbox
-    from bionexus.core.contracts import EventType as ET
+    from proef.adapters.sandbox.opensandbox import OpenSandboxSandbox
+    from proef.core.contracts import EventType as ET
 
     class _Client(_FakeOpenSandboxClient):
         def __init__(self):
@@ -994,8 +994,8 @@ def test_opensandbox_adapter_lifecycle(tmp_path):
 
 
 def test_dose_response_svg_plot(tmp_path):
-    from bionexus.labread import read_plate
-    from bionexus.plots import dose_response_svg
+    from proef.labread import read_plate
+    from proef.plots import dose_response_svg
 
     f = tmp_path / "p.csv"
     f.write_text("Well ID,Compound,Conc (uM),RFU\n"
@@ -1013,7 +1013,7 @@ def test_dose_response_svg_plot(tmp_path):
 
 
 def test_campaign_templates_fill_and_build(tmp_path):
-    from bionexus.templates import build_campaign, fill, list_templates, load_template
+    from proef.templates import build_campaign, fill, list_templates, load_template
 
     names = {t["name"] for t in list_templates()}
     assert {"dose-response-screen", "confirmatory-followup", "sar-exploration"} <= names
@@ -1035,7 +1035,7 @@ def test_campaign_templates_fill_and_build(tmp_path):
 # ---- approval inbox + cockpit (F3) ----------------------------------------------------
 
 def test_approval_inbox_roundtrip(tmp_path):
-    from bionexus.approvals import ApprovalInbox
+    from proef.approvals import ApprovalInbox
 
     box = ApprovalInbox(tmp_path / "approvals.jsonl")
     aid = box.request("dose-response assay C1")
@@ -1047,7 +1047,7 @@ def test_approval_inbox_roundtrip(tmp_path):
 
 def test_web_approver_waits_for_decision(tmp_path):
     import threading
-    from bionexus.approvals import ApprovalInbox, web_approver
+    from proef.approvals import ApprovalInbox, web_approver
 
     box = ApprovalInbox(tmp_path / "a.jsonl")
     approved = []
@@ -1065,7 +1065,7 @@ def test_web_approver_waits_for_decision(tmp_path):
 
 
 def test_plate_result_csv_export(tmp_path):
-    from bionexus.labread import read_plate
+    from proef.labread import read_plate
     f = tmp_path / "p.csv"
     f.write_text("Well ID,Compound,Conc (uM),RFU\n"
                  "A1,ctrl,10,100\nA2,ctrl,10,104\n"
@@ -1078,13 +1078,13 @@ def test_plate_result_csv_export(tmp_path):
 
 
 def test_diary_renders_narrative(tmp_path):
-    from bionexus.core.hypothesis import (HypothesisTracker, ProblemStatement,
+    from proef.core.hypothesis import (HypothesisTracker, ProblemStatement,
                                           SuccessCriteria)
-    from bionexus.core.contracts import (Envelope, EventType, ProtocolOp,
+    from proef.core.contracts import (Envelope, EventType, ProtocolOp,
                                          ProtocolStep, ProtocolSubmission,
                                          ReagentSpec, SampleKind, SampleSpec)
-    from bionexus.diary import write_diary
-    from bionexus.adapters.lab.simulator import SimulatorLab
+    from proef.diary import write_diary
+    from proef.adapters.lab.simulator import SimulatorLab
 
     store = SqliteProvenanceStore()
     tracker = HypothesisTracker(store, system_actor())
@@ -1120,7 +1120,7 @@ def test_diary_renders_narrative(tmp_path):
 
 
 def test_connect_scan_detects_instruments(tmp_path):
-    from bionexus.connect import scan_share
+    from proef.connect import scan_share
     (tmp_path / "read1.csv").write_text(
         "Well ID,Compound,Conc (uM),RFU\nA1,ctrl,10,100\nA2,C1,10,250\n")
     (tmp_path / "notes.txt").write_text("not an export")
@@ -1136,7 +1136,7 @@ def test_connect_scan_detects_instruments(tmp_path):
 # ---- ExperimentDefinition + ExperimentReadinessReview ---------------------------------
 
 def _strong_definition():
-    from bionexus.experiment import (BiologicalSystem, ClaimType,
+    from proef.experiment import (BiologicalSystem, ClaimType,
                                      DeliveryConditions, ExperimentDefinition,
                                      Intervention, ReadoutCapability,
                                      ReadoutSpec)
@@ -1174,15 +1174,15 @@ def _weak_definition(base):
 
 
 def test_experiment_readiness_strong_passes():
-    from bionexus.readiness import ReviewVerdict, review_experiment
+    from proef.readiness import ReviewVerdict, review_experiment
     review = review_experiment(_strong_definition())
     assert review.verdict == ReviewVerdict.ready
     assert review.blockers == []
 
 
 def test_experiment_readiness_weak_blocked():
-    from bionexus.core.contracts import Envelope
-    from bionexus.readiness import ReviewVerdict, review_experiment
+    from proef.core.contracts import Envelope
+    from proef.readiness import ReviewVerdict, review_experiment
     weak = _weak_definition(_strong_definition())
     weak.readout.measures_edited_fraction = False
     review = review_experiment(weak)
@@ -1199,14 +1199,14 @@ def test_experiment_readiness_interpretable_negative():
 
 
 def test_experiment_definition_provenance(tmp_path):
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import Envelope, EventType
-    from bionexus.core.hypothesis import (HypothesisTracker, ProblemStatement)
-    from bionexus.core.interfaces import system_actor
-    from bionexus.experiment import (BiologicalSystem, ClaimType,
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import Envelope, EventType
+    from proef.core.hypothesis import (HypothesisTracker, ProblemStatement)
+    from proef.core.interfaces import system_actor
+    from proef.experiment import (BiologicalSystem, ClaimType,
                                      DeliveryConditions, ExperimentDefinition,
                                      Intervention, ReadoutSpec)
-    from bionexus.readiness import review_and_record
+    from proef.readiness import review_and_record
 
     store = SqliteProvenanceStore()
     tracker = HypothesisTracker(store, system_actor())
@@ -1234,7 +1234,7 @@ def test_experiment_definition_provenance(tmp_path):
 # ---- TPP ----------------------------------------------------------------------------
 
 def test_tpp_evaluation_phases():
-    from bionexus.tpp import (Criterion, CriterionCategory, CriterionPhase,
+    from proef.tpp import (Criterion, CriterionCategory, CriterionPhase,
                               TPP)
     tpp = TPP(program_name="test", objective="find inhibitor",
               target_name="X", criteria=[
@@ -1264,7 +1264,7 @@ def test_tpp_evaluation_phases():
 # ---- ADMET panel ----------------------------------------------------------------------
 
 def test_admet_rule_based():
-    from bionexus.adapters.admet import RuleBasedADMET
+    from proef.adapters.admet import RuleBasedADMET
     predictor = RuleBasedADMET()
     r = predictor.predict("CCOc1ccccc1NC(=N)c1ccc(N)cc1")  # some real-ish molecule
     assert r.mw_da > 0
@@ -1276,7 +1276,7 @@ def test_admet_rdkit_if_available():
         from rdkit import Chem
     except ImportError:
         pytest.skip("rdkit not installed")
-    from bionexus.adapters.admet import RDKitADMET
+    from proef.adapters.admet import RDKitADMET
     predictor = RDKitADMET()
     r = predictor.predict("CC(=O)Oc1ccccc1C(=O)O")  # aspirin
     assert r.mw_da is not None and 150 < r.mw_da < 200
@@ -1287,7 +1287,7 @@ def test_admet_rdkit_if_available():
 # ---- retrosynthesis -----------------------------------------------------------------
 
 def test_retrosynthesis_simulated():
-    from bionexus.adapters.retrosynthesis import SimulatedRetrosynthesis
+    from proef.adapters.retrosynthesis import SimulatedRetrosynthesis
     r = SimulatedRetrosynthesis()
     simple = r.plan("CCO")  # ethanol — simple
     hard = r.plan("c1ccc2c(c1)[nH]c1ccccc12" + "C(=O)N[C@@H](C)C(=O)N[C@@H](CS)C(=O)N")
@@ -1299,9 +1299,9 @@ def test_retrosynthesis_simulated():
 # ---- agentic loop ----------------------------------------------------------------------
 
 def test_agent_toolkit_tool_execution(tmp_path):
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.core.safety import LabGateway, SafetyEngine
-    from bionexus.toolkit import AgentToolkit
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.core.safety import LabGateway, SafetyEngine
+    from proef.toolkit import AgentToolkit
 
     store = SqliteProvenanceStore()
     gateway = LabGateway(SimulatorLab(seed=1), SafetyEngine(), store, system_actor())
@@ -1327,9 +1327,9 @@ def test_agent_toolkit_tool_execution(tmp_path):
 
 
 def test_agent_toolkit_submit_and_results(tmp_path):
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.core.safety import LabGateway, SafetyEngine
-    from bionexus.toolkit import AgentToolkit
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.core.safety import LabGateway, SafetyEngine
+    from proef.toolkit import AgentToolkit
 
     store = SqliteProvenanceStore()
     gateway = LabGateway(SimulatorLab(seed=1), SafetyEngine(), store, system_actor())
@@ -1344,10 +1344,10 @@ def test_agent_toolkit_submit_and_results(tmp_path):
 # ---- article-inspired guardrails (cassette burden, kinetic matching, denominator) ----
 
 def test_cassette_burden_blocker_without_hist_controls():
-    from bionexus.experiment import (BiologicalSystem, ClaimType,
+    from proef.experiment import (BiologicalSystem, ClaimType,
                                      DeliveryConditions, ExperimentDefinition,
                                      Intervention, ReadoutSpec)
-    from bionexus.readiness import review_experiment
+    from proef.readiness import review_experiment
 
     exp = ExperimentDefinition(
         scientific_question="test",
@@ -1375,10 +1375,10 @@ def test_cassette_burden_blocker_without_hist_controls():
 
 
 def test_kinetic_mismatch_blocker():
-    from bionexus.experiment import (BiologicalSystem, ClaimType,
+    from proef.experiment import (BiologicalSystem, ClaimType,
                                      DeliveryConditions, ExperimentDefinition,
                                      Intervention, ReadoutSpec)
-    from bionexus.readiness import review_experiment
+    from proef.readiness import review_experiment
 
     exp = ExperimentDefinition(
         scientific_question="test",
@@ -1407,10 +1407,10 @@ def test_kinetic_mismatch_blocker():
 
 
 def test_kinetic_match_passes_when_rates_close():
-    from bionexus.experiment import (BiologicalSystem, ClaimType,
+    from proef.experiment import (BiologicalSystem, ClaimType,
                                      DeliveryConditions, ExperimentDefinition,
                                      Intervention, ReadoutSpec)
-    from bionexus.readiness import review_experiment
+    from proef.readiness import review_experiment
 
     exp = ExperimentDefinition(
         scientific_question="test",
@@ -1440,10 +1440,10 @@ def test_kinetic_match_passes_when_rates_close():
 def test_denominator_blocker_for_loss_of_function():
     """The 'missing denominator' guardrail: loss-of-function claims on a bulk
     readout (no edited fraction) must be a BLOCKER, not a warning."""
-    from bionexus.experiment import (BiologicalSystem, ClaimType,
+    from proef.experiment import (BiologicalSystem, ClaimType,
                                      DeliveryConditions, ExperimentDefinition,
                                      Intervention, ReadoutSpec)
-    from bionexus.readiness import ReviewVerdict, review_experiment
+    from proef.readiness import ReviewVerdict, review_experiment
 
     exp = ExperimentDefinition(
         scientific_question="Does the edit cause loss of function?",
@@ -1471,7 +1471,7 @@ def test_denominator_blocker_for_loss_of_function():
 # ---- SiLA 2, HCS microscope, LC-MS, robotic arm scheduler ----------------------------
 
 def test_sila2_adapter_mock_channel():
-    from bionexus.adapters.devices.sila2 import SiLA2Adapter, SiLA2HTTPChannel
+    from proef.adapters.devices.sila2 import SiLA2Adapter, SiLA2HTTPChannel
     calls = []
     class _Ch:
         def call(self, ep, payload):
@@ -1488,7 +1488,7 @@ def test_sila2_adapter_mock_channel():
     adapter.device_label = "test-device"
     adapter.feature_map = {"execute": "/exec", "status": "/status", "results": "/results"}
     adapter._runs = {}
-    from bionexus.core.contracts import ProtocolSubmission, ProtocolOp, ProtocolStep
+    from proef.core.contracts import ProtocolSubmission, ProtocolOp, ProtocolStep
     proto = ProtocolSubmission(
         envelope=Envelope(experiment_branch_id="sila2-test"),
         title="t", assay_type="binding",
@@ -1501,8 +1501,8 @@ def test_sila2_adapter_mock_channel():
 
 
 def test_hcs_microscope_per_cell():
-    from bionexus.adapters.devices.hcs_microscope import HCSMicroscopeAdapter as HCSMicroscopeAdapter
-    from bionexus.core.contracts import ProtocolOp, ProtocolStep
+    from proef.adapters.devices.hcs_microscope import HCSMicroscopeAdapter as HCSMicroscopeAdapter
+    from proef.core.contracts import ProtocolOp, ProtocolStep
     lab = HCSMicroscopeAdapter.__new__(HCSMicroscopeAdapter)
     lab.seed = 7
     lab.image_dir = None
@@ -1521,8 +1521,8 @@ def test_hcs_microscope_per_cell():
 
 
 def test_lcms_adapter_ratiometric():
-    from bionexus.adapters.devices.lcms import LCMSAdapter
-    from bionexus.core.contracts import ProtocolOp, ProtocolStep
+    from proef.adapters.devices.lcms import LCMSAdapter
+    from proef.core.contracts import ProtocolOp, ProtocolStep
     lab = LCMSAdapter(seed=3)
     proto = ProtocolSubmission(
         envelope=Envelope(experiment_branch_id="lcms"),
@@ -1536,7 +1536,7 @@ def test_lcms_adapter_ratiometric():
 
 
 def test_robotic_scheduler(tmp_path):
-    from bionexus.adapters.devices.scheduler import HTTPScheduler, RoboticArmScheduler
+    from proef.adapters.devices.scheduler import HTTPScheduler, RoboticArmScheduler
     calls = []
     class _T:
         def post(self, path, body):
@@ -1557,9 +1557,9 @@ def test_robotic_scheduler(tmp_path):
 
 def test_autoloop_adaptive_dose_design(tmp_path):
     import shutil
-    from bionexus.autoloop import CampaignConfig, run_campaign
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    from proef.autoloop import CampaignConfig, run_campaign
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.core.hypothesis import Constraint, ProblemStatement
 
     inbox = tmp_path / "in"
     problem = ProblemStatement(
@@ -1574,7 +1574,7 @@ def test_autoloop_adaptive_dose_design(tmp_path):
         k=2, autonomy="act", inbox=str(inbox), poll_secs=0.05,
         dose_design="adaptive")
     lab = SimulatorLab(seed=11)
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
     store = SqliteProvenanceStore()
     report = run_campaign(cfg, lab, store)
     assert report.verdicts and all(
@@ -1598,9 +1598,9 @@ def test_confirmation_verifies_direction_not_relabels(tmp_path):
     """Agreement confirms the PRELIMINARY DIRECTION: an invalidated
     (non-hit) that agrees on re-measure becomes refuted, never 'confirmed';
     borderline CIs stay inconclusive however well methods agree."""
-    from bionexus.core.hypothesis import (HypothesisTracker, ProblemStatement,
+    from proef.core.hypothesis import (HypothesisTracker, ProblemStatement,
                                           SuccessCriteria)
-    from bionexus.watch import AutoAnalysisAgent
+    from proef.watch import AutoAnalysisAgent
 
     tracker = HypothesisTracker(SqliteProvenanceStore(), system_actor())
     p = ProblemStatement(objective="o")
@@ -1641,7 +1641,7 @@ def test_confirmation_verifies_direction_not_relabels(tmp_path):
 
 
 def test_assayloop_ranker_bridge_with_stub_policy():
-    from bionexus.adapters.models.assayloop_ranker import AssayLoopRanker
+    from proef.adapters.models.assayloop_ranker import AssayLoopRanker
 
     class PrefixPolicy:  # their README's toy example, duck-typed
         def predict(self, observations, candidates, task_context=None):
@@ -1657,7 +1657,7 @@ def test_assayloop_ranker_bridge_with_stub_policy():
 
 
 def test_assay_selection_metrics():
-    from bionexus.benchmark import (adjusted_nauc, enrichment_factor,
+    from proef.benchmark import (adjusted_nauc, enrichment_factor,
                                     fraction_of_hits, percent_essential,
                                     shortfall)
     uni = [f"g{i}" for i in range(100)]
@@ -1671,14 +1671,14 @@ def test_assay_selection_metrics():
 
 def test_advisory_tier_tightens_only():
     pytest.importorskip("rdkit", reason="advisory flags come from SMARTS screens")
-    from bionexus.advisory import AdvisoryReviewer
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
+    from proef.advisory import AdvisoryReviewer
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
                                          ProtocolSubmission, ReagentSpec,
                                          SampleKind, SampleSpec)
-    from bionexus.core.safety import LabGateway, SafetyEngine
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.core.interfaces import system_actor
+    from proef.core.safety import LabGateway, SafetyEngine
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.core.interfaces import system_actor
 
     rev = AdvisoryReviewer()          # heuristic backend (no LLM env)
 
@@ -1714,10 +1714,10 @@ def test_advisory_tier_tightens_only():
 
 
 def test_multi_round_policy_campaign(tmp_path):
-    from bionexus.autoloop import CampaignConfig, run_campaign
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    from proef.autoloop import CampaignConfig, run_campaign
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.hypothesis import Constraint, ProblemStatement
 
     calls = []
 
@@ -1728,7 +1728,7 @@ def test_multi_round_policy_campaign(tmp_path):
                                for i, c in enumerate(sorted(candidates))}
             return P
 
-    from bionexus.adapters.models.assayloop_ranker import AssayLoopRanker
+    from proef.adapters.models.assayloop_ranker import AssayLoopRanker
     problem = ProblemStatement(
         objective="r", problem_id="prob-mr",
         constraints=[Constraint(name="potency", description="d", kind="hard",
@@ -1754,10 +1754,10 @@ def test_multi_round_policy_campaign(tmp_path):
 def test_repeated_problem_id_gets_unique_branch(tmp_path):
     """Two campaigns sharing an explicit problem_id must NOT merge into one
     branch — the second is auto-suffixed, the first's records untouched."""
-    from bionexus.autoloop import CampaignConfig, run_campaign
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    from proef.autoloop import CampaignConfig, run_campaign
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.hypothesis import Constraint, ProblemStatement
 
     def cfg():
         return CampaignConfig(
@@ -1784,7 +1784,7 @@ def test_tox_alerts_fallback_survives_missing_data_file():
     except-branch referenced _FALLBACK before it existed. Must degrade
     loudly-but-usable, never crash the gate."""
     import pathlib
-    from bionexus.adapters.bio import tox_alerts as m
+    from proef.adapters.bio import tox_alerts as m
     real = m._RULES_PATH
     try:
         m._RULES_PATH = pathlib.Path("/nonexistent/safety_rules.json")
@@ -1799,8 +1799,8 @@ def test_device_adapters_refuse_fake_live_mode():
     RNG values as instrument data — the exact fake-functionality shape.
     Now they raise."""
     import pytest
-    from bionexus.adapters.devices.hcs_microscope import HCSMicroscopeAdapter as HCSMicroscope
-    from bionexus.adapters.devices.lcms import LCMSAdapter
+    from proef.adapters.devices.hcs_microscope import HCSMicroscopeAdapter as HCSMicroscope
+    from proef.adapters.devices.lcms import LCMSAdapter
     with pytest.raises(NotImplementedError):
         HCSMicroscope(simulator=False)
     with pytest.raises(NotImplementedError):
@@ -1829,11 +1829,11 @@ def test_openai_compat_sends_authorization():
         return Resp()
 
     import urllib.request
-    from bionexus.adapters.models.openai_compat import OpenAICompatProvider
+    from proef.adapters.models.openai_compat import OpenAICompatProvider
     orig = urllib.request.urlopen
     urllib.request.urlopen = fake_urlopen
     try:
-        from bionexus.core.contracts import (Envelope, ToolInvocation,
+        from proef.core.contracts import (Envelope, ToolInvocation,
                                              ToolName)
         inv = ToolInvocation(envelope=Envelope(experiment_branch_id="t"),
                              tool=ToolName.fm_predict_property)

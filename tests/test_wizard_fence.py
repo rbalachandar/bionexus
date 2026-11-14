@@ -6,15 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from bionexus.api import wizard_sessions as W
-from bionexus.experiment import (BiologicalSystem, ClaimType,
+from proef.api import wizard_sessions as W
+from proef.experiment import (BiologicalSystem, ClaimType,
                                  DeliveryConditions, ExperimentDefinition,
                                  Intervention, ReadoutCapability, ReadoutSpec)
-from bionexus.readiness import review_experiment
+from proef.readiness import review_experiment
 
 
 def _program_with_fence(match=None):
-    from bionexus import program as program_cfg
+    from proef import program as program_cfg
     name = "FenceEnforceProg"
     program_cfg.delete_program(name)
     labs = [{"instrument": "labmcp-mettler-toledo",
@@ -28,7 +28,7 @@ def _program_with_fence(match=None):
 
 
 def _clean():
-    from bionexus import program as program_cfg
+    from proef import program as program_cfg
     program_cfg.delete_program("FenceEnforceProg")
 
 

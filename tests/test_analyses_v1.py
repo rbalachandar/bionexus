@@ -21,9 +21,9 @@ GATE = {"threshold": 10.0, "direction": "min", "max_response": 100.0}
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("BIONEXUS_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("PROEF_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.chdir(tmp_path)
-    from bionexus.api.app import app
+    from proef.api.app import app
     return TestClient(app)
 
 
@@ -96,7 +96,7 @@ def test_bad_uploads_are_typed_problems(client):
 
 
 def test_changed_source_bytes_refuse_to_run(client, tmp_path):
-    from bionexus import analysis_store as store
+    from proef import analysis_store as store
     aid = _up(client).json()["id"]
     p = tmp_path / store.get(aid)["artifacts"]["source"]["storage_path"]
     p.write_text(LONG.replace("B3,C1,10,90", "B3,C1,10,10"))
@@ -116,8 +116,8 @@ def test_review_needs_a_result_and_sits_beside_the_call(client):
 
 def test_ledger_records_every_step_and_verifies(client, analyzed):
     client.post(f"/api/v1/analyses/{analyzed}/review", json={"action": "comment", "reason": "ok"})
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    s = SqliteProvenanceStore("bionexus.db")
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    s = SqliteProvenanceStore("proef.db")
     kinds = [r.event_type.value for r in s.branch_records(f"analysis/{analyzed}")]
     assert kinds == ["experiment_defined", "evaluation", "stage_transition"]
     assert s.verify_chain(branch_id=f"analysis/{analyzed}") == []
@@ -132,8 +132,8 @@ def test_report_and_csv(client, analyzed):
 
 
 def test_report_refuses_tampered_chain(client, analyzed):
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    s = SqliteProvenanceStore("bionexus.db")
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    s = SqliteProvenanceStore("proef.db")
     row = s._conn.execute("SELECT record_id, payload FROM provenance WHERE branch_id=? "
                           "ORDER BY rowid LIMIT 1", (f"analysis/{analyzed}",)).fetchone()
     s._conn.executescript("DROP TRIGGER provenance_no_update;")
@@ -146,7 +146,7 @@ def test_report_refuses_tampered_chain(client, analyzed):
 
 
 def test_attach_requires_review_and_measured_data_then_seals_on_campaign(client, analyzed, monkeypatch):
-    monkeypatch.setattr("bionexus.api.v1.campaigns._load",
+    monkeypatch.setattr("proef.api.v1.campaigns._load",
                         lambda eid: (None, None, {}, "problem/prob-x", []))
     body = {"campaign_id": "e1", "candidate": "C1"}
     r = client.post(f"/api/v1/analyses/{analyzed}/attach", json=body)
@@ -154,14 +154,14 @@ def test_attach_requires_review_and_measured_data_then_seals_on_campaign(client,
     client.post(f"/api/v1/analyses/{analyzed}/review", json={"action": "acknowledge"})
     d = client.post(f"/api/v1/analyses/{analyzed}/attach", json=body).json()
     assert d["attachments"][0]["campaign_id"] == "e1"
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    rec = SqliteProvenanceStore("bionexus.db").branch_records("problem/prob-x")[-1]
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    rec = SqliteProvenanceStore("proef.db").branch_records("problem/prob-x")[-1]
     assert rec.decision["kind"] == "analysis_attached" and rec.decision["calls"]["C1"] == "validated"
     assert "no campaign verdict" in rec.decision["effect"]
 
 
 def test_proxy_evidence_cannot_be_attached(client, monkeypatch):
-    monkeypatch.setattr("bionexus.api.v1.campaigns._load",
+    monkeypatch.setattr("proef.api.v1.campaigns._load",
                         lambda eid: (None, None, {}, "problem/prob-x", []))
     aid = _up(client).json()["id"]
     client.post(f"/api/v1/analyses/{aid}/run", json={**GATE, "evidence_origin": "simulated"})

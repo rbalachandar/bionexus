@@ -1,7 +1,7 @@
 """Variant contamination probe tests (offline, stub agent)."""
 import pytest
 
-from bionexus.probes import perturb_smiles, variant_contamination
+from proef.probes import perturb_smiles, variant_contamination
 
 rdkit = pytest.importorskip("rdkit", reason="perturbation validity needs rdkit")
 

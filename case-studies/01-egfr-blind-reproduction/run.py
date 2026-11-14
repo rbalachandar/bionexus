@@ -17,7 +17,7 @@ Blind reproduction questions
     measured IC50s (Spearman, MAE)? Does the agent rank the paper's most
     potent compound near the top?
 
-    BIONEXUS_LLM_* / ANTHROPIC_* env for the agent; offline = skipped cleanly.
+    PROEF_LLM_* / ANTHROPIC_* env for the agent; offline = skipped cleanly.
     .venv/bin/python examples/case_study_01.py
 """
 from __future__ import annotations
@@ -30,14 +30,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from bionexus.adapters.data.chembl import fetch_target_activities
-from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF
-from bionexus.benchmark import spearman
-from bionexus.core.contracts import Envelope, EventType, ToolInvocation
-from bionexus.core.hypothesis import (Constraint, HypothesisTracker,
+from proef.adapters.data.chembl import fetch_target_activities
+from proef.adapters.models.sklearn_policy import MorganFingerprintRF
+from proef.benchmark import spearman
+from proef.core.contracts import Envelope, EventType, ToolInvocation
+from proef.core.hypothesis import (Constraint, HypothesisTracker,
                                       ProblemStatement)
-from bionexus.core.interfaces import record_for, system_actor
-from bionexus.vision import gray_png  # noqa: F401  (png helper reuse)
+from proef.core.interfaces import record_for, system_actor
+from proef.vision import gray_png  # noqa: F401  (png helper reuse)
 
 
 # Gazit et al. 1989, 67 measured IC50s (EGF-dependent autophosphorylation)
@@ -65,13 +65,13 @@ def load_all() -> dict[str, list[dict]]:
 
 
 def main() -> None:
-    from bionexus import fixtures
+    from proef import fixtures
     _n = fixtures.materialize(Path(__file__).parent)
     if _n:
         print(f"[fixtures] restored {_n} frozen data file(s)")
     store_p = Path(__file__).parent / "case_study.db"
     store_p.unlink(missing_ok=True)
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
     store = SqliteProvenanceStore(store_p)
     actor = system_actor("blind-reproduction")
 
@@ -108,7 +108,7 @@ def main() -> None:
     # ---------------------------------------------------- the blind question
     print("[3] agent is shown the paper's STRUCTURES (values hidden) and asked "
           "for its hypothesis + per-compound potency scores...")
-    from bionexus.adapters.models.anthropic_provider import AnthropicProvider
+    from proef.adapters.models.anthropic_provider import AnthropicProvider
     agent = AnthropicProvider()  # env-configured; errors below if absent
     smiles = [c["smiles"] for c in agent_cpds]
     smi_list = "\n".join(f"{i+1}. {s}" for i, s in enumerate(smiles))
@@ -224,7 +224,7 @@ Reply ONLY with JSON:
     print(f"  Q1 hypothesis matches paper:   {'PASS' if q1_pass else 'FAIL/UNCLEAR'}")
     print(f"  Q2 results consistent:         {'PASS' if q2_pass else 'FAIL'} "
           f"(model ρ={sp_model:+.3f}, agent ρ={sp_agent:+.3f})")
-    print(f"  provenance: bn prove blind-paper --db case_study.db "
+    print(f"  provenance: proef prove blind-paper --db case_study.db "
           f"({len(store.branch_records('blind-paper'))} records)")
 
 

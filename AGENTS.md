@@ -1,4 +1,4 @@
-# BioNexus
+# Proef
 
 Agentic drug-discovery framework: pluggable models/labs/sandboxes behind five
 core interfaces (ModelProvider, BioTool, LabAdapter, Sandbox, ProvenanceStore),
@@ -23,30 +23,30 @@ make test                              # same suite via the Makefile
 make api                               # backend + built SPA on :8000
 make api-dev                           # backend only, auto-reload
 make web-dev                           # Vite SPA on :5173 (proxies /api)
-python -m bionexus.cli campaign auto --template dose-response-screen \
+python -m proef.cli campaign auto --template dose-response-screen \
   --field compounds=a,b --field threshold=20 --autonomy act --yes   # e2e sim
-.venv/bin/python -m bionexus.cli demo  # engineered first-run moment (abstain + refutes)
-.venv/bin/python -m bionexus.cli eval  # offline eval suite -> evals/leaderboard.md
+.venv/bin/python -m proef.cli demo  # engineered first-run moment (abstain + refutes)
+.venv/bin/python -m proef.cli eval  # offline eval suite -> evals/leaderboard.md
 ```
 
 ## Layout (hot files)
-- `src/bionexus/api/app.py` — FastAPI routes (incl. `GET /api/evals` — the
+- `src/proef/api/app.py` — FastAPI routes (incl. `GET /api/evals` — the
   leaderboard read-model the workbench leads with) · `web/src/` — React SPA
   routes (Workspace / Program / Experiment / Wizard) · the header
   badge shows the eval mean (`/api/evals` is read-only by design; the
   leaderboard itself lives in README + evals/leaderboard.md) ·
-  `src/bionexus/views.py` —
+  `src/proef/views.py` —
   the read-model the API serves (pipeline cards, verdict tally, rollups)
-- `src/bionexus/core/hypothesis.py` — Hypothesis lifecycle + **verdict logic**
-- `src/bionexus/ad.py` — applicability domain (the local-model guard; model-side twin of the CS06 regime gate)
-- `src/bionexus/watch.py` — auto-analysis agent (+ orthogonal confirmation
+- `src/proef/core/hypothesis.py` — Hypothesis lifecycle + **verdict logic**
+- `src/proef/ad.py` — applicability domain (the local-model guard; model-side twin of the CS06 regime gate)
+- `src/proef/watch.py` — auto-analysis agent (+ orthogonal confirmation
   agreement check) · `autoloop.py` — campaign flow
-- `src/bionexus/diary.py` — swimlane lab narrative · `program.py` — TPP state
-- `src/bionexus/adapters/store/sqlite.py` — hash-chained provenance (engine
+- `src/proef/diary.py` — swimlane lab narrative · `program.py` — TPP state
+- `src/proef/adapters/store/sqlite.py` — hash-chained provenance (engine
   triggers + `verify_chain()` recompute on read)
-- `src/bionexus/wizard_store.py` / `wizard_chain.py` — experiment registry +
-  wizard provenance (`.data/wizard.db`, `bionexus.db`)
-- `src/bionexus/adapters/` — everything pluggable; tests are the contract
+- `src/proef/wizard_store.py` / `wizard_chain.py` — experiment registry +
+  wizard provenance (`.data/wizard.db`, `proef.db`)
+- `src/proef/adapters/` — everything pluggable; tests are the contract
 
 ## Conventions
 - **ALL communication with the user in ENGLISH, always** — every reply,

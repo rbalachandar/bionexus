@@ -8,13 +8,13 @@ against real wet-lab outcomes. Step 2 rents a GPU, generates real designs
 with the real models, and tests the screening score against self-run
 random-looking controls — prospectively, on data nobody has seen before.
 
-## How BioNexus is in the loop (and where the LLM is — it isn't)
+## How Proef is in the loop (and where the LLM is — it isn't)
 
-This pipeline runs on three BioNexus pieces, all deterministic:
+This pipeline runs on three Proef pieces, all deterministic:
 
 - `entry_gates.py` — refuse-and-explain eligibility (the gateway doctrine
   applied to sequences)
-- `ProteinDesignLabAdapter` (`src/bionexus/adapters/lab/protein_design.py`)
+- `ProteinDesignLabAdapter` (`src/proef/adapters/lab/protein_design.py`)
   — the architecture: generate → quality floor → EVERY survivor becomes a
   hypothesis → prioritize for screening budget → verdict with an
   abstention band around the gate
@@ -127,7 +127,7 @@ not merely store results; it holds us to what we dared claim *before* we
 saw them, and lets the data refute the instrument — with no LLM in the
 loop at all.
 
-## Step 3 — the loop itself: BioNexus over the measured data (`bionexus_cycle.py`, CPU, no LLM)
+## Step 3 — the loop itself: Proef over the measured data (`proef_cycle.py`, CPU, no LLM)
 
 The GPU spoke; the framework listens. All 112 sequences (82 designs + 30
 controls) run through the real pipeline — quality floor → EVERY survivor
@@ -162,20 +162,20 @@ those rows would be the thing to refuse.
 - `replay.py` — policy replay harness (the CS07 pattern, generalized)
 - `prospective_run.py` — the Step-2 analysis above (scipy MWU, bootstrap
   CI, gate stats, verdict counts) → `prospective_results.json`
-- `bionexus_cycle.py` — the Step-3 loop: hypotheses, CI-veto verdicts,
-  hash-chained sealing → `bionexus_cycle_results.json` + the chain DB
+- `proef_cycle.py` — the Step-3 loop: hypotheses, CI-veto verdicts,
+  hash-chained sealing → `proef_cycle_results.json` + the chain DB
 - `seed_workbench.py` — surfaces the campaign in the workbench UI: program
   card, pre-registered problem tree, per-hypothesis provenance statements
   (every design decoded: length/AF2 seed/MPNN sample from the name; every
   control named with its parent scramble), 2 batched lab-runs, all sealed
-  into the live `bionexus.db` hash chain
+  into the live `proef.db` hash chain
 - `runpack/` — operator-runnable pod scripts (setup + BindCraft/Boltz
   YAML builders — including the three-letter→one-letter ATOM-record
   extraction fix and the `--use_msa_server` requirement that ate two
   nights). The pod run's TRACE is the downloaded logs + artifacts in
   `.data/cs08-designs/night1/` + `prospective_results.json`; its
-  BOOKKEEPING is step 3 (`bionexus_cycle.py` sealing into
-  `.data/cs08-bionexus-cycle.db`). `jobrunner.py` — chaining DURING the
+  BOOKKEEPING is step 3 (`proef_cycle.py` sealing into
+  `.data/cs08-proef-cycle.db`). `jobrunner.py` — chaining DURING the
   GPU run itself — is mock-tested (`tests/test_protein_design.py`) and
   stays the path for the next campaign; this run chains AFTER it, and
   we say so.

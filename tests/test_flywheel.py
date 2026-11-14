@@ -1,5 +1,5 @@
 """Flywheel tests — negatives recorded, priors applied, prompt context."""
-from bionexus.flywheel import Flywheel
+from proef.flywheel import Flywheel
 
 
 def test_submit_and_negative_summary():
@@ -33,9 +33,9 @@ def test_prompt_context_mentions_ruled_out():
 
 
 def test_tracker_on_verdict_hook():
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.hypothesis import (HypothesisTracker, ProblemStatement)
-    from bionexus.core.interfaces import system_actor
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.hypothesis import (HypothesisTracker, ProblemStatement)
+    from proef.core.interfaces import system_actor
     seen = []
     fw = Flywheel(":memory:")
     t = HypothesisTracker(SqliteProvenanceStore(), system_actor(),

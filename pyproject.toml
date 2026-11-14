@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "bionexuslab"
+name = "proef"
 version = "0.1.0"
 description = "Framework for agentic drug discovery — pluggable models, bio tools, labs, and sandboxes behind five core interfaces."
 readme = "README.md"
@@ -26,22 +26,22 @@ lab-xlsx = ["openpyxl>=3.1"]
 dev = ["pytest>=8"]
 
 [project.scripts]
-bn = "bionexus.cli:main"
+proef = "proef.cli:main"
 
-[project.entry-points."bionexus.models"]
-openai_compat = "bionexus.adapters.models.openai_compat:OpenAICompatProvider"
+[project.entry-points."proef.models"]
+openai_compat = "proef.adapters.models.openai_compat:OpenAICompatProvider"
 
-[project.entry-points."bionexus.labs"]
-simulator = "bionexus.adapters.lab.simulator:SimulatorLab"
+[project.entry-points."proef.labs"]
+simulator = "proef.adapters.lab.simulator:SimulatorLab"
 
-[project.entry-points."bionexus.stores"]
-sqlite = "bionexus.adapters.store.sqlite:SqliteProvenanceStore"
+[project.entry-points."proef.stores"]
+sqlite = "proef.adapters.store.sqlite:SqliteProvenanceStore"
 
-[project.entry-points."bionexus.sandboxes"]
-local = "bionexus.adapters.sandbox.local:LocalSandbox"
+[project.entry-points."proef.sandboxes"]
+local = "proef.adapters.sandbox.local:LocalSandbox"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/bionexus"]
+packages = ["src/proef"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

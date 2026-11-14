@@ -1,11 +1,11 @@
 """bo-ei acquisition wired into the real campaign loop: AD-gated picks,
 the 'why this plate' record on the provenance branch, determinism, and the
 score/policy path left untouched when acquisition is off."""
-from bionexus.adapters.lab.simulator import SimulatorLab
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.autoloop import CampaignConfig, run_campaign
-from bionexus.core.hypothesis import Constraint, ProblemStatement
-from bionexus.flywheel import Flywheel
+from proef.adapters.lab.simulator import SimulatorLab
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.autoloop import CampaignConfig, run_campaign
+from proef.core.hypothesis import Constraint, ProblemStatement
+from proef.flywheel import Flywheel
 
 # AD1 has the BEST predicted IC50 (2.0) but is extrapolation — EI must
 # refuse it; the batch should be the in-domain low values H1/H2/H3.
@@ -89,7 +89,7 @@ def test_no_posterior_candidates_are_refused_not_invented(tmp_path):
 
 
 def test_views_round_attaches_selection(tmp_path):
-    from bionexus import views
+    from proef import views
     store = SqliteProvenanceStore()
     report = run_campaign(_cfg(tmp_path), SimulatorLab(seed=3), store)
     recs = store.branch_records(f"problem/{report.problem_id}")
@@ -105,7 +105,7 @@ def test_real_campaign_uses_log_axis_for_fold_sd(tmp_path):
     # dose-response campaign MUST still rank on the log axis so predicted_sd
     # reads as a multiplicative fold, not absolute µM.
     import math
-    from bionexus.acquisition import Posterior, select_batch
+    from proef.acquisition import Posterior, select_batch
     specs = [{"statement": f"{c} binds", "candidate": c,
               "assay_type": "binding",            # dose-response
               "predicted": f"{pv} uM", "predicted_value": pv,
@@ -137,7 +137,7 @@ def test_real_campaign_uses_log_axis_for_fold_sd(tmp_path):
 def test_empty_batch_still_records_refusals(tmp_path):
     # every candidate AD-vetoed → nothing selected, but the refusals must
     # reach the chain (they are the answer to 'why no plate ran')
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    from proef.core.hypothesis import Constraint, ProblemStatement
     specs = [{"statement": f"{c} binds", "candidate": c,
               "assay_type": "binding", "predicted": "1 uM",
               "predicted_value": 1.0,

@@ -1,10 +1,10 @@
 """Program ids: every program gets a stable human id (PRG-001, …)."""
-from bionexus.wizard_store import WizardStore
+from proef.wizard_store import WizardStore
 
 
 def test_program_ids_mint_and_backfill(tmp_path, monkeypatch):
     db = str(tmp_path / "wizard.db")
-    monkeypatch.setenv("BIONEXUS_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("PROEF_DATA_DIR", str(tmp_path))
     ws = WizardStore(db)
     ws.upsert_program("alpha", "Alpha", {"objective": "a"})
     ws.upsert_program("beta", "Beta", {"objective": "b"})

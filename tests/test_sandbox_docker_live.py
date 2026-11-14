@@ -1,7 +1,7 @@
 """S-T3 2b: LIVE docker verification of the sandbox contract — the
 mocked-runner era ends here. Every assertion asks the actual kernel/
 cgroup/network namespace what it enforces. Skipped without a daemon;
-under BN_REQUIRE_DOCKER=1 (CI job sandbox-docker) a missing daemon is
+under PROEF_REQUIRE_DOCKER=1 (CI job sandbox-docker) a missing daemon is
 a hard failure: a silent skip is not a pass.
 """
 import base64
@@ -11,9 +11,9 @@ import subprocess
 
 import pytest
 
-from bionexus.adapters.sandbox.docker import DockerSandbox
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.interfaces import system_actor
+from proef.adapters.sandbox.docker import DockerSandbox
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.interfaces import system_actor
 
 IMAGE = "python:3.12-slim"
 
@@ -30,15 +30,15 @@ def _docker_up() -> bool:
 
 
 DOCKER = _docker_up()
-if os.environ.get("BN_REQUIRE_DOCKER") and not DOCKER:
+if os.environ.get("PROEF_REQUIRE_DOCKER") and not DOCKER:
     raise RuntimeError(
-        "BN_REQUIRE_DOCKER is set but no live docker daemon answered — "
+        "PROEF_REQUIRE_DOCKER is set but no live docker daemon answered — "
         "2b must fail loudly, never skip quietly")
 
 pytestmark = pytest.mark.skipif(
-    not DOCKER or bool(os.environ.get("BN_SKIP_DOCKER")),
+    not DOCKER or bool(os.environ.get("PROEF_SKIP_DOCKER")),
     reason="live docker daemon required (CI job: sandbox-docker; "
-           "BN_SKIP_DOCKER=1 pins the fast jobs offline)")
+           "PROEF_SKIP_DOCKER=1 pins the fast jobs offline)")
 
 
 @pytest.fixture(scope="module")
@@ -136,21 +136,21 @@ def test_live_provenance_and_cleanup(image):
     assert gone.returncode != 0     # container actually removed from daemon
 
 
-SESSION_IMAGE = os.environ.get("BN_SANDBOX_IMAGE")
+SESSION_IMAGE = os.environ.get("PROEF_SANDBOX_IMAGE")
 
 
 @pytest.mark.skipif(not SESSION_IMAGE, reason=(
-    "needs the repo-installed image (BN_SANDBOX_IMAGE=bionexus-sandbox:ci; "
+    "needs the repo-installed image (PROEF_SANDBOX_IMAGE=proef-sandbox:ci; "
     "CI job builds it) — the mocked-era excuse is over"))
 def test_docker_session_e2e_tools_and_lab_in_container():
     """The honest headline test: tool calls AND lab ops round-trip
-    through the session INSIDE a real container with bionexus installed.
+    through the session INSIDE a real container with proef installed.
     This is what 'per_experiment docker' actually promises."""
-    from bionexus.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
+    from proef.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
                                          ProtocolSubmission, ReagentSpec,
                                          SampleKind, SampleSpec,
                                          ToolInvocation, ToolName)
-    from bionexus.sandbox_session import SandboxSession, SandboxedLab
+    from proef.sandbox_session import SandboxSession, SandboxedLab
     store = SqliteProvenanceStore(":memory:")
     actor = system_actor("live-e2e")
     s = SandboxSession(mode="per_experiment", sandbox="docker",

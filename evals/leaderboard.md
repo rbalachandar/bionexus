@@ -1,4 +1,4 @@
-# BioNexus eval leaderboard
+# Proef eval leaderboard
 
 Run 2026-11-11 21:42 · mean **0.947** · all pass
 
@@ -44,5 +44,5 @@ Run 2026-11-11 21:42 · mean **0.947** · all pass
 
 | task | score | pass | time | notes |
 |---|---|---|---|---|
-| repro-cs02-az3246 | 0.000 | ⏭ | 0.0s | SKIPPED (opt-in) — set BIONEXUS_EVAL_REPRO=1 to run; network-heavy, ~10 min per study |
-| repro-cs03-flow | 0.000 | ⏭ | 0.0s | SKIPPED (opt-in) — set BIONEXUS_EVAL_REPRO=1 to run; network-heavy, ~10 min per study |
+| repro-cs02-az3246 | 0.000 | ⏭ | 0.0s | SKIPPED (opt-in) — set PROEF_EVAL_REPRO=1 to run; network-heavy, ~10 min per study |
+| repro-cs03-flow | 0.000 | ⏭ | 0.0s | SKIPPED (opt-in) — set PROEF_EVAL_REPRO=1 to run; network-heavy, ~10 min per study |

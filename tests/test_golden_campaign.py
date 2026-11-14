@@ -11,12 +11,12 @@ import json
 import os
 from pathlib import Path
 
-from bionexus import views
-from bionexus.adapters.lab.simulator import SimulatorLab
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.autoloop import CampaignConfig, run_campaign
-from bionexus.core.hypothesis import Constraint, ProblemStatement
-from bionexus.flywheel import Flywheel
+from proef import views
+from proef.adapters.lab.simulator import SimulatorLab
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.autoloop import CampaignConfig, run_campaign
+from proef.core.hypothesis import Constraint, ProblemStatement
+from proef.flywheel import Flywheel
 
 GOLDEN = Path(__file__).parent / "golden" / "campaign.json"
 _DROP = {"run_id", "evidence_run_id", "protocol_id", "id", "ts", "created_at",

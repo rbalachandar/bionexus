@@ -21,7 +21,7 @@ our architecture compares. Last reviewed: 2026-10.
 | **Google DDE — Drug Design Engine** (open plan, Oct 2026; ⚠ distinct from Isomorphic's same-named platform) | Packaged scion-based agent templates: Science Program Lead + Research Operations Controller + ~12 lean specialist roles; 4 invariant pre-clinical stages × modality tables; 5 artifact layers; skills = judgment, `dde` CLI = computation | **None** — artifacts/compute only; wet lab lives outside the system | None yet — it is a normative plan doc, not a graded system |
 | **The Virtual Biotech** (2026) | Multi-agent org chart: virtual CSO + chief-of-staff + four scientist divisions (Target ID/Prioritization, Target Safety, Modality Selection, Clinical Officers) + scientific reviewer; 100+ domain MCP servers over biomedical DBs (78k targets, 14.5M PPIs, Tahoe-100M perturbation, FAERS, ClinicalTrials.gov) | **None** — analysis/evidence only; no wet lab, no physical loop | Evidence-based target/modality assessments; organizational auditability ("each agent audited by the corresponding human expert") |
 
-## Rosalind: what it changes, and where BioNexus stands
+## Rosalind: what it changes, and where Proef stands
 
 OpenAI's Rosalind (model April 2026, Workbench Aug 28 2026) validates the
 category this project works in: LLM agents + domain tools + reviewable plans
@@ -36,9 +36,9 @@ your data on your terms, add your own lab adapters, extend the workflow
 grammar, or audit its decision path — and it has no wet-lab execution layer,
 no provenance chain, and no sandbox fork/snapshot semantics.
 
-**BioNexus positioning against it:**
+**Proef positioning against it:**
 
-| Dimension | Rosalind Workbench | BioNexus |
+| Dimension | Rosalind Workbench | Proef |
 |---|---|---|
 | Model | Locked (GPT-Rosalind) | Any provider (P3) — including GPT-Rosalind itself via adapter |
 | Workflows | Curated by OpenAI | User-defined stage graphs + tournaments |
@@ -46,13 +46,13 @@ no provenance chain, and no sandbox fork/snapshot semantics.
 | Provenance | Reviewable outputs (UI-level) | Hash-chained, tamper-evident, WORM (P5) |
 | Experiment semantics | Plan-first UI | Pre-registered hypotheses w/ criteria, design, QC-aware verdicts |
 | Access | Enterprise research preview | Open source, Apache-2.0 |
-| Is it a competitor? | Competitor for *scientist attention*; **potential upstream**: GPT-Rosalind is a plausible `ModelProvider` inside BioNexus |
+| Is it a competitor? | Competitor for *scientist attention*; **potential upstream**: GPT-Rosalind is a plausible `ModelProvider` inside Proef |
 
 **Strategic take:** don't compete with Rosalind on model quality — impossible
 and unnecessary. Compete on the layers OpenAI won't open: the lab-in-the-loop
 abstraction, the safety/provenance substrate, and freedom of model/workflow
-choice. The MCP server (`bn mcp`) is the bridge: any agent stack, including
-OpenAI's, can drive BioNexus labs.
+choice. The MCP server (`proef mcp`) is the bridge: any agent stack, including
+OpenAI's, can drive Proef labs.
 
 Sources: https://openai.com/gpt-rosalind/ ·
 https://developers.openai.com/blog/rosalind-workbench ·
@@ -62,12 +62,12 @@ https://help.openai.com/en/articles/20001193-gpt-rosalind-for-life-sciences-rese
 
 The Virtual Biotech (VB) is the clearest statement yet of the
 **pre-lab half** of the pipeline: translational evidence synthesis from
-target identification through modality selection. BioNexus is the
+target identification through modality selection. Proef is the
 clearest open statement of the **lab half**: the gated, audited
 Design-Make-Test-Analyze loop that turns a *selected* modality and
 target into verdicts with CIs. The two compose at a clean seam —
 VB's Modality Selection output (modality + target + evidence) is
-exactly BioNexus's program definition.
+exactly Proef's program definition.
 
 **What VB has that we do not** (adopted into the roadmap):
 1. **Division-shaped decomposition** — target ID, target safety,
@@ -88,7 +88,7 @@ evidence only): a physical loop. No gateway on physical actions, no
 synthesis/production gates, no instrument adapters, no budgets, no
 hash-chained execution provenance, no verdict discipline against
 pre-registered CIs, no eval suite against seeded ground truth. VB
-*recommends*; BioNexus *executes and verifies*.
+*recommends*; Proef *executes and verifies*.
 
 **Folded back into the design** (see ROADMAP, "Virtual Biotech
 learnings"): reviewer pass on verdicts, division-shaped tree
@@ -137,13 +137,13 @@ screening, PK/PD modeling, an Opentrons protocol-authoring skill, 78+ scientific
 database lookups (ChEMBL, PubChem, UniProt, COSMIC...), and evidence-bounded
 hypothesis generation.
 
-**Relationship to BioNexus — complementary layers:**
+**Relationship to Proef — complementary layers:**
 
 | Layer | Provider |
 |---|---|
 | Domain knowledge & procedures (how to use RDKit, query ChEMBL, author protocols) | Scientific Agent Skills |
-| Execution, safety, provenance, autonomy, lab devices | BioNexus |
-| Bridge between them | Agent Skills standard + BioNexus MCP server |
+| Execution, safety, provenance, autonomy, lab devices | Proef |
+| Bridge between them | Agent Skills standard + Proef MCP server |
 
 Their Opentrons skill teaches an agent *how to author protocols*; our
 `LabGateway` decides *whether they may run* (SafetyEngine first, always).
@@ -162,13 +162,13 @@ historical screens, takes over with those observations as context, choosing
 the next 100 genes per round. Recovers 27.7% of hits after 5% of the library.
 `assaybench` (PyPI, MIT) ships the Task/Model/Acquisition/Metric abstractions.
 
-Relation to BioNexus: complementary layers, not competitors. AssayLoop is a
+Relation to Proef: complementary layers, not competitors. AssayLoop is a
 decision policy (which candidate next, retrospective eval on historical
-screens). BioNexus is the execution and trust layer (safety-gated submissions
+screens). Proef is the execution and trust layer (safety-gated submissions
 to real or simulated instruments, pre-registered criteria, hash-chained
 provenance, human approval, evals in CI). The bridge is
 `adapters/models/assayloop_ranker.py`: any assaybench-style policy can rank
-candidates inside a BioNexus campaign; their loop ends at metrics, ours
+candidates inside a Proef campaign; their loop ends at metrics, ours
 continues to the lab and the record. We adopted their metric vocabulary
 (adjusted nAUC, fraction-of-hits, shortfall, %essential) into the
 `hit-recovery` eval task.
@@ -182,7 +182,7 @@ graded system, and it names **Isomorphic's** flagship as its own name —
 but it is the strongest third-party convergence on our thesis we have
 seen, so it goes in full.
 
-**Where DDE independently reinvents BioNexus principles:**
+**Where DDE independently reinvents Proef principles:**
 - **Anti-fabrication as structure, not exhortation** (their §2.5): "a
   model asked for a pocket volume with no pocket-detection tool will
   produce a plausible one" — mitigation: every claimed capability maps to
@@ -248,7 +248,7 @@ scored. Artifacts: paper + `github.com/scaleapi/DrugDiscoveryBench`
 (Scale-Biomni env, Harbor format) + `ScaleAI/DrugDiscoveryBench-Preview`
 (HF task set).
 
-Findings that read as external validation of BioNexus's thesis:
+Findings that read as external validation of Proef's thesis:
 - **The best agent setting solves ~52% of tasks** (68.7 on the refreshed
   board); pass scales with test-time compute; one model generation ≈
   8–20 points. Agentic pharma is not solved — the honest framing wins.
@@ -263,7 +263,7 @@ Findings that read as external validation of BioNexus's thesis:
   "false-positive refusals" and judge-agreement caveats show why the
   deterministic floor matters. Adoption: borrow the shape — verifiable
   end-to-end workflows with single answers — not the grader.
-- Roadmap consequence: new ticket for a **Bionexus agent-tier task**
+- Roadmap consequence: new ticket for a **Proef agent-tier task**
   (a few DDB-style workflows — multi-hop DB query → filter → compute →
   one answer — run by our OWN hypothesis agent through toolkit +
   deterministic grading), plus citing DDB in the eval section.
@@ -275,7 +275,7 @@ https://huggingface.co/datasets/ScaleAI/DrugDiscoveryBench-Preview
 
 ## Look-alike hygiene: "Genesis Live Core" (Nov 2026 check)
 
-`github.com/mister3ai-cmyk/genesis-live-core` surfaced as "BioNexus with
+`github.com/mister3ai-cmyk/genesis-live-core` surfaced as "Proef with
 real lab interfaces". It is a category SIMULACRUM, not a peer: SiLA2
 "drivers" and hardware SLAs exist as prose in a README; the claims are
 marketing-number shaped (99% noise eliminated, p99 ns SLAs) with no

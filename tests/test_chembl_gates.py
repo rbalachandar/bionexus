@@ -1,7 +1,7 @@
 """ChEMBL-derived gate tests — pure math + labeled fallback (offline)."""
 import csv
 
-from bionexus.adapters.databases import chembl_gates as G
+from proef.adapters.databases import chembl_gates as G
 
 
 def _acts(n, lo=6.0, hi=9.0):

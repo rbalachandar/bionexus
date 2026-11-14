@@ -10,7 +10,7 @@
    don't yet have — step 2's whole bet).
 5. Submission export: gated + screened + diversity-constrained pick ->
    `submission.csv` + provenance manifest (sha256 per row).
-6. Copy `work/` back locally; run `python -m bionexus.cli prove` after
+6. Copy `work/` back locally; run `python -m proef.cli prove` after
    importing the run records (import path defined in step 2 code, TBD).
 
 Honesty flag: until step 2 actually runs on hardware, all scripts here

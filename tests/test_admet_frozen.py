@@ -3,7 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 
-FROZEN = Path("src/bionexus/adapters/data/frozen/admet")
+FROZEN = Path("src/proef/adapters/data/frozen/admet")
 
 
 def test_manifest_checksums_hold():
@@ -18,7 +18,7 @@ def test_manifest_checksums_hold():
 
 
 def test_loaders_yield_splits_and_types():
-    from bionexus.adapters.data.admet import ADMETSplitDataset
+    from proef.adapters.data.admet import ADMETSplitDataset
     tr = list(ADMETSplitDataset("caco2_wang").train())
     te = list(ADMETSplitDataset("caco2_wang").test())
     assert (len(tr), len(te)) == (728, 182)         # TDC 80/20 scaffold folds
@@ -31,7 +31,7 @@ def test_loaders_yield_splits_and_types():
 
 
 def test_ladder_clears_bars_on_canonical_folds():
-    from bionexus.evals.harness import run_split_pinned_task
+    from proef.evals.harness import run_split_pinned_task
     r = run_split_pinned_task("bbb_martins", min_score=0.65)
     assert r.passed and r.metrics["splits"] == "TDC canonical scaffold (20% test)"
     assert r.metrics["best_policy"] == "char3gram-ridge"

@@ -1,9 +1,9 @@
 """AlphaGenome Atlas adapter tests — offline (simulated AVI backend)."""
-from bionexus.adapters.genomics.alphagenome import (SimulatedAVI,
+from proef.adapters.genomics.alphagenome import (SimulatedAVI,
                                                     get_variant_scorer)
-from bionexus.core.contracts import Envelope, ToolInvocation
-from bionexus.core.interfaces import system_actor
-from bionexus.toolkit import AgentToolkit
+from proef.core.contracts import Envelope, ToolInvocation
+from proef.core.interfaces import system_actor
+from proef.toolkit import AgentToolkit
 
 
 def test_simulated_avi_deterministic_and_shaped():
@@ -35,9 +35,9 @@ def test_factory_falls_back_to_simulated(monkeypatch):
 
 
 def test_toolkit_rank_variants_tool():
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.safety import LabGateway, SafetyEngine
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.safety import LabGateway, SafetyEngine
     toolkit = AgentToolkit(
         lab_gateway=LabGateway(SimulatorLab(), SafetyEngine(),
                                SqliteProvenanceStore(), system_actor()),

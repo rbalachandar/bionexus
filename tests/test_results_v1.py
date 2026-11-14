@@ -6,12 +6,12 @@ import pytest
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
 
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore  # noqa: E402
-from bionexus.api.app import app  # noqa: E402
-from bionexus.core.contracts import Actor, ActorKind  # noqa: E402
-from bionexus.core.hypothesis import (Constraint, HypothesisTracker, ProblemStatement,  # noqa: E402
+from proef.adapters.store.sqlite import SqliteProvenanceStore  # noqa: E402
+from proef.api.app import app  # noqa: E402
+from proef.core.contracts import Actor, ActorKind  # noqa: E402
+from proef.core.hypothesis import (Constraint, HypothesisTracker, ProblemStatement,  # noqa: E402
                                       SuccessCriteria)
-from bionexus.wizard_store import WizardStore  # noqa: E402
+from proef.wizard_store import WizardStore  # noqa: E402
 
 PLATE = ("well,sample,conc_um,value\nA1,blank,0,5\nA2,blank,0,5\nA3,pos,0,95\nA4,pos,0,95\n"
          "B1,C1,0.1,10\nB2,C1,1,50\nB3,C1,10,90\nC1,BORD,3,15\nC2,BORD,10,45\nC3,BORD,30,85\n"
@@ -36,7 +36,7 @@ def camp(tmp_path, monkeypatch):
     eid = f"res-{tmp_path.name}"
     ws.register_agent(eid, "find IC50<=10", log="", autonomy="observe")
     ws.link_problem(eid, PID)
-    monkeypatch.setattr("bionexus.views.ids.PROVENANCE_DB", db)
+    monkeypatch.setattr("proef.views.ids.PROVENANCE_DB", db)
     with TestClient(app) as c:
         yield c, eid, db
 
@@ -108,9 +108,9 @@ def test_non_csv_and_unreadable_are_typed(camp):
 
 
 def test_hand_run_campaign_registers_the_gate_then_judges_a_submitted_plate(tmp_path, monkeypatch):
-    from bionexus import program as program_cfg
+    from proef import program as program_cfg
     db = str(tmp_path / "prov.db")
-    monkeypatch.setattr("bionexus.views.ids.PROVENANCE_DB", db)
+    monkeypatch.setattr("proef.views.ids.PROVENANCE_DB", db)
     name = f"Hand Prog {tmp_path.name}"
     program_cfg.save_program_record(
         {"program": name, "custom": True, "objective": "sub-10 uM binder", "modality": "small molecule",

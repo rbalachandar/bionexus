@@ -21,9 +21,9 @@ spec = importlib.util.spec_from_file_location("cs01", HERE / "run.py")
 cs01 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cs01)
 
-from bionexus import fixtures  # noqa: E402
-from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF  # noqa: E402
-from bionexus.benchmark import spearman_ci  # noqa: E402
+from proef import fixtures  # noqa: E402
+from proef.adapters.models.sklearn_policy import MorganFingerprintRF  # noqa: E402
+from proef.benchmark import spearman_ci  # noqa: E402
 
 
 def main() -> None:

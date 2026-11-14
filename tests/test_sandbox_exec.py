@@ -2,11 +2,11 @@
 isolation, docker hardening args, honest degradation."""
 import pytest
 
-from bionexus.adapters.sandbox.agentenv import AgentEnvSandbox
-from bionexus.adapters.sandbox.docker import DockerSandbox
-from bionexus.adapters.sandbox.local import LocalSandbox
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.interfaces import system_actor
+from proef.adapters.sandbox.agentenv import AgentEnvSandbox
+from proef.adapters.sandbox.docker import DockerSandbox
+from proef.adapters.sandbox.local import LocalSandbox
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.interfaces import system_actor
 
 
 @pytest.fixture()

@@ -18,7 +18,7 @@ Pre-registered design decisions (set BEFORE scoring; see README):
   abstention set vs their Inconclusive set.
 
 Answer-key columns (OUTCOME/Potency/Fit_*) are read only AFTER every
-verdict is locked. The blind fit itself (bionexus.labread) structurally
+verdict is locked. The blind fit itself (proef.labread) structurally
 never sees them.
 
 Run:  .venv/bin/python case-studies/06-ncats-deposit/run.py
@@ -39,7 +39,7 @@ GATE_UM = 1.0
 
 
 def materialize() -> Path:
-    from bionexus import fixtures
+    from proef import fixtures
     ok, problems = fixtures.verify(str(STUDY))
     if not ok:
         sys.exit(f"fixtures FAILED VERIFICATION: {problems}")
@@ -77,14 +77,14 @@ def spearman(a: list[float], b: list[float]):
 
 def main() -> int:
     live = materialize()
-    from bionexus.labread import read_plate
+    from proef.labread import read_plate
     # RESEARCH MODE: CS06 is the declared reproduction study whose failure
     # the regime gate now encodes; bypassing the gate here is the documented
     # purpose of assert_regimes=False, never for campaign verdicts.
     res = read_plate(live, max_response=100.0, assert_regimes=False)
     assert "flipped" in res.response_unit, "expected activity-scale disclosure"
 
-    from bionexus.core.hypothesis import SuccessCriteria
+    from proef.core.hypothesis import SuccessCriteria
     crit = SuccessCriteria(metric="ic50_um", direction="min", threshold=GATE_UM)
     ours: dict[str, dict] = {}
     for sid, comp in res.analysis["compounds"].items():
@@ -187,7 +187,7 @@ def main() -> int:
                             if o["verdict"] == "Abstain"))
 
     # ---- series view of our confirmed actives ----
-    from bionexus.series import build_series
+    from proef.series import build_series
     smi = {}
     for r in res.records:
         smi.setdefault(r["sample"], r["smiles"])

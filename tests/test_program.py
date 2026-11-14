@@ -1,7 +1,7 @@
 """Program profile tests — the TPP one level above experiments."""
 import json
 
-from bionexus import program as P
+from proef import program as P
 
 
 def test_load_defaults_and_save_roundtrip(tmp_path, monkeypatch):

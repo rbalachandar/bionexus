@@ -45,7 +45,7 @@ values (EGF-dependent autophosphorylation assay) into ChEMBL under assay
 
 ## Objective
 
-Test whether the BioNexus flow can **reproduce a published result it was never
+Test whether the Proef flow can **reproduce a published result it was never
 shown**, addressing the circularity critique of simulation-based demos:
 
 - **Q1 (hypothesis reproduction).** Shown only the paper's 45 compound
@@ -138,12 +138,12 @@ drawn in case study 02 is withdrawn.
 
 ```sh
 # from the repo root (network for ChEMBL download on first run;
-# BIONEXUS_LLM_* or ANTHROPIC_* env for the agent)
+# PROEF_LLM_* or ANTHROPIC_* env for the agent)
 python case-studies/01-egfr-blind-reproduction/run.py
 ```
 
 Artifacts: `case_study.db` (hash-chained provenance — inspect with
-`bn prove blind-paper --db case_study.db --html report.html`).
+`proef prove blind-paper --db case_study.db --html report.html`).
 
 ## Limitations & next steps
 

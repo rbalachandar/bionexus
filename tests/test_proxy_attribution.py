@@ -1,12 +1,12 @@
-"""The proxy ladder (Goodhart guard) + attribution panel (bn why, admet why)."""
+"""The proxy ladder (Goodhart guard) + attribution panel (proef why, admet why)."""
 import pytest
 
 import subprocess
 import sys
 from pathlib import Path
 
-from bionexus.core.hypothesis import SuccessCriteria
-from bionexus.proxy import chain, distance, evidence_line
+from proef.core.hypothesis import SuccessCriteria
+from proef.proxy import chain, distance, evidence_line
 
 REPO = Path(__file__).parent.parent
 
@@ -39,10 +39,10 @@ def test_criteria_carry_proxy_of_in_the_chain_payload():
 
 
 def test_card_gate_label_carries_rungs():
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import Envelope, EventType
-    from bionexus.core.interfaces import record_for, system_actor
-    from bionexus.views import pipeline_cards
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import Envelope, EventType
+    from proef.core.interfaces import record_for, system_actor
+    from proef.views import pipeline_cards
 
     store = SqliteProvenanceStore(":memory:")
     env = Envelope(experiment_branch_id="problem/p-x")
@@ -73,7 +73,7 @@ def test_cli_why_char_ridge(tmp_path):
     data = tmp_path / "train.csv"
     data.write_text(TRAIN)
     r = subprocess.run(
-        [sys.executable, "-m", "bionexus.cli", "why", "char-ridge",
+        [sys.executable, "-m", "proef.cli", "why", "char-ridge",
          str(data), "CCCCO", "c1ccccc1O"],
         capture_output=True, text=True, cwd=REPO)
     assert r.returncode == 0, r.stderr
@@ -89,7 +89,7 @@ def test_cli_why_morgan_rf(tmp_path):
     data = tmp_path / "train.csv"
     data.write_text(TRAIN)
     r = subprocess.run(
-        [sys.executable, "-m", "bionexus.cli", "why", "morgan-rf",
+        [sys.executable, "-m", "proef.cli", "why", "morgan-rf",
          str(data), "CCCCO"], capture_output=True, text=True, cwd=REPO)
     assert r.returncode == 0, r.stderr
     assert "importance-weighted-bits" in r.stdout
@@ -97,8 +97,8 @@ def test_cli_why_morgan_rf(tmp_path):
 
 
 def test_admet_tool_carries_why():
-    from bionexus.core.interfaces import system_actor
-    from bionexus.toolkit import AgentToolkit
+    from proef.core.interfaces import system_actor
+    from proef.toolkit import AgentToolkit
 
     tk = AgentToolkit(None, None, system_actor("tk"), branch_id="why")
     out = tk.executors()["predict_admet"]("CCOC=O")

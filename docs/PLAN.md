@@ -1,4 +1,4 @@
-# BioNexus — Build Plan
+# Proef — Build Plan
 
 Open-source framework for agentic drug discovery: minimal core, adapter/plugins for
 models, bio libraries, labs, sandboxes, and storage. Like early LangChain: small,
@@ -75,7 +75,7 @@ User code / reference agents
 
 ### Phase 3 — Trust & polish
 - [x] T3.1 Docs: quickstart, adapter authoring guide, safety guide
-- [x] T3.2 `bn` CLI: `bn run workflow.yml` · `bn sim` · `bn prove <id>`
+- [x] T3.2 `proef` CLI: `proef run workflow.yml` · `proef sim` · `proef prove <id>`
 - [x] T3.3 Recording/playback harness for hardware adapters (test vs recordings) *(P8)*
 - [x] T3.4 CI: core-only fast job + full example job; adapter test matrix
 - [x] T3.5 Packaging: extras (`[models-openai]`, `[bio-rdkit]`, `[sandbox-agentenv]`, `[store-postgres]`),
@@ -93,7 +93,7 @@ User code / reference agents
 
 1. `core/` import scan: forbidden imports (`requests`, `numpy`, `pandas`, `torch`,
    `langchain`, SDK packages) fail CI — *(P1)*
-2. Every adapter module must import core only through `bionexus.core` — no
+2. Every adapter module must import core only through `proef.core` — no
    adapter-to-adapter imports
 3. New dependency = new issue justifying it against P1/P2
 4. Deprecation policy: remove before adding; interfaces evolve additively

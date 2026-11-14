@@ -1,6 +1,6 @@
 # API Stability Policy
 
-How BioNexus versions, what you can depend on, and how things change.
+How Proef versions, what you can depend on, and how things change.
 Applies from v0.1.0.
 
 ## Versioning
@@ -18,19 +18,19 @@ step, always announced in the changelog).
 
 | Tier | Surfaces | Guarantees |
 |---|---|---|
-| **Stable** | The five core interfaces (`ModelProvider`, `BioTool`, `LabAdapter`, `Sandbox`, `ProvenanceStore`) and the contract models (`bionexus.core.contracts`) | Additive evolution only. No renames, removals, or semantic changes within a MAJOR. Old serialized contracts keep loading. |
+| **Stable** | The five core interfaces (`ModelProvider`, `BioTool`, `LabAdapter`, `Sandbox`, `ProvenanceStore`) and the contract models (`proef.core.contracts`) | Additive evolution only. No renames, removals, or semantic changes within a MAJOR. Old serialized contracts keep loading. |
 | **Stable** | `SafetyEngine` rule API and `LabGateway` behavior | Safety semantics never silently change: any change to enforcement behavior is a MAJOR bump |
-| **Experimental** | `bionexus.workflow` (StageGraph, tournament), `bionexus.benchmark`, `bionexus.report` | May change in MINOR releases; flagged in docstrings |
-| **Unstable** | `bionexus.cli`, `bionexus.mcp_server` tool list | New tools/flags appear freely; existing tools keep working where possible |
-| **Adapter-internal** | everything under `bionexus.adapters.*` except their public class constructors | Adapters may change at any MINOR; pin if you subclass them |
+| **Experimental** | `proef.workflow` (StageGraph, tournament), `proef.benchmark`, `proef.report` | May change in MINOR releases; flagged in docstrings |
+| **Unstable** | `proef.cli`, `proef.mcp_server` tool list | New tools/flags appear freely; existing tools keep working where possible |
+| **Adapter-internal** | everything under `proef.adapters.*` except their public class constructors | Adapters may change at any MINOR; pin if you subclass them |
 
 Rules of thumb:
 
 1. **Depend on core, construct adapters.** If you only use
-   `bionexus.core.interfaces` + the adapter constructors documented in
+   `proef.core.interfaces` + the adapter constructors documented in
    `docs/ADAPTERS.md`, you are on the stable surface.
 2. **Subclassing adapters is unsupported.** Compose or wrap instead.
-3. Anything not exported from `bionexus` / `bionexus.core` is private.
+3. Anything not exported from `proef` / `proef.core` is private.
 
 ## Deprecation policy
 

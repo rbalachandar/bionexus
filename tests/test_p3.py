@@ -3,11 +3,11 @@ import json
 
 import pytest
 
-from bionexus.anchor import merkle_root, store_hashes
-from bionexus.eln import branch_to_rows, export_eln
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.contracts import Envelope, EventType
-from bionexus.core.interfaces import record_for, system_actor
+from proef.anchor import merkle_root, store_hashes
+from proef.eln import branch_to_rows, export_eln
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.contracts import Envelope, EventType
+from proef.core.interfaces import record_for, system_actor
 
 
 def _branch(tmp_path):
@@ -32,7 +32,7 @@ def test_merkle_root_stable_and_order_sensitive():
 
 
 def test_anchor_roundtrip(tmp_path, monkeypatch):
-    import bionexus.anchor as A
+    import proef.anchor as A
     monkeypatch.setattr(A, "ANCHORS", tmp_path / "anchors.json")
     db, _ = _branch(tmp_path)
     entry = A.anchor(db)
@@ -71,12 +71,12 @@ def test_eln_export(tmp_path):
 
 
 def test_simulator_reports_version():
-    from bionexus.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.lab.simulator import SimulatorLab
     assert SimulatorLab().version == "sim-v1"
 
 
 def test_fixtures_freeze_verify_materialize(tmp_path):
-    from bionexus import fixtures
+    from proef import fixtures
     study = tmp_path / "case-studies" / "s1"
     study.mkdir(parents=True)
     (tmp_path / ".data").mkdir()
@@ -98,11 +98,11 @@ def test_fixtures_freeze_verify_materialize(tmp_path):
 
 
 def test_safety_engine_molecule_gates():
-    from bionexus.core.contracts import (
+    from proef.core.contracts import (
         Envelope, ProtocolOp, ProtocolStep, ProtocolSubmission, ReagentSpec,
         SampleKind, SampleSpec,
     )
-    from bionexus.core.safety import SafetyEngine
+    from proef.core.safety import SafetyEngine
 
     pytest.importorskip("rdkit", reason="toxicophore SMARTS need rdkit")
 
@@ -130,10 +130,10 @@ def test_safety_engine_molecule_gates():
 
 def test_durc_campaign_refusal(tmp_path):
     import pytest
-    from bionexus.autoloop import CampaignConfig, run_campaign
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.hypothesis import ProblemStatement
+    from proef.autoloop import CampaignConfig, run_campaign
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.hypothesis import ProblemStatement
     problem = ProblemStatement(objective="Screen inhibitors of Bacillus anthracis lethal factor")
     with pytest.raises(ValueError, match="DURC"):
         run_campaign(CampaignConfig(problem=problem, hypotheses=[],
@@ -142,8 +142,8 @@ def test_durc_campaign_refusal(tmp_path):
 
 
 def test_charridge_attribution_sums_to_prediction():
-    from bionexus.benchmark import CharRidgePolicy
-    from bionexus.interpret import explain_prediction
+    from proef.benchmark import CharRidgePolicy
+    from proef.interpret import explain_prediction
     pol = CharRidgePolicy(dim=256)
     data = [("CCO", 1.0), ("CCCO", 1.4), ("c1ccccc1O", 2.2),
             ("CC(=O)O", 0.6), ("CCCCO", 1.8), ("c1ccccc1", 2.5)]
@@ -160,8 +160,8 @@ def test_charridge_attribution_sums_to_prediction():
 def test_rf_attribution_reports_bits():
     pytest.importorskip("sklearn")
     pytest.importorskip("rdkit")
-    from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF
-    from bionexus.interpret import explain_prediction
+    from proef.adapters.models.sklearn_policy import MorganFingerprintRF
+    from proef.interpret import explain_prediction
     pol = MorganFingerprintRF(n_estimators=20)
     pol.fit([("CCO", 1.0), ("CCCO", 1.4), ("c1ccccc1O", 2.2),
              ("CC(=O)O", 0.6), ("CCCCO", 1.8), ("c1ccccc1", 2.5)])
@@ -171,7 +171,7 @@ def test_rf_attribution_reports_bits():
 
 
 def test_safety_rules_data_file_versioned():
-    from bionexus.adapters.bio import tox_alerts
+    from proef.adapters.bio import tox_alerts
     assert tox_alerts.RULES_VERSION == "safety-rules-v1"
     assert len(tox_alerts.ALERTS) >= 18
 
@@ -179,13 +179,13 @@ def test_safety_rules_data_file_versioned():
 def test_gate_refusals_are_recorded_in_provenance():
     import pytest
     pytest.importorskip("rdkit")
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import (Envelope, ProtocolOp, ProtocolStep,
                                          ProtocolSubmission, ReagentSpec,
                                          SampleKind, SampleSpec)
-    from bionexus.core.interfaces import system_actor
-    from bionexus.core.safety import LabGateway, SafetyEngine
+    from proef.core.interfaces import system_actor
+    from proef.core.safety import LabGateway, SafetyEngine
     store = SqliteProvenanceStore()
     gw = LabGateway(SimulatorLab(), SafetyEngine(), store, system_actor())
     proto = ProtocolSubmission(

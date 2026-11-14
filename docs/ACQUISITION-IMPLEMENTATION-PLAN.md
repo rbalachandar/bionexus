@@ -1,7 +1,7 @@
 # Bayesian Experiment Selection (acquisition policies) — Plan & Status
 
 **Status:** Implemented + graded + replayed (Oct 2026): `bo-ei` selectable in
-config/CLI, `bn campaign select` what-would-run preview, "why this plate" on the
+config/CLI, `proef campaign select` what-would-run preview, "why this plate" on the
 Experiment page, eval task `acquisition-policy` (0.875, strict dominance +
 AD-honest), and the **CS04 offline replay** (below) delivered the honest
 verdict: **EI ties naive greedy — it stays opt-in, not the default.**  
@@ -38,7 +38,7 @@ Non-negotiables (the repo's own evidence):
 
 ## Modules
 
-- `src/bionexus/acquisition.py` — pure, deterministic policy.
+- `src/proef/acquisition.py` — pure, deterministic policy.
   `Posterior` (candidate, mean, sd?, family, in_domain, source),
   `expected_improvement(mean, sd, target, direction)` closed-form on the
   log scale for min-direction metrics (IC50-style), `select_batch(...)` →
@@ -122,7 +122,7 @@ honest line is: **EI is proven safe (no leakage, AD-honesty) and proven
 ## Status / remaining
 
 - [x] CS04 replay — done, offline, negative-leaning (above).
-- [x] `bn campaign select` standalone what-would-run preview (same policy path, in-
+- [x] `proef campaign select` standalone what-would-run preview (same policy path, in-
       memory store, submits nothing; test-pinned to write no provenance).
 - [x] **Real GP posterior (optional provider).** `adapters/models/gp_policy.py`
       + `models-botorch` extra, wired into `acq_replay.py`. **The measured

@@ -2,9 +2,9 @@
 never to crashes or false confidence."""
 import pytest
 
-from bionexus.core.contracts import Envelope, ToolInvocation
-from bionexus.core.interfaces import system_actor
-from bionexus.labread import read_plate, sanitize_label
+from proef.core.contracts import Envelope, ToolInvocation
+from proef.core.interfaces import system_actor
+from proef.labread import read_plate, sanitize_label
 
 
 def _write(tmp_path, name, text):
@@ -14,9 +14,9 @@ def _write(tmp_path, name, text):
 
 
 def test_malformed_exports_never_crash_into_verdicts(tmp_path):
-    from bionexus.watch import AutoAnalysisAgent, LabEvent
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.hypothesis import HypothesisTracker, ProblemStatement
+    from proef.watch import AutoAnalysisAgent, LabEvent
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.hypothesis import HypothesisTracker, ProblemStatement
 
     junk = _write(tmp_path, "run-junk.csv", "this is not a plate\n,,,,\n")
     tracker = HypothesisTracker(SqliteProvenanceStore(), system_actor())
@@ -38,8 +38,8 @@ def test_sanitize_label_strips_control_and_caps():
     assert "\x00" not in s and "\x1b" not in s
     assert "ignore prior instructions" in s     # kept as DATA, visible
     # ...and it never reaches the gate as instructions: it is a dict key
-    from bionexus.core.safety import SafetyEngine
-    from bionexus.core.contracts import (ProtocolSubmission, ReagentSpec,
+    from proef.core.safety import SafetyEngine
+    from proef.core.contracts import (ProtocolSubmission, ReagentSpec,
                                          SampleKind, SampleSpec, ProtocolOp,
                                          ProtocolStep)
     proto = ProtocolSubmission(
@@ -56,8 +56,8 @@ def test_sanitize_label_strips_control_and_caps():
 
 def test_garbage_smiles_in_gate_is_inert():
     pytest.importorskip("rdkit")
-    from bionexus.core.safety import SafetyEngine
-    from bionexus.core.contracts import (ProtocolSubmission, ReagentSpec,
+    from proef.core.safety import SafetyEngine
+    from proef.core.contracts import (ProtocolSubmission, ReagentSpec,
                                          SampleKind, SampleSpec, ProtocolOp,
                                          ProtocolStep)
     for junk in ("; DROP TABLE plates;--", "not a molecule", "C" * 5000,
@@ -89,11 +89,11 @@ def test_empty_and_partial_plates_honest(tmp_path):
 def test_reproduce_roundtrip(tmp_path):
     import shutil
     from pathlib import Path
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.autoloop import CampaignConfig, run_campaign
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
-    from bionexus.reproduce import reproduce
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.autoloop import CampaignConfig, run_campaign
+    from proef.core.hypothesis import Constraint, ProblemStatement
+    from proef.reproduce import reproduce
 
     inbox = tmp_path / "in"
     problem = ProblemStatement(
@@ -123,9 +123,9 @@ def test_reproduce_roundtrip(tmp_path):
 
 
 def test_reproduce_legacy_branch_is_honest(tmp_path):
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import Envelope, EventType
-    from bionexus.core.interfaces import record_for, system_actor
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import Envelope, EventType
+    from proef.core.interfaces import record_for, system_actor
     db = str(tmp_path / "old.db")
     store = SqliteProvenanceStore(db)
     store.append(record_for(
@@ -133,6 +133,6 @@ def test_reproduce_legacy_branch_is_honest(tmp_path):
         EventType.problem_defined, system_actor(),
         decision={"problem_id": "prob-old", "objective": "o",
                   "constraints": [], "success_metric": ""}))
-    from bionexus.reproduce import reproduce
+    from proef.reproduce import reproduce
     res = reproduce("problem/prob-old", db_path=db)
     assert res["status"] == "not-reproducible"   # no env recorded — says so

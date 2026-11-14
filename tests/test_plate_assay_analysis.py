@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from bionexus import experiment_analysis as EA
-from bionexus.analysis_profiles import plate_assay as PA
+from proef import experiment_analysis as EA
+from proef.analysis_profiles import plate_assay as PA
 
 # long-format plate: compounds x doses on the ascending %inhibition scale
 # + blank/pos control classes. C1 is cleanly potent (~1 uM); BORD's IC50

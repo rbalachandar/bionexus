@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from bionexus.views import (dmta_counts, resolve_problem, round_markers,
+from proef.views import (dmta_counts, resolve_problem, round_markers,
                             row_status)
 
 
@@ -15,9 +15,9 @@ def prov_db(tmp_path):
     """A provenance store on tmp with one mini campaign branch:
     problem_defined -> 2 proposed -> filtered(1) -> lab_run ->
     hypothesis_tested(validated) + round markers."""
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import Envelope, EventType
-    from bionexus.core.interfaces import record_for, system_actor
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import Envelope, EventType
+    from proef.core.interfaces import record_for, system_actor
     db = tmp_path / "prov.db"
     store = SqliteProvenanceStore(str(db))
 
@@ -45,7 +45,7 @@ def prov_db(tmp_path):
 
 
 def test_dmta_counts(prov_db):
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
     recs = SqliteProvenanceStore(str(prov_db)).branch_records(
         "problem/prob-aaa1")
     c = dmta_counts(recs)
@@ -56,7 +56,7 @@ def test_dmta_counts(prov_db):
 
 
 def test_round_markers_sorted(prov_db):
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
     recs = SqliteProvenanceStore(str(prov_db)).branch_records(
         "problem/prob-aaa1")
     assert round_markers(recs) == [(1, ["C1", "C2"]), (2, ["C3"])]
@@ -90,10 +90,10 @@ def test_row_status_log_and_pid(tmp_path):
 def test_pipeline_cards_states(tmp_path):
     """Cards classify each hypothesis into exactly one state, in
     proposed order, with verdict/CI/margin attached."""
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import Envelope, EventType
-    from bionexus.core.interfaces import record_for, system_actor
-    from bionexus.views import pipeline_cards
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import Envelope, EventType
+    from proef.core.interfaces import record_for, system_actor
+    from proef.views import pipeline_cards
     db = tmp_path / "prov.db"
     store = SqliteProvenanceStore(str(db))
 
@@ -138,7 +138,7 @@ def test_pipeline_cards_states(tmp_path):
 def test_reviewer_direction_aware_max_gate():
     """A max-direction verdict (observed >= gate) must NOT be flagged
     label-vs-data — the reviewer reads `direction` from the record."""
-    from bionexus.reviewer import review_campaign
+    from proef.reviewer import review_campaign
     from types import SimpleNamespace as NS
 
     def rec(et, **d):
@@ -176,10 +176,10 @@ def _recency_store(tmp_path):
     """Tracker-written branch: C-a preliminary VALIDATED then orthogonal
     confirmation REFUTES it; C-b preliminary VALIDATED then the CI straddles
     the gate -> INCONCLUSIVE. A round-1 marker froze both as validated."""
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import Envelope, EventType
-    from bionexus.core.hypothesis import HypothesisTracker
-    from bionexus.core.interfaces import record_for, system_actor
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import Envelope, EventType
+    from proef.core.hypothesis import HypothesisTracker
+    from proef.core.interfaces import record_for, system_actor
 
     branch = "problem/prob-recency"
     store = SqliteProvenanceStore(str(tmp_path / "prov.db"))
@@ -222,7 +222,7 @@ def test_pipeline_cards_are_recency_wins(tmp_path):
     """A later REFUTED confirmation and a later abstention supersede the
     preliminary VALIDATED and the round marker that froze it — the card
     shows the FINAL verdict, not the most confident one."""
-    from bionexus.views import pipeline_cards
+    from proef.views import pipeline_cards
 
     branch, store, _, ha_id, hb_id = _recency_store(tmp_path)
     cards = {c["key"]: c for c in pipeline_cards(
@@ -237,7 +237,7 @@ def test_reviewer_audits_refuted_and_inconclusive(tmp_path):
     """The deterministic reviewer no longer skips the verdicts that matter
     most: refuted confirmations and abstentions are in verdicts_reviewed
     and their evidence is audited."""
-    from bionexus.reviewer import review_campaign
+    from proef.reviewer import review_campaign
 
     branch, store, _, _, _ = _recency_store(tmp_path)
     rev = review_campaign(store.branch_records(branch))
@@ -252,7 +252,7 @@ def test_reviewer_audits_refuted_and_inconclusive(tmp_path):
 def test_diary_shows_refutation_and_abstention(tmp_path):
     """Every verdict renders in the swimlane diary: refuted lines, honest
     abstentions, and the inconclusive counter counts."""
-    from bionexus.diary import build_diary_html
+    from proef.diary import build_diary_html
 
     branch, store, _, _, _ = _recency_store(tmp_path)
     html = build_diary_html(store.branch_records(branch), branch)

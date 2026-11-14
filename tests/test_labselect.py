@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from bionexus.adapters.lab.simulator import SimulatorLab
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.autoloop import CampaignConfig, run_campaign
-from bionexus.core.contracts import Envelope
-from bionexus.core.hypothesis import ProblemStatement
-from bionexus.labselect import (LabRequirement, build_pool, normalize_caps,
+from proef.adapters.lab.simulator import SimulatorLab
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.autoloop import CampaignConfig, run_campaign
+from proef.core.contracts import Envelope
+from proef.core.hypothesis import ProblemStatement
+from proef.labselect import (LabRequirement, build_pool, normalize_caps,
                                 select_lab)
 
 
@@ -53,7 +53,7 @@ def test_capability_mismatch_refuses_with_reasons():
 
 
 def test_mcp_pool_member_matches_via_declared_tools():
-    from bionexus.labselect import available_instruments
+    from proef.labselect import available_instruments
     if not any(e["id"] == "labmcp-mettler-toledo" and e["installed"]
                for e in available_instruments()):
         pytest.skip("labmcp-mettler-toledo not installed")
@@ -157,10 +157,10 @@ def test_config_schema_flows_to_server_flags():
     simulate) are per-instrument config translated to server flags via
     the catalog's declared config_schema — simulate defaults ON so a
     campaign must opt INTO hardware, never accidentally touch it."""
-    from bionexus.labselect import _config_args
+    from proef.labselect import _config_args
     cat = next(e for e in __import__("json").loads(
         (Path(__file__).resolve().parents[1]
-         / "src/bionexus/instruments.json").read_text())["instruments"]
+         / "src/proef/instruments.json").read_text())["instruments"]
         if e["id"] == "labmcp-mettler-toledo")
     assert _config_args(cat, {}) == ["--simulate"]
     assert _config_args(cat, {"simulate": True,
@@ -171,7 +171,7 @@ def test_config_schema_flows_to_server_flags():
 
 
 def test_fence_info_resolves_and_flags_honestly():
-    from bionexus.labselect import fence_info
+    from proef.labselect import fence_info
     fence = fence_info([{"instrument": "labmcp-mettler-toledo"}])
     f = fence[0]
     assert f["name"].startswith("Mettler Toledo")

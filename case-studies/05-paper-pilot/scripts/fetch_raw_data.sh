@@ -7,7 +7,7 @@
 #   ./scripts/fetch_raw_data.sh          # confirmatory + secondary (~0.4 MB)
 #   ./scripts/fetch_raw_data.sh --primary # also the 290k-well primary (~35 MB)
 set -euo pipefail
-UA="bionexus-cs05 (research; paper-pilot reproduction)"
+UA="proef-cs05 (research; paper-pilot reproduction)"
 BASE="https://pubchem.ncbi.nlm.nih.gov/rest/pug/assay/aid"
 cd "$(dirname "$0")/.."
 fetch() { # aid outfile

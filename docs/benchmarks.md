@@ -1,13 +1,13 @@
 # Benchmarks
 
-The framework ships a benchmark harness (`bionexus/benchmark.py`) + dataset
-adapters (`bionexus/adapters/data/`) so policies and model adapters can be
+The framework ships a benchmark harness (`proef/benchmark.py`) + dataset
+adapters (`proef/adapters/data/`) so policies and model adapters can be
 evaluated on public data. Datasets download-on-first-use to `.data/`; tests use
 embedded fixtures (P8: CI stays offline).
 
 ## Candidate public datasets (landscape)
 
-| Dataset | Task | Size | Use in BioNexus |
+| Dataset | Task | Size | Use in Proef |
 |---|---|---|---|
 | **MoleculeNet Lipophilicity** | logD regression | 4,200 | ✅ wired — baseline harness |
 | **MoleculeNet ESOL** | solubility regression | 1,128 | ✅ wired |
@@ -20,7 +20,7 @@ embedded fixtures (P8: CI stays offline).
 
 ## First results — historical, from since-retired scripts (`run_benchmark.py`,
 `run_benchmark_real.py`); the maintained equivalent is `examples/run_benchmarks.py`
-plus the graded `bn eval` models tier
+plus the graded `proef eval` models tier
 
 Split: first 80% train / last 20% test (HIV: stratified subsample, 3% actives).
 Baselines are deliberately weak floors; the point is that real model adapters
@@ -70,8 +70,8 @@ for a real `fm_predict_property` adapter.
 ## How to add a benchmark row
 
 ```python
-from bionexus.adapters.data.moleculenet import MoleculeNetDataset
-from bionexus.benchmark import run_benchmark
+from proef.adapters.data.moleculenet import MoleculeNetDataset
+from proef.benchmark import run_benchmark
 from my_models import MyPropertyPolicy
 
 results = run_benchmark(MoleculeNetDataset("lipophilicity"),
@@ -84,10 +84,10 @@ Policies implement `fit(data)` / `predict(smiles)` — the same shape as
 
 ## LLM evaluation setup
 
-`AnthropicLLMPolicy` reads `BIONEXUS_LLM_BASE_URL` / `BIONEXUS_LLM_TOKEN` /
-`BIONEXUS_LLM_MODEL` (falls back to `ANTHROPIC_BASE_URL` /
+`AnthropicLLMPolicy` reads `PROEF_LLM_BASE_URL` / `PROEF_LLM_TOKEN` /
+`PROEF_LLM_MODEL` (falls back to `ANTHROPIC_BASE_URL` /
 `ANTHROPIC_AUTH_TOKEN` / Anthropic model env vars). It speaks the Anthropic
 Messages protocol over stdlib urllib and works with any compatible endpoint
 (including LLM proxies). LLM calls are expensive — evaluate with `n_test`
-caps, as the retired `run_benchmark_real.py` did (models tier of `bn eval`
+caps, as the retired `run_benchmark_real.py` did (models tier of `proef eval`
 covers this ground now).

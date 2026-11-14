@@ -4,7 +4,7 @@
 scientist with real plates and real workflow friction — something we cannot
 manufacture, because this project has no lab access. A published paper with
 its **raw deposited screening data** is the closest honest stand-in: we
-install BioNexus on *their* data, exactly as we would a pilot lab's —
+install Proef on *their* data, exactly as we would a pilot lab's —
 someone else's upload files, someone else's naming, someone else's claims —
 and score our verdicts against theirs. This is the pilot rehearsal; the
 feedback that only a human scientist gives (where they stop reading, which
@@ -35,7 +35,7 @@ per-compound %inhibition curves as the raw evidence.
 
 - `fixtures/aid_1890.csv.gz`, `fixtures/aid_1879.csv.gz` — PubChem REST
   exports of the deposited submitter data tables, unmodified, checksummed
-  (`bn fixtures verify case-studies/05-paper-pilot`). AID 1706 (290k rows)
+  (`proef fixtures verify case-studies/05-paper-pilot`). AID 1706 (290k rows)
   is opt-in via `scripts/fetch_raw_data.sh --primary` (repo hygiene).
 - `sources.json` — paper metadata, cascade counts, fetch date.
 - The vendor dirt we must survive is authentic: header/data column-count
@@ -59,9 +59,9 @@ applied to a wet-lab cascade.
 
 ## Protocol
 
-1. **Ingest** — extend `bionexus.labread` to parse the PubChem deposited
+1. **Ingest** — extend `proef.labread` to parse the PubChem deposited
    table natively (new "vendor": schema-dense meta preamble + multi-point
-   CRC rows). No hand-transformation of the upload: if `bn read` needs an
+   CRC rows). No hand-transformation of the upload: if `proef read` needs an
    edit to consume a real deposition, that is a finding, not a workaround.
 2. **Refit blind** — per compound, Hill fit with CI (`fit_ic50_ci`,
    residual bootstrap) from the raw inhibition columns only.
@@ -73,7 +73,7 @@ applied to a wet-lab cascade.
    abstention, with the reason (curve shape, single bad point, plateau
    absence).
 5. **Series view** — group the 44 actives' chemistry (chemotype rollup via
-   `bionexus.series`) — does our independent grouping match the paper's
+   `proef.series`) — does our independent grouping match the paper's
    scaffold story (furyl amide / dipeptide-like series → ML188)?
 
 ## What we expect to be honest about
@@ -95,7 +95,7 @@ applied to a wet-lab cascade.
 
 ## Results (run 2026-10-04)
 
-Engine: `bionexus.labread` now parses PubChem deposited tables natively
+Engine: `proef.labread` now parses PubChem deposited tables natively
 (format `pubchem`, structurally blind — see `tests/test_labread_pubchem.py`
 for the contract), and `run.py` scores the locked verdicts against the
 answer key (`results.json`).

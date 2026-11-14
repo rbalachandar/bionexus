@@ -1,5 +1,5 @@
 """acquisition — EI math, the AD gate, determinism, diversity, baseline."""
-from bionexus.acquisition import (Posterior, expected_improvement,
+from proef.acquisition import (Posterior, expected_improvement,
                                   POLICY_NAME, randomize_batch, select_batch)
 
 

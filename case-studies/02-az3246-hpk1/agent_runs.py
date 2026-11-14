@@ -13,7 +13,7 @@ cutoff' claim only holds for a model that does not know the paper.
     export OPENCODE_API_KEY=...            # never pass keys on the command line
     python case-studies/02-az3246-hpk1/agent_runs.py --model gpt-6-luna --runs 5
 
-Endpoint: --base-url or $BIONEXUS_LLM_BASE_URL (default: OpenCode Go).
+Endpoint: --base-url or $PROEF_LLM_BASE_URL (default: OpenCode Go).
 """
 from __future__ import annotations
 
@@ -35,9 +35,9 @@ spec = importlib.util.spec_from_file_location("cs02", HERE / "run.py")
 cs02 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cs02)
 
-from bionexus import fixtures  # noqa: E402
-from bionexus.benchmark import spearman, spearman_ci  # noqa: E402
-from bionexus.core.contracts import Envelope, ToolInvocation  # noqa: E402
+from proef import fixtures  # noqa: E402
+from proef.benchmark import spearman, spearman_ci  # noqa: E402
+from proef.core.contracts import Envelope, ToolInvocation  # noqa: E402
 
 
 class GoClient:
@@ -48,7 +48,7 @@ class GoClient:
     `x-opencode-session` per conversation. GPT/Grok models are served by the
     Responses API (`/responses`); the rest by `/chat/completions`.
     """
-    UA = "bionexus-case-study/1.0 (+https://github.com/rbalachandar/bionexus)"
+    UA = "proef-case-study/1.0 (+https://github.com/rbalachandar/proef)"
     RESPONSES_MODELS = ("gpt-", "grok-")
 
     def __init__(self, model: str, base_url: str, api_key: str):
@@ -150,7 +150,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--runs", type=int, default=5)
-    ap.add_argument("--base-url", default=os.environ.get("BIONEXUS_LLM_BASE_URL",
+    ap.add_argument("--base-url", default=os.environ.get("PROEF_LLM_BASE_URL",
                                                           DEFAULT_URL))
     ap.add_argument("--key-env", default="OPENCODE_API_KEY")
     ap.add_argument("--probe-only", action="store_true")
@@ -174,7 +174,7 @@ def main() -> None:
         "10.1021/acs.jmedchem.4c02631)? Yes/no, and what do you know about "
         "its compounds?")).output["text"]
     out["paper_probe"] = probe[:600]
-    from bionexus.probes import variant_contamination
+    from proef.probes import variant_contamination
     vc = variant_contamination(
         agent, ["az3246", "hpk1", "map4k1", "pyrazine carboxamide",
                 "journal of medicinal chemistry"],

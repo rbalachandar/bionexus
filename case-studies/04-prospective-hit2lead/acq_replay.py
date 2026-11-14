@@ -27,7 +27,7 @@ sys.path.insert(0, str(HERE.parents[1] / "src"))
 sys.path.insert(0, str(HERE))
 
 import run as cs04                                   # noqa: E402
-from bionexus.acquisition import (Posterior, randomize_batch,  # noqa: E402
+from proef.acquisition import (Posterior, randomize_batch,  # noqa: E402
                                   select_batch)
 
 GATE_UM = 1.0                       # CS04 pre-registered hit bar (pIC50 >= 6)
@@ -90,7 +90,7 @@ def gp_specs(library: dict[str, dict], train: dict, ad_pol, max_train: int = 800
     subsample — a stated, budgeted approximation (this is exactly why a GP
     is not a free default), not an oversight. Coverage was checked to stay
     near nominal at this size."""
-    from bionexus.adapters.models.gp_policy import GaussianProcessPolicy
+    from proef.adapters.models.gp_policy import GaussianProcessPolicy
     rng = random.Random(SEED)
     sub = list(train.items())
     rng.shuffle(sub)

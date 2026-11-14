@@ -26,7 +26,7 @@ GATE_UM = 10.0
 
 
 def materialize() -> dict[str, Path]:
-    from bionexus import fixtures
+    from proef import fixtures
     ok, problems = fixtures.verify(str(STUDY))
     if not ok:
         sys.exit(f"fixtures FAILED VERIFICATION: {problems}")
@@ -44,12 +44,12 @@ def materialize() -> dict[str, Path]:
 def blind_read(path: Path):
     """Engine step: labread native-PubChem parse + per-compound Hill fits.
     Structurally blind — OUTCOME/IC50 columns are not in what comes back."""
-    from bionexus.labread import read_plate
+    from proef.labread import read_plate
     return read_plate(path, max_response=100.0)
 
 
 def verdicts(res, gate: float = GATE_UM) -> dict[str, dict]:
-    from bionexus.core.hypothesis import SuccessCriteria
+    from proef.core.hypothesis import SuccessCriteria
     crit = SuccessCriteria(metric="ic50_um", direction="min", threshold=gate)
     out: dict[str, dict] = {}
     for sid, comp in res.analysis["compounds"].items():
@@ -152,7 +152,7 @@ def main() -> int:
                          f"confirmatory-curve prediction ({pred:.0f}%)"})
 
     # series view over our confirmed actives
-    from bionexus.series import build_series
+    from proef.series import build_series
     vmap = {"Active": "confirmed", "Inactive": "refuted",
             "Abstain": "inconclusive"}
     members = [{"candidate": sid, "smiles": key[sid]["smiles"],

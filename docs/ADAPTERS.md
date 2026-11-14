@@ -1,12 +1,12 @@
 # Writing an adapter
 
 Adapters implement one (or more) of the five core protocols from
-`bionexus.core.interfaces`. They live anywhere; core discovers them via
+`proef.core.interfaces`. They live anywhere; core discovers them via
 entry points or you construct them directly.
 
 Rules (enforced in review):
 
-1. Import core only through `bionexus.core` — never another adapter.
+1. Import core only through `proef.core` — never another adapter.
 2. Declare capabilities explicitly; don't claim what you don't implement.
 3. Stamp `model_version` / instrument identity on every result (P5 provenance).
 4. Physical actions never happen in `BioTool` — only `LabAdapter`, and only
@@ -15,7 +15,7 @@ Rules (enforced in review):
 ## LabAdapter (the IAL)
 
 ```python
-from bionexus.core.contracts import AssayResult, Envelope, ProtocolSubmission, RunStatus, InstrumentInfo
+from proef.core.contracts import AssayResult, Envelope, ProtocolSubmission, RunStatus, InstrumentInfo
 
 class MyRobotLab:
     name = "my-robot"
@@ -58,7 +58,7 @@ class MyProvider:
     def predict(self, invocation, kind, payload) -> ToolResult: ...
 ```
 
-`bionexus/adapters/models/openai_compat.py` is the reference — including the
+`proef/adapters/models/openai_compat.py` is the reference — including the
 offline stub mode used by CI (P8). Copy it.
 
 ## BioTool
@@ -72,7 +72,7 @@ class MyDocking:
 ```
 
 Register on a `Registry` (`registry.register_tool(...)`) or expose via the
-`bionexus.tools` entry point group. Resolution is capability → implementation.
+`proef.tools` entry point group. Resolution is capability → implementation.
 
 ## ProvenanceStore
 
@@ -83,7 +83,7 @@ chain verifiable and append-only.
 ## Publish via entry points
 
 ```toml
-[project.entry-points."bionexus.labs"]
+[project.entry-points."proef.labs"]
 my-robot = "my_org.labs:MyRobotLab"
 ```
 
@@ -92,7 +92,7 @@ silently, never fatally.
 
 ## Real device adapters (reference implementations)
 
-MCP instrument servers (S-T4): `bionexus.mcp_instrument.McpLabAdapter`
+MCP instrument servers (S-T4): `proef.mcp_instrument.McpLabAdapter`
 drives any MCP-speaking instrument server as a LabAdapter — capabilities
 come from the server's declared typed tool schemas, only `readOnlyHint`
 tools auto-run, and mutating verbs (tare, calibrate, set_temperature)
@@ -108,7 +108,7 @@ Two production-shaped adapters ship in-tree:
   Opentrons Python protocol, uploads, plays the run, polls status.  **AUDIT (Oct 10, resolved same day): payloads are now pinned to the
   published v3 contract (Opentrons/opentrons-integration-tools http-api
   docs) and CI-verified against a spec-conformant simulated robot
-  (`bionexus.adapters.lab.ot2_sim.SimulatedRobot`) that rejects
+  (`proef.adapters.lab.ot2_sim.SimulatedRobot`) that rejects
   contract violations the way a robot would. Hardware session remains
   S-T4 confirmation, not contract discovery.**
 - **`adapters/lab/plate_reader_share.py`** — for readers configured to

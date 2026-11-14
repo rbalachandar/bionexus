@@ -21,7 +21,7 @@ def _write_elisa(tmp_path: Path) -> Path:
 
 
 def test_elisa_cutoff_titer_and_calls(tmp_path):
-    from bionexus.assays.elisa import read_elisa
+    from proef.assays.elisa import read_elisa
     out = read_elisa(_write_elisa(tmp_path))
     assert out["cutoff"] == pytest.approx(0.095, abs=0.02)
     by = {r["sample"]: r for r in out["results"]}
@@ -47,7 +47,7 @@ def _write_dsf(tmp_path: Path, tm_true: float = 65.0) -> Path:
 
 
 def test_dsf_tm_from_melt_curve(tmp_path):
-    from bionexus.assays.dsf import read_dsf
+    from proef.assays.dsf import read_dsf
     out = read_dsf(_write_dsf(tmp_path, tm_true=65.0))
     c = out["curves"][0]
     assert c["tm"] == pytest.approx(65.0, abs=1.0)
@@ -58,7 +58,7 @@ def test_dsf_flat_curve_is_honest(tmp_path):
     p = tmp_path / "flat.csv"
     p.write_text("Temperature,Fluorescence\n" +
                  "".join(f"{40 + i},{50.0}\n" for i in range(20)))
-    from bionexus.assays.dsf import read_dsf
+    from proef.assays.dsf import read_dsf
     out = read_dsf(p)
     assert out["curves"][0]["tm"] is None
     assert "flat" in out["curves"][0]["note"]
@@ -78,7 +78,7 @@ def _write_dls(tmp_path: Path, gamma: float = 5.8e4) -> Path:
 
 
 def test_dls_rh_from_autocorrelation(tmp_path):
-    from bionexus.assays.dls import read_dls
+    from proef.assays.dls import read_dls
     out = read_dls(_write_dls(tmp_path, gamma=5.8e4))
     c = out["curves"][0]
     assert c["rh_nm"] == pytest.approx(2.7, rel=0.15)   # gamma=5.8e4 @ standard q
@@ -97,7 +97,7 @@ def test_dls_aggregated_flag(tmp_path):
         tail_boost = 0.15 if i > 40 else 0.0
         rows.append(f"M1,{tau:.3e},{g2 + tail_boost:.6f}")
     p.write_text("\n".join(rows) + "\n")
-    from bionexus.assays.dls import read_dls
+    from proef.assays.dls import read_dls
     out = read_dls(p)
     assert out["curves"][0]["pdi_flag"] in ("aggregated", "monodisperse")
     # the flag must exist either way; strict assert on threshold behavior:
@@ -118,8 +118,8 @@ def _write(path: Path, rows: list[dict]) -> Path:
 def test_dls_simulate_parse_roundtrip(tmp_path):
     """Simulate a polydisperse sample (Raynals-style), parse it back:
     the intensity-weighted radius must be recovered."""
-    from bionexus.assays.simulate import simulate_dls
-    from bionexus.assays.dls import read_dls
+    from proef.assays.simulate import simulate_dls
+    from proef.assays.dls import read_dls
     species = [(3.0, 0.7), (30.0, 0.3)]       # small + aggregate
     rows, truth = simulate_dls(species, seed=5)
     out = read_dls(_write(tmp_path / "dls.csv", rows))
@@ -132,8 +132,8 @@ def test_dls_simulate_parse_roundtrip(tmp_path):
 
 
 def test_elisa_simulate_parse_roundtrip(tmp_path):
-    from bionexus.assays.simulate import simulate_elisa
-    from bionexus.assays.elisa import read_elisa
+    from proef.assays.simulate import simulate_elisa
+    from proef.assays.elisa import read_elisa
     rows, truth = simulate_elisa(seed=9)
     out = read_elisa(_write(tmp_path / "elisa.csv", rows))
     r1 = out["results"][0]
@@ -142,8 +142,8 @@ def test_elisa_simulate_parse_roundtrip(tmp_path):
 
 
 def test_dsf_simulate_parse_roundtrip(tmp_path):
-    from bionexus.assays.simulate import simulate_dsf
-    from bionexus.assays.dsf import read_dsf
+    from proef.assays.simulate import simulate_dsf
+    from proef.assays.dsf import read_dsf
     rows, truth = simulate_dsf(tm=72.0, seed=4)
     out = read_dsf(_write(tmp_path / "dsf.csv", rows))
     c = out["curves"][0]
@@ -152,7 +152,7 @@ def test_dsf_simulate_parse_roundtrip(tmp_path):
 
 
 def test_dls_simulate_is_deterministic():
-    from bionexus.assays.simulate import simulate_dls
+    from proef.assays.simulate import simulate_dls
     a = simulate_dls([(5.0, 1.0)], seed=3)[0]
     b = simulate_dls([(5.0, 1.0)], seed=3)[0]
     assert a == b
@@ -165,8 +165,8 @@ def test_dls_simulate_is_deterministic():
 def test_property_sweep_roundtrip(tmp_path):
     """Simulate a materials DoE sweep with a known optimum; the analysis
     adapter must find the same best formulation."""
-    from bionexus.assays.simulate import simulate_property_sweep
-    from bionexus.assays.properties import read_property_sweep
+    from proef.assays.simulate import simulate_property_sweep
+    from proef.assays.properties import read_property_sweep
     rows, truth = simulate_property_sweep(
         [2.0, 4.0, 6.0, 8.0, 10.0], optimum=6.0, seed=13)
     p = _write(tmp_path / "sweep.csv", rows)
@@ -180,8 +180,8 @@ def test_property_sweep_roundtrip(tmp_path):
 
 
 def test_property_sweep_flat_is_honest(tmp_path):
-    from bionexus.assays.simulate import simulate_property_sweep
-    from bionexus.assays.properties import read_property_sweep
+    from proef.assays.simulate import simulate_property_sweep
+    from proef.assays.properties import read_property_sweep
     # huge width -> the sweep is effectively flat across points
     rows, _t = simulate_property_sweep(
         [2.0, 4.0, 6.0, 8.0, 10.0], optimum=6.0, width=100.0, noise=0.1,

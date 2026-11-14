@@ -8,10 +8,10 @@ SIMULATED; the block is earned by the yield/lead-time floors, not hard-coded.
 import tempfile
 
 import pytest
-from bionexus.autoloop import CampaignConfig, run_campaign
-from bionexus.core.hypothesis import Constraint, ProblemStatement
+from proef.autoloop import CampaignConfig, run_campaign
+from proef.core.hypothesis import Constraint, ProblemStatement
 
-from bionexus.adapters.retrosynthesis import (SIM_LABEL, RoutePlan,
+from proef.adapters.retrosynthesis import (SIM_LABEL, RoutePlan,
                                               RuleBasedRetrosynthesis,
                                               _complexity,
                                               get_retrosynthesis_adapter)
@@ -54,7 +54,7 @@ def test_complexity_grows_with_rings_and_stereo():
 
 
 def test_virtual_synthesizer_draws_yield_from_the_route():
-    from bionexus.adapters.lab.synthesis import VirtualSynthesizer
+    from proef.adapters.lab.synthesis import VirtualSynthesizer
     vs = VirtualSynthesizer()
     route = RoutePlan(route="amide coupling", steps=1, yield_pct=85.0,
                       lead_time_days=3.0, cost_usd=240.0).summary()
@@ -70,10 +70,10 @@ def test_virtual_synthesizer_draws_yield_from_the_route():
 
 
 def _campaign(hyps, **kw):
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.autoloop import CampaignConfig, run_campaign
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.autoloop import CampaignConfig, run_campaign
+    from proef.core.hypothesis import Constraint, ProblemStatement
 
     problem = ProblemStatement(objective="makeability gate", constraints=[
         Constraint(name="potency", description="d", kind="hard", limit=60.0,
@@ -120,8 +120,8 @@ def test_campaign_gate_can_be_turned_off():
 
 
 def test_toolkit_check_synthesis_answers_the_four_questions():
-    from bionexus.core.interfaces import system_actor
-    from bionexus.toolkit import AgentToolkit
+    from proef.core.interfaces import system_actor
+    from proef.toolkit import AgentToolkit
 
     tk = AgentToolkit(None, None, system_actor("tk"),
                       branch_id="makeability")
@@ -146,8 +146,8 @@ def test_safety_prescreen_before_make_wastes_no_batch():
         unit="uM")])
 
     def run(mechanism):
-        from bionexus.adapters.lab.simulator import SimulatorLab
-        from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+        from proef.adapters.lab.simulator import SimulatorLab
+        from proef.adapters.store.sqlite import SqliteProvenanceStore
         hyps = [{"statement": "W inhibits", "candidate": "W-1",
                  "assay_type": "binding", "predicted": "<= 20",
                  "predicted_value": 20.0, "rationale": "t",

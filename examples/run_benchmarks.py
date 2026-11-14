@@ -12,12 +12,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from bionexus.adapters.data.chembl import ChemblDataset
-from bionexus.benchmark import CharRidgePolicy, MeanPolicy, RandomPolicy, \
+from proef.adapters.data.chembl import ChemblDataset
+from proef.benchmark import CharRidgePolicy, MeanPolicy, RandomPolicy, \
     run_benchmark
-from bionexus.core.contracts import Envelope, ProtocolOp, ProtocolStep, \
+from proef.core.contracts import Envelope, ProtocolOp, ProtocolStep, \
     ProtocolSubmission, ReagentSpec, SampleKind, SampleSpec
-from bionexus.core.interfaces import system_actor
+from proef.core.interfaces import system_actor
 
 CACHE = Path(__file__).parent / ".benchmark_cache"
 SEEDS = (0, 1, 2)
@@ -26,7 +26,7 @@ SEEDS = (0, 1, 2)
 def _policies(skip_sklearn: bool = False) -> list:
     policies: list = [RandomPolicy(), MeanPolicy(), CharRidgePolicy(dim=256)]
     try:
-        from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF
+        from proef.adapters.models.sklearn_policy import MorganFingerprintRF
         policies.append(MorganFingerprintRF(n_estimators=300))
     except ImportError:
         print("  (sklearn unavailable — skipping RF)")
@@ -64,7 +64,7 @@ def main() -> None:
     # LLM ablation (optional)
     if "--llm" in sys.argv:
         try:
-            from bionexus.adapters.models.llm_policy import AnthropicLLMPolicy
+            from proef.adapters.models.llm_policy import AnthropicLLMPolicy
             llm = AnthropicLLMPolicy()
             print(f"\n=== LLM ablation ({llm.model}) ===")
             ds = ChemblDataset("lipophilicity", cache_dir=str(CACHE),
@@ -74,7 +74,7 @@ def main() -> None:
             test = data[split:split + 40]
             scores = [llm.predict(s) for s, _ in test]
             truth = [y for _, y in test]
-            from bionexus.benchmark import spearman
+            from proef.benchmark import spearman
             rho = spearman(scores, truth)
             results["llm_ablation"] = {"model": llm.model_version,
                                        "spearman": round(rho, 4), "n": len(test)}

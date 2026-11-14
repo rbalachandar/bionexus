@@ -16,7 +16,7 @@ depositor's judgment; we never wrote it, never tuned to it.
   claim (IC50 ≤ lowest dose) only if that dose is below the gate
 - CI veto: `SuccessCriteria.classify` — straddling ⇒ abstain
 - answer keys (OUTCOME, Fit_*, Potency) read ONLY after verdicts lock
-- engine: `bionexus.labread` native PubChem parser, dialect B
+- engine: `proef.labread` native PubChem parser, dialect B
   (doses embedded in header names, %Activity inverted to the effect
   scale, flip DISCLOSED)
 
@@ -89,10 +89,10 @@ its own tests — not more threshold tuning against this deposit.
 ## Status
 
 **Concluded — negative result, fully reported.** Fixtures checksum-frozen
-(`bn fixtures verify`), protocol pre-registered, crosstab published as
+(`proef fixtures verify`), protocol pre-registered, crosstab published as
 the finding.
 
-**Encoded since (Oct 2026):** `bionexus.labread` fingerprints the
+**Encoded since (Oct 2026):** `proef.labread` fingerprints the
 normalization frame of every deposited percent table. External-reference
 (validated here, CS05) keeps full IC50 verdicts; self-normalized deposits
 run under a **SHAPE-ONLY regime** — `classify_curve()` (qHTS-lite:

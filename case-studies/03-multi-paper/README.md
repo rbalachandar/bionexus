@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Case Study 03 evaluates whether BioNexus can guide a bounded scientific
+Case Study 03 evaluates whether Proef can guide a bounded scientific
 experiment cycle across several recent published datasets. The primary object
 of evaluation is the **flow**, not the predictive quality of a particular
 model:
@@ -15,7 +15,7 @@ problem → hypotheses → experiment design → safety gate → test
 The published measurements are exposed through a `PaperLab` adapter. This lets
 the flow use real experimental values while retaining a deterministic,
 replayable test environment. The model or search strategy chooses which
-compounds to test; BioNexus is responsible for the lifecycle, controls,
+compounds to test; Proef is responsible for the lifecycle, controls,
 provenance, and resource boundaries.
 
 ## Papers
@@ -69,7 +69,7 @@ paper, so recall is vacuously 1.0 and is not evidence of search quality.
 
 The differing recall values are secondary: the strategy can improve or degrade
 compound selection, but **the lifecycle remains valid independently of the
-strategy**. This is the property BioNexus is intended to provide.
+strategy**. This is the property Proef is intended to provide.
 
 ### Statistical honesty pass (2026-09-10, frozen fixtures)
 
@@ -174,7 +174,7 @@ anti-predictive" reading only holds for papers 1 and 3.
 
 ## What this does not demonstrate
 
-- It does not prove that BioNexus discovers new drugs.
+- It does not prove that Proef discovers new drugs.
 - It does not establish a state-of-the-art model result.
 - `PaperLab` validates orchestration against published evidence; it is not a
   substitute for a physical laboratory.

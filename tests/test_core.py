@@ -3,11 +3,11 @@ import math
 
 import pytest
 
-from bionexus.adapters.lab.simulator import SimulatorLab
-from bionexus.adapters.models.openai_compat import OpenAICompatProvider
-from bionexus.adapters.sandbox.local import LocalSandbox
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.contracts import (
+from proef.adapters.lab.simulator import SimulatorLab
+from proef.adapters.models.openai_compat import OpenAICompatProvider
+from proef.adapters.sandbox.local import LocalSandbox
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.contracts import (
     Actor,
     Envelope,
     EventType,
@@ -19,16 +19,16 @@ from bionexus.core.contracts import (
     SampleSpec,
     ToolInvocation,
 )
-from bionexus.core.interfaces import system_actor
-from bionexus.core.registry import Registry
-from bionexus.core.safety import (
+from proef.core.interfaces import system_actor
+from proef.core.registry import Registry
+from proef.core.safety import (
     ForbiddenComboRule,
     LabGateway,
     MaxBslRule,
     MaxStepsRule,
     SafetyEngine,
 )
-from bionexus.core.workflow import HypothesisTournament, StageGraph, TournamentConfig
+from proef.core.workflow import HypothesisTournament, StageGraph, TournamentConfig
 
 BRANCH = "b-test"
 
@@ -57,7 +57,7 @@ def test_envelope_and_ids_unique():
 
 
 def test_tool_name_registry_covers_all_blocks():
-    from bionexus.core.contracts import ToolName
+    from proef.core.contracts import ToolName
     vals = {t.value for t in ToolName}
     assert {v for v in vals if v.startswith("c.")}, "block C tools present"
     assert {v for v in vals if v.startswith("d.")}, "block D tools present"
@@ -67,8 +67,8 @@ def test_tool_name_registry_covers_all_blocks():
 # ---- provenance (P5) -----------------------------------------------------------
 
 def test_provenance_hash_chain():
-    from bionexus.core.contracts import Artifact, ArtifactKind
-    from bionexus.core.interfaces import record_for
+    from proef.core.contracts import Artifact, ArtifactKind
+    from proef.core.interfaces import record_for
 
     store = SqliteProvenanceStore()
     actor = system_actor()
@@ -165,7 +165,7 @@ def test_stub_provider_deterministic_offline():
 def test_core_has_no_heavy_imports():
     import pathlib
     forbidden = ("requests", "numpy", "pandas", "torch", "langchain", "httpx", "sqlalchemy")
-    core = pathlib.Path(__file__).parent.parent / "src" / "bionexus" / "core"
+    core = pathlib.Path(__file__).parent.parent / "src" / "proef" / "core"
     for py in core.rglob("*.py"):
         src = py.read_text()
         for bad in forbidden:
@@ -173,7 +173,7 @@ def test_core_has_no_heavy_imports():
 
 
 def test_success_criteria_ci_straddle_is_inconclusive():
-    from bionexus.core.hypothesis import SuccessCriteria
+    from proef.core.hypothesis import SuccessCriteria
     c = SuccessCriteria(metric="ic50_um", threshold=20.0, direction="min")
     assert c.classify(15.0, (9.0, 18.0)) == "validated"      # CI fully under
     assert c.classify(25.0, (21.0, 40.0)) == "invalidated"   # CI fully over
@@ -186,7 +186,7 @@ def test_success_criteria_ci_straddle_is_inconclusive():
 
 def test_fit_ic50_ci_covers_true_value():
     import random
-    from bionexus.labread import fit_ic50_ci
+    from proef.labread import fit_ic50_ci
     rng = random.Random(3)
     true_ic50, maxr = 5.0, 500.0
     pts = [(c, maxr / (1 + true_ic50 / c) + rng.gauss(0, 12))
@@ -197,14 +197,14 @@ def test_fit_ic50_ci_covers_true_value():
 
 
 def test_bootstrap_ci_brackets_mean():
-    from bionexus.benchmark import bootstrap_ci
+    from proef.benchmark import bootstrap_ci
     lo, hi = bootstrap_ci([1.0, 1.2, 0.9, 1.1, 1.3, 0.8, 1.05, 1.15])
     assert lo <= 1.087 <= hi
     assert hi > lo
 
 
 def test_spearman_ci_width_reflects_n():
-    from bionexus.benchmark import spearman_ci
+    from proef.benchmark import spearman_ci
     perfect = list(range(30)), [i * 2.0 for i in range(30)]
     rho, lo, hi = spearman_ci(*perfect)
     assert rho == 1.0 and lo == 1.0 and hi == 1.0
@@ -214,7 +214,7 @@ def test_spearman_ci_width_reflects_n():
 
 
 def test_benjamini_hochberg():
-    from bionexus.benchmark import benjamini_hochberg
+    from proef.benchmark import benjamini_hochberg
     p = [0.001, 0.008, 0.039, 0.041, 0.21, 0.6]
     flags = benjamini_hochberg(p, fdr=0.10)
     # BH at fdr .1: 0.001<=.0166, 0.008<=.033, 0.039<=.05, 0.041<=.0664 -> 4 hits
@@ -223,7 +223,7 @@ def test_benjamini_hochberg():
 
 
 def test_mechanistic_fields_flow_and_bonus():
-    from bionexus.core.hypothesis import (HypothesisTracker, ProblemStatement,
+    from proef.core.hypothesis import (HypothesisTracker, ProblemStatement,
                                           explanatory_bonus)
     t = HypothesisTracker(SqliteProvenanceStore(), system_actor())
     p = ProblemStatement(objective="o")
@@ -255,7 +255,7 @@ def test_mechanistic_fields_flow_and_bonus():
 
 
 def test_dose_designer_posterior_converges():
-    from bionexus.adaptive import DoseDesigner
+    from proef.adaptive import DoseDesigner
     d = DoseDesigner(rmax=500.0, sigma=10.0)
     true = 6.0
     seen = set()
@@ -273,7 +273,7 @@ def test_dose_designer_posterior_converges():
 
 
 def test_citation_parsing_and_verification(tmp_path, monkeypatch):
-    from bionexus import citations
+    from proef import citations
     monkeypatch.setattr(citations, "CACHE", tmp_path / "citations.json")
     assert citations.parse("PMID:35377565") == ("pmid", "35377565")
     assert citations.parse("10.1021/acs.jmedchem.4c02631") == \
@@ -300,9 +300,9 @@ def test_method_recall_and_surrogate_prior():
     """Surrogate prior: heterogeneous predicted values steer selection
     (lower predicted wins under a min-gate); the method-recall eval task
     recovers the seeded true actives deterministically."""
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.evals import tasks as eval_tasks
-    from bionexus.evals.harness import run_offline_campaign
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.evals import tasks as eval_tasks
+    from proef.evals.harness import run_offline_campaign
     from pathlib import Path
 
     # 1) prior ordering: the two lowest-predicted candidates are selected
@@ -347,9 +347,9 @@ def test_record_outcome_events_follow_verdict_word(tmp_path):
     """A verdict's EVENT TYPE follows its WORD: refuted lands as
     hypothesis_invalidated, abstention as hypothesis_inconclusive — no
     deciding record is ever filed under a bare 'tested' event."""
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.hypothesis import HypothesisTracker
-    from bionexus.core.interfaces import system_actor
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.hypothesis import HypothesisTracker
+    from proef.core.interfaces import system_actor
 
     store = SqliteProvenanceStore(str(tmp_path / "p.db"))
     tracker = HypothesisTracker(store, system_actor("t"))
@@ -378,11 +378,11 @@ def test_verdict_lab_side_keeps_ci_and_fires_flywheel_hook(tmp_path):
     """verdict() (the public/skills API) is at parity with record_outcome:
     the CI lands on the hypothesis AND in provenance, and the flywheel
     hook fires — lab-side verdicts teach the flywheel too."""
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import (AssayResult, Envelope, InstrumentInfo,
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import (AssayResult, Envelope, InstrumentInfo,
                                          Measurement, RunStatus)
-    from bionexus.core.hypothesis import (HypothesisTracker, SuccessCriteria)
-    from bionexus.core.interfaces import system_actor
+    from proef.core.hypothesis import (HypothesisTracker, SuccessCriteria)
+    from proef.core.interfaces import system_actor
 
     store = SqliteProvenanceStore(str(tmp_path / "p.db"))
     seen = []

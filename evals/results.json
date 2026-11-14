@@ -297,7 +297,7 @@
   "metrics": {
    "duration_s": 0.0
   },
-  "notes": "SKIPPED (opt-in) \u2014 set BIONEXUS_EVAL_REPRO=1 to run; network-heavy, ~10 min per study"
+  "notes": "SKIPPED (opt-in) \u2014 set PROEF_EVAL_REPRO=1 to run; network-heavy, ~10 min per study"
  },
  {
   "task": "repro-cs03-flow",
@@ -306,7 +306,7 @@
   "metrics": {
    "duration_s": 0.0
   },
-  "notes": "SKIPPED (opt-in) \u2014 set BIONEXUS_EVAL_REPRO=1 to run; network-heavy, ~10 min per study"
+  "notes": "SKIPPED (opt-in) \u2014 set PROEF_EVAL_REPRO=1 to run; network-heavy, ~10 min per study"
  },
  {
   "task": "falsifiability-tiebreak",

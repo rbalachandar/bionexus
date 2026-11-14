@@ -187,13 +187,13 @@ def scaffold_markers(scaffold: str, smiles_sample: list[str]) -> list[str]:
 
 
 def main() -> None:
-    from bionexus import fixtures
+    from proef import fixtures
     _n = fixtures.materialize(Path(__file__).parent)
     if _n:
         print(f"[fixtures] restored {_n} frozen data file(s)")
     use_llm = "--llm" in sys.argv
-    from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF
-    from bionexus.benchmark import roc_auc, spearman, spearman_ci  # noqa: F401
+    from proef.adapters.models.sklearn_policy import MorganFingerprintRF
+    from proef.benchmark import roc_auc, spearman, spearman_ci  # noqa: F401
 
     papers = dict(PAPERS)
     if "--docs" in sys.argv:
@@ -213,7 +213,7 @@ def main() -> None:
                 prev = {}
     agent = None
     if use_llm:
-        from bionexus.adapters.models.anthropic_provider import AnthropicProvider
+        from proef.adapters.models.anthropic_provider import AnthropicProvider
         # heavy structured-output sweeps use the text-first model (thinking
         # models can exhaust any budget before emitting); override with
         # CS03_LLM_MODEL
@@ -354,7 +354,7 @@ def main() -> None:
     tested = [(d, r["rf_ef10_p"]) for d, r in results.items()
               if r.get("rf_ef10_p") is not None]
     if len(tested) >= 2:
-        from bionexus.benchmark import benjamini_hochberg
+        from proef.benchmark import benjamini_hochberg
         flags = benjamini_hochberg([p for _, p in tested], fdr=0.10)
         for (d, _), sig in zip(tested, flags):
             results[d]["rf_ef10_bh_sig_fdr0.10"] = sig
@@ -367,8 +367,8 @@ def main() -> None:
 def run_agent_rows(agent, doc_id: str, label: str, sample: list[tuple[str, float]],
                    markers: list[str]) -> dict:
     """Contamination probe + blind hypothesis + blind ranking for one paper."""
-    from bionexus.benchmark import spearman
-    from bionexus.core.contracts import Envelope, ToolInvocation
+    from proef.benchmark import spearman
+    from proef.core.contracts import Envelope, ToolInvocation
 
     out: dict = {}
     doc_meta = chembl(f"/document/{doc_id}.json")
@@ -381,7 +381,7 @@ def run_agent_rows(agent, doc_id: str, label: str, sample: list[tuple[str, float
     known = probe.strip().lower().startswith("yes")
     out["contamination"] = "CONTAMINATED" if known else "clean"
 
-    from bionexus.probes import variant_contamination
+    from proef.probes import variant_contamination
     tokens = [w for w in _re_title.findall(r"[a-z]+", title.lower())
               if len(w) >= 8][:6]
     vc = variant_contamination(agent, tokens, [s for s, _ in sample[:3]])

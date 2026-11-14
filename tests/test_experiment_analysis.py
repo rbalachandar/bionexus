@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from bionexus import experiment_analysis as EA
-from bionexus.core.contracts.analysis import (
+from proef import experiment_analysis as EA
+from proef.core.contracts.analysis import (
     AnalysisProfile, AnalysisState, DispositionAction, EvidenceOrigin,
     HumanDisposition, PreliminaryCall)
 

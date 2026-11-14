@@ -29,7 +29,7 @@ export default function Campaigns() {
         {error && <EmptyState title="Could not load campaigns" hint={(error as Error).message} />}
         {data && !data.length && (
           <EmptyState icon={<FlaskConical size={28} />} title="No campaigns yet"
-            hint="Start one from a program, or run `bn campaign auto --template dose-response-screen` — it will appear here as it runs." />
+            hint="Start one from a program, or run `proef campaign auto --template dose-response-screen` — it will appear here as it runs." />
         )}
         {!!data?.length && (
           <table className="w-full text-sm">

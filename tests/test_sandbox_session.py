@@ -1,14 +1,14 @@
 """S-T3 phase 1: SandboxSession routes tool invocations through a
-sandboxed worker (bn sandboxd) — routing, provenance, and failure
+sandboxed worker (proef sandboxd) — routing, provenance, and failure
 honesty, on the dev-default LocalSandbox."""
 import importlib.util
 
 import pytest
 
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.contracts import Envelope, ToolInvocation, ToolName
-from bionexus.core.interfaces import system_actor
-from bionexus.sandbox_session import SandboxSession
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.contracts import Envelope, ToolInvocation, ToolName
+from proef.core.interfaces import system_actor
+from proef.sandbox_session import SandboxSession
 
 
 def _inv(smiles="CCO"):
@@ -38,8 +38,8 @@ def test_local_session_invokes_tool_e2e():
 
 
 def test_registry_facade_routes_and_passthrough_matches():
-    from bionexus.core.registry import Registry
-    from bionexus.adapters.bio.rdkit_ops import MoleculeDescriptors
+    from proef.core.registry import Registry
+    from proef.adapters.bio.rdkit_ops import MoleculeDescriptors
     inner = Registry()
     inner.register_tool(MoleculeDescriptors())
     store = SqliteProvenanceStore(":memory:")
@@ -82,11 +82,11 @@ def test_bad_sandbox_type_refuses_loudly():
 
 
 def test_sandboxed_lab_matches_direct_simulator_exactly():
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.core.contracts import (ProtocolOp, ProtocolStep,
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.core.contracts import (ProtocolOp, ProtocolStep,
                                          ProtocolSubmission, ReagentSpec,
                                          SampleKind, SampleSpec)
-    from bionexus.sandbox_session import SandboxedLab
+    from proef.sandbox_session import SandboxedLab
     proto = ProtocolSubmission(
         envelope=Envelope(experiment_branch_id="prob-l"), title="t",
         assay_type="binding",
@@ -130,11 +130,11 @@ def test_sandboxed_lab_mirrors_autoloop_probe_surface():
     # replicates when synthesizing plate exports; if these silently
     # disappear into the proxy, ground truth collapses to a constant
     # ladder and verdicts drift (caught by the host-vs-sandbox diff)
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.core.contracts import (ProtocolOp, ProtocolStep,
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.core.contracts import (ProtocolOp, ProtocolStep,
                                          ProtocolSubmission, ReagentSpec,
                                          SampleKind, SampleSpec)
-    from bionexus.sandbox_session import SandboxedLab
+    from proef.sandbox_session import SandboxedLab
     proto = ProtocolSubmission(
         envelope=Envelope(experiment_branch_id="prob-p"), title="t",
         assay_type="binding",
@@ -178,7 +178,7 @@ def test_fork_diverges_and_session_cleans_up():
 
 
 def test_sandbox_receipt_read_model():
-    from bionexus.views import _sandbox_summary
+    from proef.views import _sandbox_summary
     store = SqliteProvenanceStore(":memory:")
     s = SandboxSession(mode="per_experiment", sandbox="local",
                        branch_id="prob-r", store=store,
@@ -190,14 +190,14 @@ def test_sandbox_receipt_read_model():
     assert info and info["type"] == "local" and info["execs"] >= 1
     assert info["destroyed"] and info["policy"] == {}
     # an ordinary chain without sandboxes renders nothing
-    from bionexus.core.hypothesis import ProblemStatement
+    from proef.core.hypothesis import ProblemStatement
     assert _sandbox_summary(store.branch_records("nonexistent")) is None
 
 
 def test_docker_transport_failure_never_kills_caller():
     # review fix: CalledProcessError-era escape hatch closed — rc!=0 AND
     # timeout both surface as FAILED results, and BOTH are recorded first
-    from bionexus.core.contracts import (Envelope, ToolInvocation, ToolName)
+    from proef.core.contracts import (Envelope, ToolInvocation, ToolName)
     calls = []
 
     class FailingRunner:
@@ -228,11 +228,11 @@ def test_docker_transport_failure_never_kills_caller():
 
 def test_lab_state_honours_nondefault_config():
     # review fix: wrapping must not silently reset replicates/interference
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.core.contracts import (ProtocolOp, ProtocolStep,
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.core.contracts import (ProtocolOp, ProtocolStep,
                                          ProtocolSubmission, ReagentSpec,
                                          SampleKind, SampleSpec)
-    from bionexus.sandbox_session import SandboxedLab
+    from proef.sandbox_session import SandboxedLab
     proto = ProtocolSubmission(
         envelope=Envelope(experiment_branch_id="prob-st"), title="t",
         assay_type="binding",
@@ -256,7 +256,7 @@ def test_lab_state_honours_nondefault_config():
 
 
 def test_lab_wrapper_refuses_labs_it_cannot_transport():
-    from bionexus.sandbox_session import SandboxedLab
+    from proef.sandbox_session import SandboxedLab
     s = SandboxSession(mode="per_experiment", sandbox="local")
     s.start()
 
@@ -269,7 +269,7 @@ def test_lab_wrapper_refuses_labs_it_cannot_transport():
 
 
 def test_fork_appears_on_parent_receipt():
-    from bionexus.views import _sandbox_summary
+    from proef.views import _sandbox_summary
     store = SqliteProvenanceStore(":memory:")
     s = SandboxSession(mode="per_experiment", sandbox="local",
                        branch_id="prob-pf", store=store,
@@ -283,7 +283,7 @@ def test_fork_appears_on_parent_receipt():
 
 def test_stdin_transport_survives_big_payload():
     # review fix: payloads ride stdin, not argv — no ARG_MAX cliff
-    from bionexus.core.contracts import (Envelope, ToolInvocation, ToolName)
+    from proef.core.contracts import (Envelope, ToolInvocation, ToolName)
     big = "C" * 200_000
     s = SandboxSession(mode="per_experiment", sandbox="local",
                        branch_id="prob-big",

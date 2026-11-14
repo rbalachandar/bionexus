@@ -1,0 +1,1030 @@
+"""One-call campaign loop: problem in, verdicts out.
+
+`run_campaign()` assembles the full flow — problem, portfolio, filter,
+design/test, lab awareness, verdicts, confirmation — so it can be started
+manually by a scientist (one function call / `proef campaign auto`) or kicked off by an
+agent (the same function, called programmatically or via MCP).
+
+autonomy levels:
+  "act"      — agent runs everything, incl. auto-submitted confirmation assays
+  "gate"     — agent runs everything, but every lab submission needs the
+               operator's approver callback to return True first
+  "observe"  — agent only reads, fits and recommends; submits nothing
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable
+
+from proef.core.contracts import (
+    Artifact, ArtifactKind, Envelope, EventType, ProtocolOp, ProtocolStep,
+    ProtocolSubmission, ReagentSpec, SampleKind, SampleSpec,
+)
+from proef.core.hypothesis import (
+    Constraint, ExperimentDesign, HypothesisTracker, PortfolioDecision,
+    ProblemStatement, SuccessCriteria,
+)
+from proef.core.interfaces import ProvenanceStore, record_for, system_actor
+from proef.core.safety import LabGateway, SafetyEngine
+from proef.watch import AutoAnalysisAgent, DeviceMonitor
+
+Autonomy = str  # "act" | "gate" | "observe"
+
+
+from proef.fitting import hill_response  # noqa: E402
+
+_log = logging.getLogger(__name__)
+
+
+@dataclass
+class ResourceBudget:
+    """Hard caps on what a campaign may consume. Enforced at submission time
+    (no new lab runs past the limit) and at generation time (no hypothesis
+    explosion). Exhaustion is provenance-recorded, never silent."""
+    max_total_runs: int = 50             # lab runs (incl. confirmations)
+    max_hypotheses_total: int = 30       # across all rounds
+    max_confirmations: int = 10
+    wall_clock_secs: float | None = None
+
+    def lab_runs_used(self, store: ProvenanceStore, problem_id: str) -> int:
+        # fail CLOSED: if the store cannot be read the budget must not
+        # quietly report "0 runs used" and let a campaign overspend
+        recs = store.branch_records(f"problem/{problem_id}")
+        return sum(1 for r in recs if r.event_type.value == "lab_run")
+
+
+@dataclass
+class CampaignConfig:
+    problem: ProblemStatement
+    hypotheses: list[dict[str, Any]] | None = None   # config-defined portfolio...
+    hypothesis_source: str = "config"         # ...or "agent": the model decides
+    model: Any = None                         # required when hypothesis_source == "agent"
+    candidates: list[dict[str, Any]] | None = None   # library shown to the agent
+    skill_guidance: str | None = None         # Agent Skills text injected into
+                                              # the hypothesis prompt (P: skills)
+    max_families: int = 3
+    max_variants_per_family: int = 3
+    score_fn: Callable[[Any], float] | None = None   # portfolio filter scoring
+    k: int = 2                                # hypotheses taken to wet-lab
+    k_schedule: tuple[int, ...] = ()          # per-round k, e.g. (4, 2, 1):
+                                              # screen wide, then narrow.
+                                              # falls back to k per round
+    budget: ResourceBudget | None = None      # None = uncapped ( discouraged)
+    concentrations: tuple[str, ...] = ("0.5uM", "2uM", "10uM", "40uM")
+    dose_design: str = "fixed"          # "fixed" | "adaptive" (Bayesian
+                                        # sequential dosing, 3 wells)
+    noise_variant: int = 0              # measurement-noise offset: varies
+                                        # noise, never the ground truth
+    rounds: int = 1                     # sequential rounds; each round's
+                                        # results feed the next selection
+    policy: Any = None                  # assaybench-style ranker (e.g.
+                                        # AssayLoopRanker): from round 2 it
+                                        # picks the batch, gates still decide
+    acquisition: str = ""               # "bo-ei": EI batch selection every
+                                        # round, AD-gated (docs/ACQUISITION-
+                                        # IMPLEMENTATION-PLAN.md); "" = today's
+                                        # score/policy behaviour
+    seed: int | None = None             # acquisition determinism seed
+    inbox: str | Path = ".data/inbox"
+    flywheel: Any = None                # shared Flywheel (default: local db)
+    synthesis_retries: int = 1      # extra Make attempts on a refused
+    synthesis_backend: str = "rule-based"  # named-reaction route gate:
+    #   "rule-based" | "simulated" (planning only) | "none" (skip Make gate)
+                                    # batch (process re-optimization);
+                                    # each attempt is provenance-recorded
+    autonomy: Autonomy = "gate"
+    poll_secs: float = 0.5
+    actor_name: str = "campaign"
+
+    # S-T5: operator-declared instrument pool + the experiment's needs.
+    # labs entries: {simulator:{...}} | {adapter:"pkg:Class",options:{}}
+    # | {mcp:{command:[...],profile:"ezo|mettler|ika|{...}"}}
+    labs: list[dict[str, Any]] | None = None
+    lab_requirement: dict[str, Any] | None = None
+
+
+@dataclass
+class CampaignReport:
+    problem_id: str
+    selected: list[str]
+    verdicts: dict[str, str] = field(default_factory=dict)   # candidate -> status
+    recommendations: list[str] = field(default_factory=list)
+    rounds_run: int = 1
+    history: list[dict] = field(default_factory=list)
+
+
+from proef.core.contracts.models import coerce_assay_type
+
+
+def announce_branch(eid: str, problem_id: str) -> None:
+    """Map a workbench experiment id to the problem branch a campaign is
+    about to write, so the API watcher can stream records incrementally
+    instead of resolving the branch from logs only after the run ends.
+    Best-effort: never breaks a campaign."""
+    try:
+        if not eid or not problem_id:
+            return
+        from proef.paths import CAMPAIGN_DIR
+        CAMPAIGN_DIR.mkdir(parents=True, exist_ok=True)
+        f = CAMPAIGN_DIR / "branch-map.json"
+        m = {}
+        if f.exists():
+            try:
+                m = json.loads(f.read_text())
+            except Exception:
+                _log.warning("branch-map unreadable; rebuilding", exc_info=True)
+                m = {}
+        if m.get(eid) == problem_id:
+            return
+        m[eid] = problem_id
+        f.write_text(json.dumps(m))
+    except Exception:
+        _log.warning("could not announce branch %s -> %s", eid, problem_id,
+                     exc_info=True)
+
+
+def announced_branches() -> dict:
+    """Read the campaign-id -> problem-branch map (empty if absent)."""
+    try:
+        from proef.paths import CAMPAIGN_DIR
+        f = CAMPAIGN_DIR / "branch-map.json"
+        return json.loads(f.read_text()) if f.exists() else {}
+    except Exception:
+        _log.warning("branch-map unreadable", exc_info=True)
+        return {}
+
+
+def _select_lab(cfg, lab, store, actor, approver, say):
+    """S-T5: pick the lab from the operator-declared pool (no-op without one)."""
+    # S-T5: the pool is the operator's fence; this matcher only picks
+    # WITHIN it, and the decision — with every refusal reason — is
+    # sealed before any lab acts.
+    if cfg.labs:
+        from proef.labselect import LabRequirement, build_pool, select_lab
+        pool = build_pool(cfg.labs)
+        req = LabRequirement.build(cfg.lab_requirement)
+        if not req.assay_types and not req.readouts and cfg.hypotheses:
+            req = LabRequirement(
+                assay_types=frozenset(
+                    {h.get("assay_type", "binding")
+                     for h in cfg.hypotheses}),
+                max_bsl=req.max_bsl, physical=req.physical)
+        sel, refusals = select_lab(pool, req)
+        sbranch = f"problem/{cfg.problem.problem_id or 'pending'}"
+        if sel is None:
+            store.append(record_for(
+                Envelope(experiment_branch_id=sbranch),
+                EventType.gate_decision, actor,
+                decision={"kind": "lab_refusal", "pool": [n for n, _ in pool],
+                          "refusals": refusals,
+                          "action": "campaign refused: no permitted "
+                                    "instrument serves the declared need"}))
+            raise ValueError(
+                "lab selection refused — no instrument in the operator-"
+                f"declared pool serves {sorted(req.assay_types)}"
+                f"{sorted(req.readouts) and ['+ readouts: ' + str(sorted(req.readouts))]};"
+                f" refusals: {refusals}")
+        lab = sel.lab
+        store.append(record_for(
+            Envelope(experiment_branch_id=sbranch),
+            EventType.gate_decision, actor,
+            decision={"kind": "lab_selected", **sel.rationale}))
+        # gate-mode autonomy extends to the instrument itself: when the
+        # fence leaves a real CHOICE (2+ eligible), the human confirms
+        # the machine's ranking before any lab is built around it
+        if cfg.autonomy == "gate" and len(sel.rationale["eligible"]) > 1:
+            ok = bool(approver and approver(
+                f"LAB [problem/{cfg.problem.problem_id or 'pending'}]: use "
+                f"'{sel.name}' for this campaign? eligible: "
+                f"{sel.rationale['eligible']}"))
+            store.append(record_for(
+                Envelope(experiment_branch_id=sbranch),
+                EventType.gate_decision, actor,
+                decision={"kind": "lab_confirmed" if ok
+                          else "lab_confirmation_declined",
+                          "chosen": sel.name,
+                          "eligible": sel.rationale["eligible"]}))
+            if not ok:
+                raise ValueError(
+                    f"lab choice '{sel.name}' declined by the approver — "
+                    f"campaign refused (eligible were "
+                    f"{sel.rationale['eligible']})")
+        say(f"lab: '{sel.name}' selected from a pool of {len(pool)} "
+            f"(simulated={sel.rationale['chosen']['simulated']}); "
+            f"decision sealed")
+    return lab
+
+
+def _build_gateway(cfg, lab, safety, store, actor, approver, say, gov):
+    """The submission gate: human-approved in gate mode, else advisory-reviewed."""
+    if cfg.autonomy == "gate":
+        if approver is None:
+            raise ValueError("autonomy='gate' requires an approver callback")
+        branch_hint = f"[problem/{cfg.problem.problem_id or 'pending'}]"
+        gateway = _GatedGateway(
+            lab, safety, store, actor,
+            lambda t: approver(f"{t} {branch_hint}"), say, governance=gov)
+    else:
+        from proef.advisory import AdvisoryReviewer
+        gateway = LabGateway(lab, safety, store, actor,
+                             advisory=AdvisoryReviewer(), governance=gov,
+                             approver=approver)
+    return gateway
+
+
+def _durc_gate(cfg, store, actor) -> None:
+    """Refuse (and record) a campaign naming a select agent / regulated toxin."""
+    from proef.adapters.bio.tox_alerts import durc_screen
+    durc_hits = durc_screen(" ".join([cfg.problem.objective,
+                                      cfg.problem.context or ""]))
+    if durc_hits:
+        store.append(record_for(
+            Envelope(experiment_branch_id=f"problem/{cfg.problem.problem_id or 'unnamed'}"),
+            EventType.gate_decision, actor,
+            decision={"kind": "durc_refusal", "agents": durc_hits,
+                      "action": "campaign refused before hypothesis work"}))
+        raise ValueError(
+            f"DURC: campaign names a select agent / regulated toxin family "
+            f"({', '.join(durc_hits)}) — refused and recorded; requires "
+            f"institutional review before Proef will run it")
+
+
+def _unique_branch(cfg, store, say) -> None:
+    # every run gets its own branch: an explicit problem_id reused from a
+    # previous campaign is auto-suffixed rather than merging records
+    _base_pid = cfg.problem.problem_id
+    _n = 1
+    while store.branch_records(f"problem/{cfg.problem.problem_id}"):
+        _n += 1
+        cfg.problem.problem_id = f"{_base_pid}-{_n}"
+    if cfg.problem.problem_id != _base_pid:
+        say(f"branch '{_base_pid}' already holds a previous run — this "
+            f"campaign recorded separately as '{cfg.problem.problem_id}'")
+
+
+def _propose_and_score(cfg, tracker, problem, store, flywheel, say):
+    """Hypothesis portfolio + the scoring function ranking it each round."""
+    family_scores: dict[str, float] = {}
+    if cfg.hypothesis_source == "agent":
+        from proef.hypothesis_agent import propose_families_with_agent
+        budget = cfg.budget or ResourceBudget()
+        used = budget.lab_runs_used(store, cfg.problem.problem_id or "")
+        remaining_runs = max(0, budget.max_total_runs - used)
+        portfolio, family_scores = propose_families_with_agent(
+            tracker, cfg.problem, cfg.model, candidates=cfg.candidates,
+            max_families=cfg.max_families,
+            max_variants_per_family=cfg.max_variants_per_family,
+            max_total_hypotheses=max(0, budget.max_hypotheses_total
+                                     - len(tracker.hypotheses)),
+            existing_keys={(h.candidate, h.statement) for h in tracker.hypotheses.values()},
+            skill_guidance=cfg.skill_guidance,
+            flywheel=flywheel,
+            notify=say)
+        say(f"resource budget: {remaining_runs}/{budget.max_total_runs} lab runs remaining")
+        say(f"agent proposed {len(portfolio)} variant hypotheses")
+        _base = cfg.score_fn or (
+            lambda h: family_scores.get(h.family or "", 0.5))
+        score_fn = lambda h: _base(h) + flywheel.prior_bonus(h.family)
+    else:
+        portfolio = tracker.propose_portfolio(problem, cfg.hypotheses or [])
+        # surrogate prior: rank config hypotheses by their own predicted
+        # value under the gate direction (lower predicted is better under a
+        # min-gate). Activates only when predictions differ — uniform
+        # predictions keep the old constant, so explanatory-bonus and
+        # flywheel tie-breaks are untouched.
+        _pvs = {getattr(h, "predicted_value", None) for h in portfolio}
+        _pvs.discard(None)
+        if cfg.score_fn is not None:
+            base_fn = cfg.score_fn
+        elif len(_pvs) > 1:
+            _con0 = next((c for c in problem.constraints if c.kind == "hard"
+                          and c.limit is not None), None)
+            _max_dir = ">=" in (_con0.description or "")
+            def base_fn(h, _md=_max_dir):
+                pv = getattr(h, "predicted_value", None)
+                if pv is None:
+                    return 0.5
+                pv = max(0.0, float(pv))
+                return (pv / (1.0 + pv)) if _md else (1.0 / (1.0 + pv))
+        else:
+            base_fn = lambda h: 0.5
+        score_fn = lambda h: base_fn(h) + flywheel.prior_bonus(h.family)
+    return portfolio, score_fn
+
+
+def _declare_criteria(problem, lab, portfolio):
+    """The pre-registered gate (SuccessCriteria) + the acquisition log-axis flag."""
+    # metric-aware criteria: the problem's primary hard constraint is the
+    # pre-registered gate — thread it into every hypothesis so verdicts
+    # read the program's metric/direction, never a hardcoded IC50
+    _con = next((c for c in problem.constraints if c.kind == "hard"
+                 and c.limit is not None), None)
+    _crit = None
+    if _con is not None:
+        from proef.core.hypothesis import SuccessCriteria
+        _crit = SuccessCriteria(
+            metric=_con.name,
+            direction="max" if ">=" in (_con.description or "") else "min",
+            threshold=float(_con.limit))
+        if _crit.metric not in ("ic50_um", "value") and lab is not None \
+                and hasattr(lab, "set_property_gate"):
+            # the lab switches to dose-independent property readout ONLY
+            # when the campaign really measures properties. A constraint
+            # NAMED "potency" over dose-response assays is still an IC50
+            # campaign — the per-round criteria below override it to
+            # ic50_um; forcing property mode here would export flat
+            # plates that Hill-fits then decode as fake nano-molar hits
+            # (Oct-2026 review: eval drift caught exactly this)
+            from proef.adapters.lab.simulator import DOSE_RESPONSE_ASSAYS
+            _dose_campaign = any((h.assay_type or "binding")
+                                 in DOSE_RESPONSE_ASSAYS for h in portfolio)
+            if not _dose_campaign:
+                lab.set_property_gate(_crit.metric, _crit.direction,
+                                      _crit.threshold)
+
+    # acquisition axis: in a dose-response campaign the declared µM values
+    # live on the LOG scale (predicted_sd is a fold uncertainty, not µM) —
+    # the constraint NAME ("potency") tells you nothing about the scale,
+    # the assay type does. Property campaigns rank linearly.
+    from proef.adapters.lab.simulator import DOSE_RESPONSE_ASSAYS as _DRA
+    _acq_log = (any((h.assay_type or "binding") in _DRA for h in portfolio)
+                or (_crit is not None and _crit.metric == "ic50_um"))
+    return _crit, _acq_log
+
+
+def _install_budget_gate(gateway, cfg, store, actor, say) -> None:
+    """Route every submission (incl. confirmations) through the run budget."""
+    _submit = gateway.submit
+
+    def gateway_submit(protocol):  # budget-enforced submission
+        if cfg.budget is not None:
+            used = cfg.budget.lab_runs_used(store, cfg.problem.problem_id or "")
+            if used >= cfg.budget.max_total_runs:
+                say(f"BUDGET EXHAUSTED: {used}/{cfg.budget.max_total_runs} lab "
+                    "runs used — submission refused (recorded)")
+                store.append(record_for(
+                    Envelope(experiment_branch_id=f"problem/{cfg.problem.problem_id}"),
+                    EventType.tool_invocation, actor,
+                    decision={"kind": "budget_exhausted",
+                              "lab_runs": used,
+                              "cap": cfg.budget.max_total_runs}))
+                return None, f"budget exhausted ({used} runs >= cap)"
+        return _submit(protocol)
+
+    gateway.submit = gateway_submit  # confirmations flow through the same gate
+
+
+def _design_protocol(h, cfg, problem, adaptive, screen_conc):
+    """Build the lab protocol for one hypothesis and attach its design."""
+    protocol = ProtocolSubmission(
+        envelope=Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
+        title=f"screen-{h.candidate}" if adaptive else f"test-{h.candidate}",
+        assay_type=str(coerce_assay_type(h.assay_type).value),
+        steps=[ProtocolStep(seq=1, op=ProtocolOp.dispense,
+                            params={"volume_ul": 50})],
+        samples=[SampleSpec(
+            sample_id=h.candidate, kind=SampleKind.compound,
+            concentration=c,
+            metadata={"smiles": (h.metadata or {}).get("smiles", ""),
+                      "sequence": (h.metadata or {}).get("sequence", ""),
+                      "description": f"{h.candidate} construct",
+                      "intent": ("covalent" if "covalent" in
+                                 (h.mechanism or "").lower() else "")})
+                 for c in ([screen_conc] if adaptive
+                           else cfg.concentrations)]
+        + [SampleSpec(sample_id=f"ctrl-neg{i}", kind=SampleKind.buffer,
+                      concentration="10uM") for i in (1, 2)],
+        reagents=[ReagentSpec(name="assay-buffer", amount="5 mL",
+                              bsl_level=1)],
+    )
+    h.design = ExperimentDesign(
+        assay_type=str(coerce_assay_type(h.assay_type).value), concentrations=list(cfg.concentrations),
+        replicates=3, controls=["negative"],
+        protocol_id=protocol.protocol_id)
+    return protocol
+
+
+def _make_candidate(h, protocol, cfg, store, say, synth_cache) -> bool:
+    """Make: route planning, toxicophore pre-screen, synthesis (+ biologic
+    stability QC) BEFORE Test. False = the batch never reaches the lab; the
+    refusal is already on the chain."""
+    # Make: plan routes, then synthesize & purify before Test — a
+    # compound with NO viable route never burns a batch, and a failed
+    # batch never reaches the lab (deterministic per candidate)
+    synth = synth_cache.get(h.candidate)
+    if synth is None:
+        from proef.adapters.lab.synthesis import \
+            VirtualSynthesizer
+        vs = VirtualSynthesizer()
+        best_route = None
+        smi = (h.metadata or {}).get("smiles")
+        mod = str((h.metadata or {}).get("modality", "")).lower()
+        # Gate-ordering debt (agent-tier finding, Oct 2026): the
+        # toxicophore screen ran only at SUBMISSION — after Make had
+        # already synthesized a batch that could never be assayed.
+        # Pre-screen the declared structure at Make entry with the
+        # same rules (intent respected: a declared covalent warhead
+        # still passes); the gateway rule remains the backstop.
+        # Refusal semantics unchanged; waste eliminated.
+        if smi and mod not in ("biologic", "cell therapy", "mrna"):
+            from proef.adapters.bio.tox_alerts import (
+                RULES_VERSION, screen_smiles)
+            _intent = ("covalent" if "covalent" in
+                       (h.mechanism or "").lower() else "")
+            _hits = screen_smiles(smi, _intent)["refuse"]
+            if _hits:
+                say(f"{h.candidate}: REFUSED at Make entry — "
+                    f"toxicophore pre-screen (never synthesized)")
+                store.append(record_for(
+                    protocol.envelope, EventType.gate_decision,
+                    system_actor("safety"),
+                    decision={
+                        "kind": "safety_refusal",
+                        "stage": "make_prescreen",
+                        "candidate": h.candidate,
+                        "samples": [h.candidate],
+                        "reason": (
+                            f"sample '{h.candidate}' carries "
+                            f"{len(_hits)} toxicophore alert(s) "
+                            f"[rules {RULES_VERSION}]: "
+                            + "; ".join(f"{x['alert']} ({x['note']})"
+                                        for x in _hits[:3])
+                            + " — screened before synthesis "
+                              "(gateway rule remains the backstop)"),
+                        "action": "Make skipped; batch never "
+                                  "spent"})
+                )
+                return False
+        if (smi and mod not in ("biologic", "cell therapy", "mrna")
+                and cfg.synthesis_backend != "none"):
+            from proef.adapters.retrosynthesis import \
+                get_retrosynthesis_adapter
+            plans = get_retrosynthesis_adapter(
+                cfg.synthesis_backend).plan_routes(smi)
+            viable = [p for p in plans if p.feasible]
+            if not viable:
+                say(f"{h.candidate}: NO VIABLE SYNTHESIS ROUTE — "
+                    f"blocked at Make (never reaches Test)")
+                store.append(record_for(
+                    protocol.envelope, EventType.gate_decision,
+                    system_actor("synthesis"),
+                    decision={
+                        "kind": "no_viable_route",
+                        "candidate": h.candidate,
+                        "reason": "rule-corpus retrosynthesis found "
+                                  "no route meeting the yield/"
+                                  "lead-time floors",
+                        "routes_planned": len(plans),
+                        "best_modeled_yield_pct": max(
+                            (p.yield_pct for p in plans), default=None),
+                        "smiles": smi,
+                        "data_origin": plans[0].data_origin,
+                        "samples": [h.candidate]}))
+                return False
+            best_route = max(viable,
+                             key=lambda p: p.yield_pct).summary()
+        for att in range(1 + max(0, cfg.synthesis_retries)):
+            synth = vs.synthesize(
+                h.candidate, smi,
+                modality=mod,
+                attempt=att + 1, route=best_route)
+            store.append(record_for(
+                protocol.envelope, EventType.synthesis_complete,
+                system_actor("synthesis"),
+                artifact=Artifact(artifact_id=f"syn-{synth['lot']}",
+                                  kind=ArtifactKind.other, uri="",
+                                  metadata=dict(synth)),
+                decision={"candidate": h.candidate,
+                          "yield_pct": synth["yield_pct"],
+                          "purity": synth["purity"],
+                          "ok": synth["ok"],
+                          "lot": synth["lot"],
+                          "attempt": att + 1,
+                          **({"route": synth["route"],
+                              "route_lead_time_days":
+                                  synth["route_lead_time_days"],
+                              "route_cost_usd":
+                                  synth["route_cost_usd"],
+                              "data_origin": synth["data_origin"]}
+                             if "route" in synth else {})}))
+            say(f"{synth.get('action', 'synthesized')} "
+                f"{h.candidate}: lot {synth['lot']} "
+                f"yield {synth['yield_pct']}% purity "
+                f"{synth['purity']}%"
+                + (f" (attempt {att + 1})" if att else ""))
+            if synth["ok"]:
+                break
+        synth_cache[h.candidate] = synth
+    if not synth["ok"]:
+        say(f"batch for {h.candidate} refused into Test: "
+            f"{synth['note']}")
+        store.append(record_for(
+            protocol.envelope, EventType.gate_decision,
+            system_actor("synthesis"),
+            decision={"kind": "synthesis_failed",
+                      "candidate": h.candidate,
+                      "lot": synth["lot"],
+                      "reason": synth["note"],
+                      "samples": [h.candidate]}))
+        return False
+    # biologic Make has a second QC: stability / aggregation.
+    # A batch that would aggregate in the vial never reaches an
+    # assay — the refusal is honest, not a missing verdict
+    if synth.get("modality", "").lower() in ("biologic",
+                                             "cell therapy",
+                                             "mrna"):
+        from proef.adapters.lab.bioprocess import bioprocess_qc
+        qc = bioprocess_qc(h.candidate,
+                           (h.metadata or {}).get("sequence", ""),
+                           synth["lot"])
+        store.append(record_for(
+            protocol.envelope, EventType.stage_transition,
+            system_actor("bioprocess"),
+            decision={"kind": "bioprocess_qc", "candidate":
+                      h.candidate, **qc}))
+        if not qc["ok"]:
+            say(f"batch for {h.candidate} refused into Test: "
+                f"{qc['note']}")
+            store.append(record_for(
+                protocol.envelope, EventType.gate_decision,
+                system_actor("bioprocess"),
+                decision={"kind": "stability_failed",
+                          "candidate": h.candidate,
+                          "lot": synth["lot"],
+                          "reason": qc["note"],
+                          "samples": [h.candidate]}))
+            return False
+    return True
+
+
+def _review_pass(cfg, store, problem, say) -> None:
+    """Independent audit (and the flags-only LLM advisory layer) before
+    results are finalized; recorded as provenance."""
+    # reviewer pass: independent audit before results are finalized.
+    # Findings are recorded as provenance and surfaced in the workbench;
+    # the reviewer demands revision, it never clears a gate
+    from proef.reviewer import review_campaign
+    review = review_campaign(store.branch_records(
+        f"problem/{problem.problem_id or 'unnamed'}"))
+    store.append(record_for(
+        Envelope(experiment_branch_id=
+                 f"problem/{problem.problem_id or 'unnamed'}"),
+        EventType.stage_transition, system_actor("reviewer"),
+        decision={"kind": "review_report", "review": review["review"],
+                  "critical": review["critical"],
+                  "warnings": review["warnings"],
+                  "verdicts_reviewed": review["verdicts_reviewed"],
+                  "findings": review["findings"]}))
+    if review["findings"]:
+        say(f"reviewer: {review['critical']} critical / "
+            f"{review['warnings']} warning finding(s) — "
+            + "; ".join(f["detail"] for f in
+                        review["findings"][:3]))
+    else:
+        say("reviewer: no findings — analysis consistent")
+
+    # LLM advisory layer: only when a model was part of this campaign.
+    # Its output is flags-only (schema-enforced) — advisory by construction
+    if cfg.model is not None:
+        from proef.reviewer import review_llm
+        llm_review = review_llm(
+            store.branch_records(
+                f"problem/{problem.problem_id or 'unnamed'}"), cfg.model)
+        store.append(record_for(
+            Envelope(experiment_branch_id=
+                     f"problem/{problem.problem_id or 'unnamed'}"),
+            EventType.stage_transition, system_actor("llm-reviewer"),
+            decision={"kind": "review_report_llm", **llm_review}))
+        if llm_review.get("unavailable"):
+            say(f"llm reviewer unavailable: "
+                f"{llm_review['unavailable']}")
+        elif llm_review["flags"]:
+            say(f"llm reviewer ({llm_review['model']}): "
+                f"{len(llm_review['flags'])} advisory flag(s)")
+        else:
+            say(f"llm reviewer ({llm_review['model']}): no advisory "
+                "flags")
+
+
+def _resolve_series(store, problem, actor, flywheel, say) -> None:
+    # S-T1.2: series-level claims derive their verdicts from members'
+    # CI-aware verdicts — never tested directly, abstention dominates,
+    # and resolutions feed the flywheel's family prior.
+    from proef.series import resolve_series_claims
+    branch = f"problem/{problem.problem_id}"
+    _claim_ev = {"confirmed": EventType.hypothesis_validated,
+                 "refuted": EventType.hypothesis_invalidated,
+                 "inconclusive": EventType.hypothesis_inconclusive}
+    for c in resolve_series_claims(store.branch_records(branch)):
+        if c["status"] == "open":
+            say(f"series claim {c['family_id']}: open — {c['reason']}")
+            continue
+        store.append(record_for(
+            Envelope(experiment_branch_id=branch), _claim_ev[c["status"]],
+            actor,
+            decision={"hypothesis_id": c["family_id"],
+                      "family_id": c["family_id"],
+                      "verdict": c["status"],
+                      "claim_kind": "series-derived", "derived": True,
+                      "family_kind": c["kind"],
+                      "retain_fold": c["retain_fold"],
+                      "parent_statement": c["parent_statement"],
+                      "reason": c["reason"],
+                      "derived_from": [list(x) for x in c["derived_from"]]}))
+        flywheel.submit(f"series:{c['family_id']}", c["family_id"],
+                        "series-claim", c["status"])
+        say(f"series claim {c['family_id']}: {c['status'].upper()} — "
+            f"{c['reason']}")
+
+
+def _assign_criteria(selected, _crit) -> None:
+    """Thread the pre-registered gate into each hypothesis of the round."""
+    if _crit is not None:
+        from proef.adapters.lab.simulator import DOSE_RESPONSE_ASSAYS
+        from proef.core.hypothesis import SuccessCriteria
+        for h in selected:
+            if h.assay_type in DOSE_RESPONSE_ASSAYS:
+                # IC50-style assay: the Hill fit produces ic50_um and
+                # lower-is-better, whatever the constraint is named
+                h.criteria = SuccessCriteria(
+                    metric="ic50_um", direction="min",
+                    threshold=float(_crit.threshold))
+            else:
+                h.criteria = _crit.model_copy()
+
+
+def _collect_round(monitor, agent, selected, adaptive, cfg, terminal) -> None:
+    """Feed this round's instrument outputs to the analysis agent until every
+    selected hypothesis is terminal (or the monitor goes quiet)."""
+    # analyze this round's outputs
+    n_expected = sum(1 for h in selected if h.design and h.design.run_id)
+    time.sleep(0.2)
+    cap = n_expected * (4 if adaptive else 2) + 1
+    for i, ev in enumerate(monitor.events(
+            stop_after=cap,
+            idle_timeout=max(5.0, cfg.poll_secs * 30))):
+        agent.handle(ev)
+        if all(h.status in terminal for h in selected) and i + 1 >= n_expected:
+            break
+
+
+def run_campaign(cfg: CampaignConfig, lab: Any,
+                 store: ProvenanceStore,
+                 approver: Callable[[str], bool] | None = None,
+                 notify: Callable[[str], None] | None = None,
+                 sandbox: Any = None) -> CampaignReport:
+    """Start-to-finish: problem -> portfolio -> filter -> test -> verdict -> confirm."""
+    actor = system_actor(cfg.actor_name)
+    from proef.flywheel import Flywheel
+    flywheel = cfg.flywheel if cfg.flywheel is not None else Flywheel()
+
+    def _on_verdict(h) -> None:
+        flywheel.submit(h.candidate, h.family, h.assay_type, h.status,
+                        h.observed_value, h.observed_ci,
+                        problem_id=(cfg.problem.problem_id or None),
+                        threshold=(h.criteria.threshold if h.criteria else None),
+                        evidence_run=h.evidence_run_id)
+
+    tracker = HypothesisTracker(store, actor, on_verdict=_on_verdict)
+
+    safety = SafetyEngine()
+    from proef.governance import AuthorizationMatrix, HaltSwitch
+    gov = {"matrix": AuthorizationMatrix(), "halt": HaltSwitch()}
+    say = notify or (lambda m: print(f"[campaign] {m}"))
+
+    # resolve the branch name FIRST: lab selection (below) already writes
+    # records onto problem/<id>, which would otherwise make every campaign
+    # with a lab pool look like a re-run of itself and get a '-2' suffix
+    _unique_branch(cfg, store, say)
+    lab = _select_lab(cfg, lab, store, actor, approver, say)
+
+    gateway = _build_gateway(cfg, lab, safety, store, actor, approver, say, gov)
+
+    # 0. problem + portfolio + filter
+    _durc_gate(cfg, store, actor)
+    if sandbox is not None:
+        from proef.sandbox_session import SandboxedLab
+        sandbox.start(f"problem/{cfg.problem.problem_id}")
+        lab = SandboxedLab(sandbox, lab=lab)
+        say(f"sandbox: lab ops execute inside the experiment sandbox "
+            f"({lab.name} @ problem/{cfg.problem.problem_id}) — every op "
+            f"is a sealed sandbox_exec")
+    problem = tracker.define_problem(cfg.problem, environment={
+        "lab": getattr(lab, "name", "unknown"),
+        "lab_version": getattr(lab, "version", None),
+        "lab_seed": getattr(lab, "seed", None),
+        "concentrations": list(cfg.concentrations),
+        "autonomy": cfg.autonomy,
+        "dose_design": cfg.dose_design,
+        "k": cfg.k,
+        "model": getattr(cfg.model, "model", None),
+    })
+    portfolio, score_fn = _propose_and_score(
+        cfg, tracker, problem, store, flywheel, say)
+    _crit, _acq_log = _declare_criteria(problem, lab, portfolio)
+
+    # announce the branch for live streaming: the API watcher maps the
+    # campaign id to this problem branch the moment it exists, so the
+    # workbench streams records incrementally instead of at the end
+    _cid = os.environ.get("PROEF_CAMPAIGN_ID")
+    if _cid:
+        announce_branch(_cid, problem.problem_id)
+
+    # 1. rounds: select -> design+submit -> analyze; each round feeds the next
+    synth_cache: dict[str, dict] = {}
+    _install_budget_gate(gateway, cfg, store, actor, say)
+
+    # per-experiment outbox: two campaigns on one inbox would collide on
+    # run ids (sim-N-001) and the monitor's seen-set would swallow the second
+    inbox = Path(cfg.inbox) / problem.problem_id
+    inbox.mkdir(parents=True, exist_ok=True)
+    adaptive = cfg.dose_design == "adaptive"
+    screen_conc = cfg.concentrations[len(cfg.concentrations) // 2] \
+        if adaptive else None
+
+    def _export(run_id: str, candidate: str,
+                concs: list[str] | None = None) -> None:
+        _export_instrument_file(inbox, run_id, candidate,
+                                concs or list(cfg.concentrations), lab=lab,
+                                noise_variant=cfg.noise_variant)
+
+    messages: list[str] = []
+    agent = AutoAnalysisAgent(notify=(lambda m: (messages.append(m), say(f"[agent] {m}"))),
+                              tracker=tracker, gateway=gateway,
+                              branch_id=f"problem/{problem.problem_id}",
+                              auto_confirm=cfg.autonomy == "act" and not adaptive,
+                              export_fn=_export,
+                              adaptive=adaptive,
+                              dose_ladder=tuple(
+                                  float(str(c).rstrip("uM"))
+                                  for c in cfg.concentrations) + (80.0,))
+    monitor = DeviceMonitor(inbox, poll_secs=cfg.poll_secs)
+    # "validated" is PRELIMINARY in fixed mode (confirmation pending), so it
+    # must NOT count as terminal or the loop exits before confirmations run.
+    terminal = {"confirmed", "refuted", "invalidated", "inconclusive"}
+
+    remaining = list(portfolio)
+    history: list[dict] = []
+    tested: list = []
+    for round_no in range(1, max(1, cfg.rounds) + 1):
+        if not remaining:
+            say(f"round {round_no}: no untested candidates remain — stopping")
+            break
+        k_round = (cfg.k_schedule[min(round_no - 1, len(cfg.k_schedule) - 1)]
+                   if cfg.k_schedule else cfg.k)
+        acq_sel = None
+        if cfg.acquisition == "bo-ei":
+            selected, acq_sel = _acquisition_select(
+                remaining, k_round, _crit, tracker, say, round_no,
+                seed=cfg.seed if cfg.seed is not None else round_no,
+                metric_log=_acq_log)
+        elif cfg.policy is not None and round_no > 1:
+            selected = _policy_select(cfg, remaining, tracker, say)
+        else:
+            selected = tracker.select_portfolio(problem, remaining, score_fn,
+                                                k=k_round,
+                                                max_per_family=1)
+        remaining = [h for h in remaining if h not in selected]
+        if not selected:
+            # even an empty batch is an honest outcome — record WHY before
+            # stopping, so the refusals are on the chain, not just in stdout
+            if acq_sel is not None:
+                store.append(record_for(
+                    Envelope(experiment_branch_id=
+                             f"problem/{problem.problem_id or 'unnamed'}"),
+                    EventType.hypotheses_filtered, actor,
+                    decision=acq_sel.decision_payload()))
+            say(f"round {round_no}: nothing selected — stopping")
+            break
+        _assign_criteria(selected, _crit)
+        say(f"round {round_no}: testing "
+            f"{[h.candidate for h in selected]} "
+            f"({len(remaining)} candidates remain)")
+        # round boundary in provenance: the DMTA strip groups events
+        # per round from these markers
+        store.append(record_for(
+            Envelope(experiment_branch_id=
+                     f"problem/{problem.problem_id or 'unnamed'}"),
+            EventType.stage_transition, actor,
+            decision={"kind": "round_start", "round": round_no,
+                      "candidates": [h.candidate for h in selected]}))
+        if acq_sel is not None:
+            # "why this plate" rides the chain beside the round marker —
+            # picks with their EI arithmetic, refusals with their gate
+            store.append(record_for(
+                Envelope(experiment_branch_id=
+                         f"problem/{problem.problem_id or 'unnamed'}"),
+                EventType.hypotheses_filtered, actor,
+                decision=acq_sel.decision_payload()))
+        if cfg.autonomy == "observe":
+            say("observe-only: nothing submitted")
+            return CampaignReport(problem_id=problem.problem_id,
+                                  selected=[h.candidate for h in selected])
+
+        # design + submit this round
+        for h in selected:
+            protocol = _design_protocol(h, cfg, problem, adaptive, screen_conc)
+            if not _make_candidate(h, protocol, cfg, store, say, synth_cache):
+                continue
+            run_id, rejection = gateway.submit(protocol)
+            if rejection:
+                say(f"submission for {h.candidate} rejected: {rejection}")
+                continue
+            tracker.attach_test(h, protocol, run_id)
+            h.design.run_id = run_id
+            say(f"started lab run {run_id} for {h.candidate} on "
+                f"{getattr(lab, 'name', 'instrument')} "
+                f"({len(cfg.concentrations) if not adaptive else 1} dose"
+                f"{'s' if (len(cfg.concentrations) if not adaptive else 1) > 1 else ''}"
+                f" × 3 replicates)")
+            _export(run_id, h.candidate,
+                    [screen_conc] if adaptive else None)
+
+        _collect_round(monitor, agent, selected, adaptive, cfg, terminal)
+        verdicts_r = {h.candidate: h.status for h in selected}
+        store.append(record_for(
+            Envelope(experiment_branch_id=f"problem/{problem.problem_id}"),
+            EventType.stage_transition, actor,
+            decision={"stage": f"round-{round_no}-complete",
+                      "picked": sorted(verdicts_r), "verdicts": verdicts_r}))
+        history.append({"round": round_no,
+                        "picked": sorted(verdicts_r),
+                        "verdicts": verdicts_r})
+        tested.extend(selected)
+
+    verdicts = {h.candidate: h.status for h in tested}
+    _review_pass(cfg, store, problem, say)
+
+    _resolve_series(store, problem, actor, flywheel, say)
+
+    say(f"CAMPAIGN COMPLETE {problem.problem_id}: "
+        + (", ".join(f"{c}={s}" for c, s in verdicts.items()) or "nothing tested"))
+    return CampaignReport(problem_id=problem.problem_id,
+                          selected=[h.candidate for h in tested],
+                          verdicts=verdicts,
+                          recommendations=[m for m in messages
+                                           if "recommendation" in m],
+                          rounds_run=len(history), history=history)
+
+
+def _acquisition_select(remaining, k, crit, tracker, say, round_no, seed=0,
+                        metric_log=False):
+    """BO-EI batch pick over the round's candidates. Posteriors are DECLARED
+    by whoever produced the hypotheses (predicted_value + optional
+    predicted_sd + AD stamp in metadata) — never fabricated here. Every
+    refusal (no posterior, AD gate, diversity, budget) is returned for the
+    provenance record, so 'why this plate' is answerable months later.
+
+    metric_log: True in dose-response campaigns — µM values live on the log
+    scale and predicted_sd is a FOLD uncertainty, not an absolute µM
+    spread. The constraint NAME never determines this; the assay type does.
+
+    Returns (selected Hypotheses, Selection)."""
+    from proef.acquisition import Posterior, select_batch
+    by_cand = {h.candidate: h for h in remaining}
+    posteriors, no_post = [], []
+    for h in remaining:
+        if h.predicted_value is None:
+            no_post.append(h.candidate)
+            continue
+        meta = h.metadata or {}
+        posteriors.append(Posterior(
+            candidate=h.candidate, mean=float(h.predicted_value),
+            sd=meta.get("predicted_sd"), family=h.family,
+            in_domain=not meta.get("extrapolation", False),
+            ad_note=str(meta.get("ad_note", "")),
+            source=str(meta.get("predicted_source", "declared"))))
+    direction = crit.direction if crit is not None else "min"
+    target = float(crit.threshold) if crit is not None else None
+    # reference point = best CONFIRMED hit (never a QC-failed/inconclusive
+    # number: 'improve on best' means the best result we actually trust)
+    obs = [h.observed_value for h in tracker.hypotheses.values()
+           if h.observed_value is not None
+           and h.status in ("validated", "confirmed")]
+    best = (min(obs) if direction == "min" else max(obs)) if obs else None
+    sel = select_batch(posteriors, k=k, target=target, best_observed=best,
+                       direction=direction, metric_log=metric_log,
+                       seed=seed, round_no=round_no, max_per_family=1)
+    for c in no_post:
+        sel.refusals.append(_refusal_obj(
+            c, "no declared posterior (predicted_value missing) — "
+               "acquisition needs a mean, never invents one"))
+    selected = [by_cand[p.candidate] for p in sel.picks if p.candidate in by_cand]
+    say(f"acquisition[{sel.policy}]: picked "
+        f"{[h.candidate for h in selected]} · refused {len(sel.refusals)} "
+        f"(AD-veto {sum(1 for r in sel.refusals if 'extrapolation' in r.reason)})")
+    return selected, sel
+
+
+def _refusal_obj(candidate, reason):
+    from proef.acquisition import Refusal
+    return Refusal(candidate=candidate, reason=reason)
+
+
+def _policy_select(cfg, remaining, tracker, say):
+    """Round r>1 batch choice by an assaybench-style policy. The policy ranks
+    candidates from prior observations; Proef keeps every veto: diversity
+    cap here, safety + budget + approval at the gate."""
+    obs = [{"candidate": h.candidate,
+            "hit": h.status in ("validated", "confirmed"),
+            "relevance_score": (-(h.observed_value or 0.0))
+            if h.observed_value is not None else 0.0}
+           for h in tracker.hypotheses.values()
+           if h.status not in ("proposed", "designed")]
+    cands = [h.candidate for h in remaining]
+    if hasattr(cfg.policy, "pick_batch"):
+        picks = list(cfg.policy.pick_batch(cands, obs, cfg.k))
+    elif hasattr(cfg.policy, "rank"):
+        picks = [c for c, _ in cfg.policy.rank(cands, obs)[:cfg.k]]
+    else:
+        say("policy has neither pick_batch nor rank — falling back to scores")
+        return tracker.select_portfolio(cfg.problem, remaining,
+                                        cfg.score_fn or (lambda h: 0.5),
+                                        k=cfg.k, max_per_family=1)
+    by_cand = {h.candidate: h for h in remaining}
+    out, fam = [], set()
+    for c in picks:
+        h = by_cand.get(c)
+        if h is None or (h.family or "") in fam and h.family:
+            continue
+        if h.family:
+            fam.add(h.family)
+        out.append(h)
+    say(f"policy picked {[h.candidate for h in out]} from "
+        f"{len(obs)} observations")
+    return out
+
+def _export_instrument_file(inbox: Path, run_id: str, candidate: str,
+                            concentrations: tuple[str, ...], lab: Any = None,
+                            noise_variant: int = 0) -> None:
+    """Stand-in for the instrument finishing: it drops its export in the
+    outbox. Uses the lab's per-compound ground truth when available so the
+    fitted IC50 reflects simulated pharmacology, not a fixed pattern."""
+    import random
+
+    time.sleep(0.1)
+    rng = random.Random(f"{run_id}:{candidate}:v{noise_variant}")
+    n_rep = getattr(lab, "replicates", 3) if lab is not None else 3
+    lines = ["Well ID,Compound,Conc (uM),RFU", "A1,ctrl,10,100", "A2,ctrl,10,104"]
+    # property-gate campaigns: the export reads the lab's property true
+    # value (dose-independent, straddles the gate) — NOT the IC50 curve
+    gate = getattr(lab, "_property_gate", None) if lab is not None else None
+    prop_mode = bool(gate)
+    true_prop = lab._property_true_value(run_id, candidate) \
+        if prop_mode else None
+    true_ic50 = None
+    if lab is not None and hasattr(lab, "true_ic50_um"):
+        true_ic50 = lab.true_ic50_um(run_id, candidate)
+    well = 3
+    for c in concentrations:
+        conc = float(str(c).rstrip("uM"))
+        if prop_mode:
+            base = true_prop
+        else:
+            base = hill_response(conc, true_ic50, 500.0, eps=1e-6) if true_ic50 \
+                else 110 + concentrations.index(c) * 90
+        for _ in range(n_rep):          # real plates have replicate wells
+            noise = rng.gauss(0.0, max(4.0, base * 0.05))
+            lines.append(f"A{well},{candidate},{c},{max(0.0, base + noise):.1f}")
+            well += 1
+    (inbox / f"{run_id}.csv").write_text("\n".join(lines) + "\n")
+
+
+class _GatedGateway:
+    """LabGateway wrapper where every submission needs operator approval first
+    (autonomy='gate'). Rejection by the human is final; SafetyEngine still runs."""
+
+    def __init__(self, lab: Any, safety: SafetyEngine, store: ProvenanceStore,
+                 actor: Any, approver: Callable[[str], bool], say: Callable[[str], None],
+                 governance: Any = None):
+        # operator already approved at THIS layer; inner human-column checks
+        # are satisfied; never-column and halts still bind below
+        self._gw = LabGateway(lab, safety, store, actor,
+                              governance=governance,
+                              approver=(lambda t: True) if governance else None)
+        self._approver = approver
+        self._say = say
+
+    def submit(self, protocol: ProtocolSubmission):
+        title = getattr(protocol, "title", str(protocol))
+        if not self._approver(title):
+            self._say(f"operator declined: '{title}' — submission cancelled")
+            self._gw.store.append(record_for(
+                protocol.envelope, EventType.gate_decision, self._gw.actor,
+                decision={"kind": "operator_declined", "title": title,
+                          "reason": "declined by operator",
+                          "samples": sorted({sp.sample_id
+                                             for sp in protocol.samples})}))
+            return None, "declined by operator"
+        return self._gw.submit(protocol)
+
+    def results(self, *a, **kw):
+        return self._gw.results(*a, **kw)
+
+    def capabilities(self, *a, **kw):
+        return self._gw.capabilities(*a, **kw)

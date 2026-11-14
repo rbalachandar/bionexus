@@ -70,7 +70,7 @@ have stayed refused) — and the machine then judged them:
 **Reviewer pass (deterministic independent audit):** 0 critical / 0 warnings
 across both campaigns; 12 verdicts, 12 audited. Full hash-chained provenance
 in `study.db` (209 records), verifiable with
-`bn prove problem/cs04-hit2lead --db case-studies/04-prospective-hit2lead/study.db`.
+`proef prove problem/cs04-hit2lead --db case-studies/04-prospective-hit2lead/study.db`.
 
 ### The prospective reveal — did it converge on the field's future?
 
@@ -91,7 +91,7 @@ in `study.db` (209 records), verifiable with
 1. **ChEMBL adapter pagination bug:** the shared cursor logic re-sliced
    `page_meta.next` into a bogus cursor; an 80k fetch contained ~1.8k unique
    rows. Fixed (raw-next following + content dedup) — 26,322 real rows now;
-  `bn fixtures verify` proves it byte-for-byte.
+  `proef fixtures verify` proves it byte-for-byte.
 2. **Make's simulated QC had drifted from its own comment:** "≈30% of
    structures fail" was actually 66–77% under purity U[60,99.5] vs an 85
    gate — a stub was dominating a real-data study. Distribution recalibrated
@@ -127,7 +127,7 @@ in `study.db` (209 records), verifiable with
 .venv/bin/python case-studies/04-prospective-hit2lead/run.py   # offline: restores fixtures, refetches only if absent
 ```
 
-Inputs frozen under `fixtures/` (manifest checksums; `bn fixtures verify
+Inputs frozen under `fixtures/` (manifest checksums; `proef fixtures verify
 case-studies/04-prospective-hit2lead`). Seeds fixed; no LLM call — fully
 offline and deterministic. `results.json` is COMMITTED as the evidence for
 every number above, pinned to the Oct-4 run (commit 4bc47ba). Honest caveat

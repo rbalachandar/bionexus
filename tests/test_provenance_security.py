@@ -6,9 +6,9 @@ import sqlite3
 
 import pytest
 
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.contracts import Envelope, EventType
-from bionexus.core.interfaces import record_for, system_actor
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.contracts import Envelope, EventType
+from proef.core.interfaces import record_for, system_actor
 
 
 def _branch(db, n=4):
@@ -57,7 +57,7 @@ def test_verify_chain_detects_payload_tampering(tmp_path):
 
 
 def test_anchor_flags_content_tampering(tmp_path, monkeypatch):
-    import bionexus.anchor as A
+    import proef.anchor as A
     monkeypatch.setattr(A, "ANCHORS", tmp_path / "anchors.json")
     db = str(tmp_path / "p.db")
     _branch(db)
@@ -84,8 +84,8 @@ def test_eln_export_carries_instrument_and_detached_checksum(tmp_path):
     verdict even when that lives only in the derivation blob, and the CSV
     ships a sha256 so silent edits are detectable."""
     import gzip  # noqa: F401  (keep import noise out of eln)
-    from bionexus.eln import export_eln
-    from bionexus.derivation import build
+    from proef.eln import export_eln
+    from proef.derivation import build
 
     store = SqliteProvenanceStore(str(tmp_path / "p.db"))
     store.append(record_for(
@@ -111,7 +111,7 @@ def test_eln_export_carries_instrument_and_detached_checksum(tmp_path):
 
 
 def test_fixture_materialize_verifies_before_restoring(tmp_path):
-    from bionexus import fixtures
+    from proef import fixtures
     study = tmp_path / "case-studies" / "09-sec"
     study.mkdir(parents=True)
     root = tmp_path
@@ -136,7 +136,7 @@ def test_fixture_materialize_verifies_before_restoring(tmp_path):
 
 
 def test_materialize_without_manifest_raises(tmp_path):
-    from bionexus import fixtures
+    from proef import fixtures
     empty = tmp_path / "case-studies" / "99-none"
     empty.mkdir(parents=True)
     with pytest.raises(FileNotFoundError):
@@ -146,11 +146,11 @@ def test_materialize_without_manifest_raises(tmp_path):
 def test_halt_stops_the_agent_facing_mcp_surface(tmp_path, monkeypatch):
     """P0-D: the MCP server is THE agent-facing gateway — the kill switch
     and authorization matrix bind there exactly as they do in campaigns."""
-    import bionexus.governance as G
+    import proef.governance as G
     monkeypatch.setattr(G, "HALT_FILE", tmp_path / "HALT")
     monkeypatch.setattr(G, "HALT_HISTORY", tmp_path / "HALT-history.json")
     monkeypatch.setattr(G, "SOPS_FILE", tmp_path / "sops.json")
-    from bionexus.mcp_server import McpSession
+    from proef.mcp_server import McpSession
 
     s = McpSession()
     call = lambda n, a: json.loads(s.handle(

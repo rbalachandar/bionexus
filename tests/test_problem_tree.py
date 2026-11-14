@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from bionexus.problem_tree import (ProblemTree, TreeLimits,
+from proef.problem_tree import (ProblemTree, TreeLimits,
                                    decompose_with_agent, run_tree)
 
 
@@ -61,8 +61,8 @@ def test_decompose_truncates_overeager_model():
 
 
 def test_run_tree_respects_budget(tmp_path):
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
     t = _tree(run_budget=6)
     t.add(t.root.id, objective="potency", metric="ic50_um", gate=20.0)
     t.add(t.root.id, objective="clarity", metric="solubility_uM",
@@ -118,7 +118,7 @@ def test_synthesis_deterministic_and_gated():
     failures are deterministic per attempt, and a refused batch can be
     RE-SYNTHESIZED (process re-optimization) — while every attempt stays
     its own provenance-logged lot."""
-    from bionexus.adapters.lab.synthesis import VirtualSynthesizer
+    from proef.adapters.lab.synthesis import VirtualSynthesizer
     s = VirtualSynthesizer()
     a = s.synthesize("X-1", "c1ccccc1")
     b = s.synthesize("X-1", "c1ccccc1")
@@ -144,10 +144,10 @@ def test_synthesis_deterministic_and_gated():
 def test_k_schedule_per_round():
     """k may be a per-round schedule: screen wide, then narrow."""
     import sys
-    from bionexus.autoloop import run_campaign, CampaignConfig
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.autoloop import run_campaign, CampaignConfig
+    from proef.core.hypothesis import Constraint, ProblemStatement
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
 
     problem = ProblemStatement(objective="schedule check", constraints=[
         Constraint(name="potency", description="d", kind="hard", limit=60.0,
@@ -174,9 +174,9 @@ def test_biologics_pack_end_to_end():
     """Bio-DMTA: a biologic tree's Make says 'expressed and purified',
     the gate runs the sequence screen, and a refused construct never
     reaches the lab."""
-    from bionexus.problem_tree import ProblemTree, TreeLimits, run_tree
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.problem_tree import ProblemTree, TreeLimits, run_tree
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
 
     t = ProblemTree.create("biologic: binds target AND is stable",
                            limits=TreeLimits(max_children=2),
@@ -203,8 +203,8 @@ def test_biologics_pack_end_to_end():
         recs = store.branch_records(br)
     refused = [r for r in store._mem_all() if True] if False else None
     # simpler: re-run through the SafetyEngine directly for the refusal
-    from bionexus.core.safety import SafetyEngine
-    from bionexus.core.contracts import (
+    from proef.core.safety import SafetyEngine
+    from proef.core.contracts import (
         ProtocolSubmission, ProtocolStep, ProtocolOp, SampleSpec, Envelope)
     proto = ProtocolSubmission(
         envelope=Envelope(experiment_branch_id="bio-gate"),
@@ -220,10 +220,10 @@ def test_biologics_pack_end_to_end():
 def test_bioprocess_qc_gates_biologics():
     """Bio-DMTA Make: biologic batches get stability/aggregation QC; a
     batch failing QC is refused into Test with provenance."""
-    from bionexus.problem_tree import ProblemTree, TreeLimits, run_tree
-    from bionexus.adapters.lab.simulator import SimulatorLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.adapters.lab.bioprocess import bioprocess_qc
+    from proef.problem_tree import ProblemTree, TreeLimits, run_tree
+    from proef.adapters.lab.simulator import SimulatorLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.adapters.lab.bioprocess import bioprocess_qc
 
     # deterministic QC: find a sequence that fails
     fails = [i for i in range(100)
@@ -259,9 +259,9 @@ def test_bioprocess_qc_gates_biologics():
 def test_materials_sweep_direction_aware():
     """Materials DMTA: max-metric sweep validated against its gate; the
     reviewer stays direction-aware (no false label-vs-data flag)."""
-    from bionexus.materials import run_materials_sweep
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.reviewer import review_campaign
+    from proef.materials import run_materials_sweep
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.reviewer import review_campaign
     store = SqliteProvenanceStore(":memory:")
     rep = run_materials_sweep(
         "maximize tensile strength", [2.0, 4.0, 6.0, 8.0], gate=40.0,
@@ -282,7 +282,7 @@ def test_recursive_decompose_multilevel():
     A model that cannot answer the refinement prompt leaves it flat."""
     import json
 
-    from bionexus.problem_tree import (ProblemTree, TreeLimits,
+    from proef.problem_tree import (ProblemTree, TreeLimits,
                                        decompose_with_agent)
 
     class SplittingModel:

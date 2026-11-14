@@ -110,7 +110,7 @@ def blind_drugs(corpus: dict, drugs: list[dict]) -> tuple[dict, list]:
 def train_surrogate(pool: dict[str, dict]):
     """Morgan-FP RF on a seeded 70% (pIC50 regression); the 30% test side is
     what the loop may explore — the model has never seen their values."""
-    from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF
+    from proef.adapters.models.sklearn_policy import MorganFingerprintRF
     items = sorted(pool.items())
     rng = random.Random(SEED)
     rng.shuffle(items)
@@ -190,7 +190,7 @@ def tanimoto(a: str, b: str) -> float:
 # --------------------------------------------------------------- campaigns
 
 def _problem(pid: str, objective: str):
-    from bionexus.core.hypothesis import Constraint, ProblemStatement
+    from proef.core.hypothesis import Constraint, ProblemStatement
     return ProblemStatement(
         problem_id=pid, objective=objective,
         constraints=[Constraint(name="ic50_um", description="<= 0.01 uM",
@@ -200,11 +200,11 @@ def _problem(pid: str, objective: str):
 def run_campaign_a(library: dict[str, dict]):
     """Gated campaign over the blinded library; every hypothesis honestly
     declares a REVERSIBLE mechanism."""
-    from bionexus.adapters.lab.replay import ReplayLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.autoloop import CampaignConfig, ResourceBudget, run_campaign
-    from bionexus.core.hypothesis import SuccessCriteria
-    from bionexus.flywheel import Flywheel
+    from proef.adapters.lab.replay import ReplayLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.autoloop import CampaignConfig, ResourceBudget, run_campaign
+    from proef.core.hypothesis import SuccessCriteria
+    from proef.flywheel import Flywheel
 
     lab = ReplayLab({cid: r["truth_um"] for cid, r in library.items()},
                     sources={cid: {"assays": r["assays"],
@@ -247,11 +247,11 @@ def run_campaign_a(library: dict[str, dict]):
 def run_campaign_b(refusals, library: dict[str, dict]):
     """Re-design pass: gate-refused warhead-bearing candidates, re-proposed
     with an honest DECLARED covalent mechanism."""
-    from bionexus.adapters.lab.replay import ReplayLab
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.autoloop import CampaignConfig, ResourceBudget, run_campaign
-    from bionexus.core.hypothesis import SuccessCriteria
-    from bionexus.flywheel import Flywheel
+    from proef.adapters.lab.replay import ReplayLab
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.autoloop import CampaignConfig, ResourceBudget, run_campaign
+    from proef.core.hypothesis import SuccessCriteria
+    from proef.flywheel import Flywheel
 
     refused = [cid for d in refusals for cid in d.get("samples", [])]
     reprops = [cid for cid in refused if cid in library][:6]
@@ -388,13 +388,13 @@ def score(report_a, refusals, b_result, library, reveal):
 def main() -> None:
     print("== CS04 prospective hit-to-lead — EGFR (CHEMBL203) ==")
     try:
-        from bionexus import fixtures
+        from proef import fixtures
         n = fixtures.materialize(CASE)
         print(f"materialized {n} frozen fixture file(s) (checksum-verified)")
     except (FileNotFoundError, ValueError):
         print("no frozen fixtures (or corrupt) — fetching from ChEMBL and "
               "FREEZING now")
-        from bionexus.adapters.data.chembl import fetch_target_activities
+        from proef.adapters.data.chembl import fetch_target_activities
         CACHE.mkdir(exist_ok=True)
         fetch_target_activities("CHEMBL203", cache_dir=CACHE,
                                 max_records=100000)
@@ -434,7 +434,7 @@ def main() -> None:
               f" — verdicts: {rep.verdicts}")
 
     results = score(report_a, refusals, b, library, reveal)
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
     _recs = SqliteProvenanceStore(str(CASE / "study.db")).branch_records(
         branch_a)
     results["campaign_a"]["synthesis_refused"] = sum(

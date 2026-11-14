@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from bionexus.core.contracts import (
+from proef.core.contracts import (
     AssayType,
     Envelope,
     ProtocolOp,
@@ -14,12 +14,12 @@ from bionexus.core.contracts import (
     SampleKind,
     SampleSpec,
 )
-from bionexus.governance import (
+from proef.governance import (
     AuthorizationMatrix,
     HaltSwitch,
     SopRegistry,
 )
-from bionexus.physfail import classify
+from proef.physfail import classify
 
 
 def make_protocol(bsl=1, recurring=False, title="t", sample="C1"):
@@ -56,12 +56,12 @@ class FakeStore:
 
 
 def _gateway(tmp_path, lab=None, approver=None, matrix=None, halt=None):
-    from bionexus.core.safety import LabGateway, SafetyEngine
+    from proef.core.safety import LabGateway, SafetyEngine
     lab = lab or FakeLab()
     store = FakeStore()
     gov = {"matrix": matrix or AuthorizationMatrix(),
            "halt": halt or HaltSwitch(path=tmp_path / "HALT")}
-    from bionexus.core.interfaces import system_actor
+    from proef.core.interfaces import system_actor
     gw = LabGateway(lab, SafetyEngine(), store, system_actor("gov-test"),
                     governance=gov, approver=approver)
     return gw, lab, store
@@ -222,7 +222,7 @@ def test_physfail_errors():
 
 def test_watch_physical_read_short_circuits(tmp_path):
     # a saturated plate must produce a failure-mode, never verdicts
-    from bionexus.watch import AutoAnalysisAgent, LabEvent
+    from proef.watch import AutoAnalysisAgent, LabEvent
     agent = AutoAnalysisAgent(notify=lambda m: None, branch_id="gov-watch")
     plate = tmp_path / "plate1.csv"
     rows = ["Well ID,Compound,Conc (uM),RFU"]

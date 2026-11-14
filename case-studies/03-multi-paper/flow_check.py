@@ -1,4 +1,4 @@
-"""CS-03 flow check — does the BioNexus FLOW guide experiments to the right end
+"""CS-03 flow check — does the Proef FLOW guide experiments to the right end
 results, using each held-out paper's REAL published values as the lab itself?
 
 The model is not the subject. PaperLab is a LabAdapter whose "assay results"
@@ -27,17 +27,17 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from run import PAPERS, chembl, fetch_doc_activities, pic50  # noqa: E402
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-from bionexus.core.contracts import (
+from proef.adapters.store.sqlite import SqliteProvenanceStore
+from proef.core.contracts import (
     AssayResult, Envelope, EventType, InstrumentInfo, Measurement,
     ProtocolOp, ProtocolStep, ProtocolSubmission, ReagentSpec, RunStatus,
     SampleKind, SampleSpec,
 )
-from bionexus.core.hypothesis import (Constraint, ExperimentDesign,
+from proef.core.hypothesis import (Constraint, ExperimentDesign,
                                       HypothesisTracker, ProblemStatement,
                                       SuccessCriteria)
-from bionexus.core.interfaces import record_for, system_actor
-from bionexus.core.safety import LabGateway, MaxStepsRule, SafetyEngine
+from proef.core.interfaces import record_for, system_actor
+from proef.core.safety import LabGateway, MaxStepsRule, SafetyEngine
 
 ACTIVE_PIC50 = 6.5
 BUDGET = 30          # experiments per campaign
@@ -120,8 +120,8 @@ def run_campaign(doc: str, label: str, strategy: str, use_llm: bool,
     agent_core = None
     contamination = None
     if strategy == "agent" and use_llm:
-        from bionexus.adapters.models.anthropic_provider import AnthropicProvider
-        from bionexus.core.contracts import ToolInvocation
+        from proef.adapters.models.anthropic_provider import AnthropicProvider
+        from proef.core.contracts import ToolInvocation
         agent = AnthropicProvider()
         sample = list(values.items())[::max(1, len(values) // 45)][:45]
         structures = "\n".join(f"{i + 1}. {s}" for i, (s, _) in enumerate(sample))
@@ -155,7 +155,7 @@ def run_campaign(doc: str, label: str, strategy: str, use_llm: bool,
         score = lambda c: score_map.get(next((i + 1 for i, (s, _) in enumerate(sample)
                                               if s == c), 0), 50.0)  # noqa: E731
     elif strategy == "rf":
-        from bionexus.adapters.models.sklearn_policy import MorganFingerprintRF
+        from proef.adapters.models.sklearn_policy import MorganFingerprintRF
         from run import fetch_target_pool
         acts = fetch_doc_activities(doc)
         target = next(iter({a["target_chembl_id"] for a in acts if a.get("target_chembl_id")}))
@@ -164,8 +164,8 @@ def run_campaign(doc: str, label: str, strategy: str, use_llm: bool,
         model.fit(pool)
         score = lambda c: model.predict(c)  # noqa: E731
     elif strategy == "llm" and use_llm:
-        from bionexus.adapters.models.anthropic_provider import AnthropicProvider
-        from bionexus.core.contracts import ToolInvocation
+        from proef.adapters.models.anthropic_provider import AnthropicProvider
+        from proef.core.contracts import ToolInvocation
         agent = AnthropicProvider()
 
         def score(c: str) -> float:

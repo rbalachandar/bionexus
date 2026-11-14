@@ -6,9 +6,9 @@ refuse outside it, and stamp which case happened.
 """
 import pytest
 
-from bionexus.ad import AD_FLOOR, ApplicabilityDomain, tanimoto
-from bionexus.benchmark import CharRidgePolicy
-from bionexus.core.hypothesis import SuccessCriteria
+from proef.ad import AD_FLOOR, ApplicabilityDomain, tanimoto
+from proef.benchmark import CharRidgePolicy
+from proef.core.hypothesis import SuccessCriteria
 
 ALIPHATICS = ["CCO", "CCCO", "CCCCO", "CCCCO", "CCN", "CCCN"]
 FAR = ["c1ccccc1O", "NCC(=O)NC(=O)CN", "O=S(=O)(N)c1ccc2ccccc2c1"]
@@ -85,10 +85,10 @@ def test_policy_stamps_survive_prediction():
 def test_views_card_chip_from_extrapolation():
     """A verdict record carrying the extrapolation stamp must surface on
     the pipeline card: status text mentions it, verdict dict flags it."""
-    from bionexus.adapters.store.sqlite import SqliteProvenanceStore
-    from bionexus.core.contracts import Envelope, EventType
-    from bionexus.core.interfaces import record_for, system_actor
-    from bionexus.views import pipeline_cards
+    from proef.adapters.store.sqlite import SqliteProvenanceStore
+    from proef.core.contracts import Envelope, EventType
+    from proef.core.interfaces import record_for, system_actor
+    from proef.views import pipeline_cards
 
     store = SqliteProvenanceStore(":memory:")
     env = Envelope(experiment_branch_id="problem/p-ad")

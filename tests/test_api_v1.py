@@ -6,14 +6,14 @@ import pytest
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
 
-from bionexus.adapters.lab.simulator import SimulatorLab  # noqa: E402
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore  # noqa: E402
-from bionexus.api.app import app  # noqa: E402
-from bionexus.autoloop import CampaignConfig, run_campaign  # noqa: E402
-from bionexus.core.hypothesis import Constraint, ProblemStatement  # noqa: E402
-from bionexus.flywheel import Flywheel  # noqa: E402
-from bionexus.paths import DATA_DIR  # noqa: E402
-from bionexus.wizard_store import WizardStore  # noqa: E402
+from proef.adapters.lab.simulator import SimulatorLab  # noqa: E402
+from proef.adapters.store.sqlite import SqliteProvenanceStore  # noqa: E402
+from proef.api.app import app  # noqa: E402
+from proef.autoloop import CampaignConfig, run_campaign  # noqa: E402
+from proef.core.hypothesis import Constraint, ProblemStatement  # noqa: E402
+from proef.flywheel import Flywheel  # noqa: E402
+from proef.paths import DATA_DIR  # noqa: E402
+from proef.wizard_store import WizardStore  # noqa: E402
 
 SPECS = [("AD1", 2.0, True), ("H1", 5.0, False), ("H2", 8.0, False),
          ("H3", 11.0, False), ("M1", 90.0, False)]
@@ -72,7 +72,7 @@ def seeded_ei(tmp_path_factory):
 
 
 def test_acquisition_rounds_explain_picks_and_ad_veto(seeded_ei, monkeypatch):
-    monkeypatch.setattr("bionexus.views.ids.PROVENANCE_DB", seeded_ei["db"])
+    monkeypatch.setattr("proef.views.ids.PROVENANCE_DB", seeded_ei["db"])
     with TestClient(app) as c:
         d = c.get(f"/api/v1/campaigns/{seeded_ei['eid']}")
     assert d.status_code == 200, d.text
@@ -85,7 +85,7 @@ def test_acquisition_rounds_explain_picks_and_ad_veto(seeded_ei, monkeypatch):
 
 @pytest.fixture()
 def client(seeded, monkeypatch):
-    monkeypatch.setattr("bionexus.views.ids.PROVENANCE_DB", seeded["db"])
+    monkeypatch.setattr("proef.views.ids.PROVENANCE_DB", seeded["db"])
     with TestClient(app) as c:
         yield c
 
@@ -192,7 +192,7 @@ def test_status_comes_from_the_ledger_and_eliminated_excludes_tested(client, see
 
 
 def _ensure_program(seeded):
-    from bionexus import program as program_cfg
+    from proef import program as program_cfg
     program_cfg.save_program_record(
         {"program": "V1 Prog", "custom": True, "objective": "sub-20 uM binder",
          "modality": "small molecule", "metric": "ic50_um", "direction": "min",
@@ -259,8 +259,8 @@ def test_human_review_is_sealed_and_clears_the_attention_item(client, seeded):
 
 
 def test_gate_approval_appears_on_the_campaign_and_can_be_decided(client, seeded):
-    from bionexus.approvals import ApprovalInbox
-    from bionexus.paths import APPROVALS_FILE
+    from proef.approvals import ApprovalInbox
+    from proef.paths import APPROVALS_FILE
     d = client.get(f"/api/v1/campaigns/{seeded['eid']}").json()
     aid = ApprovalInbox(str(APPROVALS_FILE)).request(
         f"screen-H9 [problem/{d['problem_id']}]", "1 well, 4 doses")
@@ -285,7 +285,7 @@ def test_create_program_and_launch_a_campaign(client, monkeypatch):
     def fake_spawn(doc, name):
         launched.update(doc=doc, name=name)
         return "cmp-fake-1"
-    monkeypatch.setattr("bionexus.api.v1.programs.spawn_campaign", fake_spawn)
+    monkeypatch.setattr("proef.api.v1.programs.spawn_campaign", fake_spawn)
     import uuid
     name = f"Launch Test {uuid.uuid4().hex[:6]}"
     slug = name.lower().replace(" ", "-")
@@ -318,7 +318,7 @@ def test_next_steps_are_deterministic_and_actionable(client, seeded):
 
 
 def test_evidence_ledger_verify_anchor_and_exports(client, seeded, tmp_path, monkeypatch):
-    monkeypatch.setattr("bionexus.anchor.ANCHORS", tmp_path / "anchors.json")
+    monkeypatch.setattr("proef.anchor.ANCHORS", tmp_path / "anchors.json")
     led = client.post("/api/v1/evidence/verify").json()
     assert led["chain"]["verified"] is True and led["chain"]["records"] > 20
     camp = [b for b in led["branches"] if b["kind"] == "campaign"
@@ -352,9 +352,9 @@ def test_lab_lists_instruments_with_honest_labels_and_authority(client):
 
 def test_authority_description_matches_what_classify_does():
     """The Lab screen shows DEFAULT_POLICY; pin it to the real classifier."""
-    from bionexus.core.contracts import (ProtocolOp, ProtocolStep, ProtocolSubmission, ReagentSpec,
+    from proef.core.contracts import (ProtocolOp, ProtocolStep, ProtocolSubmission, ReagentSpec,
                                          SampleKind, SampleSpec, Envelope)
-    from bionexus.governance import AuthorizationMatrix
+    from proef.governance import AuthorizationMatrix
     m = AuthorizationMatrix()
 
     def proto(bsl):

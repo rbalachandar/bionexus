@@ -11,19 +11,19 @@ infra in repo yet — needs a Playwright decision), Phase 0 named-scientist
 walkthrough and Phase 5 design-partner validation — the utility claim is
 unproven until those run.
 **Scope:** modality-neutral analysis workflow and evidence lifecycle, with plate-reader assay analysis as the first validated profile  
-**Product goal:** make BioNexus useful to a scientist who already has experimental data, without narrowing the framework's bio/chemical/material domain.
+**Product goal:** make Proef useful to a scientist who already has experimental data, without narrowing the framework's bio/chemical/material domain.
 
 ## 1. Decision
 
 Make **analyze existing experiment data and produce a reviewable, uncertainty-aware report** the first-class scientist workflow. Validate the workflow first with plate-reader assay data because the repo already has real exports, parsers, QC, dose-response analysis, and case-study evidence. A plate assay is the initial profile—not the shared domain model. Treat agent-guided campaign execution as a later, optional continuation from an analysis.
 
-This plan builds on the existing `bionexus.labread.read_plate` parser and plate-assay analysis code, the four real instrument exports under `tests/data/instruments/`, and the existing provenance store. It does not propose another parser or a replacement for the campaign engine. The generic lifecycle should handle measurement artifacts, provenance, uncertainty, review, and reporting; plate-specific parsing, controls, normalization, Z′, dose-response fits, and IC50 interpretation remain in the plate-assay profile.
+This plan builds on the existing `proef.labread.read_plate` parser and plate-assay analysis code, the four real instrument exports under `tests/data/instruments/`, and the existing provenance store. It does not propose another parser or a replacement for the campaign engine. The generic lifecycle should handle measurement artifacts, provenance, uncertainty, review, and reporting; plate-specific parsing, controls, normalization, Z′, dose-response fits, and IC50 interpretation remain in the plate-assay profile.
 
 The current wizard is not yet this workflow: it creates an experiment definition first, calls `read_plate(path)` with no user-configurable layout or normalization, moves directly from upload to results, and records a user-selected hit list rather than a decision against an explicit analysis gate. Preserve its guided-campaign purpose; add a separate analysis path and connect the two only after that path is useful. Do not let plate-specific assumptions leak into the shared contracts, workspace summaries, or campaign lifecycle.
 
 ## 2. Target user and job
 
-**Initial design partner:** a scientist or assay operator who has a CSV, TSV, or XLSX plate-reader export, may have a separate plate map, and currently uses scripts or spreadsheets to get to a hit list. The workflow should be described generically as experiment-data analysis; this first profile is an intentional narrow wedge, not a claim that all BioNexus users work with plates.
+**Initial design partner:** a scientist or assay operator who has a CSV, TSV, or XLSX plate-reader export, may have a separate plate map, and currently uses scripts or spreadsheets to get to a hit list. The workflow should be described generically as experiment-data analysis; this first profile is an intentional narrow wedge, not a claim that all Proef users work with plates.
 
 **Job:** “Help me understand what my experimental data supports, what it does not support, and why—without changing my source file or hiding uncertain calls.”
 
@@ -66,7 +66,7 @@ Every result/report labels its origin as one of:
 
 - **Measured:** an instrument export from an identified or user-declared device.
 - **Historical deposit:** a frozen external dataset or paper deposit.
-- **Simulated:** BioNexus-generated measurement data.
+- **Simulated:** Proef-generated measurement data.
 - **Predicted:** a model output or proxy metric, not a physical measurement.
 
 The UI must not aggregate these classes into a single unlabeled hit rate. Unknown origin stays `unknown`; it is not guessed from a filename.
@@ -75,7 +75,7 @@ The UI must not aggregate these classes into a single unlabeled hit rate. Unknow
 
 ### 4.1 Keep the analysis lifecycle generic and interpretation profile-specific
 
-Introduce a `bionexus.experiment_analysis` module for the application-facing lifecycle around source artifacts, revisions, results, and dispositions. It should handle concepts common to bio, chemical, and materials work: evidence artifacts, typed measurement records, units, uncertainty, profile identity/version, review state, and provenance references. A selected analysis profile owns domain interpretation. The first implementation wraps existing `labread` behavior for plate-reader assays; do not rename IC50, positive/negative controls, percent inhibition, or Z′ into fake universal concepts.
+Introduce a `proef.experiment_analysis` module for the application-facing lifecycle around source artifacts, revisions, results, and dispositions. It should handle concepts common to bio, chemical, and materials work: evidence artifacts, typed measurement records, units, uncertainty, profile identity/version, review state, and provenance references. A selected analysis profile owns domain interpretation. The first implementation wraps existing `labread` behavior for plate-reader assays; do not rename IC50, positive/negative controls, percent inhibition, or Z′ into fake universal concepts.
 
 The module's interface should capture the facts a caller must know:
 
@@ -107,7 +107,7 @@ Place types in `core/contracts` only when they cross a package/API seam; keep in
 
 ### 4.3 Persistence and provenance
 
-Store source files and derived exports as artifacts beneath the configured BioNexus data directory using generated IDs, never the user filename as a storage path. Persist metadata needed to retrieve the analysis; do not put large well tables into provenance event payloads.
+Store source files and derived exports as artifacts beneath the configured Proef data directory using generated IDs, never the user filename as a storage path. Persist metadata needed to retrieve the analysis; do not put large well tables into provenance event payloads.
 
 For each immutable analysis revision, record at minimum:
 
@@ -140,7 +140,7 @@ Return structured error codes and field diagnostics for unreadable files, unknow
 
 **Tasks**
 
-- Walk one scientist through CS05/real-export examples and the current `bn read` output; capture their actual input files, plate map, required outputs, and decision terminology.
+- Walk one scientist through CS05/real-export examples and the current `proef read` output; capture their actual input files, plate map, required outputs, and decision terminology.
 - Select one initial assay family and one supported device family for the first polished path. Keep the already-supported CSV/TSV/XLSX formats, but do not promise every vendor dialect is equally validated.
 - Agree on how this first assay defines positive/negative controls, normalization, threshold, and what constitutes an unusable plate.
 - Produce a one-page workflow and two annotated screens (preview and report) before building the route.
@@ -156,18 +156,18 @@ Return structured error codes and field diagnostics for unreadable files, unknow
 **Tasks**
 
 - Define typed generic analysis lifecycle/result contracts with a profile discriminator, artifact refs/digests, version, evidence-origin, and disposition fields. Put profile-specific options and outputs in the plate-assay payload rather than universal fields.
-- Add the `bionexus.experiment_analysis` lifecycle module and the initial plate-assay profile around `labread`; preserve `read_plate` behavior as the compatibility facade.
+- Add the `proef.experiment_analysis` lifecycle module and the initial plate-assay profile around `labread`; preserve `read_plate` behavior as the compatibility facade.
 - Make the plate profile preview identify missing/unmapped wells and which inferred fields need confirmation. Ensure it refuses a required-but-missing mapping or unresolved response polarity rather than guessing.
 - Keep human disposition separate from computed verdict. A threshold-less analysis returns estimates/QC, not a fabricated hit label.
 - Include exact analysis config, parser version, and source digest in the structured result.
 
 **Target files**
 
-- `src/bionexus/labread.py`
-- `src/bionexus/experiment_analysis.py` (new)
-- `src/bionexus/analysis_profiles/plate_assay.py` (new)
-- `src/bionexus/core/contracts/analysis.py` (new, if the generic typed contract crosses the API seam)
-- `src/bionexus/core/contracts/__init__.py`
+- `src/proef/labread.py`
+- `src/proef/experiment_analysis.py` (new)
+- `src/proef/analysis_profiles/plate_assay.py` (new)
+- `src/proef/core/contracts/analysis.py` (new, if the generic typed contract crosses the API seam)
+- `src/proef/core/contracts/__init__.py`
 - `tests/test_experiment_analysis.py` and `tests/test_plate_assay_analysis.py` (new)
 - Existing `tests/test_vendor_ingest.py`, `tests/test_labread_pubchem.py`, and `tests/test_censoring.py`
 
@@ -191,10 +191,10 @@ Return structured error codes and field diagnostics for unreadable files, unknow
 
 **Target files**
 
-- `src/bionexus/api/analyses.py` (new)
-- `src/bionexus/api/app.py`
-- `src/bionexus/adapters/store/` or the existing wizard/artifact store, depending on the chosen persistence seam
-- `src/bionexus/views.py`
+- `src/proef/api/analyses.py` (new)
+- `src/proef/api/app.py`
+- `src/proef/adapters/store/` or the existing wizard/artifact store, depending on the chosen persistence seam
+- `src/proef/views.py`
 - `tests/test_experiment_analysis_api.py` (new)
 - `tests/test_provenance_security.py` and `tests/test_api.py`
 
@@ -247,8 +247,8 @@ Return structured error codes and field diagnostics for unreadable files, unknow
 
 **Target files**
 
-- `src/bionexus/analysis_report.py` (new generic report shell) and the plate profile's report renderer, or an equivalent composition with `src/bionexus/report.py`
-- `src/bionexus/api/analyses.py`
+- `src/proef/analysis_report.py` (new generic report shell) and the plate profile's report renderer, or an equivalent composition with `src/proef/report.py`
+- `src/proef/api/analyses.py`
 - `web/src/routes/Analysis*.tsx`
 - `tests/test_analysis_report.py` and `tests/test_plate_assay_report.py` (new)
 - `tests/test_api.py`
@@ -265,7 +265,7 @@ Return structured error codes and field diagnostics for unreadable files, unknow
 
 - Run the workflow with one named scientist on their own plate exports, including at least one file that needs correction or is refused.
 - Observe first-use without coaching; log where they pause, correct mappings, mistrust assumptions, or leave the workflow.
-- Compare BioNexus outputs to the user's current process and have them adjudicate disagreements blind to the tool call where feasible.
+- Compare Proef outputs to the user's current process and have them adjudicate disagreements blind to the tool call where feasible.
 - Track time to report, setup reuse, correction frequency, unresolved disagreements, abstention usefulness, and repeat usage.
 - Maintain a fixed corpus of permissioned, de-identified regression exports from that pilot, with source and license notes in `tests/data/instruments/README.md`.
 - After the pilot, decide whether to deepen assay analysis, add another instrument family, or connect campaigns more tightly. Do not pre-commit to broad modality expansion.

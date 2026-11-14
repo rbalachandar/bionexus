@@ -77,7 +77,7 @@
         <rect x="40" y="580" width="1040" height="90" rx="3" fill="#efeaf6" stroke="#6a4fa0" stroke-opacity="0.6"/>
         <text x="56" y="608" font-family="IBM Plex Mono, monospace" font-size="11" letter-spacing="1.5" fill="#6a4fa0">PROVENANCE SPINE</text>
         <text x="76" y="634" font-size="12.5" fill="#2a2823">experiment_defined / experiment_readiness_reviewed / lab_run / hypothesis_validated-invalidated</text>
-        <text x="76" y="654" font-size="12.5" fill="#2a2823">bn prove andlt;branchandgt; --html → tamper-evident audit of every definition, review, and verdict</text>
+        <text x="76" y="654" font-size="12.5" fill="#2a2823">proef prove andlt;branchandgt; --html → tamper-evident audit of every definition, review, and verdict</text>
       </g>
       <text x="40" y="700" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#8a8272">THE READINESS REVIEW DECIDES WHETHER AN EXPERIMENT IS WORTH RUNNING. THE SAFETY ENGINE DECIDES WHETHER IT IS ALLOWED.</text>
     </svg>

@@ -3,7 +3,7 @@
 
 Registers "CS08 PD-L1 Designs" as a program, replays the real measured
 Boltz-2 scores (.data/cs08-designs/night1/) through the hypothesis
-tracker into the LIVE bionexus.db, and attaches the problem tree under
+tracker into the LIVE proef.db, and attaches the problem tree under
 the program so the workspace renders: program -> problem tree ->
 112 hypotheses (designs + controls) with CI-veto verdicts, all
 `predicted_by`-stamped. Idempotent: refuses to double-seed.
@@ -18,14 +18,14 @@ ROOT = HERE.parents[1]
 DATA = ROOT / ".data" / "cs08-designs" / "night1"
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(ROOT / "src"))
-from bionexus import program as program_cfg                      # noqa: E402
-from bionexus.adapters.lab.protein_design import (               # noqa: E402
+from proef import program as program_cfg                      # noqa: E402
+from proef.adapters.lab.protein_design import (               # noqa: E402
     ProteinDesignLabAdapter)
-from bionexus.adapters.store.sqlite import SqliteProvenanceStore  # noqa: E402
-from bionexus.core.hypothesis import (Constraint, HypothesisTracker,  # noqa: E402
+from proef.adapters.store.sqlite import SqliteProvenanceStore  # noqa: E402
+from proef.core.hypothesis import (Constraint, HypothesisTracker,  # noqa: E402
                                       ProblemStatement, SuccessCriteria)
-from bionexus.core.interfaces import system_actor                 # noqa: E402
-from bionexus.wizard_store import WizardStore                     # noqa: E402
+from proef.core.interfaces import system_actor                 # noqa: E402
+from proef.wizard_store import WizardStore                     # noqa: E402
 
 PROGRAM = "CS08 PD-L1 Designs"
 GATE, BAND_HALF = 0.7, 0.05
@@ -54,7 +54,7 @@ def main() -> int:
     ctrls = load_scores(DATA / "ctrl_predictions")
     binder_seq = binder_seqs(DATA / "boltz_in2")
 
-    store = SqliteProvenanceStore("bionexus.db")
+    store = SqliteProvenanceStore("proef.db")
     tr = HypothesisTracker(store, system_actor("cs08-workbench"))
     prob = ProblemStatement(
         objective="PD-L1 binder design (CS08 prospective GPU run)",
@@ -68,9 +68,9 @@ def main() -> int:
 
     # pre-registered single-node problem tree (the materials.py shape) —
     # written BEFORE any verdict lands, so the tree is genuinely prior
-    from bionexus.problem_tree import ProblemNode, ProblemTree
-    from bionexus.core.contracts import Envelope, EventType
-    from bionexus.core.interfaces import record_for, system_actor as _sa
+    from proef.problem_tree import ProblemNode, ProblemTree
+    from proef.core.contracts import Envelope, EventType
+    from proef.core.interfaces import record_for, system_actor as _sa
     pid = prob.problem_id
     leaf_branch = f"problem/{pid}-{pid}"     # canonical single-node leaf campaign
     screen_tree = ProblemTree(
