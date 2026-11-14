@@ -1104,9 +1104,9 @@ export interface components {
             candidates: string[];
             /**
              * K
-             * @default 2
+             * @description per round; defaults to, and is capped by, the program's limit
              */
-            k: number;
+            k?: number | null;
             /**
              * Mode
              * @description 'hand': you run the plate yourself and submit it; candidates are required
@@ -1118,9 +1118,9 @@ export interface components {
             objective?: string | null;
             /**
              * Rounds
-             * @default 2
+             * @description defaults to 2, and is capped by the program's limit
              */
-            rounds: number;
+            rounds?: number | null;
         };
         /** CampaignDetail */
         CampaignDetail: {
@@ -1605,6 +1605,47 @@ export interface components {
             verified_in_ms: number;
         };
         /**
+         * Limits
+         * @description Hard caps a program puts on every campaign it runs. A campaign may ask for less, never more.
+         */
+        Limits: {
+            /**
+             * Breadth
+             * @description hypotheses taken to the lab per round
+             * @default 3
+             */
+            breadth: number;
+            /**
+             * Max Families
+             * @description distinct mechanistic bets a model may propose
+             * @default 3
+             */
+            max_families: number;
+            /**
+             * Max Hypotheses
+             * @description hypotheses across all rounds
+             * @default 12
+             */
+            max_hypotheses: number;
+            /**
+             * Max Lab Runs
+             * @description lab runs, including confirmation assays
+             * @default 20
+             */
+            max_lab_runs: number;
+            /**
+             * Max Rounds
+             * @description sequential rounds; each round's results feed the next
+             * @default 3
+             */
+            max_rounds: number;
+            /**
+             * Max Variants Per Family
+             * @default 3
+             */
+            max_variants_per_family: number;
+        };
+        /**
          * LlmUse
          * @description Where a language model took part. Absent = every step of this campaign was deterministic.
          */
@@ -1699,6 +1740,17 @@ export interface components {
              */
             gate_value: number;
             /**
+             * @default {
+             *       "breadth": 3,
+             *       "max_families": 3,
+             *       "max_hypotheses": 12,
+             *       "max_lab_runs": 20,
+             *       "max_rounds": 3,
+             *       "max_variants_per_family": 3
+             *     }
+             */
+            limits: components["schemas"]["Limits"];
+            /**
              * Metric
              * @default ic50_um
              */
@@ -1732,6 +1784,17 @@ export interface components {
             campaigns: number;
             gate: components["schemas"]["Gate"];
             goal: components["schemas"]["Goal"];
+            /**
+             * @default {
+             *       "breadth": 3,
+             *       "max_families": 3,
+             *       "max_hypotheses": 12,
+             *       "max_lab_runs": 20,
+             *       "max_rounds": 3,
+             *       "max_variants_per_family": 3
+             *     }
+             */
+            limits: components["schemas"]["Limits"];
             /** Modality */
             modality?: string | null;
             /** Mode */
@@ -1787,6 +1850,17 @@ export interface components {
             campaigns: number;
             gate: components["schemas"]["Gate"];
             goal: components["schemas"]["Goal"];
+            /**
+             * @default {
+             *       "breadth": 3,
+             *       "max_families": 3,
+             *       "max_hypotheses": 12,
+             *       "max_lab_runs": 20,
+             *       "max_rounds": 3,
+             *       "max_variants_per_family": 3
+             *     }
+             */
+            limits: components["schemas"]["Limits"];
             /** Modality */
             modality?: string | null;
             /** Mode */

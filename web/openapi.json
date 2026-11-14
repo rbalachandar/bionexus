@@ -1223,11 +1223,18 @@
       "type": "array"
      },
      "k": {
-      "default": 2,
-      "maximum": 12.0,
-      "minimum": 1.0,
-      "title": "K",
-      "type": "integer"
+      "anyOf": [
+       {
+        "maximum": 12.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "per round; defaults to, and is capped by, the program's limit",
+      "title": "K"
      },
      "mode": {
       "default": "agent",
@@ -1251,11 +1258,18 @@
       "title": "Objective"
      },
      "rounds": {
-      "default": 2,
-      "maximum": 8.0,
-      "minimum": 1.0,
-      "title": "Rounds",
-      "type": "integer"
+      "anyOf": [
+       {
+        "maximum": 8.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "defaults to 2, and is capped by the program's limit",
+      "title": "Rounds"
      }
     },
     "title": "CampaignCreate",
@@ -2603,6 +2617,60 @@
     "title": "LedgerView",
     "type": "object"
    },
+   "Limits": {
+    "description": "Hard caps a program puts on every campaign it runs. A campaign may ask for less, never more.",
+    "properties": {
+     "breadth": {
+      "default": 3,
+      "description": "hypotheses taken to the lab per round",
+      "maximum": 12.0,
+      "minimum": 1.0,
+      "title": "Breadth",
+      "type": "integer"
+     },
+     "max_families": {
+      "default": 3,
+      "description": "distinct mechanistic bets a model may propose",
+      "maximum": 8.0,
+      "minimum": 1.0,
+      "title": "Max Families",
+      "type": "integer"
+     },
+     "max_hypotheses": {
+      "default": 12,
+      "description": "hypotheses across all rounds",
+      "maximum": 200.0,
+      "minimum": 1.0,
+      "title": "Max Hypotheses",
+      "type": "integer"
+     },
+     "max_lab_runs": {
+      "default": 20,
+      "description": "lab runs, including confirmation assays",
+      "maximum": 500.0,
+      "minimum": 1.0,
+      "title": "Max Lab Runs",
+      "type": "integer"
+     },
+     "max_rounds": {
+      "default": 3,
+      "description": "sequential rounds; each round's results feed the next",
+      "maximum": 8.0,
+      "minimum": 1.0,
+      "title": "Max Rounds",
+      "type": "integer"
+     },
+     "max_variants_per_family": {
+      "default": 3,
+      "maximum": 8.0,
+      "minimum": 1.0,
+      "title": "Max Variants Per Family",
+      "type": "integer"
+     }
+    },
+    "title": "Limits",
+    "type": "object"
+   },
    "LlmUse": {
     "description": "Where a language model took part. Absent = every step of this campaign was deterministic.",
     "properties": {
@@ -2796,6 +2864,17 @@
       "title": "Gate Value",
       "type": "number"
      },
+     "limits": {
+      "$ref": "#/components/schemas/Limits",
+      "default": {
+       "breadth": 3,
+       "max_families": 3,
+       "max_hypotheses": 12,
+       "max_lab_runs": 20,
+       "max_rounds": 3,
+       "max_variants_per_family": 3
+      }
+     },
      "metric": {
       "default": "ic50_um",
       "title": "Metric",
@@ -2846,6 +2925,17 @@
      },
      "goal": {
       "$ref": "#/components/schemas/Goal"
+     },
+     "limits": {
+      "$ref": "#/components/schemas/Limits",
+      "default": {
+       "breadth": 3,
+       "max_families": 3,
+       "max_hypotheses": 12,
+       "max_lab_runs": 20,
+       "max_rounds": 3,
+       "max_variants_per_family": 3
+      }
      },
      "modality": {
       "anyOf": [
@@ -3020,6 +3110,17 @@
      },
      "goal": {
       "$ref": "#/components/schemas/Goal"
+     },
+     "limits": {
+      "$ref": "#/components/schemas/Limits",
+      "default": {
+       "breadth": 3,
+       "max_families": 3,
+       "max_hypotheses": 12,
+       "max_lab_runs": 20,
+       "max_rounds": 3,
+       "max_variants_per_family": 3
+      }
      },
      "modality": {
       "anyOf": [

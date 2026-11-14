@@ -40,6 +40,11 @@ def build_cfg(doc: dict) -> dict:
         "rounds": int(doc.get("rounds", 2)),
         "autonomy": doc.get("autonomy", "act"),
         "concentrations": ["0.5uM", "2uM", "10uM", "40uM"]}
+    for key in ("max_families", "max_variants_per_family"):
+        if doc.get(key):
+            cfg[key] = int(doc[key])
+    if doc.get("budget"):
+        cfg["budget"] = dict(doc["budget"])
     candidates = [c.strip() for c in (doc.get("candidates") or "").split(",")
                   if c.strip()]
     if candidates:

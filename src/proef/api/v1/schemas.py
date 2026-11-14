@@ -300,12 +300,23 @@ class CampaignDigest(BaseModel):
     best: BestResult | None = None
 
 
+class Limits(BaseModel):
+    """Hard caps a program puts on every campaign it runs. A campaign may ask for less, never more."""
+    max_rounds: int = Field(3, ge=1, le=8, description="sequential rounds; each round's results feed the next")
+    max_lab_runs: int = Field(20, ge=1, le=500, description="lab runs, including confirmation assays")
+    max_hypotheses: int = Field(12, ge=1, le=200, description="hypotheses across all rounds")
+    max_families: int = Field(3, ge=1, le=8, description="distinct mechanistic bets a model may propose")
+    max_variants_per_family: int = Field(3, ge=1, le=8)
+    breadth: int = Field(3, ge=1, le=12, description="hypotheses taken to the lab per round")
+
+
 class ProgramSummary(BaseModel):
     slug: str
     name: str
     objective: str | None = None
     modality: str | None = None
     mode: str | None = None
+    limits: Limits = Limits()
     gate: Gate
     goal: Goal
     campaigns: int
@@ -400,6 +411,7 @@ class DecisionIn(BaseModel):
 
 
 class ProgramCreate(BaseModel):
+    limits: Limits = Limits()
     name: str
     objective: str = ""
     modality: str = "small molecule"
@@ -415,8 +427,8 @@ class CampaignCreate(BaseModel):
     mode: Literal["agent", "hand"] = Field(
         "agent", description="'hand': you run the plate yourself and submit it; candidates are required")
     autonomy: Literal["observe", "gate", "act"] = "gate"
-    k: int = Field(2, ge=1, le=12)
-    rounds: int = Field(2, ge=1, le=8)
+    k: int | None = Field(None, ge=1, le=12, description="per round; defaults to, and is capped by, the program's limit")
+    rounds: int | None = Field(None, ge=1, le=8, description="defaults to 2, and is capped by the program's limit")
 
 
 class HaltState(BaseModel):

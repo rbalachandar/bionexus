@@ -4,6 +4,7 @@ import { useCreateProgram } from '../../api/hooks'
 import { Button } from '../../ui/Button'
 import { Dialog, DialogContent } from '../../ui/Dialog'
 import { Field, Input, Select, Textarea } from '../../ui/Field'
+import { DEFAULT_LIMITS, LimitsEditor, limitsLine, type Limits } from './limits'
 
 const METRICS = [
   { v: 'ic50_um', l: 'IC50 (potency)', unit: 'µM', dir: 'min' as const },
@@ -23,9 +24,10 @@ export function NewProgramDialog({ open, onOpenChange }: { open: boolean; onOpen
   const [direction, setDirection] = useState<'min' | 'max'>('min')
   const [gate, setGate] = useState(20)
   const [unit, setUnit] = useState('µM')
+  const [limits, setLimits] = useState<Limits>(DEFAULT_LIMITS)
   const pick = (v: string) => { const m = METRICS.find((x) => x.v === v)!; setMetric(m); setDirection(m.dir); setUnit(m.unit) }
   const submit = () => create.mutate(
-    { name, objective, modality, metric: metric.v === 'custom' ? custom : metric.v, direction, gate_value: gate, unit },
+    { name, objective, modality, metric: metric.v === 'custom' ? custom : metric.v, direction, gate_value: gate, unit, limits },
     { onSuccess: (p) => { onOpenChange(false); nav(`/programs/${p.slug}`) } })
   const ok = name.trim() && (metric.v !== 'custom' || custom.trim())
   return (
@@ -45,6 +47,13 @@ export function NewProgramDialog({ open, onOpenChange }: { open: boolean; onOpen
           <Field label="Gate"><Input type="number" step="any" value={gate} onChange={(e) => setGate(Number(e.target.value))} /></Field>
           <Field label="Unit"><Input value={unit} onChange={(e) => setUnit(e.target.value)} /></Field>
         </div>
+        <details className="mb-3 rounded-md border border-line px-3 py-2">
+          <summary className="cursor-pointer text-xs font-medium text-muted">
+            Limits <span className="font-normal text-faint">— hard caps on every campaign ({limitsLine(limits)})</span>
+          </summary>
+          <div className="mt-3"><LimitsEditor value={limits} onChange={setLimits} /></div>
+          <p className="mt-2 text-[11px] text-faint">A campaign may use less than this, never more. Exhausting a cap is recorded, not silent.</p>
+        </details>
         {create.error && <p role="alert" className="mb-2 text-xs text-bad">{(create.error as Error).message}</p>}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>

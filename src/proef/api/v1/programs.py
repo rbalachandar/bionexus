@@ -45,6 +45,14 @@ def _gate(doc: dict) -> S.Gate:
                   unit=unit, label=label)
 
 
+def _limits(doc: dict) -> S.Limits:
+    """A program's caps; programs created before limits existed get the defaults."""
+    try:
+        return S.Limits(**(doc.get("limits") or {}))
+    except Exception:  # noqa: BLE001 - a malformed stored value must not hide the program
+        return S.Limits()
+
+
 def _digest(eid: str):
     """(CampaignDigest, [hypotheses]) for one campaign — no chain verify."""
     ws, row, detail, branch, recs = _load(eid)
@@ -159,7 +167,7 @@ def _program(p: dict, with_detail: bool):
                   judged=sum(x.judged for x in f))
     base = dict(
         slug=p["slug"], name=p["name"], objective=doc.get("objective") or None,
-        modality=doc.get("modality") or None, mode=p.get("mode"), gate=gate,
+        modality=doc.get("modality") or None, mode=p.get("mode"), limits=_limits(doc), gate=gate,
         goal=goal, campaigns=len(digests),
         running=sum(d.status in _RUNNING for d in digests),
         updated_at=max((d.updated_at or 0 for d in digests), default=None))
@@ -210,7 +218,7 @@ def create_program(body: S.ProgramCreate) -> S.ProgramSummary:
         {"program": body.name, "custom": True, "objective": body.objective,
          "modality": body.modality, "metric": body.metric,
          "direction": body.direction, "gate_value": body.gate_value,
-         "unit": body.unit, "mode": "autonomous"}, slug)
+         "unit": body.unit, "mode": "autonomous", "limits": body.limits.model_dump()}, slug)
     p = next(x for x in program_cfg.list_programs() if x["slug"] == slug)
     return _program(p, False)
 
@@ -284,8 +292,13 @@ def launch_campaign(slug: str, body: S.CampaignCreate, request: Request) -> S.Ca
                 detail="With no candidates, a model proposes the hypotheses. Name the candidates "
                        "yourself, or set PROEF_LLM_MODEL, PROEF_LLM_TOKEN and PROEF_LLM_BASE_URL "
                        "(PROEF_LLM_API=openai for OpenAI-compatible endpoints) and restart.").model_dump())
+    lim = _limits(p.get("program") or {})
     doc = {**(p.get("program") or {}), "autonomy": body.autonomy,
-           "k": body.k, "rounds": body.rounds,
+           # a campaign may ask for less than the program allows, never more
+           "k": min(body.k or lim.breadth, lim.breadth),
+           "rounds": min(body.rounds or min(2, lim.max_rounds), lim.max_rounds),
+           "max_families": lim.max_families, "max_variants_per_family": lim.max_variants_per_family,
+           "budget": {"max_total_runs": lim.max_lab_runs, "max_hypotheses_total": lim.max_hypotheses},
            "candidates": ",".join(c.strip() for c in body.candidates if c.strip())}
     if body.objective:
         doc["objective"] = body.objective

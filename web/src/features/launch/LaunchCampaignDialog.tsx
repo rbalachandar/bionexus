@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useLaunchCampaign, useSystemStatus } from '../../api/hooks'
+import { useLaunchCampaign, useProgram, useSystemStatus } from '../../api/hooks'
 import { Button } from '../../ui/Button'
 import { Dialog, DialogContent } from '../../ui/Dialog'
 import { Field, Input, Select, Textarea } from '../../ui/Field'
@@ -22,16 +22,18 @@ export function LaunchCampaignDialog({ open, onOpenChange, slug, title = 'New ca
   const nav = useNavigate()
   const launch = useLaunchCampaign(slug)
   const model = useSystemStatus().data?.model
+  const maxRounds = useProgram(slug).data?.limits.max_rounds ?? 8
   const [objective, setObjective] = useState(defaults?.objective ?? '')
   const [cands, setCands] = useState((defaults?.candidates ?? []).join('\n'))
   const [autonomy, setAutonomy] = useState<keyof typeof AUTONOMY>('gate')
   const [rounds, setRounds] = useState(2)
+  const cappedRounds = Math.min(rounds, maxRounds)
   const [hand, setHand] = useState(false)
   useEffect(() => { if (open) { setObjective(defaults?.objective ?? ''); setCands((defaults?.candidates ?? []).join('\n')) } }, [open])  // eslint-disable-line
 
   const list = cands.split(/[\n,]+/).map((c) => c.trim()).filter(Boolean)
   const submit = () => launch.mutate(
-    { objective: objective || null, candidates: list, mode: hand ? 'hand' : 'agent', autonomy, rounds, k: Math.max(1, Math.min(list.length || 2, 4)) },
+    { objective: objective || null, candidates: list, mode: hand ? 'hand' : 'agent', autonomy, rounds: cappedRounds, k: Math.max(1, Math.min(list.length || 2, 4)) },
     {
       onSuccess: async (c) => {
         await onLaunched?.(c.id)
@@ -59,7 +61,7 @@ export function LaunchCampaignDialog({ open, onOpenChange, slug, title = 'New ca
               {Object.entries(AUTONOMY).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </Select>
           </Field>
-          <Field label="Rounds"><Input type="number" min={1} max={8} value={rounds} onChange={(e) => setRounds(Number(e.target.value))} /></Field>
+          <Field label="Rounds" hint={`up to ${maxRounds}`}><Input type="number" min={1} max={maxRounds} value={cappedRounds} onChange={(e) => setRounds(Number(e.target.value))} /></Field>
         </div>)}
         <ModeNote hand={hand} n={list.length} model={model} />
         {launch.error && <p role="alert" className="mb-2 text-xs text-bad">{(launch.error as Error).message}</p>}

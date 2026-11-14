@@ -404,3 +404,46 @@ def test_system_status_reports_the_model_without_the_key(client, monkeypatch):
     r = client.get("/api/v1/system/status")
     assert r.json()["model"]["configured"] is True and r.json()["model"]["model"] == "some-model"
     assert "super-secret-key" not in r.text
+
+
+def test_program_limits_cap_every_campaign_and_reach_the_engine_budget(client, monkeypatch):
+    import uuid
+    launched = {}
+    monkeypatch.setattr("proef.api.v1.programs.spawn_campaign",
+                        lambda doc, name: launched.update(doc=doc) or "cmp-fake-2")
+    name = f"Limits Test {uuid.uuid4().hex[:6]}"
+    slug = name.lower().replace(" ", "-")
+    made = client.post("/api/v1/programs", json={"name": name, "limits": {
+        "max_rounds": 2, "max_lab_runs": 7, "max_hypotheses": 5, "max_families": 2,
+        "max_variants_per_family": 2, "breadth": 2}})
+    assert made.status_code == 201 and made.json()["limits"]["max_lab_runs"] == 7
+    assert client.get(f"/api/v1/programs/{slug}").json()["limits"]["breadth"] == 2
+    # asking for more than the program allows is capped, not obeyed
+    client.post(f"/api/v1/programs/{slug}/campaigns", json={"candidates": ["A-1"], "rounds": 8, "k": 12})
+    d = launched["doc"]
+    assert (d["rounds"], d["k"]) == (2, 2)
+    assert (d["max_families"], d["max_variants_per_family"]) == (2, 2)
+    assert d["budget"] == {"max_total_runs": 7, "max_hypotheses_total": 5}
+    # asking for less is honoured
+    client.post(f"/api/v1/programs/{slug}/campaigns", json={"candidates": ["A-1"], "rounds": 1, "k": 1})
+    assert (launched["doc"]["rounds"], launched["doc"]["k"]) == (1, 1)
+    # the engine receives a real, enforced budget
+    from proef.api.launch import build_cfg
+    from proef.cli import _campaign_from_doc
+    cfg = _campaign_from_doc(build_cfg(d))
+    assert (cfg.budget.max_total_runs, cfg.budget.max_hypotheses_total) == (7, 5)
+    assert (cfg.max_families, cfg.max_variants_per_family) == (2, 2)
+
+
+def test_limits_are_validated_and_old_programs_get_defaults(client):
+    import uuid
+    bad = client.post("/api/v1/programs", json={"name": f"Bad {uuid.uuid4().hex[:6]}", "limits": {"max_rounds": 99}})
+    assert bad.status_code == 422
+    from proef import program as program_cfg
+    name = f"Legacy {uuid.uuid4().hex[:6]}"
+    program_cfg.save_program_record({"program": name, "custom": True, "objective": "x", "modality": "small molecule",
+                                     "metric": "ic50_um", "direction": "min", "gate_value": 10, "unit": "µM",
+                                     "mode": "autonomous"})          # no 'limits' key: created before limits existed
+    got = client.get(f"/api/v1/programs/{program_cfg._slug(name)}").json()["limits"]
+    assert got == {"max_rounds": 3, "max_lab_runs": 20, "max_hypotheses": 12, "max_families": 3,
+                   "max_variants_per_family": 3, "breadth": 3}

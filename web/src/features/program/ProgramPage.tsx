@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, CheckCircle2, ChevronLeft, CircleDashed, Compass, Plus } from 'lucide-react'
 import { useProgram } from '../../api/hooks'
+import { limitsLine } from '../launch/limits'
 import { Button } from '../../ui/Button'
 import { Card, CardHeader, EmptyState, Skeleton } from '../../ui/Card'
 import { Tag } from '../../ui/Chip'
@@ -41,11 +42,11 @@ export default function ProgramPage() {
         <h1 className="text-xl font-semibold tracking-tight">{p.name}</h1>
         {p.gate.label && <Tag className="num !text-xs">gate {p.gate.label}</Tag>}
         {p.modality && <Tag>{p.modality}</Tag>}
-        {p.mode && <Tag>{p.mode}</Tag>}
         <Button variant="primary" size="sm" className="ml-auto" onClick={() => setLaunch(true)}><Plus size={14} /> New campaign</Button>
         <LaunchCampaignDialog open={launch} onOpenChange={setLaunch} slug={p.slug} />
       </div>
-      {p.objective && <p className="mb-4 max-w-3xl text-sm text-muted">{p.objective}</p>}
+      {p.objective && <p className="mb-2 max-w-3xl text-sm text-muted">{p.objective}</p>}
+      <p className="mb-4 text-xs text-faint"><b className="font-medium text-muted">Limits</b> · {limitsLine(p.limits)}</p>
 
       <Card className={`mb-4 flex items-start gap-3 px-5 py-4 ${g.tone === 'ok' ? 'border-ok/40 bg-ok-soft' : ''}`}>
         {g.tone === 'ok' ? <CheckCircle2 className="mt-0.5 text-ok" size={20} /> : <CircleDashed className="mt-0.5 text-muted" size={20} />}
