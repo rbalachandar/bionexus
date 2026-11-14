@@ -84,6 +84,7 @@ await p.waitForSelector('text=Intact'); await wait(3000)
 const video = p.video()
 await ctx.close(); await b.close()
 const webm = join(dir, readdirSync(dir).find((f) => f.endsWith('.webm')))
-const vf = 'fps=8,scale=880:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=64:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle'
+const SPEED = 1.1   // playback speed of the final GIF
+const vf = `setpts=PTS/${SPEED},fps=8,scale=880:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=64:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', webm, '-vf', vf, '-loop', '0', OUT])
 console.log('wrote', OUT, (statSync(OUT).size / 1e6).toFixed(2), 'MB')
