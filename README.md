@@ -363,28 +363,35 @@ instrument the campaign refuses rather than falling back to simulation
 - **Evidence and Lab:** verify the whole ledger, anchor it outside this machine, and export a campaign's record. Instruments are labelled simulated, real, or hardware-validated, and the page shows what agents may do alone, what needs a person, the SOP sign-offs and the stop switch.
 - **Try it:** `proef demo` runs the abstain-and-refute cascade; `make sample` seeds a sample workspace.
 
-### Where the language model is used (and where it isn't)
+### Two ways to run: autonomous code, or LLM-assisted
 
-**By default, no LLM is involved.** Give a campaign its candidates and everything runs as code: selection,
-lab runs, curve fits, the verdict rule, the orthogonal confirmation, the reviewer. Every campaign says so in
-its header (**no LLM**), and the ledger shows `service` actors only.
+The experiment loop is the same code in both: design, synthesise, run, read the plate, fit, judge against the
+gate, confirm with an orthogonal assay. The modes differ in **who proposes the hypotheses** (and who reviews).
 
-**Optionally, a model proposes the hypotheses.** Start a campaign with *no* candidates and a configured model:
-the model proposes mechanistic families and variants, each with a mechanism, a rationale, a prediction and a
-pre-registered "refuted if…" clause. Each hypothesis records which model wrote it, the prompt and response are
-sealed in the ledger, and an LLM reviewer may also read the verdicts. **The model never decides a verdict**:
-the same fixed rule judges its hypotheses against the gate as anyone else's.
+| | **Autonomous code** (default) | **LLM-assisted** |
+|---|---|---|
+| Hypotheses come from | your candidate list or a template | a language model, from the problem statement |
+| Design, run, fit, judge, confirm | code | the same code |
+| Review | rule-based reviewer | rule-based reviewer **plus** an LLM reviewer (advisory flags only) |
+| Needs | nothing: no key, works offline | a configured model |
+| Reproducible | yes: `proef campaign reproduce` replays it and diffs the verdicts | the run replays from the recorded hypotheses and the verdicts match; the model is **not** re-asked, so a fresh run may propose different hypotheses |
+| Campaign header | `no LLM` | `LLM · <model> wrote N hypotheses · reviewed` |
+| Start it | `proef campaign auto examples/campaign.json` · workbench: name your candidates | `proef campaign auto examples/campaign_llm.json` · workbench: leave candidates empty |
+| Best for | a known series, demos, CI, reproducing a result | a new target where you have no list yet |
 
-| The campaign header says which model took part | One hypothesis: wording, mechanism and refuted-if all written by the model |
+**The model never decides a verdict**: its hypotheses are judged by the same fixed rule, against criteria
+registered before any data. Each hypothesis records which model wrote it, and the prompt and response are sealed
+in the ledger.
+
+| LLM mode: the header says which model took part | One hypothesis: wording, mechanism and refuted-if, all written by the model |
 |---|---|
 | ![LLM campaign](assets/screenshots/llm-campaign.png) | ![LLM hypothesis](assets/screenshots/llm-hypothesis.png) |
 
-*A real run (`gpt-6-luna`, no candidates given) against the **simulated** lab. The simulator does not model the
-proposed chemistry, so the outcomes say nothing about real EGFR inhibitors; the example shows the path and the
+*A real LLM-mode run (`gpt-6-luna`, no candidates given) against the **simulated** lab. The simulator does not model
+the proposed chemistry, so the outcomes say nothing about real EGFR inhibitors; the example shows the path and the
 record, not a scientific result.*
 
-A model can do two jobs, and only these two: **propose the hypotheses**, and **review the verdicts** (advisory flags only).
-It works with any of three provider styles, selected from the environment:
+LLM mode works with any of three provider styles, selected from the environment:
 
 | `PROEF_LLM_API` | Endpoint | Typical use |
 |---|---|---|

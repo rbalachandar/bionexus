@@ -1,23 +1,38 @@
-# Language models in Proef
+# Two modes: autonomous code, or LLM-assisted
 
-By default **no language model is involved**: give a campaign its candidates and selection, lab runs, curve
-fits, the verdict rule, confirmation and review are all code. A model is an optional extra, and it can do
-exactly two jobs in a campaign. It never decides a verdict.
+Proef runs an experiment loop (design, synthesise, run, read the plate, fit, judge against the gate, confirm
+with an orthogonal assay) the same way in both modes. They differ in **who proposes the hypotheses**, and in who
+reviews the verdicts.
 
-## What a model can do
+| | **Autonomous code** (default) | **LLM-assisted** |
+|---|---|---|
+| Hypotheses come from | your candidate list or a template | a language model, from the problem statement |
+| Design, run, fit, judge, confirm | code | the same code |
+| Review | rule-based reviewer | rule-based reviewer **plus** an LLM reviewer (advisory flags only) |
+| Needs | nothing: no key, works offline | a configured model |
+| Reproducible | yes: `proef campaign reproduce <branch>` replays it and diffs the verdicts | the execution replays from the recorded hypotheses and the verdicts match; the model's proposal step is **not** re-run (it says so: "reproduced: the execution path, not the model's creative step"), so a fresh run may propose different hypotheses |
+| Campaign header | `no LLM` | `LLM · <model> wrote N hypotheses · reviewed` |
+| Start from the CLI | `proef campaign auto examples/campaign.json` | `proef campaign auto examples/campaign_llm.json` |
+| Start from the workbench | name your candidates | leave **Candidates** empty |
+| Best for | a known series, demos, CI, reproducing a result | exploring a new target with no candidate list |
+
+The mode is chosen **per campaign**, by whether it has candidates: a campaign with `"hypothesis_source":
+"agent"` (or launched with none) uses LLM mode; everything else is autonomous code. The workbench shows which
+one a campaign used, read from the ledger and not from current settings.
+
+## What the model does in LLM mode
+
+Exactly two jobs, and it **never decides a verdict**.
 
 | Job | When it runs | Providers | What is recorded |
 |---|---|---|---|
-| **Propose hypotheses** | a campaign with `"hypothesis_source": "agent"` (or launched with no candidates) | any | the model on every hypothesis (`predicted_by`), plus the prompt and response, sealed as a `tool_invocation` |
+| **Propose hypotheses** | a campaign with `"hypothesis_source": "agent"` | any | the model on every hypothesis (`predicted_by`), plus the prompt and response, sealed as a `tool_invocation` |
 | **Review the verdicts** | automatically, when a model took part in the campaign | any | `review_report_llm`: model, prompt hash, advisory flags (flags only, schema-enforced) |
-
-Both are shown in the workbench: the campaign header reads `LLM · <model> wrote N hypotheses · reviewed`
-(or `no LLM`), and each hypothesis names its model. This is read from the ledger, not from current settings.
 
 Other features that use a model have their own transport and speak the **Anthropic Messages API only** today:
 the LLM acquisition policy (`AnthropicLLMPolicy`, used by the benchmarks) and the vision readout
 (`proef.vision`). The optional advisory toxicity pass (`PROEF_ADVISORY_LLM=1`) uses whatever provider you
-configured below.
+configure below.
 
 ## Configure a provider
 
@@ -61,9 +76,16 @@ agent hypothesis source needs a model: no model configured: set PROEF_LLM_MODEL 
 
 and the workbench returns the same message as a `409` instead of starting a campaign that cannot work.
 
-## Run it
+## Run each mode
 
-[`examples/campaign_llm.json`](../examples/campaign_llm.json) has no candidates; the model proposes them:
+**Autonomous code**: [`examples/campaign.json`](../examples/campaign.json) lists its candidates; no key, no network model:
+
+```sh
+proef campaign auto examples/campaign.json --yes
+proef campaign reproduce <branch>        # replays it and diffs the verdicts (works for LLM runs too: it replays the recorded hypotheses)
+```
+
+**LLM-assisted**: [`examples/campaign_llm.json`](../examples/campaign_llm.json) has no candidates; the model proposes them:
 
 ```sh
 export PROEF_LLM_PRESET=opencode-go PROEF_LLM_MODEL=gpt-6-luna
