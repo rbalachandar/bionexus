@@ -344,17 +344,24 @@ instrument the campaign refuses rather than falling back to simulation
 
 ### The scientist's workbench
 
-| Problem workspace | An experiment's record |
+| Today: programs against their gates | A campaign: estimates and 95% intervals against the gate |
 |---|---|
-| ![Problem workspace](assets/screenshots/workspace.png) | ![Experiment record](assets/screenshots/experiment.png) |
+| ![Today](assets/screenshots/today.png) | ![Campaign](assets/screenshots/campaign.png) |
+| **The evidence behind one verdict** | **Analyze: drop a plate, read the curves** |
+| ![Evidence](assets/screenshots/evidence.png) | ![Analyze](assets/screenshots/analyze.png) |
+
+*Screenshots are from the sample workspace, which runs on the simulated lab: the data is simulated, not measured.*
 
 `make api` serves the web workbench (React + FastAPI), all local, no accounts, no cloud:
 
-- **Workspace:** program cards with a verdict (`achieved / partial / no-tree`) computed from pre-registered claims, their problem trees with run budgets, experiment rows with verdict tallies, and taste lines distilled from past portfolio decisions.
-- **Experiment pages:** the DMTA funnel and one card per hypothesis — state, observed value **with its 95% CI drawn against the gate**, the prediction's source, mechanism, and the pre-registered **refuted-if** clause.
-- **The record:** hash-chained provenance, a sandbox receipt when the run was sandboxed, evidence curves re-rendered from recorded run files, the reviewer audit, and every harness decision (halts, authorization column, SOP sign-offs, fault classification). Experiments are archived (recoverable); a purge removes them from the workbench registry only — the provenance ledger keeps the audit trail.
-- **Series view:** hypotheses grouped by family or chemotype with per-series rollups and a matched-pair SAR table whose calls carry CIs.
-- **Try it on real data:** `proef demo` seeds the abstain-and-refute cascade; `case-studies/08-proteinbase-entry/seed_workbench.py` seeds the PD-L1 design campaign.
+- **Today:** what needs you, and each program's progress against its pre-registered gate.
+- **Decisions:** approve or decline gated lab submissions, and review abstentions (follow up, accept as inconclusive, or drop). Every decision is sealed in the ledger under your name.
+- **Campaign cockpit:** every estimate drawn with its 95% interval against the gate, why each batch was chosen (and what was refused), who did what (agents and people, with full traces), and an independent reviewer. A candidate whose interval straddles the gate is shown as **abstained**, never as a coin-flip verdict.
+- **Evidence behind a verdict:** the recorded dose–response curves re-read from the run files, the plate's QC, and how the number was derived.
+- **Analyze:** drop a plate-reader export and get curves with IC50 and its interval, plate QC, and honest abstentions. It warns when a call rests on an inferred top plateau. Record your decision beside the computed call, and attach the analysis to a campaign as supporting evidence.
+- **Run it yourself:** start a hand-run campaign, whose gate is registered on each candidate before any data. Run the plate, then **Submit results**: the CSV is judged by those pre-registered criteria, and the submission is sealed before anything is judged.
+- **Evidence and Lab:** verify the whole ledger, anchor it outside this machine, and export a campaign's record. Instruments are labelled simulated, real, or hardware-validated, and the page shows what agents may do alone, what needs a person, the SOP sign-offs and the stop switch.
+- **Try it:** `proef demo` runs the abstain-and-refute cascade; `make sample` seeds a sample workspace.
 
 Also: `proef diary <branch>` writes the record as a static lab-notebook HTML file, and `proef read --csv out.csv` writes standardized results for Excel/GraphPad.
 
