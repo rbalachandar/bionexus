@@ -8,8 +8,7 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **The workbench.** Review what the agents did, see why a candidate abstained, run a plate yourself and have it judged
-against the gate registered beforehand, and verify the ledger. *(Sample workspace on the simulated lab: the data is
-simulated, not measured.)*
+against the gate registered beforehand, and verify the ledger. *(Sample data from a simulated lab.)*
 
 ![Proef workbench demo](assets/demo/proef-ui-demo.gif)
 
@@ -352,14 +351,6 @@ instrument the campaign refuses rather than falling back to simulation
 - **A `ResourceBudget`** (lab runs, hypotheses, confirmations, wall clock) is enforced at submission and generation time. `proef prove <problem-id> --html report.html` renders the whole chain as a shareable audit.
 
 ### The scientist's workbench
-
-| Today: programs against their gates | A campaign: estimates and 95% intervals against the gate |
-|---|---|
-| ![Today](assets/screenshots/today.png) | ![Campaign](assets/screenshots/campaign.png) |
-| **The evidence behind one verdict** | **Analyze: drop a plate, read the curves** |
-| ![Evidence](assets/screenshots/evidence.png) | ![Analyze](assets/screenshots/analyze.png) |
-
-*Screenshots are from the sample workspace, which runs on the simulated lab: the data is simulated, not measured.*
 
 `make api` serves the web workbench (React + FastAPI), all local, no accounts, no cloud:
 
