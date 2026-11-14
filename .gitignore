@@ -20,4 +20,4 @@ proef-*.whl
 
 # local UI screenshots
 web/.shots/
-.sample/
+.sample*/

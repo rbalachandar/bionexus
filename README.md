@@ -7,6 +7,15 @@
 [![Python](https://img.shields.io/pypi/pyversions/proef)](https://pypi.org/project/proef/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
+**The workbench.** Review what the agents did, see why a candidate abstained, run a plate yourself and have it judged
+against the gate registered beforehand, and verify the ledger. *(Sample workspace on the simulated lab: the data is
+simulated, not measured.)*
+
+![Proef workbench demo](assets/demo/proef-ui-demo.gif)
+
+**The CLI.** The same engine from the terminal: `proef demo` runs the abstain-and-refute cascade. *(All numbers
+simulated.)* Want to try the plate step yourself? Drop [`assets/demo/demo-plate.csv`](assets/demo/demo-plate.csv) into **Analyze**.
+
 ![proef demo](assets/demo/proef-demo.gif)
 
 Proef is an open-source framework in which AI agents run the scientific
