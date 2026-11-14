@@ -100,8 +100,9 @@ function useRefresh() {
 export function useDecideApproval() {
   const refresh = useRefresh()
   return useMutation({
-    mutationFn: (v: { id: string; approve: boolean }) =>
-      unwrap(api.POST('/api/v1/inbox/{item_id}/decision', { params: { path: { item_id: v.id } }, body: { approve: v.approve, note: '' } })),
+    mutationFn: (v: { id: string; approve: boolean; exclude?: string[]; note?: string }) =>
+      unwrap(api.POST('/api/v1/inbox/{item_id}/decision', { params: { path: { item_id: v.id } },
+        body: { approve: v.approve, note: v.note ?? '', exclude: v.exclude ?? [] } })),
     onSuccess: refresh,
   })
 }

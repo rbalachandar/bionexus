@@ -492,6 +492,10 @@ def cmd_auto(args: argparse.Namespace) -> int:
         from proef.approvals import web_approver
         approver = web_approver(inbox=args.inbox or str(APPROVALS_FILE),
                                 notify=lambda m: print(f"[campaign] {m}"))
+        if cfg.hypothesis_source == "agent":      # a model's plan is reviewed before anything is submitted
+            from proef.plan import web_plan_approver
+            cfg.plan_approver = web_plan_approver(args.inbox or str(APPROVALS_FILE),
+                                                  notify=lambda m: print(f"[campaign] {m}"))
     if cfg_doc.get("lab") and "adapter" in (cfg_doc.get("lab") or {}):
         lab = _load_adapter(cfg_doc["lab"]["adapter"],
                             cfg_doc["lab"].get("options", {}))

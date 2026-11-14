@@ -1,27 +1,48 @@
-# Two modes: autonomous code, or LLM-assisted
+# Language models in Proef
 
-Proef runs an experiment loop (design, synthesise, run, read the plate, fit, judge against the gate, confirm
-with an orthogonal assay) the same way in both modes. They differ in **who proposes the hypotheses**, and in who
-reviews the verdicts.
+A model is optional. Proef runs an experiment loop (design, synthesise, run, read the plate, fit, judge against the
+gate, confirm with an orthogonal assay) the same way however a campaign starts. What differs is **who proposes the
+hypotheses**. The **New campaign** dialog offers three ways, chosen per campaign:
 
-| | **Autonomous code** (default) | **LLM-assisted** |
-|---|---|---|
-| Hypotheses come from | your candidate list or a template | a language model, from the problem statement |
-| Design, run, fit, judge, confirm | code | the same code |
-| Review | rule-based reviewer | rule-based reviewer **plus** an LLM reviewer (advisory flags only) |
-| Needs | nothing: no key, works offline | a configured model |
-| Reproducible | yes: `proef campaign reproduce <branch>` replays it and diffs the verdicts | the execution replays from the recorded hypotheses and the verdicts match; the model's proposal step is **not** re-run (it says so: "reproduced: the execution path, not the model's creative step"), so a fresh run may propose different hypotheses |
-| Campaign header | `no LLM` | `LLM · <model> wrote N hypotheses · reviewed` |
-| Start from the CLI | `proef campaign auto examples/campaign.json` | `proef campaign auto examples/campaign_llm.json` |
-| Start from the workbench | name your candidates | leave **Candidates** empty |
-| Best for | a known series, demos, CI, reproducing a result | exploring a new target with no candidate list |
+| | **Start research** | **I have candidates** | **I run the plate myself** |
+|---|---|---|---|
+| Hypotheses come from | a language model, from the problem statement | your list | your list |
+| Plan review | yes, in "Ask me first" mode | not needed | not needed |
+| Design, run, fit, judge, confirm | the agent (code) | the agent (code) | you submit the CSV; code judges it |
+| Review | rule-based reviewer **plus** an LLM reviewer (advisory flags only) | rule-based reviewer | rule-based reviewer |
+| Needs | a configured model | nothing: no key, works offline | nothing |
+| Replay | `proef campaign reproduce <branch>` replays the plan you approved (without what you removed), in the same batches and order, gated or not; the model is **not** re-asked ("reproduced: the execution path, not the model's creative step"), so a *fresh* run may propose different hypotheses | `proef campaign reproduce <branch>` replays it exactly | n/a |
+| Campaign header | `LLM · <model> wrote N hypotheses · reviewed` | `no LLM` | `no LLM` |
+| CLI | `proef campaign auto examples/campaign_llm.json` | `proef campaign auto examples/campaign.json` | n/a |
 
-The mode is chosen **per campaign**, by whether it has candidates: a campaign with `"hypothesis_source":
-"agent"` (or launched with none) uses LLM mode; everything else is autonomous code. The workbench launch dialog
-shows which mode you are about to run (and which model, or that none is configured, in which case Start is
-disabled), and each campaign afterwards shows which one it used, read from the ledger and not from current settings.
+"Autonomy" is a separate setting that applies to the first two: how much happens without a person saying yes.
+**Ask me first** (you approve the plan, then each lab submission), **Preview only** (plan and explain, submit nothing),
+or **Run on its own** within the safety gate (no approvals, so no plan review).
 
-## What the model does in LLM mode
+## The plan review
+
+In **Start research** with *Ask me first*, the campaign pauses after the model proposes and shows you the plan: each
+family's claim, mechanism, the one observation that would refute it, the model's confidence, whether its citation
+resolved, and every variant with its prediction. You can **remove individual hypotheses**, **decline the plan**, or
+approve what is left, with an optional note. Removed hypotheses are never tested; they are listed under "Eliminated
+before testing" with the reason, and your decision is sealed in the ledger under your name. Removing everything counts
+as declining. A declined plan submits nothing to the lab and the campaign reads "plan declined".
+
+## Replay
+
+`proef campaign reproduce <branch>` rebuilds a campaign from its ledger and compares verdicts one by one. It reuses the
+recorded hypotheses, their families, the scores the original run selected on, the approval mode and the number of rounds,
+and it leaves out anything removed at plan review; a declined plan reports `not-reproducible: nothing was run`. Replay runs
+on a clean, in-memory flywheel, so it neither depends on nor changes your real one. Campaigns recorded before the number of
+rounds was captured replay as a single round.
+
+## Limits
+
+A program sets hard caps that every campaign inherits: rounds, lab runs, hypotheses, families, variants per family, and
+hypotheses taken to the lab per round. A campaign may ask for less, never more; exhausting a cap is recorded, not
+silent. Programs created before limits existed get the defaults (3 rounds, 20 lab runs, 12 hypotheses, 3 × 3, 3 per round).
+
+## What the model does in Start research
 
 Exactly two jobs, and it **never decides a verdict**.
 
@@ -79,14 +100,14 @@ and the workbench returns the same message as a `409` instead of starting a camp
 
 ## Run each mode
 
-**Autonomous code**: [`examples/campaign.json`](../examples/campaign.json) lists its candidates; no key, no network model:
+**I have candidates**: [`examples/campaign.json`](../examples/campaign.json) lists its candidates; no key, no network model:
 
 ```sh
 proef campaign auto examples/campaign.json --yes
 proef campaign reproduce <branch>        # replays it and diffs the verdicts (works for LLM runs too: it replays the recorded hypotheses)
 ```
 
-**LLM-assisted**: [`examples/campaign_llm.json`](../examples/campaign_llm.json) has no candidates; the model proposes them:
+**Start research**: [`examples/campaign_llm.json`](../examples/campaign_llm.json) has no candidates; the model proposes them:
 
 ```sh
 export PROEF_LLM_PRESET=opencode-go PROEF_LLM_MODEL=gpt-6-luna
@@ -106,8 +127,8 @@ round 1: testing ['COV-C797-OSI-01', 'REVQ-GEF-01'] (2 candidates remain)
 [agent] gate honesty: COV-C797-OSI-01 methods agree but a borderline CI straddles threshold 20.0 -> inconclusive
 ```
 
-In the workbench, launch a campaign from a program and leave **Candidates** empty (the server needs the
-variables above in its environment).
+In the workbench, open a program and choose **Start research** (the server needs the variables above in its
+environment; without them the option is disabled and says why).
 
 ## What keeps a model honest
 

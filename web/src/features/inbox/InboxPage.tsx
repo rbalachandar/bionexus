@@ -58,7 +58,7 @@ export default function InboxPage() {
       )}
       {!!approvals.length && (
         <Card className="mb-5">
-          <CardHeader title="Approvals" hint="lab submissions paused at the gate" />
+          <CardHeader title="Approvals" hint="research plans and lab submissions paused for you" />
           <div className="divide-y divide-line">{approvals.map((i) => <ApprovalCard key={i.id} item={i} />)}</div>
         </Card>
       )}

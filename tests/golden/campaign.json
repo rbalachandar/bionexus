@@ -188,7 +188,8 @@
       "lab": "simulator",
       "lab_seed": 3,
       "lab_version": "sim-v1",
-      "model": null
+      "model": null,
+      "rounds": 2
      },
      "objective": "find IC50<=20",
      "success_metric": null
@@ -1529,7 +1530,8 @@
       "lab": "simulator",
       "lab_seed": 3,
       "lab_version": "sim-v1",
-      "model": null
+      "model": null,
+      "rounds": 2
      },
      "objective": "find IC50<=20",
      "success_metric": null

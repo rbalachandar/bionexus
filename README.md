@@ -363,35 +363,45 @@ instrument the campaign refuses rather than falling back to simulation
 - **Evidence and Lab:** verify the whole ledger, anchor it outside this machine, and export a campaign's record. Instruments are labelled simulated, real, or hardware-validated, and the page shows what agents may do alone, what needs a person, the SOP sign-offs and the stop switch.
 - **Try it:** `proef demo` runs the abstain-and-refute cascade; `make sample` seeds a sample workspace.
 
-### Two ways to run: autonomous code, or LLM-assisted
+### From a problem to a verdict: how research runs
 
-The experiment loop is the same code in both: design, synthesise, run, read the plate, fit, judge against the
-gate, confirm with an orthogonal assay. The modes differ in **who proposes the hypotheses** (and who reviews).
+1. **Create a program.** The problem, the **gate** (the success criterion, registered before any data), and **limits**:
+   rounds, lab runs, hypotheses, families, and how many go to the lab per round. A campaign may use less, never more.
+2. **Start research.** A language model reads the problem and proposes *families* of hypotheses. Each has a mechanism,
+   a "refuted if…" clause, the model's own confidence, and a citation that is checked (a fabricated DOI is flagged).
+3. **Review the plan.** Nothing reaches the lab until you decide. Remove any hypothesis, or decline the plan. Your decision,
+   what you removed and your note are sealed in the ledger under your name.
+4. **The agent runs it.** It runs the experiments (each lab submission can still wait for your approval), reads the
+   plates, and judges every result against the gate by a fixed rule: an interval that straddles the gate **abstains**.
+   Promising results are confirmed with an orthogonal assay.
+5. **You decide what is left.** Follow up on an abstention, accept it, or drop it. "What next" suggests the next step,
+   and the model proposes again within the limits.
 
-| | **Autonomous code** (default) | **LLM-assisted** |
-|---|---|---|
-| Hypotheses come from | your candidate list or a template | a language model, from the problem statement |
-| Design, run, fit, judge, confirm | code | the same code |
-| Review | rule-based reviewer | rule-based reviewer **plus** an LLM reviewer (advisory flags only) |
-| Needs | nothing: no key, works offline | a configured model |
-| Reproducible | yes: `proef campaign reproduce` replays it and diffs the verdicts | the run replays from the recorded hypotheses and the verdicts match; the model is **not** re-asked, so a fresh run may propose different hypotheses |
-| Campaign header | `no LLM` | `LLM · <model> wrote N hypotheses · reviewed` |
-| Start it | `proef campaign auto examples/campaign.json` · workbench: name your candidates | `proef campaign auto examples/campaign_llm.json` · workbench: leave candidates empty |
-| Best for | a known series, demos, CI, reproducing a result | a new target where you have no list yet |
-
-**The model never decides a verdict**: its hypotheses are judged by the same fixed rule, against criteria
-registered before any data. Each hypothesis records which model wrote it, and the prompt and response are sealed
-in the ledger.
-
-| LLM mode: the header says which model took part | One hypothesis: wording, mechanism and refuted-if, all written by the model |
+| Start research: the plan you review before anything runs | The finished campaign: what the model wrote, what you removed, what the rule decided |
 |---|---|
-| ![LLM campaign](assets/screenshots/llm-campaign.png) | ![LLM hypothesis](assets/screenshots/llm-hypothesis.png) |
+| ![Plan review](assets/screenshots/plan-review.png) | ![Research result](assets/screenshots/research-result.png) |
 
-*A real LLM-mode run (`gpt-6-luna`, no candidates given) against the **simulated** lab. The simulator does not model
-the proposed chemistry, so the outcomes say nothing about real EGFR inhibitors; the example shows the path and the
-record, not a scientific result.*
+*A real run (`gpt-6-luna`) against the **simulated** lab. The simulator does not model the proposed chemistry, so the
+outcomes say nothing about real EGFR inhibitors; the example shows the flow and the record, not a scientific result.*
 
-LLM mode works with any of three provider styles, selected from the environment:
+There are three ways to run, chosen per campaign in the **New campaign** dialog. The experiment loop is the same code
+in all of them; they differ in who proposes the hypotheses and who runs the plate.
+
+| | **Start research** | **I have candidates** | **I run the plate myself** |
+|---|---|---|---|
+| Hypotheses come from | a language model | your list | your list |
+| Plan review | yes, in "Ask me first" mode | not needed: the list is your plan | not needed |
+| Who runs the experiment | the agent (simulated lab or instruments) | the agent | you: submit the CSV |
+| Needs | a configured model | nothing: no key, works offline | nothing |
+| Replay | `proef campaign reproduce` replays the plan you approved, in the same batches and order; the model is not re-asked, so a *fresh* run may propose different hypotheses | `proef campaign reproduce` replays it exactly | n/a |
+| Header | `LLM · <model> wrote N hypotheses` | `no LLM` | `no LLM` |
+
+**The model never decides a verdict**: its hypotheses are judged by the same fixed rule, against criteria registered before
+any data. What the model designs is the hypotheses and the assay type; the protocol (doses, replicates, controls) is code.
+"Approvals" is a separate setting: *Ask me first*, *Preview only*, or *Run on its own within the safety gate*.
+Splitting an objective into a tree of sub-problems is available in the engine (`proef campaign plan`) but not yet in the workbench.
+
+Start research works with any of three provider styles, selected from the environment:
 
 | `PROEF_LLM_API` | Endpoint | Typical use |
 |---|---|---|

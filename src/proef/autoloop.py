@@ -69,6 +69,8 @@ class CampaignConfig:
                                               # the hypothesis prompt (P: skills)
     max_families: int = 3
     max_variants_per_family: int = 3
+    plan_approver: Callable[[dict, str], Any] | None = None   # gate autonomy + model-proposed hypotheses:
+                                                              # (plan, problem_id) -> PlanDecision
     score_fn: Callable[[Any], float] | None = None   # portfolio filter scoring
     k: int = 2                                # hypotheses taken to wet-lab
     k_schedule: tuple[int, ...] = ()          # per-round k, e.g. (4, 2, 1):
@@ -673,6 +675,36 @@ def _collect_round(monitor, agent, selected, adaptive, cfg, terminal) -> None:
             break
 
 
+def _plan_gate(cfg, tracker, portfolio, store, actor, say):
+    """Pause for the person's decision on the proposed plan. Returns (portfolio to run, declined?).
+    Every outcome is recorded: approval, removals (with a reason) and decline."""
+    from proef.plan import build_plan
+    pid = cfg.problem.problem_id or "unnamed"
+    plan = build_plan(portfolio, getattr(tracker, "family_info", {}), getattr(tracker, "family_scores", {}))
+    decision = cfg.plan_approver(plan, pid)
+    env = Envelope(experiment_branch_id=f"problem/{pid}")
+    removed = [h for h in portfolio if h.hypothesis_id in decision.excluded]
+    kept = [h for h in portfolio if h.hypothesis_id not in decision.excluded]
+    approved = bool(decision.approved and kept)
+    store.append(record_for(env, EventType.gate_decision, actor, decision={
+        "kind": "plan_decision", "approved": approved, "decided_by": decision.by, "note": decision.note,
+        "n_proposed": len(portfolio), "n_kept": len(kept) if approved else 0,
+        "removed": [h.hypothesis_id for h in removed],
+        "reason": None if approved else ("every hypothesis was removed" if decision.approved else "the plan was declined")}))
+    if removed and decision.approved:
+        from proef.core.hypothesis import PortfolioDecision
+        store.append(record_for(env, EventType.hypotheses_filtered, actor, decision={
+            "problem_id": pid, "kind": "plan_review", "decisions": [PortfolioDecision(
+                hypothesis_id=h.hypothesis_id, selected=False, score=0.0,
+                reason=f"removed from the plan by {decision.by}").model_dump() for h in removed]}))
+    if not approved:
+        say(f"plan {'declined' if not decision.approved else 'emptied'} by {decision.by}: nothing was submitted to the lab")
+        return [], True
+    say(f"plan approved by {decision.by}: {len(kept)} of {len(portfolio)} hypotheses go ahead"
+        + (f" ({len(removed)} removed)" if removed else ""))
+    return kept, False
+
+
 def run_campaign(cfg: CampaignConfig, lab: Any,
                  store: ProvenanceStore,
                  approver: Callable[[str], bool] | None = None,
@@ -722,6 +754,7 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
         "autonomy": cfg.autonomy,
         "dose_design": cfg.dose_design,
         "k": cfg.k,
+        "rounds": cfg.rounds,
         "model": getattr(cfg.model, "model", None),
     })
     portfolio, score_fn = _propose_and_score(
@@ -734,6 +767,12 @@ def run_campaign(cfg: CampaignConfig, lab: Any,
     _cid = os.environ.get("PROEF_CAMPAIGN_ID")
     if _cid:
         announce_branch(_cid, problem.problem_id)
+
+    # 0b. a model-proposed plan is shown to a person BEFORE anything is submitted
+    if cfg.plan_approver is not None and cfg.hypothesis_source == "agent":
+        portfolio, declined = _plan_gate(cfg, tracker, portfolio, store, actor, say)
+        if declined:
+            return CampaignReport(problem_id=problem.problem_id or "", selected=[], verdicts={}, rounds_run=0)
 
     # 1. rounds: select -> design+submit -> analyze; each round feeds the next
     synth_cache: dict[str, dict] = {}

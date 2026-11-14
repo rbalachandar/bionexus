@@ -152,11 +152,39 @@ class CampaignSummary(BaseModel):
     problem_id: str | None = None
 
 
+class PlanVariant(BaseModel):
+    hypothesis_id: str
+    candidate: str = ""
+    statement: str = ""
+    predicted: str = ""
+    rationale: str = ""
+    assay: str = ""
+
+
+class PlanFamily(BaseModel):
+    """One mechanistic bet a model proposed, with the variants that test it."""
+    id: str
+    claim: str = ""
+    mechanism: str = ""
+    refuted_if: str = Field("", description="the one observation that would kill this family")
+    confidence: float | None = None
+    citation: str = ""
+    citation_status: str = ""
+    variants: list[PlanVariant] = []
+
+
+class Plan(BaseModel):
+    """What a model proposed, shown to a person before anything reaches the lab."""
+    families: list[PlanFamily] = []
+    n_hypotheses: int = 0
+
+
 class ApprovalRef(BaseModel):
     id: str
     title: str
     detail: str = ""
     ts: float | None = None
+    plan: Plan | None = Field(None, description="set when this approval is a research plan to review")
 
 
 class LlmUse(BaseModel):
@@ -403,11 +431,13 @@ class InboxItem(BaseModel):
     candidate: str | None = None
     decision: str | None = None
     follow_up_campaign_id: str | None = None
+    plan: Plan | None = None
 
 
 class DecisionIn(BaseModel):
     approve: bool
     note: str = ""
+    exclude: list[str] = Field([], description="for a research plan: hypothesis ids the person removed")
 
 
 class ProgramCreate(BaseModel):

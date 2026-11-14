@@ -158,6 +158,7 @@ def propose_families_with_agent(
     doc = _extract_json(raw)
     families_in = doc.get("families", [])[:max_families]
     family_scores: dict[str, float] = {}
+    family_info: dict[str, dict[str, Any]] = {}
     specs: list[dict[str, Any]] = []
     # the program's primary hard constraint is the gate: variant criteria
     # inherit its metric/direction (threshold stays the variant's own
@@ -173,6 +174,8 @@ def propose_families_with_agent(
     for fam in families_in:
         fid = str(fam.get("family", f"fam-{len(family_scores)}"))[:40]
         family_scores[fid] = float(fam.get("confidence", 0.5))
+        family_info[fid] = {k: fam.get(k, "") for k in ("parent_statement", "mechanism", "refutation_condition",
+                                                         "rationale", "citation")}
         say(f"family '{fid}' (confidence {family_scores[fid]:.2f}): "
             f"{fam.get('parent_statement', '')[:80]}")
         for v in fam.get("variants", [])[:max_variants_per_family]:
@@ -264,6 +267,8 @@ def propose_families_with_agent(
         for s in specs:
             if s["candidate"] == h.candidate and s["statement"] == h.statement:
                 h.metadata["variables"] = s.get("variables", {})
+    tracker.family_info = family_info        # the plan shown to the person is built from these
+    tracker.family_scores = family_scores
     return variants, family_scores
 
 

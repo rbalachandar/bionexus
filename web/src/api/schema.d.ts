@@ -977,6 +977,8 @@ export interface components {
             detail: string;
             /** Id */
             id: string;
+            /** @description set when this approval is a research plan to review */
+            plan?: components["schemas"]["Plan"] | null;
             /** Title */
             title: string;
             /** Ts */
@@ -1287,6 +1289,12 @@ export interface components {
             /** Approve */
             approve: boolean;
             /**
+             * Exclude
+             * @description for a research plan: hypothesis ids the person removed
+             * @default []
+             */
+            exclude: string[];
+            /**
              * Note
              * @default
              */
@@ -1541,6 +1549,7 @@ export interface components {
              * @enum {string}
              */
             kind: "approval" | "review";
+            plan?: components["schemas"]["Plan"] | null;
             /**
              * Status
              * @default pending
@@ -1725,6 +1734,93 @@ export interface components {
             score?: number | null;
             /** Sd */
             sd?: number | null;
+        };
+        /**
+         * Plan
+         * @description What a model proposed, shown to a person before anything reaches the lab.
+         */
+        Plan: {
+            /**
+             * Families
+             * @default []
+             */
+            families: components["schemas"]["PlanFamily"][];
+            /**
+             * N Hypotheses
+             * @default 0
+             */
+            n_hypotheses: number;
+        };
+        /**
+         * PlanFamily
+         * @description One mechanistic bet a model proposed, with the variants that test it.
+         */
+        PlanFamily: {
+            /**
+             * Citation
+             * @default
+             */
+            citation: string;
+            /**
+             * Citation Status
+             * @default
+             */
+            citation_status: string;
+            /**
+             * Claim
+             * @default
+             */
+            claim: string;
+            /** Confidence */
+            confidence?: number | null;
+            /** Id */
+            id: string;
+            /**
+             * Mechanism
+             * @default
+             */
+            mechanism: string;
+            /**
+             * Refuted If
+             * @description the one observation that would kill this family
+             * @default
+             */
+            refuted_if: string;
+            /**
+             * Variants
+             * @default []
+             */
+            variants: components["schemas"]["PlanVariant"][];
+        };
+        /** PlanVariant */
+        PlanVariant: {
+            /**
+             * Assay
+             * @default
+             */
+            assay: string;
+            /**
+             * Candidate
+             * @default
+             */
+            candidate: string;
+            /** Hypothesis Id */
+            hypothesis_id: string;
+            /**
+             * Predicted
+             * @default
+             */
+            predicted: string;
+            /**
+             * Rationale
+             * @default
+             */
+            rationale: string;
+            /**
+             * Statement
+             * @default
+             */
+            statement: string;
         };
         /** ProgramCreate */
         ProgramCreate: {

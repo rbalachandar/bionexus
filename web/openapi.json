@@ -890,6 +890,17 @@
       "title": "Id",
       "type": "string"
      },
+     "plan": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Plan"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "set when this approval is a research plan to review"
+     },
      "title": {
       "title": "Title",
       "type": "string"
@@ -1788,6 +1799,15 @@
       "title": "Approve",
       "type": "boolean"
      },
+     "exclude": {
+      "default": [],
+      "description": "for a research plan: hypothesis ids the person removed",
+      "items": {
+       "type": "string"
+      },
+      "title": "Exclude",
+      "type": "array"
+     },
      "note": {
       "default": "",
       "title": "Note",
@@ -2468,6 +2488,16 @@
       "title": "Kind",
       "type": "string"
      },
+     "plan": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Plan"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "status": {
       "default": "pending",
       "title": "Status",
@@ -2846,6 +2876,123 @@
      "reason"
     ],
     "title": "Pick",
+    "type": "object"
+   },
+   "Plan": {
+    "description": "What a model proposed, shown to a person before anything reaches the lab.",
+    "properties": {
+     "families": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/PlanFamily"
+      },
+      "title": "Families",
+      "type": "array"
+     },
+     "n_hypotheses": {
+      "default": 0,
+      "title": "N Hypotheses",
+      "type": "integer"
+     }
+    },
+    "title": "Plan",
+    "type": "object"
+   },
+   "PlanFamily": {
+    "description": "One mechanistic bet a model proposed, with the variants that test it.",
+    "properties": {
+     "citation": {
+      "default": "",
+      "title": "Citation",
+      "type": "string"
+     },
+     "citation_status": {
+      "default": "",
+      "title": "Citation Status",
+      "type": "string"
+     },
+     "claim": {
+      "default": "",
+      "title": "Claim",
+      "type": "string"
+     },
+     "confidence": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "mechanism": {
+      "default": "",
+      "title": "Mechanism",
+      "type": "string"
+     },
+     "refuted_if": {
+      "default": "",
+      "description": "the one observation that would kill this family",
+      "title": "Refuted If",
+      "type": "string"
+     },
+     "variants": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/PlanVariant"
+      },
+      "title": "Variants",
+      "type": "array"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "title": "PlanFamily",
+    "type": "object"
+   },
+   "PlanVariant": {
+    "properties": {
+     "assay": {
+      "default": "",
+      "title": "Assay",
+      "type": "string"
+     },
+     "candidate": {
+      "default": "",
+      "title": "Candidate",
+      "type": "string"
+     },
+     "hypothesis_id": {
+      "title": "Hypothesis Id",
+      "type": "string"
+     },
+     "predicted": {
+      "default": "",
+      "title": "Predicted",
+      "type": "string"
+     },
+     "rationale": {
+      "default": "",
+      "title": "Rationale",
+      "type": "string"
+     },
+     "statement": {
+      "default": "",
+      "title": "Statement",
+      "type": "string"
+     }
+    },
+    "required": [
+     "hypothesis_id"
+    ],
+    "title": "PlanVariant",
     "type": "object"
    },
    "ProgramCreate": {

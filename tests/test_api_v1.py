@@ -447,3 +447,57 @@ def test_limits_are_validated_and_old_programs_get_defaults(client):
     got = client.get(f"/api/v1/programs/{program_cfg._slug(name)}").json()["limits"]
     assert got == {"max_rounds": 3, "max_lab_runs": 20, "max_hypotheses": 12, "max_families": 3,
                    "max_variants_per_family": 3, "breadth": 3}
+
+
+def test_a_research_plan_is_reviewed_in_the_inbox_and_removals_are_sealed(client, seeded):
+    from proef.approvals import ApprovalInbox
+    from proef.paths import APPROVALS_FILE
+    d = client.get(f"/api/v1/campaigns/{seeded['eid']}").json()
+    plan = {"n_hypotheses": 2, "families": [{
+        "id": "hinge", "claim": "Reversible hinge binders work", "mechanism": "occupies the ATP site",
+        "refuted_if": "IC50 > 20 uM", "confidence": 0.8, "citation": "", "citation_status": "",
+        "variants": [{"hypothesis_id": "hyp-a", "candidate": "H1", "statement": "H1 binds"},
+                     {"hypothesis_id": "hyp-b", "candidate": "H2", "statement": "H2 binds"}]}]}
+    aid = ApprovalInbox(str(APPROVALS_FILE)).request(
+        f"[problem/{d['problem_id']}] Approve the research plan: 2 hypotheses in 1 family",
+        "Review what the model proposed.", payload=plan)
+    # the plan rides on the approval, on the campaign and in the inbox
+    waiting = client.get(f"/api/v1/campaigns/{seeded['eid']}").json()["awaiting_approvals"]
+    assert waiting[0]["plan"]["families"][0]["mechanism"] == "occupies the ATP site"
+    item = next(i for i in client.get("/api/v1/inbox").json() if i["id"] == aid)
+    assert item["plan"]["n_hypotheses"] == 2 and item["plan"]["families"][0]["refuted_if"] == "IC50 > 20 uM"
+    # approving WITH a removal: the decision data reaches the campaign process, and is sealed under the person
+    r = client.post(f"/api/v1/inbox/{aid}/decision", json={"approve": True, "exclude": ["hyp-b"], "note": "H2 is a PAINS"})
+    assert r.status_code == 200 and r.json()["status"] == "approved"
+    state = ApprovalInbox(str(APPROVALS_FILE)).state()[aid]
+    assert state["data"] == {"exclude": ["hyp-b"], "note": "H2 is a PAINS"} and state["decided_by"] == "local-user"
+    tr = client.get(f"/api/v1/campaigns/{seeded['eid']}/provenance?actor=local-user").json()
+    sealed = [x["detail"] for x in tr["records"] if x["detail"].get("approval_id") == aid]
+    assert sealed and sealed[0]["removed"] == ["hyp-b"] and sealed[0]["note"] == "H2 is a PAINS"
+    assert tr["chain"]["verified"] is True
+
+
+def test_a_declined_plan_gives_the_campaign_an_honest_status():
+    from types import SimpleNamespace as NS
+
+    from proef.api.v1.campaigns import _status
+    rec = lambda d: NS(event_type=NS(value="gate_decision"), decision=d, artifact=None)
+    assert _status("executing", [rec({"kind": "plan_decision", "approved": False})]) == "declined"
+    assert _status("executing", [rec({"kind": "plan_decision", "approved": True})]) == "executing"
+
+
+def test_a_running_campaign_shows_what_it_is_waiting_for_on_its_own_page(client, monkeypatch):
+    """A running campaign is not linked to its problem branch in the registry yet; it announces the branch."""
+    from proef.approvals import ApprovalInbox
+    from proef.paths import APPROVALS_FILE
+    from proef.wizard_store import WizardStore
+    eid = "running-wait-1"
+    WizardStore().register_agent(eid, "wait for me", log="", autonomy="gate")          # no link_problem yet
+    monkeypatch.setattr("proef.autoloop.announced_branches", lambda: {eid: "prob-announced-1"})
+    aid = ApprovalInbox(str(APPROVALS_FILE)).request("[problem/prob-announced-1] Approve the research plan: 1 hypotheses in 1 family",
+                                                     payload={"n_hypotheses": 1, "families": [{"id": "f", "variants": [{"hypothesis_id": "h1"}]}]})
+    d = client.get(f"/api/v1/campaigns/{eid}").json()
+    assert d["problem_id"] == "prob-announced-1"
+    assert [a["id"] for a in d["awaiting_approvals"]] == [aid] and d["awaiting_approvals"][0]["plan"]["n_hypotheses"] == 1
+    from proef.api.v1.campaigns import problem_id_for
+    assert problem_id_for("x", {"agent": {"problem_id": "prob-real"}}) == "prob-real"     # a recorded id wins

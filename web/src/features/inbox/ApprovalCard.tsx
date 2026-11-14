@@ -5,9 +5,15 @@ import { useToast } from '../../app/toast'
 import type { Schemas } from '../../api/v1'
 import { Button } from '../../ui/Button'
 import { ago } from '../campaign/format'
+import { PlanReview } from './PlanReview'
 
 /** A lab submission paused at the gate. The decider is whoever is signed in. */
-export function ApprovalCard({ item, compact }: { item: Pick<Schemas['InboxItem'], 'id' | 'title' | 'detail' | 'ts'> & Partial<Schemas['InboxItem']>; compact?: boolean }) {
+export function ApprovalCard({ item, compact }: { item: Pick<Schemas['InboxItem'], 'id' | 'title' | 'detail' | 'ts'> & Partial<Schemas['InboxItem']> & { plan?: Schemas['Plan'] | null }; compact?: boolean }) {
+  if (item.plan) return <PlanReview item={{ ...item, plan: item.plan }} compact={compact} />
+  return <LabApproval item={item} compact={compact} />
+}
+
+function LabApproval({ item, compact }: { item: Pick<Schemas['InboxItem'], 'id' | 'title' | 'detail' | 'ts'> & Partial<Schemas['InboxItem']>; compact?: boolean }) {
   const decide = useDecideApproval()
   const toast = useToast()
   const go = (approve: boolean) => decide.mutate({ id: item.id, approve }, {

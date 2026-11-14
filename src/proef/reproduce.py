@@ -26,6 +26,10 @@ def reproduce(branch: str, db_path: str = "proef.db",
     env: dict = {}
     hypotheses: dict[str, dict] = {}
     recorded: dict[str, dict] = {}
+    id_to_cand: dict[str, str] = {}
+    removed_ids: set[str] = set()
+    plan_declined = False
+    first_score: dict[str, float] = {}          # hypothesis id -> the score it was first selected on
     for r in recs:
         d = r.decision or {}
         et = r.event_type.value
@@ -35,6 +39,8 @@ def reproduce(branch: str, db_path: str = "proef.db",
         elif et == "hypothesis_proposed":
             art = (r.artifact.metadata if r.artifact else {}) or {}
             cand = art.get("candidate")
+            if cand and r.artifact:
+                id_to_cand[r.artifact.artifact_id] = cand
             if cand:
                 hypotheses[cand] = {
                     "statement": d.get("statement", ""),
@@ -47,7 +53,19 @@ def reproduce(branch: str, db_path: str = "proef.db",
                     "refutation_condition": d.get("refutation_condition", ""),
                     "citation": d.get("citation", ""),
                     "citation_status": d.get("citation_status", "unverified"),
+                    # the family drives the per-round diversity cap and the flywheel prior: without it the
+                    # replay would choose different batches than the original did
+                    **({"family": d["family"]} if d.get("family") else {}),
+                    **({"smiles": d["smiles"]} if d.get("smiles") else {}),
                 }
+        elif et == "hypotheses_filtered" and d.get("kind") not in ("plan_review", "acquisition_selection"):
+            for dec in d.get("decisions") or []:
+                if dec.get("score") is not None:
+                    first_score.setdefault(dec.get("hypothesis_id"), float(dec["score"]))
+        elif et == "gate_decision" and d.get("kind") == "plan_decision":
+            # the person's review of a model's plan decides WHAT was run: replay the same plan
+            plan_declined = plan_declined or not d.get("approved")
+            removed_ids |= set(d.get("removed") or [])
         elif et in ("hypothesis_validated", "hypothesis_invalidated",
                     "hypothesis_inconclusive",
                     "hypothesis_tested"):
@@ -55,6 +73,15 @@ def reproduce(branch: str, db_path: str = "proef.db",
             cand = art.get("candidate")
             if cand and d.get("verdict"):
                 recorded[cand] = d          # last one wins (final state)
+
+    if plan_declined:
+        return {"status": "not-reproducible", "reason": "the research plan was declined: nothing was run"}
+    for hid in removed_ids:
+        hypotheses.pop(id_to_cand.get(hid, ""), None)
+    # the original run ranked its hypotheses by the model's own confidences, which a replay does not have:
+    # reuse the scores it recorded, so the same batches are chosen in the same order (and the lab's noise,
+    # which depends on run order, comes out the same)
+    cand_score = {id_to_cand[h]: s for h, s in first_score.items() if h in id_to_cand}
 
     if not env.get("lab_seed") and env.get("lab") != "simulator":
         return {"status": "not-reproducible",
@@ -85,20 +112,30 @@ def reproduce(branch: str, db_path: str = "proef.db",
         problem_id=_replay_id,
         constraints=[Constraint(**c)
                      for c in problem_doc.get("constraints", [])])
+    from proef.core.hypothesis import explanatory_bonus
+    from proef.flywheel import Flywheel
     cfg = CampaignConfig(
         problem=problem,
+        score_fn=(lambda h: cand_score.get(h.candidate, 0.5) - explanatory_bonus(h)) if cand_score else None,
         hypotheses=list(hypotheses.values()),
-        k=env.get("k", 2), autonomy="act",   # replay always runs through
+        # replay runs the loop the way it was recorded: an approval-gated run did not auto-confirm, so neither
+        # does its replay (the person's earlier approvals are stood in for by an auto-approver below).
+        # Records from before the rounds were captured replay as one round, as they always did.
+        k=env.get("k", 2), rounds=int(env.get("rounds", 1)),
+        autonomy=env.get("autonomy") if env.get("autonomy") in ("gate", "act") else "act",
         inbox=str(inbox or ".data/reproduce-inbox"),
         concentrations=tuple(env.get("concentrations",
                                      ["0.5uM", "2uM", "10uM", "40uM"])),
         dose_design=env.get("dose_design", "fixed"),
-        poll_secs=0.05)
+        poll_secs=0.05,
+        # a replay must start from a clean memory and must not feed the user's real flywheel
+        flywheel=Flywheel(":memory:"))
     _seed = env.get("lab_seed")
     if _seed is None:
         _seed = 7                       # pre-seed-capture branches default
     lab = lab_cls(seed=_seed)
-    report = run_campaign(cfg, lab, SqliteProvenanceStore())
+    report = run_campaign(cfg, lab, SqliteProvenanceStore(),
+                          approver=(lambda title: True) if cfg.autonomy == "gate" else None)
 
     diffs, matches = [], 0
     for cand, rec in sorted(recorded.items()):

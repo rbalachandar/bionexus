@@ -140,3 +140,22 @@ Program / Experiment / Wizard / Approvals screens and ~800 lines of old API remo
 - `/api/wizard/*`, `/api/programs*`, `/api/experiments*`, `/api/approvals*`,
   `/api/instruments`, `/api/taste`, `/api/events` (SSE): replaced by `/api/v1/*` (the UI
   polls). `/api/analyses/*` → `/api/v1/analyses/*` (Analyze rebuilt).
+
+## 9. Realigned to the original flow (Nov 14, 2026)
+
+Phase 4 made the *campaign* (which needs candidates) the centre of the launch flow and dropped the problem-tree and the
+LLM program brief from the workbench. That moved away from the original idea: **define a problem with limits, press
+Start, an agent proposes hypotheses and designs the experiments, runs them under the person's approval, and loops.**
+Restored, in order:
+
+1. **Program limits** — rounds, lab runs, hypotheses, families, variants per family, breadth. Hard caps every campaign
+   inherits; a campaign may use less, never more; the engine receives a real `ResourceBudget`.
+2. **Start research + plan review** — the primary action on a program. A model proposes families of hypotheses; in
+   *Ask me first* the campaign pauses and shows the plan (mechanism, refuted-if, confidence, citation status, every
+   variant). The person removes hypotheses, declines, or approves; removals are recorded with a reason and never tested.
+3. **Wording** — "autonomy" means only how much runs without approval. The ways to run are *Start research*, *I have
+   candidates* and *I'll run the plate myself*.
+
+Still open: decomposition of an objective into sub-problems in the workbench (`proef campaign plan` exists in the
+engine/CLI); re-planning after each round from the results; one approval that covers a whole approved plan's lab
+submissions (today each submission is still approved separately in *Ask me first*).

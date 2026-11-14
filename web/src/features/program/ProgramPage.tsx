@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowRight, CheckCircle2, ChevronLeft, CircleDashed, Compass, Plus } from 'lucide-react'
+import { ArrowRight, CheckCircle2, ChevronLeft, CircleDashed, Compass, Plus, Sparkles } from 'lucide-react'
 import { useProgram } from '../../api/hooks'
 import { limitsLine } from '../launch/limits'
 import { Button } from '../../ui/Button'
@@ -12,7 +12,7 @@ import { ResultsTable } from '../campaign/ResultsTable'
 import type { Hyp } from '../campaign/format'
 import { sig } from '../campaign/format'
 import { goalLine } from './goal'
-import { LaunchCampaignDialog } from '../launch/LaunchCampaignDialog'
+import { LaunchCampaignDialog, type How } from '../launch/LaunchCampaignDialog'
 import { NewProgramDialog } from '../launch/NewProgramDialog'
 
 export default function ProgramPage() {
@@ -20,6 +20,7 @@ export default function ProgramPage() {
   const nav = useNavigate()
   const { data: p, isLoading, error } = useProgram(slug)
   const [launch, setLaunch] = useState(false)
+  const [how, setHow] = useState<How>('research')
   const [follow, setFollow] = useState<string[] | null>(null)
   const [np, setNp] = useState(false)
   if (isLoading) return <div className="mx-auto max-w-6xl space-y-4 p-6"><Skeleton className="h-10 w-1/2" /><Skeleton className="h-24" /><Skeleton className="h-64" /></div>
@@ -42,8 +43,11 @@ export default function ProgramPage() {
         <h1 className="text-xl font-semibold tracking-tight">{p.name}</h1>
         {p.gate.label && <Tag className="num !text-xs">gate {p.gate.label}</Tag>}
         {p.modality && <Tag>{p.modality}</Tag>}
-        <Button variant="primary" size="sm" className="ml-auto" onClick={() => setLaunch(true)}><Plus size={14} /> New campaign</Button>
-        <LaunchCampaignDialog open={launch} onOpenChange={setLaunch} slug={p.slug} />
+        <div className="ml-auto flex gap-2">
+          <Button size="sm" onClick={() => { setHow('list'); setLaunch(true) }}><Plus size={14} /> I have candidates</Button>
+          <Button variant="primary" size="sm" onClick={() => { setHow('research'); setLaunch(true) }}><Sparkles size={14} /> Start research</Button>
+        </div>
+        <LaunchCampaignDialog open={launch} onOpenChange={setLaunch} slug={p.slug} initialHow={how} />
       </div>
       {p.objective && <p className="mb-2 max-w-3xl text-sm text-muted">{p.objective}</p>}
       <p className="mb-4 text-xs text-faint"><b className="font-medium text-muted">Limits</b> · {limitsLine(p.limits)}</p>

@@ -29,15 +29,17 @@ class ApprovalInbox:
         with self.path.open("a") as f:
             f.write(json.dumps(event) + "\n")
 
-    def request(self, title: str, detail: str = "") -> str:
+    def request(self, title: str, detail: str = "", payload: dict | None = None) -> str:
+        """`payload` is structured context for the reviewer (e.g. a research plan)."""
         aid = f"apr-{uuid.uuid4().hex[:8]}"
-        self._append({"event": "request", "id": aid, "title": title,
-                      "detail": detail, "ts": time.time()})
+        self._append({"event": "request", "id": aid, "title": title, "detail": detail,
+                      "ts": time.time(), **({"payload": payload} if payload is not None else {})})
         return aid
 
-    def decide(self, approval_id: str, approve: bool, by: str = "operator") -> None:
-        self._append({"event": "decision", "id": approval_id,
-                      "approve": bool(approve), "by": by, "ts": time.time()})
+    def decide(self, approval_id: str, approve: bool, by: str = "operator", data: dict | None = None) -> None:
+        """`data` is structured input from the decider (e.g. hypotheses removed from a plan)."""
+        self._append({"event": "decision", "id": approval_id, "approve": bool(approve), "by": by,
+                      "ts": time.time(), **({"data": data} if data else {})})
 
     # -- read side -------------------------------------------------------------
 
@@ -55,11 +57,12 @@ class ApprovalInbox:
                 continue
             if ev.get("event") == "request":
                 out[ev["id"]] = {"title": ev["title"], "detail": ev.get("detail", ""),
-                                 "status": "pending", "ts": ev["ts"]}
+                                 "status": "pending", "ts": ev["ts"], "payload": ev.get("payload")}
             elif ev.get("event") == "decision" and ev["id"] in out:
                 out[ev["id"]]["status"] = "approved" if ev["approve"] else "denied"
                 out[ev["id"]]["decided_ts"] = ev.get("ts")
                 out[ev["id"]]["decided_by"] = ev.get("by", "operator")
+                out[ev["id"]]["data"] = ev.get("data") or {}
         return out
 
     def pending(self) -> list[dict[str, Any]]:

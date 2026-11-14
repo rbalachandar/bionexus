@@ -66,6 +66,9 @@ def summarize(rec) -> tuple[str, str, str | None]:
         label = cand or str(d.get("statement", ""))[:60]
         return "proposed", f"Proposed {label}", cand
     if et == "hypotheses_filtered":
+        if d.get("kind") == "plan_review":
+            return ("review", f"Plan review: {len(d.get('decisions') or [])} hypothes"
+                    f"{'is' if len(d.get('decisions') or []) == 1 else 'es'} removed before testing", None)
         if d.get("kind") == "acquisition_selection":
             return ("batch", f"Batch chosen by {d.get('policy')}: "
                     f"{len(d.get('picks') or [])} picked, "
@@ -97,6 +100,15 @@ def summarize(rec) -> tuple[str, str, str | None]:
                 "drop": "drop"}.get(d.get("decision"), d.get("decision"))
         return ("review", f"{rec.actor.id} decided to {verb} {cand or '?'}"
                 + (f" — “{d['note']}”" if d.get("note") else ""), cand)
+    if et == "gate_decision" and d.get("kind") == "plan_decision":
+        who_ = d.get("decided_by", "someone")
+        if not d.get("approved"):
+            return ("review", f"{who_} {'emptied' if d.get('reason') == 'every hypothesis was removed' else 'declined'} "
+                    "the research plan — nothing was submitted to the lab"
+                    + (f" (“{d['note']}”)" if d.get("note") else ""), None)
+        rm = len(d.get("removed") or [])
+        return ("review", f"{who_} approved the research plan: {d.get('n_kept')} of {d.get('n_proposed')} "
+                f"hypotheses go ahead" + (f" ({rm} removed)" if rm else ""), None)
     if et == "gate_decision" and d.get("kind") == "hand_run":
         return ("run", f"{rec.actor.id} registered a hand-run campaign for "
                 f"{', '.join(d.get('candidates') or [])} against {d.get('gate', 'the gate')}", None)
@@ -354,6 +366,9 @@ def _status(raw: str, recs) -> str:
         proposed = {r.artifact.artifact_id for r in recs
                     if r.artifact and r.event_type.value == "hypothesis_proposed"}
         return "awaiting_results" if proposed - judged else "completed"
+    if any((r.decision or {}).get("kind") == "plan_decision" and not (r.decision or {}).get("approved")
+           for r in recs):
+        return "declined"          # the person declined (or emptied) the plan: nothing was submitted
     if raw in ("executing", "running", "interrupted", "verdict recorded") \
             and any((r.decision or {}).get("kind") == "review_report"
                     for r in recs):
@@ -379,6 +394,35 @@ def campaign_for_problem(pid: str) -> tuple[str, str] | None:
     return None
 
 
+def problem_id_for(eid: str, detail: dict) -> str | None:
+    """The campaign's problem branch id. A RUNNING campaign has not been linked in the registry yet, but it
+    announces its branch the moment it exists: use that, so what it is waiting for shows up on its own page."""
+    pid = (detail.get("agent") or {}).get("problem_id")
+    if pid:
+        return pid
+    try:
+        from proef.autoloop import announced_branches
+        return announced_branches().get(eid)
+    except Exception:  # noqa: BLE001 - best effort, as everywhere the branch map is read
+        return None
+
+
+def testable(cards: list) -> list:
+    """Cards a person can test. A family's parent claim has no candidate of its own: it is the idea the
+    variants test, shown in the plan, and must not be counted as a hypothesis awaiting an experiment."""
+    return [c for c in cards or [] if c.get("candidate")]
+
+
+def plan_of(payload) -> S.Plan | None:
+    """The plan carried by an approval request, if it has one (tolerant of malformed payloads)."""
+    if not isinstance(payload, dict) or "families" not in payload:
+        return None
+    try:
+        return S.Plan(**payload)
+    except Exception:  # noqa: BLE001 - a bad payload must not hide the approval itself
+        return None
+
+
 def pending_approvals(problem_id: str | None) -> list[S.ApprovalRef]:
     """Lab submissions of THIS campaign waiting for a human (gate autonomy)."""
     if not problem_id:
@@ -389,8 +433,8 @@ def pending_approvals(problem_id: str | None) -> list[S.ApprovalRef]:
     for k, v in ApprovalInbox(str(APPROVALS_FILE)).state().items():
         m = _PID.search(v.get("title", ""))
         if v.get("status") == "pending" and m and m.group(1) == problem_id:
-            out.append(S.ApprovalRef(id=k, title=v["title"],
-                                     detail=v.get("detail", ""), ts=v.get("ts")))
+            out.append(S.ApprovalRef(id=k, title=v["title"], detail=v.get("detail", ""),
+                                     ts=v.get("ts"), plan=plan_of(v.get("payload"))))
     return out
 
 
@@ -458,7 +502,7 @@ def llm_use(recs) -> S.LlmUse | None:
 @router.get("/{eid}", response_model=S.CampaignDetail)
 def get_campaign(eid: str) -> S.CampaignDetail:
     ws, row, detail, branch, recs = _load(eid)
-    cards = detail.get("cards") or []
+    cards = testable(detail.get("cards"))
     gate = _gate(recs, cards, detail)
     rounds = _why_rounds(recs, detail.get("rounds") or [])
     tested_cands = {c for r in rounds for c in r.candidates}
@@ -467,7 +511,7 @@ def get_campaign(eid: str) -> S.CampaignDetail:
     runs = sum(1 for r in recs if r.event_type.value == "lab_run"
                and (r.decision or {}).get("run_id"))
     progs = _program_index()
-    pid = (detail.get("agent") or {}).get("problem_id")
+    pid = problem_id_for(eid, detail)
     return S.CampaignDetail(
         llm=llm_use(recs),
         awaiting_approvals=pending_approvals(pid),
@@ -475,7 +519,7 @@ def get_campaign(eid: str) -> S.CampaignDetail:
         status=_status(detail.get("status") or row_status(row), recs),
         autonomy=(detail.get("agent") or {}).get("autonomy"),
         program=progs.get(eid), updated_at=row.get("updated_at"),
-        problem_id=(detail.get("agent") or {}).get("problem_id"),
+        problem_id=pid,
         objective=detail.get("objective"), branch=branch,
         gate=gate,
         budget=S.Budget(runs_used=runs,

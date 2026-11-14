@@ -9,7 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from proef.api.v1 import schemas as S
-from proef.api.v1.campaigns import _PID, campaign_for_problem
+from proef.api.v1.campaigns import _PID, campaign_for_problem, plan_of
 from proef.api.v1.deps import who
 from proef.api.v1.programs import collect
 
@@ -26,7 +26,7 @@ def _approval_items() -> list[S.InboxItem]:
         out.append(S.InboxItem(
             id=k, kind="approval", title=v["title"], detail=v.get("detail", ""),
             ts=v.get("ts"), status=v.get("status", "pending"),
-            decided_by=v.get("decided_by"),
+            decided_by=v.get("decided_by"), plan=plan_of(v.get("payload")),
             campaign_id=camp[0] if camp else None,
             campaign_title=camp[1] if camp else None))
     return out
@@ -86,7 +86,8 @@ def decide(item_id: str, body: S.DecisionIn, request: Request) -> S.InboxItem:
             type="approval-not-found", title="Approval not found",
             detail=item_id).model_dump())
     user = who(request)
-    inbox.decide(item_id, body.approve, by=user)
+    inbox.decide(item_id, body.approve, by=user,
+                 data={"exclude": body.exclude, "note": body.note} if (body.exclude or body.note) else None)
     _seal(item_id, inbox.state()[item_id]["title"], body, user)
     return next(i for i in _approval_items() if i.id == item_id)
 
@@ -107,4 +108,4 @@ def _seal(item_id: str, title: str, body: S.DecisionIn, user: str) -> None:
         EventType.gate_decision, Actor(kind=ActorKind.human, id=user),
         decision={"kind": "human_approval", "approval_id": item_id,
                   "title": _PID.sub("", title).strip(), "approve": body.approve,
-                  "note": body.note[:500]}))
+                  "note": body.note[:500], **({"removed": body.exclude} if body.exclude else {})}))

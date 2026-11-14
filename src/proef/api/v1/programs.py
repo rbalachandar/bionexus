@@ -15,7 +15,7 @@ from proef.api.v1 import schemas as S
 from proef.api.v1.deps import who
 from proef.api.launch import spawn_campaign
 from proef.api.v1.campaigns import (_funnel, _load, _reviews, _status,
-                                       _summary_of, _ws)
+                                       _summary_of, _ws, testable)
 from proef.views.ids import row_status
 
 router = APIRouter(tags=["programs"])
@@ -57,7 +57,7 @@ def _digest(eid: str):
     """(CampaignDigest, [hypotheses]) for one campaign — no chain verify."""
     ws, row, detail, branch, recs = _load(eid)
     reviews = _reviews(recs)
-    hyps = [_summary_of(c, None, reviews) for c in detail.get("cards") or []]
+    hyps = [_summary_of(c, None, reviews) for c in testable(detail.get("cards"))]
     status = _status(detail.get("status") or row_status(row), recs)
     return S.CampaignDigest(
         id=eid, title=detail.get("objective") or row.get("question") or eid,
@@ -82,7 +82,7 @@ def _best(hyps, direction: str, cid: str, title: str) -> S.BestResult | None:
 def _next_steps(p, digests, goal: S.Goal, gate: S.Gate,
                 unresolved: list[str]) -> list[S.NextStep]:
     """What a sensible scientist would do next — from the evidence alone."""
-    from proef.api.v1.campaigns import pending_approvals
+    from proef.api.v1.campaigns import pending_approvals, problem_id_for
     steps: list[S.NextStep] = []
     waiting = 0
     for link in program_cfg.links_for(p["slug"]):
@@ -90,8 +90,7 @@ def _next_steps(p, digests, goal: S.Goal, gate: S.Gate,
             _, _, detail, _, _ = _load(link["eid"])
         except HTTPException:
             continue
-        waiting += len(pending_approvals(
-            (detail.get("agent") or {}).get("problem_id")))
+        waiting += len(pending_approvals(problem_id_for(link["eid"], detail)))
     if waiting:
         steps.append(S.NextStep(
             kind="inbox", action="inbox",

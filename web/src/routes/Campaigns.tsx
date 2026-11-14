@@ -8,6 +8,7 @@ export const StatusTag = ({ status }: { status: string }) => {
   const s = status.toLowerCase()
   if (s === 'running') return <Tag tone="accent"><span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />running</Tag>
   if (s === 'awaiting_results') return <Tag tone="warn">awaiting results</Tag>
+  if (s === 'declined') return <Tag tone="bad">plan declined</Tag>
   if (s === 'completed') return <Tag tone="ok">completed</Tag>
   if (s === 'interrupted' || s === 'failed') return <Tag tone="bad">{s}</Tag>
   return <Tag>{s}</Tag>

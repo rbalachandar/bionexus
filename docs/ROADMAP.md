@@ -6,6 +6,10 @@ epistemology of verdicts do not.** Work top-down — T0 first.
 
 Status legend: `[ ]` open · `[~]` in progress · `[x]` done
 
+> **Nov 14, 2026 — research flow realigned** (see `docs/WORKBENCH-REDESIGN.md` §9): program limits, *Start research* with a
+> plan-review gate (approve / remove / decline), replay of plan-reviewed campaigns. Open: sub-problem decomposition in the
+> workbench, re-planning after each round, one approval for a whole approved plan.
+
 ## P0 — Critical review, Oct 2026 (docs/REVIEW-2026-10.md — fix log there)
 Campaign epistemology was sound; the verdict-READING layers betrayed it.
 All fixed 2026-10-04 (159 tests green; eval suite 0.939 FAIL → 0.979 PASS):
