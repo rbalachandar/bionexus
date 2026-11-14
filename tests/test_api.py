@@ -74,13 +74,13 @@ def test_spawn_plan_forwards_program_fence(monkeypatch, tmp_path):
                         lambda cmd, **kw: seen.update(cmd=cmd) or P())
     monkeypatch.setattr(L, "CAMPAIGN_DIR", tmp_path)
     L._spawn_plan({"objective": "o", "autonomy": "gate",
-                   "labs": [{"instrument": "bionexus-virtual-lab"}]},
+                   "labs": [{"instrument": "proef-virtual-lab"}]},
                   "FenceTestProg")
     assert "--labs-json" in seen["cmd"]
     import json
     i = seen["cmd"].index("--labs-json")
     assert json.loads(seen["cmd"][i + 1])[0]["instrument"] == \
-        "bionexus-virtual-lab"
+        "proef-virtual-lab"
     import proef.program as pcfg
     pcfg.delete_program("FenceTestProg")
 
@@ -96,7 +96,7 @@ def test_empty_fence_defaults_to_virtual_lab_poolspec():
         "autonomy": "act",
     }
     cfg = _campaign_from_doc(doc)
-    assert cfg.labs == [{"instrument": "bionexus-virtual-lab"}]
+    assert cfg.labs == [{"instrument": "proef-virtual-lab"}]
     doc2 = dict(doc); doc2["lab"] = {"adapter": "x:Y"}
     assert _campaign_from_doc(doc2).labs is None   # explicit single-lab
     doc3 = dict(doc)

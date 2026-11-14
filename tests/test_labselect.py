@@ -57,7 +57,7 @@ def test_mcp_pool_member_matches_via_declared_tools():
     if not any(e["id"] == "labmcp-mettler-toledo" and e["installed"]
                for e in available_instruments()):
         pytest.skip("labmcp-mettler-toledo not installed")
-    pool = build_pool([{"instrument": "bionexus-virtual-lab"},
+    pool = build_pool([{"instrument": "proef-virtual-lab"},
                        {"instrument": "labmcp-mettler-toledo"}])
     try:
         sel, declined = select_lab(
@@ -182,3 +182,13 @@ def test_fence_info_resolves_and_flags_honestly():
     # unknown id: declared but unresolvable — kept visible, flagged
     f2 = fence_info([{"instrument": "ghost-9000"}])[0]
     assert f2["unknown"] is True and f2["installed"] is False
+
+
+def test_instrument_ids_from_the_former_name_still_resolve():
+    """Programs and runs created before the rename reference 'bionexus-virtual-lab'."""
+    from proef.labselect import build_pool, canonical_id, fence_info
+    assert canonical_id("bionexus-virtual-lab") == "proef-virtual-lab"
+    pool = build_pool([{"instrument": "bionexus-virtual-lab"}])
+    assert [name for name, _ in pool] == ["proef-virtual-lab-0"]       # new records use the new id
+    info = fence_info([{"instrument": "bionexus-virtual-lab"}])
+    assert info[0]["id"] == "proef-virtual-lab" and info[0]["installed"] is True

@@ -145,7 +145,7 @@ def make_envelope(branch_id: str, parent_branch_id: str | None = None) -> Envelo
     return Envelope(experiment_branch_id=branch_id, parent_branch_id=parent_branch_id)
 
 
-def system_actor(name: str = "bionexus-core") -> Actor:
+def system_actor(name: str = "proef-core") -> Actor:
     return Actor(kind="service", id=name)
 
 

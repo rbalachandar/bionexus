@@ -672,7 +672,7 @@ EMPTY-FENCE FIX (later same day): the picker copy promised "empty =
 virtual lab, labeled" but the empty path had skipped the matcher
 entirely — copy overpromising behavior, exactly the audit disease. Now
 the fence ALWAYS exists: empty selection defaults to the explicit
-[{"instrument": "bionexus-virtual-lab"}] pool on both auto-launch paths
+[{"instrument": "proef-virtual-lab"}] pool on both auto-launch paths
 (cmd_auto config + _spawn_plan), so a lab_selected decision with
 simulated:true is sealed even when the creator ticks nothing; picker
 copy reworded; assertions updated (spawn test now requires --labs-json).

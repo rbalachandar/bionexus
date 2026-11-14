@@ -137,7 +137,17 @@ def load_catalog() -> dict:
     return json.loads(CATALOG_PATH.read_text())
 
 
+# Ids that existed under the project's former name. Programs and recorded runs reference them, so
+# they stay valid: they resolve to the current id and are never written again.
+LEGACY_IDS = {"bionexus-virtual-lab": "proef-virtual-lab"}
+
+
+def canonical_id(instrument_id: str) -> str:
+    return LEGACY_IDS.get(instrument_id, instrument_id)
+
+
 def _catalog_entry(instrument_id: str) -> dict:
+    instrument_id = canonical_id(instrument_id)
     for e in load_catalog()["instruments"]:
         if e["id"] == instrument_id:
             return e
@@ -278,7 +288,7 @@ def fence_info(labs_entries: list | None) -> list[dict]:
     data (what the fence allows) — not a live probe of the devices."""
     out = []
     for e in labs_entries or []:
-        iid = e.get("instrument") if "instrument" in e else None
+        iid = canonical_id(e["instrument"]) if e.get("instrument") else None
         if iid:
             try:
                 cat = _catalog_entry(iid)
@@ -299,7 +309,7 @@ def fence_info(labs_entries: list | None) -> list[dict]:
                         # enforcement): part of the fence, not the catalog
                         "match": e.get("match") or []})
         elif "simulator" in e:
-            out.append({"id": "bionexus-virtual-lab",
+            out.append({"id": "proef-virtual-lab",
                         "name": "Virtual lab (simulator)",
                         "simulated": True, "installed": True})
     return out

@@ -4,7 +4,7 @@
  "attribution": "labmcp-* entries reference K-Dense LabMCP servers (Apache-2.0, github.com/K-Dense-AI/lab-instrument-mcps); profiles here are Proef-side mappings of their declared result fields",
  "instruments": [
   {
-   "id": "bionexus-virtual-lab",
+   "id": "proef-virtual-lab",
    "kind": "simulator",
    "name": "Virtual lab (dose–response simulator)",
    "vendor": "Proef",

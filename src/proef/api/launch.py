@@ -129,7 +129,7 @@ def _spawn_plan(doc: dict, program_name: str) -> None:
     import json as _j
     cmd += ["--labs-json", _j.dumps(doc.get("labs")
                                     or [{"instrument":
-                                         "bionexus-virtual-lab"}])]
+                                         "proef-virtual-lab"}])]
     logf = CAMPAIGN_DIR / f"plan-{int(time.time())}.log"
     env = {**_os.environ, "PROEF_PROGRAM": program_name,
            "PYTHONPATH": str(Path.cwd() / "src")}

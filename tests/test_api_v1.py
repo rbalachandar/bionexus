@@ -342,7 +342,7 @@ def test_evidence_ledger_verify_anchor_and_exports(client, seeded, tmp_path, mon
 def test_lab_lists_instruments_with_honest_labels_and_authority(client):
     ins = client.get("/api/v1/lab/instruments").json()
     assert ins and all("simulated" in i and "hardware_validated" in i for i in ins)
-    sim = next(i for i in ins if i["id"] == "bionexus-virtual-lab")
+    sim = next(i for i in ins if i["id"] == "proef-virtual-lab")
     assert sim["simulated"] is True and sim["hardware_validated"] is False
     a = client.get("/api/v1/lab/authority").json()
     cols = [r["column"] for r in a["rules"]]

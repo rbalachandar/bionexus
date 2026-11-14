@@ -286,7 +286,7 @@ proef campaign auto campaign.json            # or your own config
 </details>
 
 ```
-[22:31:41] lab: 'bionexus-virtual-lab-0' selected from a pool of 1 (simulated=True); decision sealed
+[22:31:41] lab: 'proef-virtual-lab-0' selected from a pool of 1 (simulated=True); decision sealed
 [22:31:41] round 1: testing ['C-103', 'C-101'] (1 candidates remain)
 [22:31:41] started lab run sim-42-001 for C-103 on simulator (4 doses × 3 replicates)
 [22:31:42] [agent] reading instrument output sim-42-001.csv (device finished the measurement)
