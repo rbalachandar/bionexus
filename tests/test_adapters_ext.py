@@ -627,6 +627,7 @@ def test_plate_reader_share_parses_auto_export(tmp_path):
 
 # ---- agent skills integration --------------------------------------------------------
 
+@pytest.mark.usefixtures("repo_cwd")
 def test_skill_md_valid_and_plugin_json():
     import json as _json
     import re as _re
@@ -662,6 +663,7 @@ def test_install_skills_from_local_checkout(tmp_path):
     assert "RDKit guidance" in body and not body.startswith("---")
 
 
+@pytest.mark.usefixtures("repo_cwd")
 def test_skill_discovery_and_role_resolution(tmp_path):
     import pathlib as _pl
     from proef.skills import discover_skills, guidance_for, recommend_for_role

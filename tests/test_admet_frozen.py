@@ -3,9 +3,12 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
 FROZEN = Path("src/proef/adapters/data/frozen/admet")
 
 
+@pytest.mark.usefixtures("repo_cwd")
 def test_manifest_checksums_hold():
     man = json.loads((FROZEN / "MANIFEST.json").read_text())
     assert len(man["entries"]) == 6
