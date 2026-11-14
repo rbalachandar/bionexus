@@ -1,63 +1,50 @@
 # Proef — brand
 
-## The mark: the gated loop
+*proef* is Dutch for **experiment**, **trial** and **proof**: the three things this tool is about.
 
-Three shapes, one argument:
+## The mark
 
-- **Ring** — the design–make–test–analyze cycle, endless by design
-- **Gate bar** (the only gap in the ring) — every piece of evidence passes
-  one non-bypassable gate to count; the accent colour marks it as the
-  active element
-- **Nexus dot** — the centre where verified evidence becomes recorded
-  knowledge; also the period in `proef.`
+A **dose–response curve traced through a well plate**.
 
-## The wordmark: the mark hides in the word
+- **Grid** — the plate. Where an experiment physically happens.
+- **Curve with coral nodes** — the result, drawn as a path through the wells.
+- **Dashed vertical line** — the gate: the success criterion, registered before any data.
+- **Hollow node on the gate** — an honest abstention. The estimate sits where the data cannot say
+  which side of the gate it is on, so no claim is made. It is the product's signature idea,
+  drawn instead of hidden.
 
-`proef.` is drawn as a custom geometric monoline (same stroke weight and
-round caps as the mark) — and the **o is the gated loop**: ring, gate bar
-rising like an ascender, nexus dot at its center. The i-dot and the final
-period are teal: three accents, one system. The word *is* the argument.
+## The wordmark
 
-Deliberately *not*: helices, molecules, lightning bolts, gradients, or
-any emoji-adjacent biology stock vocabulary. The mark survives: 16px
-favicon, single-colour etching, dark mode, embroidery.
+`proef.` in Inter (semibold, tight tracking). The **o is the hollow node**; the full stop is coral.
+The mark and the word say the same thing.
 
-## Assets (all derived from the banner — never hand-edit)
+Deliberately *not*: helices, molecules, flasks, lightning bolts, gradients.
 
-Source of truth: `assets/logo/proef-banner.png` (dark navy card,
-matrix-grid icon with coral path dots, "proef." wordmark).
-Regenerate everything with `python scripts/make_brand_assets.py`:
+## Assets
+
+Everything is drawn by one script from one definition — never hand-edit a PNG:
+
+```sh
+node scripts/make_brand_assets.mjs     # needs web/node_modules (Playwright + Inter)
+```
 
 | File | Use |
 |---|---|
-| `proef-banner.png` | README / social — the canonical banner (icon + title + subtitle) |
-| `proef-mark.png` | icon only, transparent — light surfaces (workbench header) |
-| `proef-mark-tile.png` | icon on its navy panel — chips, avatars |
-| `proef-wordmark.png` | title only, ink recolor — light surfaces |
-| `proef-wordmark-onDark.png` | title only, original white + coral — dark surfaces |
-| `proef-lockup.png` | icon + title, light-surface recolor |
-| `proef-lockup-onDark.png` | icon + title, original colors |
-| `favicon.png` | browser tab — icon on a navy rounded square |
+| `proef-banner.png` | README / social card |
+| `proef-mark.png` · `proef-mark-onDark.png` | icon only, transparent — light / dark surfaces |
+| `proef-mark-tile.png` | icon on its navy tile — avatars, chips |
+| `proef-wordmark.png` · `-onDark.png` | title only |
+| `proef-lockup.png` · `-onDark.png` | icon + title |
+| `favicon.png` | browser tab; simplified mark (no grid) so it survives 16–32 px. Also copied to `web/public/proef-mark.png` |
 
 ## Palette
 
-Brand (from the banner):
-
 | Token | Hex | Role |
 |---|---|---|
-| navy | `#0d1117` | deep background (icon panel, favicon) |
-| panel | `#191e26` | card background |
-| coral | `#f9826c` | the path dots, "nexus." — brand accent |
-| snow | `#f0f6fc` | "bio", path lines — dark-surface type |
+| navy | `#0d1117` | dark background, tile |
+| coral | `#f9826c` | brand accent: nodes, gate, the o, the full stop |
+| ink | `#2a2823` | curve and text on light surfaces |
+| paper-white | `#eef1f8` | curve and text on dark surfaces |
+| well | `#2a303b` / `#d5d9e0` | plate wells on dark / light |
 
-Workbench (light theme, status semantics in `docs/UX.md` §8):
-
-| Token | Hex | Role |
-|---|---|---|
-| ink | `#2a2823` | type, rules |
-| paper | `#f3f1ea` | background |
-| card | `#faf8f2` | surfaces |
-| teal | `#1f7a86` | progress / autonomous accents |
-
-Wordmark: lowercase, geometric sans, weight 600; "bio" light,
-"nexus" coral, sentence-final coral period.
+The workbench UI uses its own teal accent for state and interaction; coral is reserved for the brand.
