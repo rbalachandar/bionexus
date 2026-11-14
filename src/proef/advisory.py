@@ -20,10 +20,9 @@ class AdvisoryReviewer:
     def __init__(self, provider=None):
         self.provider = provider
         if provider is None and os.environ.get("PROEF_ADVISORY_LLM") == "1":
-            try:
-                from proef.adapters.models.anthropic_provider import (
-                    AnthropicProvider)
-                self.provider = AnthropicProvider()
+            try:                       # any configured provider; none configured -> rules only
+                from proef.adapters.models.from_env import model_from_env
+                self.provider = model_from_env()
             except Exception:
                 self.provider = None
 

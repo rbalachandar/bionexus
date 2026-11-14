@@ -1,0 +1,14 @@
+{
+  "problem": {
+    "objective": "Find a confirmed sub-20uM EGFR binder",
+    "context": "No candidate list: the model proposes mechanistic families and variants",
+    "constraints": [
+      {"name": "potency", "description": "IC50 <= 20 uM", "kind": "hard", "limit": 20.0, "unit": "uM"}
+    ],
+    "success_metric": "orthogonal confirmation"
+  },
+  "hypothesis_source": "agent",
+  "k": 2,
+  "rounds": 1,
+  "autonomy": "act"
+}

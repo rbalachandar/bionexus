@@ -383,13 +383,23 @@ the same fixed rule judges its hypotheses against the gate as anyone else's.
 proposed chemistry, so the outcomes say nothing about real EGFR inhibitors; the example shows the path and the
 record, not a scientific result.*
 
+A model can do two jobs, and only these two: **propose the hypotheses**, and **review the verdicts** (advisory flags only).
+It works with any of three provider styles, selected from the environment:
+
+| `PROEF_LLM_API` | Endpoint | Typical use |
+|---|---|---|
+| `anthropic` (default) | Messages API | Anthropic |
+| `openai` | `/chat/completions` | OpenRouter, vLLM, Ollama (no key needed locally), most gateways |
+| `openai-responses` | `/responses` | GPT-family models on gateways that serve them this way |
+
 ```sh
-export PROEF_LLM_MODEL=...  PROEF_LLM_TOKEN=...          # the key stays in the environment
-export PROEF_LLM_BASE_URL=https://api.anthropic.com      # or any OpenAI-compatible endpoint
-export PROEF_LLM_API=anthropic                           # anthropic | openai | openai-responses
+export PROEF_LLM_MODEL=<model> PROEF_LLM_TOKEN=<key>                      # Anthropic
+export PROEF_LLM_PRESET=opencode-go PROEF_LLM_MODEL=gpt-6-luna             # OpenCode Go: key read from OPENCODE_API_KEY
+proef campaign auto examples/campaign_llm.json --yes                      # no candidates: the model proposes them
 ```
 
 There is no offline stub: with no model configured, a candidate-less launch is refused with a clear message.
+Full configuration, presets, what is recorded, and troubleshooting: [`docs/MODELS.md`](docs/MODELS.md).
 
 Also: `proef diary <branch>` writes the record as a static lab-notebook HTML file, and `proef read --csv out.csv` writes standardized results for Excel/GraphPad.
 
@@ -535,6 +545,7 @@ More: [design iteration loop](diagrams/svg/02-iteration-loop.svg) ·
 | [`docs/research-landscape.md`](docs/research-landscape.md) | review vs. Google, Anthropic, Isomorphic, Cradle, Lila, FutureHouse, OpenAI Rosalind |
 | [`docs/critical-review.md`](docs/critical-review.md) · [`docs/REVIEW-2026-10.md`](docs/REVIEW-2026-10.md) | independent critical reviews: strengths and failure modes |
 | [`docs/UX.md`](docs/UX.md) · [`docs/BRAND.md`](docs/BRAND.md) | workbench UX principles and brand system |
+| [`docs/MODELS.md`](docs/MODELS.md) | where a language model is (and isn't) used, providers, presets, examples |
 | [`docs/PLAN.md`](docs/PLAN.md) | build plan, principles, guardrails |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | the live plan: open work, status boxes, remediation log |
 | [`docs/architecture.md`](docs/architecture.md) · [`docs/flows.md`](docs/flows.md) · [`docs/blocks/`](docs/blocks/) | architectural blocks A–F, components, interfaces, end-to-end flows |
