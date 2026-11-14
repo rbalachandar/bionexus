@@ -71,7 +71,9 @@ def status() -> S.SystemStatus:
     reason = None
     if halt:
         reason = halt.get("reason") if isinstance(halt, dict) else str(halt)
+    from proef.adapters.models.from_env import model_status
     return S.SystemStatus(
+        model=S.ModelStatus(**model_status()),
         halted=halt is not None, halt_reason=reason,
         pending_approvals=len(ApprovalInbox(str(APPROVALS_FILE)).pending()),
         chain=_chain(), anchor=_anchor(), eval=_eval())

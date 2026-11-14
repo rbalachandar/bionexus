@@ -1628,6 +1628,18 @@ export interface components {
             reviewed: boolean;
         };
         /**
+         * ModelStatus
+         * @description Is a real language model configured for LLM-assisted campaigns? Never includes the key.
+         */
+        ModelStatus: {
+            /** Api */
+            api?: string | null;
+            /** Configured */
+            configured: boolean;
+            /** Model */
+            model?: string | null;
+        };
+        /**
          * NextStep
          * @description A rule-based recommendation — deterministic, always available, no model needed.
          */
@@ -2028,6 +2040,7 @@ export interface components {
             halt_reason?: string | null;
             /** Halted */
             halted: boolean;
+            model: components["schemas"]["ModelStatus"];
             /** Pending Approvals */
             pending_approvals: number;
         };

@@ -17,8 +17,9 @@ reviews the verdicts.
 | Best for | a known series, demos, CI, reproducing a result | exploring a new target with no candidate list |
 
 The mode is chosen **per campaign**, by whether it has candidates: a campaign with `"hypothesis_source":
-"agent"` (or launched with none) uses LLM mode; everything else is autonomous code. The workbench shows which
-one a campaign used, read from the ledger and not from current settings.
+"agent"` (or launched with none) uses LLM mode; everything else is autonomous code. The workbench launch dialog
+shows which mode you are about to run (and which model, or that none is configured, in which case Start is
+disabled), and each campaign afterwards shows which one it used, read from the ledger and not from current settings.
 
 ## What the model does in LLM mode
 

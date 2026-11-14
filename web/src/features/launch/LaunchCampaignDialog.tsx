@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useLaunchCampaign } from '../../api/hooks'
+import { useLaunchCampaign, useSystemStatus } from '../../api/hooks'
 import { Button } from '../../ui/Button'
 import { Dialog, DialogContent } from '../../ui/Dialog'
 import { Field, Input, Select, Textarea } from '../../ui/Field'
@@ -21,6 +21,7 @@ export function LaunchCampaignDialog({ open, onOpenChange, slug, title = 'New ca
   const toast = useToast()
   const nav = useNavigate()
   const launch = useLaunchCampaign(slug)
+  const model = useSystemStatus().data?.model
   const [objective, setObjective] = useState(defaults?.objective ?? '')
   const [cands, setCands] = useState((defaults?.candidates ?? []).join('\n'))
   const [autonomy, setAutonomy] = useState<keyof typeof AUTONOMY>('gate')
@@ -44,7 +45,7 @@ export function LaunchCampaignDialog({ open, onOpenChange, slug, title = 'New ca
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title={title} description="Candidates are judged against the program's pre-registered gate.">
         <Field label="Objective" hint="Leave blank to use the program's objective."><Input value={objective} onChange={(e) => setObjective(e.target.value)} /></Field>
-        <Field label="Candidates" hint={list.length ? `${list.length} candidate${list.length > 1 ? 's' : ''}` : 'One per line or comma-separated. Leave empty to let the hypothesis agent propose them (needs a configured model).'}>
+        <Field label="Candidates" hint={list.length ? `${list.length} candidate${list.length > 1 ? 's' : ''}` : 'One per line or comma-separated. Leave empty to let a language model propose them.'}>
           <Textarea value={cands} onChange={(e) => setCands(e.target.value)} placeholder="EG-02&#10;EG-03" />
         </Field>
         <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-md border border-line px-3 py-2 text-sm">
@@ -60,12 +61,22 @@ export function LaunchCampaignDialog({ open, onOpenChange, slug, title = 'New ca
           </Field>
           <Field label="Rounds"><Input type="number" min={1} max={8} value={rounds} onChange={(e) => setRounds(Number(e.target.value))} /></Field>
         </div>)}
+        <ModeNote hand={hand} n={list.length} model={model} />
         {launch.error && <p role="alert" className="mb-2 text-xs text-bad">{(launch.error as Error).message}</p>}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button variant="primary" disabled={launch.isPending || (hand && !list.length)} onClick={submit}>{launch.isPending ? 'Starting…' : hand ? 'Create campaign' : 'Start campaign'}</Button>
+          <Button variant="primary" disabled={launch.isPending || (hand && !list.length) || (!hand && !list.length && !model?.configured)} onClick={submit}>{launch.isPending ? 'Starting…' : hand ? 'Create campaign' : 'Start campaign'}</Button>
         </div>
       </DialogContent>
     </Dialog>
   )
+}
+
+/** Which of the two ways to run this launch will use — before it starts, not after. */
+function ModeNote({ hand, n, model }: { hand: boolean; n: number; model?: { configured: boolean; model?: string | null } }) {
+  const box = 'mb-3 rounded-md px-3 py-2 text-xs'
+  if (hand) return <p className={`${box} bg-sunken text-muted`}><b className="text-ink">You run it.</b> No agent and no model; the gate is registered now and your plate is judged against it.</p>
+  if (n > 0) return <p className={`${box} bg-sunken text-muted`}><b className="text-ink">Autonomous code · no LLM.</b> The agent tests your {n} candidate{n > 1 ? 's' : ''}; selection, runs, fits and verdicts are all code, and the run can be replayed exactly.</p>
+  if (model?.configured) return <p className={`${box} bg-accent-soft text-accent`}><b>LLM-assisted · {model.model}</b> will propose the hypotheses. A fresh run may propose different ones. Verdicts still come from the fixed rule, never from the model.</p>
+  return <p role="alert" className={`${box} bg-warn-soft text-warn`}><b>No model is configured</b>, so nothing can propose candidates. Name them above, or set <code>PROEF_LLM_MODEL</code> and <code>PROEF_LLM_TOKEN</code> (see docs/MODELS.md) and restart the server.</p>
 }

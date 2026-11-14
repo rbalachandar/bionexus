@@ -2630,6 +2630,42 @@
     "title": "LlmUse",
     "type": "object"
    },
+   "ModelStatus": {
+    "description": "Is a real language model configured for LLM-assisted campaigns? Never includes the key.",
+    "properties": {
+     "api": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Api"
+     },
+     "configured": {
+      "title": "Configured",
+      "type": "boolean"
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model"
+     }
+    },
+    "required": [
+     "configured"
+    ],
+    "title": "ModelStatus",
+    "type": "object"
+   },
    "NextStep": {
     "description": "A rule-based recommendation \u2014 deterministic, always available, no model needed.",
     "properties": {
@@ -3630,12 +3666,16 @@
       "title": "Halted",
       "type": "boolean"
      },
+     "model": {
+      "$ref": "#/components/schemas/ModelStatus"
+     },
      "pending_approvals": {
       "title": "Pending Approvals",
       "type": "integer"
      }
     },
     "required": [
+     "model",
      "halted",
      "pending_approvals",
      "chain"

@@ -391,3 +391,16 @@ def test_llm_use_is_read_from_the_record_not_from_config():
     assert u.models == ["m-1"] and u.proposed_hypotheses == 2 and u.reviewed is True
     assert llm_use(recs[2:3]) is None
     assert llm_use([rec("stage_transition", {"kind": "review_report_llm", "model": "x", "unavailable": True})]) is None
+
+
+def test_system_status_reports_the_model_without_the_key(client, monkeypatch):
+    for k in ("PROEF_LLM_PRESET", "PROEF_LLM_API", "PROEF_LLM_BASE_URL", "ANTHROPIC_AUTH_TOKEN"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.delenv("PROEF_LLM_MODEL", raising=False)
+    monkeypatch.delenv("PROEF_LLM_TOKEN", raising=False)
+    assert client.get("/api/v1/system/status").json()["model"]["configured"] is False
+    monkeypatch.setenv("PROEF_LLM_MODEL", "some-model")
+    monkeypatch.setenv("PROEF_LLM_TOKEN", "super-secret-key")
+    r = client.get("/api/v1/system/status")
+    assert r.json()["model"]["configured"] is True and r.json()["model"]["model"] == "some-model"
+    assert "super-secret-key" not in r.text

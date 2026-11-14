@@ -222,8 +222,16 @@ class AnchorStatus(BaseModel):
     published: bool | None = None
 
 
+class ModelStatus(BaseModel):
+    """Is a real language model configured for LLM-assisted campaigns? Never includes the key."""
+    configured: bool
+    model: str | None = None
+    api: str | None = None
+
+
 class SystemStatus(BaseModel):
     """What the top bar and trust strip show on every page."""
+    model: ModelStatus
     halted: bool
     halt_reason: str | None = None
     pending_approvals: int
