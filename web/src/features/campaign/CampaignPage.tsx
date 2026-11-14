@@ -41,6 +41,11 @@ function CampaignView({ id }: { id: string }) {
         {d.gate.label && <Tag className="num !text-xs">gate {d.gate.label}</Tag>}
         {d.program && <Tag tone="accent">{d.program.name}</Tag>}
         {d.autonomy && <Tag>{d.autonomy}</Tag>}
+        {d.llm
+          ? <Tag tone="accent" className="!text-xs" title="Recorded in the ledger. The verdicts themselves are computed by the fixed rule, not by the model.">
+              LLM · {d.llm.models.join(', ')}{d.llm.proposed_hypotheses ? ` wrote ${d.llm.proposed_hypotheses} hypotheses` : ''}{d.llm.reviewed ? `${d.llm.proposed_hypotheses ? ' · ' : ' '}reviewed` : ''}
+            </Tag>
+          : <Tag className="!text-xs" title="No language model took part: hypotheses, tests and verdicts were all deterministic.">no LLM</Tag>}
         <Button size="sm" className="ml-auto" onClick={() => setSubmitting(true)}><Upload size={13} />Submit results</Button>
         <span className="num flex items-center gap-4 text-xs text-muted">
           <span>{d.budget.runs_used}{d.budget.runs_max ? ` / ${d.budget.runs_max}` : ''} lab runs</span>

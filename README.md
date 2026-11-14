@@ -363,6 +363,34 @@ instrument the campaign refuses rather than falling back to simulation
 - **Evidence and Lab:** verify the whole ledger, anchor it outside this machine, and export a campaign's record. Instruments are labelled simulated, real, or hardware-validated, and the page shows what agents may do alone, what needs a person, the SOP sign-offs and the stop switch.
 - **Try it:** `proef demo` runs the abstain-and-refute cascade; `make sample` seeds a sample workspace.
 
+### Where the language model is used (and where it isn't)
+
+**By default, no LLM is involved.** Give a campaign its candidates and everything runs as code: selection,
+lab runs, curve fits, the verdict rule, the orthogonal confirmation, the reviewer. Every campaign says so in
+its header (**no LLM**), and the ledger shows `service` actors only.
+
+**Optionally, a model proposes the hypotheses.** Start a campaign with *no* candidates and a configured model:
+the model proposes mechanistic families and variants, each with a mechanism, a rationale, a prediction and a
+pre-registered "refuted if…" clause. Each hypothesis records which model wrote it, the prompt and response are
+sealed in the ledger, and an LLM reviewer may also read the verdicts. **The model never decides a verdict**:
+the same fixed rule judges its hypotheses against the gate as anyone else's.
+
+| The campaign header says which model took part | One hypothesis: wording, mechanism and refuted-if all written by the model |
+|---|---|
+| ![LLM campaign](assets/screenshots/llm-campaign.png) | ![LLM hypothesis](assets/screenshots/llm-hypothesis.png) |
+
+*A real run (`gpt-6-luna`, no candidates given) against the **simulated** lab. The simulator does not model the
+proposed chemistry, so the outcomes say nothing about real EGFR inhibitors; the example shows the path and the
+record, not a scientific result.*
+
+```sh
+export PROEF_LLM_MODEL=...  PROEF_LLM_TOKEN=...          # the key stays in the environment
+export PROEF_LLM_BASE_URL=https://api.anthropic.com      # or any OpenAI-compatible endpoint
+export PROEF_LLM_API=anthropic                           # anthropic | openai | openai-responses
+```
+
+There is no offline stub: with no model configured, a candidate-less launch is refused with a clear message.
+
 Also: `proef diary <branch>` writes the record as a static lab-notebook HTML file, and `proef read --csv out.csv` writes standardized results for Excel/GraphPad.
 
 ### The DMTA cycle — scientific decision layer

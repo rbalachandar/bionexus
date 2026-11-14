@@ -470,9 +470,8 @@ def cmd_auto(args: argparse.Namespace) -> int:
         cfg_doc["autonomy"] = args.autonomy
     if cfg_doc.get("hypothesis_source") == "agent" and not cfg_doc.get("model"):
         try:
-            from proef.adapters.models.anthropic_provider import \
-                AnthropicProvider
-            cfg_doc["_model"] = AnthropicProvider()
+            from proef.adapters.models.from_env import model_from_env
+            cfg_doc["_model"] = model_from_env()
         except Exception as exc:
             print(f"agent hypothesis source needs a model: {exc}",
                   file=sys.stderr)

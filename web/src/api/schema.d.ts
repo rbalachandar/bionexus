@@ -1150,6 +1150,7 @@ export interface components {
             hypotheses: components["schemas"]["HypothesisSummary"][];
             /** Id */
             id: string;
+            llm?: components["schemas"]["LlmUse"] | null;
             /** Objective */
             objective?: string | null;
             /** Problem Id */
@@ -1602,6 +1603,29 @@ export interface components {
              * @description how long the full re-hash took
              */
             verified_in_ms: number;
+        };
+        /**
+         * LlmUse
+         * @description Where a language model took part. Absent = every step of this campaign was deterministic.
+         */
+        LlmUse: {
+            /**
+             * Models
+             * @default []
+             */
+            models: string[];
+            /**
+             * Proposed Hypotheses
+             * @description hypotheses whose wording, mechanism and refuted-if clause a model wrote
+             * @default 0
+             */
+            proposed_hypotheses: number;
+            /**
+             * Reviewed
+             * @description an LLM reviewer also read the verdicts
+             * @default false
+             */
+            reviewed: boolean;
         };
         /**
          * NextStep

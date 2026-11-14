@@ -439,6 +439,22 @@ def list_campaigns(program: str | None = Query(None),
     return out
 
 
+def llm_use(recs) -> S.LlmUse | None:
+    """Which models took part, from what was RECORDED (never from current config)."""
+    models, proposed, reviewed = [], 0, False
+    for r in recs:
+        d = r.decision or {}
+        pb = d.get("predicted_by") if r.event_type.value == "hypothesis_proposed" else None
+        if isinstance(pb, dict) and pb.get("source") == "llm":
+            proposed += 1
+            models.append(str(pb.get("model") or "unknown model"))
+        if d.get("kind") == "review_report_llm" and not d.get("unavailable"):
+            reviewed = True
+            models.append(str(d.get("model") or "unknown model").split("/")[-1])
+    return S.LlmUse(models=sorted(set(models)), proposed_hypotheses=proposed, reviewed=reviewed) \
+        if models else None
+
+
 @router.get("/{eid}", response_model=S.CampaignDetail)
 def get_campaign(eid: str) -> S.CampaignDetail:
     ws, row, detail, branch, recs = _load(eid)
@@ -453,6 +469,7 @@ def get_campaign(eid: str) -> S.CampaignDetail:
     progs = _program_index()
     pid = (detail.get("agent") or {}).get("problem_id")
     return S.CampaignDetail(
+        llm=llm_use(recs),
         awaiting_approvals=pending_approvals(pid),
         id=eid, title=row.get("question") or eid,
         status=_status(detail.get("status") or row_status(row), recs),

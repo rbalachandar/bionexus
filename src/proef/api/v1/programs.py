@@ -276,6 +276,14 @@ def launch_campaign(slug: str, body: S.CampaignCreate, request: Request) -> S.Ca
             detail=slug).model_dump())
     if body.mode == "hand":
         return _hand_run(p, p.get("program") or {}, body, who(request))
+    if not [c for c in body.candidates if c.strip()]:
+        from proef.adapters.models.from_env import model_status
+        if not model_status()["configured"]:
+            raise HTTPException(409, S.Problem(
+                type="model-not-configured", title="No model is configured",
+                detail="With no candidates, a model proposes the hypotheses. Name the candidates "
+                       "yourself, or set PROEF_LLM_MODEL, PROEF_LLM_TOKEN and PROEF_LLM_BASE_URL "
+                       "(PROEF_LLM_API=openai for OpenAI-compatible endpoints) and restart.").model_dump())
     doc = {**(p.get("program") or {}), "autonomy": body.autonomy,
            "k": body.k, "rounds": body.rounds,
            "candidates": ",".join(c.strip() for c in body.candidates if c.strip())}

@@ -1326,6 +1326,16 @@
       "title": "Id",
       "type": "string"
      },
+     "llm": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/LlmUse"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "objective": {
       "anyOf": [
        {
@@ -2591,6 +2601,33 @@
      "checked_at"
     ],
     "title": "LedgerView",
+    "type": "object"
+   },
+   "LlmUse": {
+    "description": "Where a language model took part. Absent = every step of this campaign was deterministic.",
+    "properties": {
+     "models": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Models",
+      "type": "array"
+     },
+     "proposed_hypotheses": {
+      "default": 0,
+      "description": "hypotheses whose wording, mechanism and refuted-if clause a model wrote",
+      "title": "Proposed Hypotheses",
+      "type": "integer"
+     },
+     "reviewed": {
+      "default": false,
+      "description": "an LLM reviewer also read the verdicts",
+      "title": "Reviewed",
+      "type": "boolean"
+     }
+    },
+    "title": "LlmUse",
     "type": "object"
    },
    "NextStep": {

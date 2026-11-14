@@ -27,7 +27,13 @@ class OpenAICompatProvider:
         model: str = "stub-1",
         base_url: str | None = None,  # e.g. http://localhost:11434/v1 (ollama)
         api_key: str | None = None,
+        api: str = "chat",            # "chat" (/chat/completions) or "responses" (/responses)
+        session_header: str | None = None,   # e.g. "x-opencode-session": some gateways route on a stable id
     ):
+        import uuid
+        self.api = api
+        self.session_header = session_header
+        self._session = uuid.uuid4().hex
         self.model = model
         self.model_version = model
         self.base_url = base_url
@@ -59,24 +65,42 @@ class OpenAICompatProvider:
 
     # -- internals ------------------------------------------------------------
 
-    def _chat(self, prompt: str, system: str | None, **kwargs: Any) -> str:
-        body = {
-            "model": self.model,
-            "messages": ([{"role": "system", "content": system}] if system else [])
-            + [{"role": "user", "content": prompt}],
-            **kwargs,
-        }
+    UA = "proef/0.1 (+https://github.com/rbalachandar/proef)"   # some gateways refuse generic HTTP-library agents
+
+    def _post(self, path: str, body: dict) -> dict:
+        import time
+        import urllib.error
         req = urllib.request.Request(
-            f"{self.base_url.rstrip('/')}/chat/completions",
-            data=json.dumps(body).encode(),
-            headers={"Content-Type": "application/json",
-                     **({"Authorization": f"Bearer {self.api_key}"}
-                        if self.api_key else {})},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            data = json.loads(resp.read())
-        return data["choices"][0]["message"]["content"]
+            f"{self.base_url.rstrip('/')}/{path}", data=json.dumps(body).encode(), method="POST",
+            headers={"Content-Type": "application/json", "User-Agent": self.UA,
+                     **({"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}),
+                     **({self.session_header: self._session} if self.session_header else {})})
+        for attempt in range(4):
+            try:
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    return json.loads(resp.read())
+            except urllib.error.HTTPError as exc:       # rate limits and gateway hiccups: back off, then give up loudly
+                if exc.code not in (429, 502, 503, 529) or attempt == 3:
+                    raise
+                time.sleep(min(float(exc.headers.get("Retry-After") or 0) or 5 * 2 ** attempt, 60))
+        raise RuntimeError("unreachable")
+
+    def _chat(self, prompt: str, system: str | None, **kwargs: Any) -> str:
+        if self.api == "responses":
+            body: dict[str, Any] = {"model": self.model, "input": prompt}
+            if system:
+                body["instructions"] = system
+            if "max_tokens" in kwargs:
+                body["max_output_tokens"] = kwargs.pop("max_tokens")
+            d = self._post("responses", {**body, **kwargs})
+            if d.get("output_text"):
+                return d["output_text"]
+            return "".join(c.get("text", "") for o in d.get("output", []) for c in (o.get("content") or [])
+                           if c.get("type") in ("output_text", "text"))
+        body = {"model": self.model,
+                "messages": ([{"role": "system", "content": system}] if system else [])
+                + [{"role": "user", "content": prompt}], **kwargs}
+        return self._post("chat/completions", body)["choices"][0]["message"]["content"]
 
     def call_with_tools(self, messages: list[dict], tools: list[dict],
                         system: str = "") -> dict:

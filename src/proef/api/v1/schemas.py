@@ -159,7 +159,15 @@ class ApprovalRef(BaseModel):
     ts: float | None = None
 
 
+class LlmUse(BaseModel):
+    """Where a language model took part. Absent = every step of this campaign was deterministic."""
+    models: list[str] = []
+    proposed_hypotheses: int = Field(0, description="hypotheses whose wording, mechanism and refuted-if clause a model wrote")
+    reviewed: bool = Field(False, description="an LLM reviewer also read the verdicts")
+
+
 class CampaignDetail(CampaignSummary):
+    llm: LlmUse | None = None
     awaiting_approvals: list[ApprovalRef] = []
     objective: str | None = None
     branch: str | None = None

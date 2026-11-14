@@ -369,3 +369,25 @@ def test_authority_description_matches_what_classify_does():
     assert m.classify(proto(3))[0] == "never"
     cols = [c for c, _ in AuthorizationMatrix.DEFAULT_POLICY]
     assert cols == ["never", "never", "human", "human", "autonomous"]
+
+
+def test_campaign_says_whether_a_language_model_took_part(client, seeded):
+    # the seeded campaign is the engine's own deterministic loop: no model anywhere
+    assert client.get(f"/api/v1/campaigns/{seeded['eid']}").json()["llm"] is None
+
+
+def test_llm_use_is_read_from_the_record_not_from_config():
+    from types import SimpleNamespace as NS
+
+    from proef.api.v1.campaigns import llm_use
+
+    def rec(event, decision):
+        return NS(event_type=NS(value=event), decision=decision)
+    recs = [rec("hypothesis_proposed", {"predicted_by": {"source": "llm", "model": "m-1"}}),
+            rec("hypothesis_proposed", {"predicted_by": {"source": "llm", "model": "m-1"}}),
+            rec("hypothesis_proposed", {"predicted_by": {"source": "config"}}),
+            rec("stage_transition", {"kind": "review_report_llm", "model": "openai_compat/m-1"})]
+    u = llm_use(recs)
+    assert u.models == ["m-1"] and u.proposed_hypotheses == 2 and u.reviewed is True
+    assert llm_use(recs[2:3]) is None
+    assert llm_use([rec("stage_transition", {"kind": "review_report_llm", "model": "x", "unavailable": True})]) is None

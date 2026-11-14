@@ -29,12 +29,12 @@ export function StateChip({ state, className }: { state: State; className?: stri
   )
 }
 
-export function Tag({ children, tone = 'neutral', className }: {
-  children: React.ReactNode; tone?: 'neutral' | 'ok' | 'warn' | 'bad' | 'accent'; className?: string
+export function Tag({ children, tone = 'neutral', className, title }: {
+  children: React.ReactNode; tone?: 'neutral' | 'ok' | 'warn' | 'bad' | 'accent'; className?: string; title?: string
 }) {
   const tones = {
     neutral: 'bg-sunken text-muted', ok: 'bg-ok-soft text-ok', warn: 'bg-warn-soft text-warn',
     bad: 'bg-bad-soft text-bad', accent: 'bg-accent-soft text-accent',
   }
-  return <span className={cn('inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium', tones[tone], className)}>{children}</span>
+  return <span title={title} className={cn('inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium', tones[tone], className)}>{children}</span>
 }
