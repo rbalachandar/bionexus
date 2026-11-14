@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/proef)](https://pypi.org/project/proef/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-![proef demo](assets/demo/bn-demo.gif)
+![proef demo](assets/demo/proef-demo.gif)
 
 Proef is an open-source framework in which AI agents run the scientific
 method end to end: given a research problem and its constraints, agents propose
